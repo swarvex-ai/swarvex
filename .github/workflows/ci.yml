@@ -50,6 +50,7 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
+      - run: npx svelte-kit sync
       - run: npx svelte-check
       - run: npm run build
 
@@ -66,6 +67,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: ${{ matrix.modul }}/go.mod
+          cache: false   # keine Abhängigkeiten außer der Standardbibliothek
       - run: go vet ./...
       - run: go test ./...
       - run: CGO_ENABLED=0 go build -trimpath -o /dev/null .
