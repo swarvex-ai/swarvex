@@ -12,7 +12,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "Befehle: login | arbeiten | proxy")
+		fmt.Fprintln(os.Stderr, "Befehle: login | arbeiten | umgebung | proxy | angriffstest")
 		os.Exit(2)
 	}
 	switch os.Args[1] {
@@ -22,6 +22,8 @@ func main() {
 		loginBefehl(os.Args[2:])
 	case "arbeiten":
 		arbeitenBefehl(os.Args[2:])
+	case "umgebung":
+		umgebungBefehl(os.Args[2:])
 	case "angriffstest":
 		angriffstestBefehl(os.Args[2:])
 	default:

@@ -77,9 +77,10 @@ tar -xzf "$TMP/$PAKET" -C "$DATEN/release"
 install -m 755 "$DATEN/release/swarvex" "$BIN/swarvex"
 echo "   $BIN/swarvex"
 
-schritt "Sandbox und Schlüssel-Proxy vorbereiten (beim ersten Mal einige Minuten)"
+schritt "Agent und Schlüssel-Proxy vorbereiten (beim ersten Mal einige Minuten)"
 ( cd "$DATEN/release" && podman build -q -f Containerfile.proxy -t swarvex-proxy . >/dev/null ) || fehler "Proxy-Image konnte nicht gebaut werden"
-( cd "$DATEN/release/sandbox" && podman build -q -t swarvex-sandbox . >/dev/null ) || fehler "Sandbox-Image konnte nicht gebaut werden"
+( cd "$DATEN/release/sandbox" && podman build -q -t swarvex-agent . >/dev/null ) || fehler "Agent-Image konnte nicht gebaut werden"
+podman rmi -f swarvex-sandbox >/dev/null 2>&1 || true   # Vorgänger (Sandbox mit fester Engine)
 podman network exists swarvex-intern 2>/dev/null || podman network create --internal swarvex-intern >/dev/null
 echo "   Images und abgeschottetes Netz bereit"
 

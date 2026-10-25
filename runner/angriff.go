@@ -8,6 +8,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/swarvex-ai/swarvex/runner/umgebung"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,7 +42,12 @@ func angriffstestBefehl(args []string) {
 	ctx, stopp := context.WithTimeout(context.Background(), *zeit)
 	defer stopp()
 	a := aufgabe{ID: time.Now().Unix() % 100000, Titel: "Angriffstest", Engine: "test"}
-	verbrauch, aus, err := sandboxAusfuehren(ctx, a, baum, ordner, *upstream, key, *modell, *budget, []string{"sh", "/work/angriff.sh"})
+	// Angriffe laufen in derselben Umgebung wie echte Aufgaben (hier: allgemeine Linux-Umgebung).
+	u, err := umgebung.Ermitteln(baum)
+	pruefen(err)
+	image, err := umgebungsImage(ctx, u, baum, true)
+	pruefen(err)
+	verbrauch, aus, err := sandboxAusfuehren(ctx, a, u, image, baum, cacheOrdner("angriffstest"), ordner, *upstream, key, *modell, *budget, []string{"sh", "/work/angriff.sh"})
 	fmt.Println(aus)
 	fmt.Printf("--- Verbrauch laut Proxy: %v\n", verbrauch)
 	proxyLog, _ := os.ReadFile(filepath.Join(ordner, "proxy.log"))

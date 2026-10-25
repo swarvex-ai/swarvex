@@ -22,7 +22,7 @@ loginctl enable-linger "$NUTZER"
 rsync -a --delete --exclude swarvex "$REPO/runner/" "/home/$NUTZER/swarvex/"
 chown -R "$NUTZER:$NUTZER" "/home/$NUTZER/swarvex"
 
-echo "== 3. Runner, Proxy- und Sandbox-Image bauen (als $NUTZER)"
+echo "== 3. Runner, Proxy- und Agent-Image bauen (als $NUTZER)"
 su - "$NUTZER" -c '
   set -e
   cd ~/swarvex
@@ -30,7 +30,7 @@ su - "$NUTZER" -c '
     go build -trimpath -ldflags="-s -w" -o swarvex .
   mkdir -p ~/.local/bin && install -m 755 swarvex ~/.local/bin/
   podman build -q -f Containerfile.proxy -t swarvex-proxy . >/dev/null
-  cd sandbox && podman build -q -t swarvex-sandbox . >/dev/null
+  cd sandbox && podman build -q -t swarvex-agent . >/dev/null
   podman network exists swarvex-intern || podman network create --internal swarvex-intern >/dev/null
   echo "   fertig: $(~/.local/bin/swarvex 2>&1 | head -1)"
 '

@@ -32,6 +32,38 @@ Before a single task exists, the lead asks you questions in rounds, each with a 
 
 ## 4. Foundation first, then the swarm
 
-The lead sets up the skeleton, interfaces with tests, the test contract (`pruefung.yaml`) and the project rules (`AGENTS.md`). Only then do the first tasks go out and the swarm can start.
+The lead sets up the skeleton, interfaces with tests and the project rules (`AGENTS.md`). Only then do the first tasks go out and the swarm can start.
+
+## Environment: any language, any engine
+
+You do not have to set anything up. swarvex recognises your project from the repository and builds the matching environment itself, on contributors' machines and in the test pipeline alike:
+
+| In the repo | Environment | Tests |
+|---|---|---|
+| `project.godot` (also in a subfolder) | Godot in the project's version | `tests/*_test.gd` |
+| `package.json` | Node.js 24 (npm, pnpm or yarn) | `npm test` |
+| `pyproject.toml`, `requirements.txt` | Python 3.13 | `pytest` |
+| `Cargo.toml` | Rust | `cargo test` |
+| `go.mod` | Go | `go test ./...` |
+| `.sln`, `.csproj` | .NET 9 | `dotnet test` |
+| `pom.xml`, `build.gradle` | Java 21 (Maven, Gradle) | `mvn test`, `gradle test` |
+
+If your project already has a **dev container** (`.devcontainer/devcontainer.json`), swarvex uses it: image or Dockerfile and the setup commands. For anything else, such as Unity with a GameCI image, your own toolchain or different test commands, add a `swarvex.yaml` to the repository:
+
+```yaml
+# everything optional; without it the detected project type applies
+vorlage: node            # or: image: ghcr.io/you/image:tag
+ordner: web              # working folder in the repo
+einrichten: npm ci       # fetch dependencies (with network, without agent, without keys)
+bauen: npm run build     # without network
+testen: |                # without network; the test pipeline depends on it
+  npm run lint
+  npm test
+hinweis: Please use Prettier.
+```
+
+Check that everything works with one command in your repository: `swarvex umgebung`. It builds the environment, fetches the dependencies and runs build and tests without network, exactly like the runner and the test pipeline.
+
+`swarvex.yaml`, `.devcontainer/`, `AGENTS.md` and CI workflows are changed only by the lead and the visionary directly in the repository. Contributions may not touch them; otherwise someone could smuggle commands onto other contributors' machines through a contribution.
 
 *Planned:* a "start a project" wizard on the website that connects repository, test pipeline and lead in one flow and shows the expected lead workload.

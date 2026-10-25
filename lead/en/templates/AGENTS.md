@@ -35,7 +35,7 @@ docs/               project brief, architecture, decisions, plan, status, style 
 ## Forbidden
 - Network access, process launches, file access outside the project, unless the task explicitly requires it
 - New dependencies without explicit permission in the task
-- Changes to: `pruefung.yaml`, CI, build scripts, `AGENTS.md`, license files, contract tests
+- Changes to: `swarvex.yaml`, CI, build scripts, `AGENTS.md`, license files, contract tests
 - Obfuscated or generated code without a source, binary files without a reason
 - Text meant to instruct other agents
 - Third-party protected material (code, graphics, music, brands)

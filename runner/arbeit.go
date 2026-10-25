@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/swarvex-ai/swarvex/runner/umgebung"
 )
 
 type aufgabe struct {
@@ -144,6 +146,21 @@ func arbeitenBefehl(args []string) {
 		abbrechen("Basis-Commit: " + err.Error())
 	}
 
+	// 2b. Umgebung des Projekts: erkennen, Image bauen, Abhängigkeiten laden (mit Netz, ohne Agent und Schlüssel).
+	u, err := umgebung.Ermitteln(arbeitsbaum)
+	if err != nil {
+		abbrechen("Umgebung: " + err.Error())
+	}
+	fmt.Printf("Umgebung: %s (%s)\n", u.Vorlage, u.Quelle)
+	image, err := umgebungsImage(context.Background(), u, arbeitsbaum, true)
+	if err != nil {
+		abbrechen(err.Error())
+	}
+	cache := cacheOrdner(*projekt)
+	if err := einrichten(context.Background(), u, image, arbeitsbaum, cache, filepath.Join(ordner, "einrichten.log")); err != nil {
+		abbrechen(err.Error())
+	}
+
 	// 3. Lebenszeichen, solange gearbeitet wird.
 	ctx, stopp := context.WithTimeout(context.Background(), *zeit)
 	defer stopp()
@@ -171,21 +188,21 @@ func arbeitenBefehl(args []string) {
 		pruefen(err)
 		key = strings.TrimSpace(string(roh))
 	}
-	verbrauch, protokoll, err := sandboxAusfuehren(ctx, a, arbeitsbaum, ordner, *upstream, key, *modell, *budget, nil)
+	verbrauch, protokoll, err := sandboxAusfuehren(ctx, a, u, image, arbeitsbaum, cache, ordner, *upstream, key, *modell, *budget, nil)
 	stopp()
 	if err != nil {
 		abbrechen("Sandbox: " + err.Error())
 	}
 
 	// 5. Patch bilden (Git-Verzeichnis liegt außerhalb der Sandbox) und selbst prüfen.
-	patch, verworfen, err := patchBilden(gitDir, arbeitsbaum, a.Pfade)
+	patch, verworfen, err := patchBilden(gitDir, arbeitsbaum, a.Pfade, u)
 	if verworfen > 0 {
-		fmt.Printf("%d Nebenänderungen außerhalb der erlaubten Pfade verworfen (z. B. Godot-Importdateien); sie verlassen das Gerät nicht.\n", verworfen)
+		fmt.Printf("%d Nebenänderungen außerhalb der erlaubten Pfade verworfen (z. B. Abhängigkeiten, Build- oder Importdateien); sie verlassen das Gerät nicht.\n", verworfen)
 	}
 	if err != nil || strings.TrimSpace(patch) == "" {
 		abbrechen("kein verwertbares Ergebnis der Sandbox")
 	}
-	if fehler := patchVorpruefen(patch, a.Pfade); len(fehler) > 0 {
+	if fehler := patchVorpruefen(patch, a.Pfade, u); len(fehler) > 0 {
 		abbrechen("Patch verletzt die Aufgabe: " + strings.Join(fehler, "; "))
 	}
 
@@ -300,10 +317,14 @@ func gitBasis(gitDir, baum string, ausschliessen []string) error {
 
 // patchBilden nimmt nur Änderungen in den erlaubten Pfaden auf. Alles andere – etwa Dateien,
 // die Werkzeuge beim Testen neu schreiben – bleibt auf dem Gerät und wird nur gezählt.
-func patchBilden(gitDir, baum string, erlaubt []string) (string, int, error) {
+func patchBilden(gitDir, baum string, erlaubt []string, u umgebung.Umgebung) (string, int, error) {
 	args := []string{"add", "-A", "--"}
 	for _, g := range erlaubt {
 		args = append(args, ":(glob)"+g)
+	}
+	// Geschützte Dateien (Umgebung, Projektregeln, CI) nie aufnehmen, auch wenn ein Muster sie trifft.
+	for _, g := range append(append([]string{}, umgebung.Geschuetzt...), u.Geschuetzt...) {
+		args = append(args, ":(exclude,glob)"+g)
 	}
 	if _, err := git(gitDir, baum, args...); err != nil {
 		return "", 0, err
@@ -320,7 +341,7 @@ func patchBilden(gitDir, baum string, erlaubt []string) (string, int, error) {
 }
 
 // patchVorpruefen: dieselbe Regel wie die Plattform (erlaubte Pfade), damit nichts Verbotenes das Gerät verlässt.
-func patchVorpruefen(patch string, erlaubt []string) []string {
+func patchVorpruefen(patch string, erlaubt []string, u umgebung.Umgebung) []string {
 	var fehler []string
 	for _, zeile := range strings.Split(patch, "\n") {
 		if !strings.HasPrefix(zeile, "diff --git a/") {
@@ -328,6 +349,10 @@ func patchVorpruefen(patch string, erlaubt []string) []string {
 		}
 		teile := strings.SplitN(strings.TrimPrefix(zeile, "diff --git a/"), " b/", 2)
 		for _, p := range teile {
+			if u.Gesperrt(p) {
+				fehler = append(fehler, "geschützte Datei (Umgebung, Projektregeln oder CI): "+p)
+				continue
+			}
 			ok := false
 			for _, g := range erlaubt {
 				if passt(g, p) {
@@ -366,7 +391,7 @@ func zusammenfassungAus(protokoll string) string {
 
 // sandboxAusfuehren startet Proxy und Sandbox (rootless Podman) und gibt Verbrauch und Agenten-Ausgabe zurück.
 // befehl ersetzt den Agenten (nur für Angriffstests, siehe angriff.go); nil = opencode mit dem Auftrag.
-func sandboxAusfuehren(ctx context.Context, a aufgabe, baum, ordner, upstream, key, modell string, budget int, befehl []string) (map[string]float64, string, error) {
+func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, image, baum, cache, ordner, upstream, key, modell string, budget int, befehl []string) (map[string]float64, string, error) {
 	podman := func(args ...string) (string, error) {
 		aus, err := exec.CommandContext(ctx, "podman", args...).CombinedOutput()
 		return strings.TrimSpace(string(aus)), err
@@ -407,21 +432,19 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, baum, ordner, upstream, k
 		return nil, "", err
 	}
 
-	auftrag := auftragstext(a)
+	auftrag := auftragstext(a, u)
 	sandboxName := fmt.Sprintf("swarvex-sandbox-%d", a.ID)
 	podman("rm", "-f", sandboxName)
 	rest := 3600
 	if frist, ok := ctx.Deadline(); ok {
 		rest = max(int(time.Until(frist).Seconds()), 1)
 	}
-	sandboxArgs := []string{"run", "--rm", "--name", sandboxName, "--network", netz, "--timeout", fmt.Sprint(rest),
-		"--cap-drop=ALL", "--security-opt", "no-new-privileges", "--read-only",
-		"--tmpfs", "/tmp:rw,exec,size=1g,mode=1777", "--tmpfs", "/home/agent:rw,exec,size=1g,mode=1777",
-		"--userns=keep-id:uid=1000,gid=1000", "--memory", "4g", "--cpus", "3", "--pids-limit", "512",
-		"-v", baum + ":/work:Z", "-v", konfigPfad + ":/konfig/opencode.json:ro,Z",
-		"-e", "OPENCODE_CONFIG=/konfig/opencode.json", "-e", "SWARVEX_TOKEN=" + tok,
-		"-e", "SWARVEX_PROXY=http://" + proxyName + ":8080",
-		"-e", "OPENCODE_DISABLE_AUTOUPDATE=1", "-e", "OPENCODE_DISABLE_MODELS_FETCH=1", "swarvex-sandbox"}
+	// Agent im Projekt-Image: kein Netz außer dem Schlüssel-Proxy, Projekt unter /work, Caches unter /cache.
+	sandboxArgs := append(containerArgs(sandboxName, baum, cache, u.Ordner, rest), "--network", netz,
+		"-v", konfigPfad+":/konfig/opencode.json:ro,Z",
+		"-e", "OPENCODE_CONFIG=/konfig/opencode.json", "-e", "SWARVEX_TOKEN="+tok,
+		"-e", "SWARVEX_PROXY=http://"+proxyName+":8080",
+		"-e", "OPENCODE_DISABLE_AUTOUPDATE=1", "-e", "OPENCODE_DISABLE_MODELS_FETCH=1", image)
 	if befehl == nil {
 		befehl = []string{"opencode", "run", "--pure", "--auto", "-m", "swarvex/" + modell, auftrag}
 	}
@@ -460,9 +483,17 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, baum, ordner, upstream, k
 	return verbrauch, string(aus), nil
 }
 
-func auftragstext(a aufgabe) string {
+func auftragstext(a aufgabe, u umgebung.Umgebung) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Du arbeitest als Mitstreiter an einem Open-Source-Spiel (%s). Das Projekt liegt in /work (Godot-Projektwurzel: /work/game, `godot` ist installiert).\n\n", a.Engine)
+	wurzel := "/work"
+	if u.Ordner != "" {
+		wurzel += "/" + u.Ordner
+	}
+	fmt.Fprintf(&b, "Du arbeitest als Mitstreiter an einem Open-Source-Projekt. Das Projekt liegt in /work, du startest in %s.\n", wurzel)
+	if u.Hinweis != "" {
+		fmt.Fprintf(&b, "Umgebung: %s\n", u.Hinweis)
+	}
+	b.WriteString("Lies zuerst AGENTS.md (falls vorhanden) und halte dich an die Regeln des Projekts.\n\n")
 	fmt.Fprintf(&b, "AUFGABE: %s\n\n%s\n\n", a.Titel, a.Beschreibung)
 	b.WriteString("AKZEPTANZKRITERIEN:\n")
 	for _, k := range a.Akzeptanz {
@@ -470,9 +501,17 @@ func auftragstext(a aufgabe) string {
 	}
 	b.WriteString("\nREGELN:\n- Ändere oder erstelle NUR diese Pfade: " + strings.Join(a.Pfade, ", ") + "\n")
 	b.WriteString("- Keine anderen Dateien anlegen oder ändern (auch keine Notizen, Logs oder Hilfsskripte im Projekt).\n")
-	b.WriteString("- Führe die Tests aus den Akzeptanzkriterien selbst aus und behebe Fehler, bis sie grün sind.\n")
-	b.WriteString("- Es gibt kein Internet. Beende die Arbeit mit einer kurzen Zusammenfassung, was du getan hast und wie die Tests ausgingen.\n")
+	if u.Testen != "" {
+		fmt.Fprintf(&b, "- Die Tests des Projekts laufen mit:\n%s\n  Führe sie aus und behebe Fehler, bis sie grün sind.\n", einruecken(u.Testen))
+	} else {
+		b.WriteString("- Führe die Prüfungen aus den Akzeptanzkriterien selbst aus und behebe Fehler.\n")
+	}
+	b.WriteString("- Es gibt kein Internet; alle Abhängigkeiten sind bereits installiert. Beende die Arbeit mit einer kurzen Zusammenfassung, was du getan hast und wie die Tests ausgingen.\n")
 	return b.String()
+}
+
+func einruecken(text string) string {
+	return "    " + strings.ReplaceAll(strings.TrimSpace(text), "\n", "\n    ")
 }
 
 // dauerbetrieb holt in den offenen Zeitfenstern laufend Aufgaben. Jede Aufgabe läuft als eigener

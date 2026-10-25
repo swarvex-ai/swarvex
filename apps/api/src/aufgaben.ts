@@ -188,12 +188,20 @@ export function geaendertePfade(patch: string): string[] {
   return [...pfade];
 }
 
+/**
+ * Dateien, die die Umgebung, die Projektregeln oder die CI bestimmen. Ein Beitrag darf sie nie ändern,
+ * sonst könnte er Befehle auf den Rechnern anderer Mitstreiter einschleusen (gleiche Liste wie
+ * runner/umgebung.Geschuetzt). Lead und Visionär ändern sie direkt im Repo.
+ */
+export const GESCHUETZT = ["swarvex.yaml", ".devcontainer/**", ".devcontainer.json", "AGENTS.md", ".github/workflows/**", ".gitlab-ci.yml", ".forgejo/workflows/**", ".gitea/workflows/**", "LICENSE*", "COPYING*"];
+
 export function patchPruefen(patch: string, erlaubt: string[]): string[] {
   const fehler: string[] = [];
   const pfade = geaendertePfade(patch);
   if (pfade.length === 0) fehler.push("Patch enthält keine Dateiänderungen");
   for (const p of pfade) {
     if (p.includes("..") || p.startsWith("/")) fehler.push(`unzulässiger Pfad: ${p}`);
+    else if (GESCHUETZT.some((g) => matchesGlob(p, g))) fehler.push(`geschützte Datei (Umgebung, Projektregeln oder CI): ${p}`);
     else if (!erlaubt.some((g) => matchesGlob(p, g))) fehler.push(`außerhalb der erlaubten Pfade: ${p}`);
   }
   if (pfade.length > GRENZEN.dateien) fehler.push(`zu viele Dateien: ${pfade.length} > ${GRENZEN.dateien}`);

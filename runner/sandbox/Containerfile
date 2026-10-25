@@ -1,16 +1,18 @@
-# Sandbox-Image für Aufgaben: Agent-Engine (opencode) + Werkzeuge des Projekts (Godot 4.7.2).
-# Läuft ohne Netz außer dem Schlüssel-Proxy; kein Home des Runner-Nutzers, keine Schlüssel.
-FROM docker.io/library/debian:trixie-slim
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      git ca-certificates curl unzip nodejs npm fontconfig libfontconfig1 \
-    && rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip \
-    && unzip -q /tmp/godot.zip -d /opt && rm /tmp/godot.zip \
-    && ln -s /opt/Godot_v4.7.2-stable_linux.x86_64 /usr/local/bin/godot
-RUN npm install -g --no-audit --no-fund opencode-ai@1.19.4
-RUN useradd -m -u 1000 agent \
-    # Keine Setuid-Programme (su, passwd …): Rechteaufstieg gar nicht erst anbieten.
-    && find / -xdev -perm -4000 -type f -exec chmod u-s {} + 2>/dev/null; true
-USER agent
-WORKDIR /work
+# Agent-Schicht: nur der Agent (opencode) und ripgrep unter /opt/swarvex-agent. Der Runner legt sie
+# über die Umgebung des jeweiligen Projekts (umgebung.Containerfile); die Projektwerkzeuge kommen
+# von dort. Voraussetzung im Projekt-Image: glibc (Debian, Ubuntu und die offiziellen Sprach-Images).
+FROM docker.io/library/node:24-trixie-slim AS bau
+ARG OPENCODE=1.19.4
+ARG RIPGREP=14.1.1
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+RUN npm install -g --no-audit --no-fund opencode-ai@${OPENCODE} >/dev/null \
+    && mkdir -p /opt/swarvex-agent/bin \
+    && quelle=$(find /usr/local/lib/node_modules/opencode-ai/node_modules -path '*-baseline/bin/opencode' -type f | head -1) \
+    && [ -n "$quelle" ] || quelle=$(find /usr/local/lib/node_modules/opencode-ai/node_modules -path '*/bin/opencode' -type f | head -1) \
+    && cp "$quelle" /opt/swarvex-agent/bin/opencode && chmod 755 /opt/swarvex-agent/bin/opencode
+RUN case "$(uname -m)" in x86_64) ziel=x86_64-unknown-linux-musl ;; aarch64) ziel=aarch64-unknown-linux-gnu ;; *) exit 1 ;; esac \
+    && curl -fsSL "https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP}/ripgrep-${RIPGREP}-${ziel}.tar.gz" | tar -xz -C /tmp \
+    && cp /tmp/ripgrep-${RIPGREP}-${ziel}/rg /opt/swarvex-agent/bin/rg
+
+FROM scratch
+COPY --from=bau /opt/swarvex-agent /opt/swarvex-agent

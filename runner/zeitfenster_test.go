@@ -14,11 +14,11 @@ func TestZeitfensterWerktagsAbends(t *testing.T) {
 		t.Fatal(err)
 	}
 	faelle := []struct {
-		t    time.Time
+		t     time.Time
 		offen bool
 	}{
 		{zp(0, 17, 59), false}, {zp(0, 18, 0), true}, {zp(0, 22, 59), true}, {zp(0, 23, 0), false},
-		{zp(4, 20, 0), true},                         // Freitag
+		{zp(4, 20, 0), true},                                              // Freitag
 		{zp(5, 8, 59), false}, {zp(5, 9, 0), true}, {zp(5, 23, 59), true}, // Samstag
 		{zp(6, 12, 0), true}, // Sonntag
 	}

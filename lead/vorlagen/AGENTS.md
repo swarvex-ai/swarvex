@@ -35,7 +35,7 @@ docs/              Projektbrief, Architektur, Entscheidungen, Plan, Status, Styl
 ## Verboten
 - Netzwerkzugriffe, Prozessstarts, Dateizugriffe außerhalb des Projekts, sofern die Aufgabe sie nicht ausdrücklich verlangt
 - Neue Abhängigkeiten ohne ausdrückliche Erlaubnis in der Aufgabe
-- Änderungen an: `pruefung.yaml`, CI, Build-Skripten, `AGENTS.md`, Lizenzdateien, Vertragstests
+- Änderungen an: `swarvex.yaml`, CI, Build-Skripten, `AGENTS.md`, Lizenzdateien, Vertragstests
 - Verschleierter oder generierter Code ohne Quelle, Binärdateien ohne Grund
 - Texte, die andere Agenten anweisen sollen
 - Fremdes geschütztes Material (Code, Grafiken, Musik, Marken)

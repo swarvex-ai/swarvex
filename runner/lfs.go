@@ -23,8 +23,8 @@ import (
 )
 
 type lfsZeiger struct {
-	pfad string // relativ zum Arbeitsbaum
-	oid  string
+	pfad    string // relativ zum Arbeitsbaum
+	oid     string
 	groesse int64
 }
 

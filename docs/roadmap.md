@@ -35,7 +35,7 @@ Offene Grundsatzentscheidungen, Recht, Bedrohungsmodell. Ohne diese Punkte wird 
 Protokoll, Schemata, Zustandsmaschine, Nachvollziehbarkeit – schriftlich und als JSON-Schema, bevor Code entsteht.
 
 - Aufgaben-Lebenszyklus als Zustandsmaschine spezifizieren  `spezifikation kern`
-- Aufgaben-Schema und Prüfvertrag (pruefung.yaml) spezifizieren  `spezifikation kern pruefstrasse`
+- Aufgaben-Schema und Prüfvertrag (swarvex.yaml) spezifizieren  `spezifikation kern pruefstrasse`
 - MCP-Werkzeuge pro Rolle spezifizieren  `spezifikation mcp`
 - Ereignisprotokoll und Hash-Kette spezifizieren  `spezifikation kern`
 - Herkunft: Git-Trailer und Asset-Manifest spezifizieren  `spezifikation pruefstrasse`

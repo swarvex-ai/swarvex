@@ -31,6 +31,38 @@ Bevor eine einzige Aufgabe entsteht, stellt dir der Lead Fragen in Runden, jede 
 
 ## 4. Fundament, dann Schwarm
 
-Der Lead legt Grundgerüst, Schnittstellen mit Tests, den Prüfvertrag (`pruefung.yaml`) und die Projektregeln (`AGENTS.md`) an. Erst dann gehen die ersten Aufgaben raus, und der Schwarm kann loslegen.
+Der Lead legt Grundgerüst, Schnittstellen mit Tests und die Projektregeln (`AGENTS.md`) an. Erst dann gehen die ersten Aufgaben raus, und der Schwarm kann loslegen.
+
+## Umgebung: jede Sprache, jede Engine
+
+Du musst nichts einrichten. swarvex erkennt dein Projekt am Repo und baut die passende Umgebung selbst, beim Mitstreiter wie in der Prüfstraße:
+
+| Im Repo | Umgebung | Tests |
+|---|---|---|
+| `project.godot` (auch in einem Unterordner) | Godot in der Version des Projekts | `tests/*_test.gd` |
+| `package.json` | Node.js 24 (npm, pnpm oder yarn) | `npm test` |
+| `pyproject.toml`, `requirements.txt` | Python 3.13 | `pytest` |
+| `Cargo.toml` | Rust | `cargo test` |
+| `go.mod` | Go | `go test ./...` |
+| `.sln`, `.csproj` | .NET 9 | `dotnet test` |
+| `pom.xml`, `build.gradle` | Java 21 (Maven, Gradle) | `mvn test`, `gradle test` |
+
+Hat dein Projekt schon einen **Dev Container** (`.devcontainer/devcontainer.json`), nutzt swarvex ihn: Image oder Dockerfile und die Einrichtungsbefehle. Für alles andere, etwa Unity mit einem GameCI-Image, eine eigene Toolchain oder andere Testbefehle, legst du eine `swarvex.yaml` ins Repo:
+
+```yaml
+# alles optional; ohne Angabe gilt die erkannte Projektart
+vorlage: node            # oder: image: ghcr.io/dein/image:tag
+ordner: web              # Arbeitsordner im Repo
+einrichten: npm ci       # Abhängigkeiten laden (mit Netz, ohne Agent, ohne Schlüssel)
+bauen: npm run build     # ohne Netz
+testen: |                # ohne Netz; davon hängt die Prüfstraße ab
+  npm run lint
+  npm test
+hinweis: Bitte Prettier verwenden.
+```
+
+Ob alles passt, prüfst du mit einem Befehl im Repo: `swarvex umgebung`. Er baut die Umgebung, lädt die Abhängigkeiten und führt Bauen und Testen ohne Netz aus, genau wie Runner und Prüfstraße.
+
+`swarvex.yaml`, `.devcontainer/`, `AGENTS.md` und CI-Workflows ändern nur Lead und Visionär direkt im Repo. Beiträge dürfen sie nicht anfassen, sonst könnte jemand über einen Beitrag Befehle auf den Rechnern anderer Mitstreiter einschleusen.
 
 *Geplant:* ein Assistent „Projekt starten“ auf der Website, der Repo, Prüfstraße und Lead in einem Ablauf verbindet und die zu erwartende Lead-Last zeigt.

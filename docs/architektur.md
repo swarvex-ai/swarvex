@@ -106,27 +106,29 @@ Mitstreiter brauchen **keine** Schreibrechte und keine Git-Zugangsdaten:
 3. Die Prüfstraße des Projekts holt ihn per Webhook bzw. API, wendet ihn auf einen Prüfzweig an und prüft.
 4. Nimmt der Lead an, erstellt der **Merge-Bot** des Projekts den Commit, mit Trailern (siehe Nachvollziehbarkeit) und DCO-Sign-off des Menschen.
 
-## Prüfstraße und Prüfvertrag
+## Projekt-Umgebung, Prüfstraße und Prüfvertrag
 
-Jedes Projekt legt eine `pruefung.yaml` ins Repo:
+Projekte sind an keine Sprache und keine Engine gebunden (E-28). Runner und Prüfstraße ermitteln die Umgebung mit demselben Paket (`runner/umgebung`):
+
+1. `swarvex.yaml` im Projekt (Vorlage oder eigenes Image, Einrichten, Bauen, Testen, Arbeitsordner, projekteigene geschützte Pfade),
+2. sonst ein Dev Container (`.devcontainer/devcontainer.json`: Image oder Dockerfile, Einrichtungsbefehle),
+3. sonst die Projektart an typischen Dateien (Godot, Node, Python, Rust, Go, .NET, Java),
+4. sonst eine allgemeine Linux-Umgebung.
 
 ```yaml
-engine: godot-4.7
-schritte:
-  - name: import
-    run: godot --headless --import
-  - name: tests
-    run: tools/run_tests.sh --headless
-  - name: screenshots
-    run: tools/capture.sh
-    artefakte: [outputs/screens/*.png]
-pfade_geschuetzt: [project.godot, tools/**, .github/**]   # nur Lead
-grenzen: {zeilen: 500, dateien: 20}
+vorlage: godot          # oder image: ghcr.io/…
+ordner: game
+einrichten: godot --headless --import
+testen: tools/run_tests.sh --headless
+geschuetzt: |
+  - tools/**
 ```
 
-- Die Prüfung läuft beim Visionär (Actions/Woodpecker) und meldet ein signiertes Ergebnis an die Plattform.
+- **Zwei Phasen:** Einrichten (Abhängigkeiten) läuft mit Netz, aber ohne Agent, ohne Proxy und ohne Schlüssel. Agent, Bauen und Testen laufen ohne Netz; Abhängigkeiten liegen im Projektordner oder im Cache `/cache` je Projekt.
+- **Agent-Schicht:** Der Runner legt opencode und ripgrep (`/opt/swarvex-agent`, Image `swarvex-agent`) über das Projekt-Image. Voraussetzung ist glibc.
+- **Geschützt:** `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, CI-Workflows und Lizenzdateien ändern Beiträge nie (Plattform, Runner und Prüfstraße prüfen das), sonst könnte ein Beitrag Befehle auf andere Rechner schmuggeln.
+- Die Prüfstraße läuft beim Visionär und meldet ein signiertes Ergebnis an die Plattform. `swarvex umgebung` führt dieselben Schritte lokal aus.
 - **Stichproben:** Die Plattform wiederholt einen Anteil der Prüfungen selbst (Container auf eigenem Server) und markiert Abweichungen öffentlich.
-- Engine-Adapter sind fertige Prüf-Images je Engine. Begonnen wird mit Godot, weitere kommen, wenn ein Projekt sie braucht.
 - Wenn der Spender es erlaubt, laufen Asset-Prüfungen ebenfalls hier: Import, Polygonzahl, Skelett, Screenshot im Spiel-Licht.
 
 ## Datenmodell (Kern)

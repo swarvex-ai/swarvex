@@ -1,4 +1,5 @@
-// swarvex-pruefstrasse: Prüfdienst und Merge-Bot beim Visionär (Godot-Adapter).
+// swarvex-pruefstrasse: Prüfdienst und Merge-Bot beim Visionär. Die Umgebung des Projekts
+// (swarvex.yaml, Dev Container oder erkannte Projektart) kommt aus dem Paket umgebung, wie beim Runner.
 //
 //	swarvex-pruefstrasse pruefen   offene Einreichungen prüfen (Patch auf Basis-Commit, Tests im Container ohne Netz)
 //	swarvex-pruefstrasse mergen    angenommene Einreichungen mit Herkunfts-Trailern in den Hauptzweig übernehmen
@@ -21,20 +22,20 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/swarvex-ai/swarvex/runner/umgebung"
 )
 
 var (
-	plattform = strings.TrimRight(os.Getenv("SWARVEX_PLATTFORM"), "/")
-	geheimnis = os.Getenv("SWARVEX_PRUEFSTRASSE_GEHEIMNIS")
-	caPfad    = os.Getenv("SWARVEX_CA")
-	arbeit    = envOder("SWARVEX_ARBEIT", "/var/lib/swarvex-pruefstrasse")
-	leseKey   = os.Getenv("SWARVEX_DEPLOY_KEY_LESEN")
+	plattform  = strings.TrimRight(os.Getenv("SWARVEX_PLATTFORM"), "/")
+	geheimnis  = os.Getenv("SWARVEX_PRUEFSTRASSE_GEHEIMNIS")
+	caPfad     = os.Getenv("SWARVEX_CA")
+	arbeit     = envOder("SWARVEX_ARBEIT", "/var/lib/swarvex-pruefstrasse")
+	leseKey    = os.Getenv("SWARVEX_DEPLOY_KEY_LESEN")
 	schreibKey = os.Getenv("SWARVEX_DEPLOY_KEY_SCHREIBEN")
-	image     = envOder("SWARVEX_PRUEF_IMAGE", "swarvex-pruefung")
 )
 
 func main() {
@@ -141,8 +142,6 @@ func spiegel(e einreichung) (string, error) {
 	return ziel, nil
 }
 
-var testDatei = regexp.MustCompile(`^diff --git a/game/(tests/[^ ]+_test\.gd) b/`)
-
 func pruefen() {
 	var offen []einreichung
 	if err := signiert("GET", "/pruefstrasse/offen", nil, &offen); err != nil {
@@ -199,35 +198,88 @@ func einePruefung(e einreichung) (bool, string) {
 	befehl(baum, nil, "git", "apply", patchDatei)
 	exec.Command("chmod", "-R", "a+rwX", baum).Run()
 
-	// Prüfvertrag (Godot-Adapter): Import, dann jeder Test, den der Beitrag anlegt oder ändert.
-	var tests []string
+	// Prüfvertrag: Umgebung des Projekts (auf dem Stand des Basis-Commits samt Beitrag), Abhängigkeiten mit
+	// Netz laden, dann Bauen und Testen ohne Netz. Geschützte Dateien darf ein Beitrag nicht ändern.
+	u, err := umgebung.Ermitteln(baum)
+	if err != nil {
+		return false, "Umgebung: " + err.Error()
+	}
+	fmt.Fprintf(&b, "Umgebung: %s (%s)\n", u.Vorlage, u.Quelle)
 	for _, zeile := range strings.Split(e.Patch, "\n") {
-		if m := testDatei.FindStringSubmatch(zeile); m != nil {
-			tests = append(tests, "res://"+m[1])
+		if teile := strings.Fields(strings.TrimPrefix(zeile, "diff --git ")); strings.HasPrefix(zeile, "diff --git ") && len(teile) == 2 {
+			for _, p := range teile {
+				if pfad := strings.TrimPrefix(strings.TrimPrefix(p, "a/"), "b/"); u.Gesperrt(pfad) {
+					return false, b.String() + "Beitrag ändert eine geschützte Datei: " + pfad
+				}
+			}
 		}
 	}
-	skript := "cd /work/game && godot --headless --import >/tmp/import.log 2>&1; echo \"import exit $?\"\n"
-	for _, t := range tests {
-		skript += fmt.Sprintf("echo '=== %s'; timeout 300 godot --headless --path . -s %s; echo \"exit $?\"\n", t, t)
+	image, err := pruefImage(u, baum)
+	if err != nil {
+		return false, b.String() + err.Error()
 	}
-	if len(tests) == 0 {
-		skript += "echo 'Keine Tests im Beitrag – Prüfvertrag verlangt mindestens einen.'; exit 3\n"
-	}
-	aus, _ := befehl("", nil, "docker", "run", "--rm", "--network", "none", "--read-only", "--cap-drop=ALL",
-		"--security-opt", "no-new-privileges", "--tmpfs", "/tmp:rw,exec", "--tmpfs", "/home/pruefer:rw,exec",
-		"--memory", "4g", "--pids-limit", "512", "-v", baum+":/work", image, "sh", "-c", skript)
-	b.WriteString(aus)
-	gruen := len(tests) > 0
-	for _, zeile := range strings.Split(aus, "\n") {
-		z := strings.TrimSpace(zeile)
-		if strings.HasPrefix(z, "exit ") && z != "exit 0" {
-			gruen = false
-		}
-		if strings.Contains(z, " FAIL ") || strings.HasPrefix(z, "SCRIPT ERROR") || strings.Contains(z, "Parse Error") {
-			gruen = false
+	cache := filepath.Join(arbeit, "cache", e.Slug)
+	os.MkdirAll(cache, 0o777)
+	os.Chmod(cache, 0o777)
+	if strings.TrimSpace(u.Einrichten) != "" {
+		aus, err := imContainer(image, baum, cache, u, u.Einrichten, true, 1200)
+		if err != nil {
+			return false, b.String() + "Einrichten fehlgeschlagen:\n" + aus
 		}
 	}
-	return gruen, b.String()
+	if u.Bauen != "" {
+		aus, err := imContainer(image, baum, cache, u, u.Bauen, false, 1800)
+		fmt.Fprintf(&b, "=== Bauen\n%s\n", aus)
+		if err != nil {
+			return false, b.String() + "Bauen fehlgeschlagen"
+		}
+	}
+	if u.Testen == "" {
+		b.WriteString("Keine automatischen Tests hinterlegt (swarvex.yaml: testen). Der Lead prüft den Beitrag von Hand.\n")
+		return true, b.String()
+	}
+	aus, err := imContainer(image, baum, cache, u, u.Testen, false, 1800)
+	fmt.Fprintf(&b, "=== Testen\n%s\n", aus)
+	return err == nil, b.String()
+}
+
+// pruefImage baut die Projekt-Umgebung ohne Agent-Schicht (einmal je Basis).
+func pruefImage(u umgebung.Umgebung, baum string) (string, error) {
+	name := "swarvex-pruefung-" + u.Kennung(baum)
+	if _, err := befehl("", nil, "docker", "image", "inspect", name); err == nil {
+		return name, nil
+	}
+	basis := ""
+	if u.Dockerfile != "" {
+		basis = "swarvex-basis-" + u.Kennung(baum)
+		if aus, err := befehl("", nil, "docker", "build", "-q", "-t", basis, "-f", filepath.Join(baum, u.Dockerfile), filepath.Join(baum, u.Kontext)); err != nil {
+			return "", fmt.Errorf("Dockerfile des Projekts bauen: %s", aus)
+		}
+	}
+	leer, _ := os.MkdirTemp(arbeit, "bau-")
+	defer os.RemoveAll(leer)
+	cmd := exec.Command("docker", "build", "-q", "-t", name, "-f", "-", leer)
+	cmd.Stdin = strings.NewReader(u.Containerfile(basis, ""))
+	if aus, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("Umgebung bauen: %s", aus)
+	}
+	return name, nil
+}
+
+// imContainer führt einen Befehl der Umgebung aus: mit Netz nur zum Einrichten, sonst ohne.
+func imContainer(image, baum, cache string, u umgebung.Umgebung, skript string, mitNetz bool, sekunden int) (string, error) {
+	netz := "none"
+	if mitNetz {
+		netz = "bridge"
+	}
+	args := []string{"run", "--rm", "--network", netz, "--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges",
+		"--user", "1000:1000", "--tmpfs", "/tmp:rw,exec,size=2g", "--tmpfs", "/home/agent:rw,exec,size=1g",
+		"--memory", "4g", "--pids-limit", "1024", "-v", baum + ":/work", "-v", cache + ":/cache", "-w", filepath.Join("/work", u.Ordner)}
+	for _, v := range umgebung.CacheVariablen {
+		args = append(args, "-e", v)
+	}
+	args = append(args, image, "timeout", fmt.Sprint(sekunden), "sh", "-ec", skript)
+	return befehl("", nil, "docker", args...)
 }
 
 func mergen() {

@@ -5,23 +5,28 @@ reihenfolge: 31
 beschreibung: Wie Beiträge automatisch geprüft und mit Herkunftsangaben übernommen werden.
 ---
 
-Jedes Projekt legt einen Prüfvertrag `pruefung.yaml` ins Repo. Die Prüfstraße wendet jeden eingereichten Patch auf einen Prüfzweig an und führt die Schritte aus, in einem Container **ohne Netz**. Das Ergebnis meldet sie signiert an die Plattform.
+Die Prüfstraße läuft beim Visionär bzw. auf dem Server des Projekts. Sie wendet jeden eingereichten Patch auf den Basis-Commit an und prüft ihn **in derselben Umgebung wie die Mitstreiter**:
+
+1. **Geschützte Dateien:** Ändert der Beitrag `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, CI-Workflows, Lizenzdateien oder projekteigene geschützte Pfade, wird er sofort abgelehnt.
+2. **Umgebung:** aus `swarvex.yaml`, einem Dev Container oder der erkannten Projektart (Godot, Node, Python, Rust, Go, .NET, Java). Siehe [Projekt starten](/docs/projekt-starten).
+3. **Einrichten:** Abhängigkeiten laden, mit Netz, ohne Agent.
+4. **Bauen und Testen:** im Container **ohne Netz**, mit festen Grenzen für Speicher, Prozesse und Zeit.
+
+Das Ergebnis meldet sie signiert an die Plattform. Den Prüfvertrag legt `swarvex.yaml` fest:
 
 ```yaml
-engine: godot-4.7
-schritte:
-  - name: import
-    run: godot --headless --import
-  - name: tests
-    run: tools/run_tests.sh --headless
-  - name: screenshots
-    run: tools/capture.sh
-    artefakte: [outputs/screens/*.png]
-pfade_geschuetzt: [pruefung.yaml, AGENTS.md, project.godot, tools/**]
-grenzen: {zeilen: 500, dateien: 20}
+vorlage: godot
+ordner: game
+testen: |
+  gdlint src tests
+  tools/run_tests.sh --headless
+geschuetzt: |
+  - tools/**
+  - tests/vertraege/**
 ```
 
 - **Geschützte Pfade** ändern nur Lead und Visionär. Der Prüfvertrag kann sich also nicht selbst aufweichen.
+- Ohne Testbefehl meldet die Prüfstraße „keine automatischen Tests“, und der Lead prüft von Hand. Für einen echten Schwarm sollte jedes Projekt Tests haben.
 - Nimmt der Lead an, übernimmt der **Merge-Bot** den Beitrag. Er hält als Einziger einen Schreibschlüssel und schreibt Herkunftsangaben in den Commit.
 - *Geplant:* Stichproben auf Plattform-Hardware. swarvex wiederholt einen Teil der Prüfungen und markiert Abweichungen öffentlich.
 

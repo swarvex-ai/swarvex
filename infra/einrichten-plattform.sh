@@ -59,10 +59,10 @@ for i in $(seq 1 30); do curl -sk "https://$BASIS_HOST/healthz" >/dev/null 2>&1 
 docker compose exec -T caddy cat /data/caddy/pki/authorities/local/root.crt > "$DATEN/ca.crt" 2>/dev/null || true
 
 echo "== 5. Prüfstraße und Merge-Bot"
-cd "$CODE/pruefstrasse"
-docker run --rm -v "$PWD:/src" -w /src -e CGO_ENABLED=0 -e GOCACHE=/tmp/gc golang:1 go build -trimpath -ldflags="-s -w" -o swarvex-pruefstrasse .
-install -m 755 swarvex-pruefstrasse /usr/local/bin/
-docker build -q -f Containerfile -t swarvex-pruefung . >/dev/null
+cd "$CODE"
+# Die Prüfstraße nutzt das Paket umgebung aus dem Runner-Modul: ganzes Repo einbinden.
+docker run --rm -v "$PWD:/src" -w /src/pruefstrasse -e CGO_ENABLED=0 -e GOCACHE=/tmp/gc golang:1 go build -trimpath -ldflags="-s -w" -o swarvex-pruefstrasse .
+install -m 755 pruefstrasse/swarvex-pruefstrasse /usr/local/bin/ && rm -f pruefstrasse/swarvex-pruefstrasse
 GEHEIMNIS=$(grep ^PRUEFSTRASSE_GEHEIMNIS= "$STACK/.env" | cut -d= -f2-)
 umask 077
 cat > "$DATEN/pruefstrasse.env" <<EOF
