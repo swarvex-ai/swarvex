@@ -1,0 +1,10 @@
+# Prüf-Image der Godot-Prüfstraße: nur Godot 4.7.2, kein Agent, kein Netz zur Laufzeit.
+FROM docker.io/library/debian:trixie-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip fontconfig libfontconfig1 \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip \
+    && unzip -q /tmp/godot.zip -d /opt && rm /tmp/godot.zip \
+    && ln -s /opt/Godot_v4.7.2-stable_linux.x86_64 /usr/local/bin/godot
+RUN useradd -m -u 1000 pruefer
+USER pruefer
+WORKDIR /work

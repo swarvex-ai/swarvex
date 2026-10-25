@@ -1,0 +1,8 @@
+# Baukontext der Website ist die Repo-Wurzel: Großes und Lokales draußen lassen
+**/node_modules
+**/.svelte-kit
+apps/web/build
+apps/web/static/media
+medien/erklaervideo
+medien/logo/entwuerfe
+**/.git

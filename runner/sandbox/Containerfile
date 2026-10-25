@@ -1,0 +1,16 @@
+# Sandbox-Image für Aufgaben: Agent-Engine (opencode) + Werkzeuge des Projekts (Godot 4.7.2).
+# Läuft ohne Netz außer dem Schlüssel-Proxy; kein Home des Runner-Nutzers, keine Schlüssel.
+FROM docker.io/library/debian:trixie-slim
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      git ca-certificates curl unzip nodejs npm fontconfig libfontconfig1 \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip \
+    && unzip -q /tmp/godot.zip -d /opt && rm /tmp/godot.zip \
+    && ln -s /opt/Godot_v4.7.2-stable_linux.x86_64 /usr/local/bin/godot
+RUN npm install -g --no-audit --no-fund opencode-ai@1.19.4
+RUN useradd -m -u 1000 agent \
+    # Keine Setuid-Programme (su, passwd …): Rechteaufstieg gar nicht erst anbieten.
+    && find / -xdev -perm -4000 -type f -exec chmod u-s {} + 2>/dev/null; true
+USER agent
+WORKDIR /work

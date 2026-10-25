@@ -1,0 +1,12 @@
+
+.env.local
+
+# Abhängigkeiten und Build-Ergebnisse
+node_modules/
+.svelte-kit/
+build/
+__pycache__/
+.venv*/
+# Kompatibilitätstest
+kompatibilitaet/ausgabe/
+kompatibilitaet/werkzeuge/

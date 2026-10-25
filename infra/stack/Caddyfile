@@ -1,0 +1,40 @@
+# Gleiche Datei für Labor und Live; der Unterschied steht in der .env:
+#   Labor: BASIS_HOST=<IP>     TLS_MODUS=internal          (Caddys interne CA)
+#   Live:  BASIS_HOST=<Domain> TLS_MODUS=<admin@domain>   (Let's Encrypt, E-Mail für Ablaufwarnungen)
+{
+	# Clients senden für IP-Adressen keinen Servernamen (SNI); bei Domains wirkungslos.
+	default_sni {$BASIS_HOST}
+}
+{$BASIS_HOST} {
+	tls {$TLS_MODUS}
+	# Labor: nicht indexieren (Standard). Live in .env: X_ROBOTS_TAG=all
+	header X-Robots-Tag "{$X_ROBOTS_TAG:noindex, nofollow}"
+	# Einzeiler-Installer und signierte Runner-Releases (infra/release.sh)
+	handle /install.sh {
+		root * /srv
+		file_server
+	}
+	handle /downloads/* {
+		root * /srv
+		uri strip_prefix /downloads
+		file_server
+	}
+	# Erklärvideo und andere Medien (liegen neben den Downloads, siehe docs/selbst-hosten.md)
+	handle /media/* {
+		root * /srv
+		file_server
+	}
+	# Kennzahlen als JSON bleiben bei der API (dieselbe Funktion wie das MCP-Werkzeug)
+	@kennzahlen path_regexp ^/projekte/[^/]+/kennzahlen\.json$
+	handle @kennzahlen {
+		reverse_proxy api:3000
+	}
+	# Website (apps/web): Startseite, Projekte, Doku, Assets
+	@web path / /en /en/* /projekte /projekte/* /open-source /docs /docs/* /_app/* /favicon.svg /llms-full.txt /robots.txt /sitemap.xml /og.png /og-en.png /logo-512.png
+	handle @web {
+		reverse_proxy web:3000
+	}
+	handle {
+		reverse_proxy api:3000
+	}
+}

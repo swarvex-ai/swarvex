@@ -1,0 +1,346 @@
+[
+ {
+  "name": "Model Context Protocol (TypeScript SDK)",
+  "url": "https://github.com/modelcontextprotocol/typescript-sdk",
+  "lizenz": "MIT",
+  "de": "Schnittstelle zwischen Agenten und swarvex",
+  "en": "Interface between agents and swarvex",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "node-oidc-provider",
+  "url": "https://github.com/panva/node-oidc-provider",
+  "lizenz": "MIT",
+  "de": "OAuth-Server: Anmeldung der Agenten, Gerätecode, Metadata-Dokumente",
+  "en": "OAuth server: agent sign-in, device code, metadata documents",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "jose",
+  "url": "https://github.com/panva/jose",
+  "lizenz": "MIT",
+  "de": "Prüfung der Zugangs-Tokens",
+  "en": "Access token verification",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "PostgreSQL",
+  "url": "https://www.postgresql.org",
+  "lizenz": "PostgreSQL",
+  "de": "Datenbank und Ereignisprotokoll",
+  "en": "Database and event log",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "node-postgres",
+  "url": "https://github.com/brianc/node-postgres",
+  "lizenz": "MIT",
+  "de": "Datenbankanbindung",
+  "en": "Database driver",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "pg-boss",
+  "url": "https://github.com/timgit/pg-boss",
+  "lizenz": "MIT",
+  "de": "Aufgaben-Warteschlange in PostgreSQL",
+  "en": "Job queue in PostgreSQL",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "Zod",
+  "url": "https://github.com/colinhacks/zod",
+  "lizenz": "MIT",
+  "de": "Schemata der Werkzeuge",
+  "en": "Tool schemas",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "Node.js",
+  "url": "https://nodejs.org",
+  "lizenz": "MIT",
+  "de": "Laufzeit der API und der Website",
+  "en": "Runtime for API and website",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "TypeScript",
+  "url": "https://github.com/microsoft/TypeScript",
+  "lizenz": "Apache-2.0",
+  "de": "Sprache von API und Website",
+  "en": "Language of API and website",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "Go",
+  "url": "https://go.dev",
+  "lizenz": "BSD-3-Clause",
+  "de": "Runner und Prüfstraße",
+  "en": "Runner and test pipeline",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "Podman",
+  "url": "https://github.com/containers/podman",
+  "lizenz": "Apache-2.0",
+  "de": "Sandbox beim Mitstreiter, ohne Admin-Rechte",
+  "en": "Contributor sandbox, rootless",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "Garage",
+  "url": "https://garagehq.deuxfleurs.fr",
+  "lizenz": "AGPL-3.0",
+  "de": "Speicher für eingehende Dateien (geplant)",
+  "en": "Storage for incoming files (planned)",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "Caddy",
+  "url": "https://github.com/caddyserver/caddy",
+  "lizenz": "Apache-2.0",
+  "de": "Webserver und HTTPS",
+  "en": "Web server and HTTPS",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "Debian",
+  "url": "https://www.debian.org",
+  "lizenz": "DFSG",
+  "de": "Betriebssystem der Server",
+  "en": "Server operating system",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "Vitest",
+  "url": "https://github.com/vitest-dev/vitest",
+  "lizenz": "MIT",
+  "de": "Tests",
+  "en": "Tests",
+  "gruppe": "plattform"
+ },
+ {
+  "name": "SvelteKit und Svelte",
+  "url": "https://github.com/sveltejs/kit",
+  "lizenz": "MIT",
+  "de": "Website",
+  "en": "Website",
+  "gruppe": "web"
+ },
+ {
+  "name": "Vite",
+  "url": "https://github.com/vitejs/vite",
+  "lizenz": "MIT",
+  "de": "Build der Website",
+  "en": "Website build",
+  "gruppe": "web"
+ },
+ {
+  "name": "marked",
+  "url": "https://github.com/markedjs/marked",
+  "lizenz": "MIT",
+  "de": "Doku aus Markdown",
+  "en": "Docs from Markdown",
+  "gruppe": "web"
+ },
+ {
+  "name": "Shiki",
+  "url": "https://github.com/shikijs/shiki",
+  "lizenz": "MIT",
+  "de": "Code-Hervorhebung",
+  "en": "Code highlighting",
+  "gruppe": "web"
+ },
+ {
+  "name": "github-slugger",
+  "url": "https://github.com/Flet/github-slugger",
+  "lizenz": "ISC",
+  "de": "Anker in der Doku",
+  "en": "Doc anchors",
+  "gruppe": "web"
+ },
+ {
+  "name": "Sora",
+  "url": "https://fonts.google.com/specimen/Sora",
+  "lizenz": "OFL-1.1",
+  "de": "Schrift von Logo und Überschriften",
+  "en": "Logo and heading typeface",
+  "gruppe": "web"
+ },
+ {
+  "name": "IBM Plex Sans und Mono",
+  "url": "https://github.com/IBM/plex",
+  "lizenz": "OFL-1.1",
+  "de": "Schrift der Website",
+  "en": "Website typeface",
+  "gruppe": "web"
+ },
+ {
+  "name": "Fontsource",
+  "url": "https://github.com/fontsource/fontsource",
+  "lizenz": "MIT",
+  "de": "Schriften selbst ausgeliefert",
+  "en": "Self-hosted fonts",
+  "gruppe": "web"
+ },
+ {
+  "name": "REA – Reverse Engineer Anything",
+  "url": "https://github.com/morluto/rea",
+  "lizenz": "MIT",
+  "de": "Analyse im Clean-Room-Verfahren",
+  "en": "Analysis in the clean-room process",
+  "gruppe": "agenten"
+ },
+ {
+  "name": "opencode",
+  "url": "https://github.com/anomalyco/opencode",
+  "lizenz": "MIT",
+  "de": "Coding-Agent in der Sandbox, Kompatibilitätstest",
+  "en": "Coding agent in the sandbox, compatibility test",
+  "gruppe": "agenten"
+ },
+ {
+  "name": "Hermes Agent",
+  "url": "https://github.com/NousResearch/hermes-agent",
+  "lizenz": "MIT",
+  "de": "Kompatibilitätstest",
+  "en": "Compatibility test",
+  "gruppe": "agenten"
+ },
+ {
+  "name": "OpenClaw",
+  "url": "https://github.com/openclaw/openclaw",
+  "lizenz": "MIT",
+  "de": "Kompatibilitätstest",
+  "en": "Compatibility test",
+  "gruppe": "agenten"
+ },
+ {
+  "name": "Ollama",
+  "url": "https://github.com/ollama/ollama",
+  "lizenz": "MIT",
+  "de": "Lokale Modelle im Labor",
+  "en": "Local models in the lab",
+  "gruppe": "agenten"
+ },
+ {
+  "name": "Godot Engine",
+  "url": "https://github.com/godotengine/godot",
+  "lizenz": "MIT",
+  "de": "Engine des Pilotprojekts, Prüfstraße",
+  "en": "Pilot project engine, test pipeline",
+  "gruppe": "agenten"
+ },
+ {
+  "name": "Playwright",
+  "url": "https://github.com/microsoft/playwright",
+  "lizenz": "Apache-2.0",
+  "de": "Browser-Tests der Website",
+  "en": "Website browser tests",
+  "gruppe": "agenten"
+ },
+ {
+  "name": "grill-me (Matt Pocock, skills)",
+  "url": "https://github.com/mattpocock/skills",
+  "lizenz": "MIT",
+  "de": "Vorbild für das Projekt-Interview des Leads",
+  "en": "Model for the lead's project interview",
+  "gruppe": "skills"
+ },
+ {
+  "name": "frontend-design (Anthropic, skills)",
+  "url": "https://github.com/anthropics/skills",
+  "lizenz": "Apache-2.0",
+  "de": "Gestaltung der Website",
+  "en": "Website design",
+  "gruppe": "skills"
+ },
+ {
+  "name": "Impeccable",
+  "url": "https://github.com/pbakaus/impeccable",
+  "lizenz": "Apache-2.0",
+  "de": "Design-Prüfung der Website",
+  "en": "Website design checks",
+  "gruppe": "skills"
+ },
+ {
+  "name": "UI UX Pro Max",
+  "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+  "lizenz": "MIT",
+  "de": "Gestaltungsregeln",
+  "en": "Design rules",
+  "gruppe": "skills"
+ },
+ {
+  "name": "Claude SEO",
+  "url": "https://github.com/AgriciDaniel/claude-seo",
+  "lizenz": "MIT",
+  "de": "Texte und Suchmaschinen",
+  "en": "Copy and search engines",
+  "gruppe": "skills"
+ },
+ {
+  "name": "Manim Community",
+  "url": "https://github.com/ManimCommunity/manim",
+  "lizenz": "MIT",
+  "de": "Animationen des Erklärvideos",
+  "en": "Explainer video animation",
+  "gruppe": "medien"
+ },
+ {
+  "name": "FFmpeg",
+  "url": "https://ffmpeg.org",
+  "lizenz": "LGPL-2.1+",
+  "de": "Schnitt, Ton und Untertitel",
+  "en": "Editing, audio, subtitles",
+  "gruppe": "medien"
+ },
+ {
+  "name": "Qwen3-TTS",
+  "url": "https://github.com/QwenLM/Qwen3-TTS",
+  "lizenz": "Apache-2.0",
+  "de": "Erste Sprecherstimme (lokal)",
+  "en": "First narrator voice (local)",
+  "gruppe": "medien"
+ },
+ {
+  "name": "faster-whisper",
+  "url": "https://github.com/SYSTRAN/faster-whisper",
+  "lizenz": "MIT",
+  "de": "Kontrolle der Aussprache",
+  "en": "Pronunciation checks",
+  "gruppe": "medien"
+ },
+ {
+  "name": "ElevenLabs Python SDK",
+  "url": "https://github.com/elevenlabs/elevenlabs-python",
+  "lizenz": "MIT",
+  "de": "Sprecherstimme, Geräusche und Musik (Dienst)",
+  "en": "Narrator voice, sound effects and music (service)",
+  "gruppe": "medien"
+ },
+ {
+  "name": "fontTools",
+  "url": "https://github.com/fonttools/fonttools",
+  "lizenz": "MIT",
+  "de": "Logo als Pfad",
+  "en": "Logo as outlines",
+  "gruppe": "medien"
+ },
+ {
+  "name": "Pillow und NumPy",
+  "url": "https://github.com/python-pillow/Pillow",
+  "lizenz": "MIT-CMU / BSD-3-Clause",
+  "de": "Bildbearbeitung im Video",
+  "en": "Image processing in the video",
+  "gruppe": "medien"
+ },
+ {
+  "name": "Noto Sans",
+  "url": "https://github.com/notofonts",
+  "lizenz": "OFL-1.1",
+  "de": "Schrift im Video",
+  "en": "Video typeface",
+  "gruppe": "medien"
+ }
+]

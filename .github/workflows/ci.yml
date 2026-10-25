@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: swarvex
+          POSTGRES_PASSWORD: swarvex
+          POSTGRES_DB: swarvex_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U swarvex" --health-interval 3s --health-retries 20
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      TEST_DATABASE_URL: postgres://swarvex:swarvex@localhost:5432/swarvex_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npx svelte-check
+      - run: npm run build
+
+  go:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        modul: [runner, pruefstrasse]
+    defaults:
+      run:
+        working-directory: ${{ matrix.modul }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ matrix.modul }}/go.mod
+      - run: go vet ./...
+      - run: go test ./...
+      - run: CGO_ENABLED=0 go build -trimpath -o /dev/null .

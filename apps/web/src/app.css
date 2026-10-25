@@ -1,0 +1,94 @@
+/* swarvex.ai – Design-Tokens (DESIGN.md). Dunkel ist der Standard, hell folgt dem System. */
+@import "@fontsource-variable/sora";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  --graphit: #0d1116;
+  --graphit-2: #131920;
+  --graphit-3: #1a222b;
+  --linie: #26303b;
+  --linie-hell: #3a4654;
+  --stahl: #a9b4c0;
+  --leise: #7d8a99;
+  --text: #e6edf3;
+  --akzent: #3ee6d0;
+  --akzent-dunkel: #0b3b36;
+  --auf-akzent: #04201d;
+  --bernstein: #f5b041;
+  --rot: #ef5350;
+  --metall: linear-gradient(180deg, #1b232c 0%, #11161c 100%);
+
+  --schrift-marke: "Sora Variable", "Sora", system-ui, sans-serif;
+  --schrift: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --breite: 1200px;
+  --rand: clamp(16px, 4vw, 40px);
+  --radius: 10px;
+  --radius-klein: 6px;
+  --dauer: 180ms;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-thema="dunkel"]) {
+    --graphit: #f4f6f8;
+    --graphit-2: #ffffff;
+    --graphit-3: #eef1f4;
+    --linie: #dde3e9;
+    --linie-hell: #c5ced8;
+    --stahl: #4a5563;
+    --leise: #5d6a78;
+    --text: #0f141a;
+    --akzent: #0a6f64;
+    --auf-akzent: #ffffff;
+    --akzent-dunkel: #d6f5f1;
+    --bernstein: #9a6206;
+    --rot: #c62828;
+    --metall: linear-gradient(180deg, #ffffff 0%, #f1f4f7 100%);
+    color-scheme: light;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 80px; }
+body {
+  margin: 0;
+  background: var(--graphit);
+  color: var(--text);
+  font: 400 17px/1.6 var(--schrift);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: var(--schrift-marke); line-height: 1.15; letter-spacing: -0.01em; margin: 0 0 .5em; }
+h1 { font-size: clamp(2.4rem, 5.5vw, 4.2rem); font-weight: 650; }
+h2 { font-size: clamp(1.7rem, 3vw, 2.4rem); font-weight: 620; }
+h3 { font-size: 1.2rem; font-weight: 600; }
+h1, h2, h3 { text-wrap: balance; }
+p, li, dd { text-wrap: pretty; }
+p { margin: 0 0 1em; }
+a { color: var(--akzent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+code, kbd, pre { font-family: var(--mono); font-size: .92em; }
+img, video, svg { max-width: 100%; }
+::selection { background: color-mix(in srgb, var(--akzent) 35%, transparent); color: var(--text); }
+html { caret-color: var(--akzent); scrollbar-color: var(--linie-hell) var(--graphit); }
+:focus-visible { outline: 2px solid var(--akzent); outline-offset: 3px; border-radius: 4px; }
+
+.huelle { max-width: var(--breite); margin: 0 auto; padding: 0 var(--rand); }
+.leise { color: var(--leise); }
+.knopf {
+  display: inline-flex; align-items: center; gap: .5em; min-height: 44px; padding: 0 1.1em;
+  border-radius: var(--radius-klein); border: 1px solid var(--linie-hell);
+  background: var(--metall); color: var(--text); font: 500 .95rem var(--schrift); text-decoration: none;
+  cursor: pointer; transition: border-color var(--dauer), background var(--dauer);
+}
+.knopf:hover { border-color: var(--stahl); }
+.knopf.primaer { background: var(--akzent); border-color: var(--akzent); color: var(--auf-akzent); }
+.knopf.primaer:hover { filter: brightness(1.08); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

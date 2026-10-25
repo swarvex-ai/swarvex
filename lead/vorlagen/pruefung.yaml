@@ -1,0 +1,33 @@
+# Beispiel-Prüfvertrag (Godot-Spiel). Liegt als pruefung.yaml im Projekt-Repo, geschützter Pfad.
+# Grundsatz: deterministisch, schnell (< 10 min), aussagekräftig. Instabile Schritte sofort reparieren.
+engine: godot-4.7
+schritte:
+  - name: import
+    run: godot --headless --import
+    fehler_bei_warnung: true
+  - name: lint
+    run: gdlint src tests
+  - name: tests
+    run: tools/run_tests.sh --headless
+  - name: vertraege
+    run: tools/run_tests.sh --headless tests/vertraege
+  - name: screenshots
+    run: tools/capture.sh            # feste Kamera, feste Beleuchtung, fester Seed
+    artefakte: [outputs/screens/*.png]
+  - name: messung
+    run: tools/measure.sh            # z. B. Frame-Zeit bei 50 Gegnern, Ladezeit
+    artefakte: [outputs/messung.json]
+    grenzen: {frame_ms_p95: 8, ladezeit_ms: 200}
+pfade_geschuetzt:
+  - pruefung.yaml
+  - AGENTS.md
+  - LICENSE*
+  - project.godot
+  - tools/**
+  - tests/vertraege/**
+  - .github/**
+  - .forgejo/**
+grenzen:
+  zeilen: 500
+  dateien: 20
+  dateigroesse_mb: 10

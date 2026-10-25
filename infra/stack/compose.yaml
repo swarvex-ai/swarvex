@@ -1,0 +1,55 @@
+# Plattform-Stack – überall identisch; Unterschiede nur in .env (docs/selbst-hosten.md).
+name: swarvex
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: swarvex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: swarvex
+    volumes:
+      - pg:/var/lib/postgresql
+      - ./init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swarvex -d swarvex"]
+      interval: 3s
+      retries: 20
+    restart: unless-stopped
+  api:
+    build: ../../apps/api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://swarvex:${POSTGRES_PASSWORD}@postgres:5432/swarvex
+      TEST_DATABASE_URL: postgres://swarvex:${POSTGRES_PASSWORD}@postgres:5432/swarvex_test
+    volumes:
+      - /opt/swarvex-daten/deploy_key:/daten/deploy_key:ro
+      - spiegel:/daten/spiegel
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: unless-stopped
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    environment:
+      ORIGIN: https://${BASIS_HOST}
+      INDEXIEREN: ${INDEXIEREN:-nein}
+      API_INTERN: http://api:3000
+    restart: unless-stopped
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment:
+      BASIS_HOST: ${BASIS_HOST}
+      TLS_MODUS: ${TLS_MODUS:-internal}
+      X_ROBOTS_TAG: ${X_ROBOTS_TAG:-noindex, nofollow}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - /opt/swarvex-daten/downloads:/srv:ro
+    depends_on: [api, web]
+    restart: unless-stopped
+volumes:
+  pg:
+  spiegel:
+  caddy_data:

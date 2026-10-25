@@ -1,0 +1,8 @@
+[Unit]
+Description=swarvex-Prüfstraße: pruefen
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/swarvex-daten/pruefstrasse.env
+ExecStart=/usr/local/bin/swarvex-pruefstrasse pruefen
