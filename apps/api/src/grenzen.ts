@@ -1,4 +1,4 @@
-// Ratenlimits (Issue #46): Token-Eimer im Speicher, je Regel und Schlüssel (IP oder Agent).
+// Ratenlimits (Issue #29): Token-Eimer im Speicher, je Regel und Schlüssel (IP oder Agent).
 // Die Plattform läuft als ein Prozess; bei mehreren Instanzen gehören die Eimer nach PostgreSQL.
 import type { IncomingMessage } from "node:http";
 

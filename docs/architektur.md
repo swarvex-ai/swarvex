@@ -184,13 +184,13 @@ Angeregt durch die Guardrails von Archestra (siehe unten). Grundsatz: Ob ein Age
 
 | Idee | Bei uns | Issue |
 |---|---|---|
-| Vertrauenslabel pro Sitzung, feste Regeln außerhalb des Agenten | Herkunftslabel, Agenten-Profile, Lesen in festem Schema (Abschnitt oben) | #69 |
-| Unteragent antwortet nur in festem Schema (`attest-schema`) | Review-Aufgaben und Lead | #63 |
-| Budgets in mehreren Ebenen, alle passenden Grenzen gelten gleichzeitig | Proxy: pro Aufgabe, Tag, Projekt | #70 |
-| Eindeutige Fehlercodes: 402 bei Geldbudget, 429 mit `Retry-After` bei Rate | Proxy, damit Agenten sauber reagieren | #70 |
-| Gezählt wird nur der vom Anbieter gemeldete Verbrauch; Preise lokaler Modelle setzt man von Hand | Spenden und Verbrauch in Tokens; Euro nur, wo ein Preis bekannt ist | #70 |
-| OpenTelemetry und Prometheus von Anfang an | Betrieb | #30 |
-| AGPL für einen Dienst: Forks, die als Dienst laufen, müssen ihre Änderungen offenlegen | Eingabe für die Lizenzentscheidung (Open Core übernehmen wir nicht) | #4 (E-13) |
+| Vertrauenslabel pro Sitzung, feste Regeln außerhalb des Agenten | Herkunftslabel, Agenten-Profile, Lesen in festem Schema (Abschnitt oben) | #36 |
+| Unteragent antwortet nur in festem Schema (`attest-schema`) | Review-Aufgaben und Lead | #33 |
+| Budgets in mehreren Ebenen, alle passenden Grenzen gelten gleichzeitig | Proxy: pro Aufgabe, Tag, Projekt | #37 |
+| Eindeutige Fehlercodes: 402 bei Geldbudget, 429 mit `Retry-After` bei Rate | Proxy, damit Agenten sauber reagieren | #37 |
+| Gezählt wird nur der vom Anbieter gemeldete Verbrauch; Preise lokaler Modelle setzt man von Hand | Spenden und Verbrauch in Tokens; Euro nur, wo ein Preis bekannt ist | #37 |
+| OpenTelemetry und Prometheus von Anfang an | Betrieb | #14 |
+| AGPL für einen Dienst: Forks, die als Dienst laufen, müssen ihre Änderungen offenlegen | Eingabe für die Lizenzentscheidung (Open Core übernehmen wir nicht) | – (E-13) |
 
 ## Vergleich: agentgateway (geprüft am 25.10.2026)
 
@@ -209,11 +209,11 @@ Angeregt durch die Guardrails von Archestra (siehe unten). Grundsatz: Ob ein Age
 
 | Idee | Bei uns | Issue |
 |---|---|---|
-| Übersetzung zwischen Anbietern: Wer einen Anthropic-, Gemini- oder Bedrock-Schlüssel hat, kann ihn nutzen, obwohl Agenten in der Sandbox OpenAI-kompatibel sprechen | Kette Sandbox → unser kleiner Schlüssel-Proxy (Token, Budget, Zeit, Protokoll; bleibt die Sicherheitsgrenze) → agentgateway auf dem Host (Übersetzung, Ausweichen bei Fehlern) → Anbieter | #80 |
-| MCP-Föderation mit Werkzeug-Filter: Gespendete Dienste mit eigenem MCP-Server (z. B. Meshy, ElevenLabs) erscheinen in der Sandbox als ein Endpunkt, nur mit erlaubten Werkzeugen und Ratenlimit, ohne dass der Agent den Schlüssel sieht | Spenden-Adapter und Auftrag + Upload; vorher prüfen, ob agentgateway Zugangsdaten für Upstream-Server einsetzen kann (Doku unklar) | #80, #32, #33 |
-| Gleiche Namen für Messwerte von MCP- und LLM-Aufrufen in OpenTelemetry | Betrieb, Kennzahlen im Runner | #30 |
-| Regeln als CEL-Ausdrücke statt im Code | Idee für Vertrauensstufen, falls die Regeln wachsen; heute reichen feste Regeln im Code | #45 |
-| Guardrails per Webhook (z. B. Erkennung eingeschleuster Anweisungen) | höchstens als zusätzliche Schicht; die festen Regeln außerhalb des Agenten bleiben maßgeblich | #69 |
+| Übersetzung zwischen Anbietern: Wer einen Anthropic-, Gemini- oder Bedrock-Schlüssel hat, kann ihn nutzen, obwohl Agenten in der Sandbox OpenAI-kompatibel sprechen | Kette Sandbox → unser kleiner Schlüssel-Proxy (Token, Budget, Zeit, Protokoll; bleibt die Sicherheitsgrenze) → agentgateway auf dem Host (Übersetzung, Ausweichen bei Fehlern) → Anbieter | #43 |
+| MCP-Föderation mit Werkzeug-Filter: Gespendete Dienste mit eigenem MCP-Server (z. B. Meshy, ElevenLabs) erscheinen in der Sandbox als ein Endpunkt, nur mit erlaubten Werkzeugen und Ratenlimit, ohne dass der Agent den Schlüssel sieht | Spenden-Adapter und Auftrag + Upload; vorher prüfen, ob agentgateway Zugangsdaten für Upstream-Server einsetzen kann (Doku unklar) | #43, #16, #17 |
+| Gleiche Namen für Messwerte von MCP- und LLM-Aufrufen in OpenTelemetry | Betrieb, Kennzahlen im Runner | #14 |
+| Regeln als CEL-Ausdrücke statt im Code | Idee für Vertrauensstufen, falls die Regeln wachsen; heute reichen feste Regeln im Code | #28 |
+| Guardrails per Webhook (z. B. Erkennung eingeschleuster Anweisungen) | höchstens als zusätzliche Schicht; die festen Regeln außerhalb des Agenten bleiben maßgeblich | #36 |
 
 **Nicht übernommen:** A2A (vielleicht später zwischen Leads), der Kubernetes-Betrieb und ein Gateway vor der Plattform.
 

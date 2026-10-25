@@ -18,12 +18,12 @@ Der Lead-Agent ist der Koordinator eines Projekts auf swarvex.ai. Er übersetzt 
 
 ## So bekommt der Lead das Handbuch
 
-- **Claude Code:** als Skill bzw. später im swarvex-Plugin (#73); alternativ `LEAD.md` als `CLAUDE.md`/`AGENTS.md` im Arbeitsordner des Leads.
+- **Claude Code:** als Skill bzw. später im swarvex-Plugin (#38); alternativ `LEAD.md` als `CLAUDE.md`/`AGENTS.md` im Arbeitsordner des Leads.
 - **Codex, opencode, Hermes u. a.:** `LEAD.md` als `AGENTS.md` im Arbeitsordner des Leads; Vorlagen daneben.
 - **Projektspezifisch:** Der Visionär darf ergänzen (z. B. `LEAD.projekt.md`), die harten Grenzen bleiben.
 
 ## Pflege
 
 - Das Handbuch ist **versioniert**, Änderungen werden im Kopf von `LEAD.md` vermerkt.
-- Grundlage für den **Lead-Test** (#36): Der Test prüft genau die Fähigkeiten, die hier beschrieben sind.
+- Grundlage für den **Lead-Test** (#20): Der Test prüft genau die Fähigkeiten, die hier beschrieben sind.
 - Erfahrungen aus dem Pilot (Rend&Run, M8) fließen zurück: Welche Aufgabenmuster hatten hohe Annahmequoten, welche nicht?

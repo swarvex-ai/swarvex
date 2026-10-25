@@ -1,4 +1,4 @@
-// Konto-Anbieter für den Login der Menschen (E-06, Issue #62): GitHub, Codeberg und beliebige
+// Konto-Anbieter für den Login der Menschen (E-06, Issue #32): GitHub, Codeberg und beliebige
 // Gitea-/Forgejo-Instanzen. Codeberg läuft auf Forgejo und spricht dieselbe Schnittstelle wie Gitea.
 // Welche Anbieter aktiv sind, steht nur in der Konfiguration (Labor = Live):
 //   GITHUB_CLIENT_ID/GITHUB_CLIENT_SECRET
