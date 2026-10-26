@@ -11,12 +11,13 @@ import { protokollieren } from "../ereignisse.ts";
 import { konfig } from "../konfig.ts";
 import type { KontoAnbieter, KontoNutzer } from "./konten.ts";
 
-const CALLBACK = () => `${konfig.basis}/interaction/callback`;
+export const CALLBACK = () => `${konfig.basis}/interaction/callback`;
+export const KONTO_PRAEFIX = "konto-";
 
-function signieren(geheimnis: string, wert: string) {
+export function signieren(geheimnis: string, wert: string) {
   return createHmac("sha256", geheimnis).update(wert).digest("base64url");
 }
-function pruefen(geheimnis: string, wert: string, sig: string) {
+export function pruefen(geheimnis: string, wert: string, sig: string) {
   const a = Buffer.from(signieren(geheimnis, wert));
   const b = Buffer.from(sig);
   return a.length === b.length && timingSafeEqual(a, b);
@@ -27,10 +28,10 @@ function weiter(res: ServerResponse, ziel: string) {
   res.end();
 }
 
-const esc = (s: string) => s.replace(/[<>&"]/g, (z) => `&#${z.charCodeAt(0)};`);
-const englisch = (req: IncomingMessage) => !/^de\b/i.test(req.headers["accept-language"] ?? "");
+export const esc = (s: string) => s.replace(/[<>&"]/g, (z) => `&#${z.charCodeAt(0)};`);
+export const englisch = (req: IncomingMessage) => !/^de\b/i.test(req.headers["accept-language"] ?? "");
 
-function seite(res: ServerResponse, status: number, titel: string, inhalt: string, en: boolean) {
+export function seite(res: ServerResponse, status: number, titel: string, inhalt: string, en: boolean) {
   res.writeHead(status, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer" });
   res.end(`<!doctype html><html lang="${en ? "en" : "de"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(titel)} · swarvex.ai</title><style>
@@ -77,7 +78,10 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
       }
       const menschId = await menschAusKonto(db, name, nutzer);
       const ablauf = Date.now() + 120_000;
-      const ziel = `/interaction/${uid}/login?m=${menschId}&t=${ablauf}&s=${signieren(geheimnis, `login:${uid}:${menschId}:${ablauf}`)}`;
+      // Website-Anmeldung („Mein Konto“, konto.ts) statt Agenten-Anmeldung: state beginnt mit "konto-<nonce>"
+      const ziel = uid.startsWith(KONTO_PRAEFIX)
+        ? `/api/konto/fertig?m=${menschId}&t=${ablauf}&s=${signieren(geheimnis, `konto:${uid}:${menschId}:${ablauf}`)}`
+        : `/interaction/${uid}/login?m=${menschId}&t=${ablauf}&s=${signieren(geheimnis, `login:${uid}:${menschId}:${ablauf}`)}`;
       // Keine Server-Weiterleitung: Die Kette begann mit einem Formular auf Gitea (fremde Site),
       // und manche Browser senden dann das SameSite=Lax-Interaktions-Cookie nicht mit.
       // Eine eigene Seite, die selbst weiterleitet, macht den nächsten Schritt same-site.

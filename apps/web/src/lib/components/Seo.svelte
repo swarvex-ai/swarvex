@@ -1,7 +1,7 @@
 <script lang="ts">
   import { SEITE, organisation } from "$lib/seo";
-  let { titel, beschreibung, pfad, bild = "/og.png", typ = "website", daten = [], alternativen = {} }:
-    { titel: string; beschreibung: string; pfad: string; bild?: string; typ?: string; daten?: object[]; alternativen?: Record<string, string> } = $props();
+  let { titel, beschreibung, pfad, bild = "/og.png", typ = "website", daten = [], alternativen = {}, noindex = false }:
+    { titel: string; beschreibung: string; pfad: string; bild?: string; typ?: string; daten?: object[]; alternativen?: Record<string, string>; noindex?: boolean } = $props();
   const englisch = $derived(pfad === "/en" || pfad.startsWith("/en/"));
   const url = $derived(SEITE + pfad);
   const jsonld = $derived(JSON.stringify({ "@context": "https://schema.org", "@graph": [organisation, ...daten] }).replace(/</g, "\\u003c"));
@@ -11,6 +11,7 @@
   <title>{titel}</title>
   <meta name="description" content={beschreibung} />
   <link rel="canonical" href={url} />
+  {#if noindex}<meta name="robots" content="noindex" />{/if}
   <meta property="og:type" content={typ} />
   <meta property="og:site_name" content="swarvex.ai" />
   <meta property="og:locale" content={englisch ? "en_US" : "de_DE"} />

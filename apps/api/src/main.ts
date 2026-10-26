@@ -26,6 +26,7 @@ import { NichtAngemeldet, zugangPruefer } from "./auth/zugang.ts";
 import { mcpBehandeln } from "./mcp.ts";
 import { aufruferIp, grenzenErstellen } from "./grenzen.ts";
 import { meldungAnlegen } from "./meldungen.ts";
+import { kontoBehandeln } from "./konto.ts";
 import { ZodError } from "zod";
 
 const db = verbinden(konfig.datenbank);
@@ -38,6 +39,7 @@ const konten = kontoAnbieterLaden();
 const interaktion = interaktionBehandeln(anbieter, db, schluessel.cookies[0], konten);
 console.log(`Konto-Anbieter: ${konten.map((k) => k.name).join(", ")}`);
 const zugang = zugangPruefer(db, anbieter, schluessel.signatur);
+const konto = kontoBehandeln(db, schluessel.cookies[0], konten);
 const oidc = anbieter.callback();
 const pruefstrasse = pruefstrasseBehandeln(db, konfig.pruefstrasseGeheimnis);
 
@@ -86,7 +88,7 @@ const server = createServer(async (req, res) => {
   try {
     if (url.pathname === "/healthz") return json(res, 200, { ok: true });
     if (url.pathname === "/reg" && req.method === "POST" && gebremst("registrierung", ip)) return;
-    if (/^\/(interaction|auth|token|device)(\/|$)/.test(url.pathname) && gebremst("anmeldung", ip)) return;
+    if ((/^\/(interaction|auth|token|device)(\/|$)/.test(url.pathname) || url.pathname === "/api/konto/anmelden") && gebremst("anmeldung", ip)) return;
     if (url.pathname.startsWith("/api/") && gebremst("oeffentlich", ip)) return;
 
     if (url.pathname.startsWith("/.well-known/oauth-protected-resource")) {
@@ -127,6 +129,9 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname.startsWith("/pruefstrasse/")) return await pruefstrasse(req, res, url);
+
+    // „Mein Konto“: Website-Anmeldung, eigene Agenten und Beiträge
+    if (url.pathname === "/api/konto" || url.pathname.startsWith("/api/konto/")) return await konto(req, res, url);
 
     // Meldeformular der Website (Rechtsverletzung, Missbrauch, Sicherheit)
     if (url.pathname === "/api/meldungen" && req.method === "POST") {

@@ -161,7 +161,11 @@ describe("Meldungen und Sperren (#19, #29)", () => {
     const { projektListe } = await import("../src/kennzahlen.ts");
     const pid = Number((await db.query("select id from projekte where slug = 'test'")).rows[0].id);
     const offen = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Sperrtest"));
+    await k.reservieren(db, mit, offen.id);
     await sperren(db, { projekt: pid }, true, "Takedown wegen Meldung");
+    // Die Reservierung endet, die Aufgabe ist wieder frei (nicht in „reserviert“ hängen geblieben)
+    expect((await db.query("select zustand from aufgaben where id = $1", [offen.id])).rows[0].zustand).toBe("offen");
+    expect((await db.query("select count(*)::int as n from leases where aufgabe_id = $1 and beendet is null", [offen.id])).rows[0].n).toBe(0);
     await expect(k.aufgabenPassend(db, mit, "test")).rejects.toThrow(/gesperrt/);
     await expect(k.reservieren(db, mit, offen.id)).rejects.toThrow(/gesperrt/);
     expect((await projektListe(db)).projekte.map((x) => x.projekt)).not.toContain("test");
@@ -173,6 +177,57 @@ describe("Meldungen und Sperren (#19, #29)", () => {
     await sperren(db, { mensch: fremd.menschId }, false, "Einspruch berechtigt");
     const arten = (await db.query("select art from ereignisse where art like '%gesperrt' or art like '%entsperrt' order by seq")).rows.map((r) => r.art);
     expect(arten).toEqual(["projekt_gesperrt", "projekt_entsperrt", "mensch_gesperrt", "mensch_entsperrt"]);
+  });
+});
+
+describe("Mein Konto (#25)", () => {
+  it("zeigt eigene Agenten und Beiträge", async () => {
+    const { kontoDaten } = await import("../src/konto.ts");
+    const d = await kontoDaten(db, mit.menschId);
+    expect(d.mensch.login).toBe("mitstreiterin");
+    expect(d.agenten.map((a) => a.name)).toContain("runner-1");
+    expect(d.summe.angenommen).toBeGreaterThanOrEqual(1);
+    expect(d.summe.tokens).toBeGreaterThanOrEqual(5000);
+    expect(d.beitraege.every((b) => b.projekt === "test")).toBe(true);
+    expect((await kontoDaten(db, fremd.menschId)).beitraege).toEqual([]);
+  });
+
+  it("meldet einen Agenten ab: Grants weg, Reservierung beendet, Aufgabe wieder offen", async () => {
+    const { agentAbmelden } = await import("../src/konto.ts");
+    const zweit = { menschId: mit.menschId, agentId: Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'runner-3','runner-3') returning id", [mit.menschId])).rows[0].id) };
+    const grant = async (id: string, m: number, client: string) => {
+      await db.query("insert into oidc_payloads(id, typ, payload) values ($1, 'Grant', $2)", [id, { accountId: String(m), clientId: client }]);
+      await db.query("insert into oidc_payloads(id, typ, payload, grant_id) values ($1, 'RefreshToken', $2, $3)", [`rt-${id}`, { grantId: id }, id]);
+    };
+    await grant("g-mit", mit.menschId, "runner-3");
+    await grant("g-fremd", fremd.menschId, "runner-3");
+    const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Abmeldetest"));
+    await k.reservieren(db, zweit, a.id);
+
+    await expect(agentAbmelden(db, fremd.menschId, zweit.agentId)).rejects.toThrow(/unbekannt/);
+    expect(await agentAbmelden(db, mit.menschId, zweit.agentId)).toEqual({ reservierungen: 1 });
+    const rest = (await db.query("select id from oidc_payloads order by id")).rows.map((r) => r.id);
+    expect(rest).toEqual(["g-fremd", "rt-g-fremd"]);
+    expect((await db.query("select abgemeldet from agenten where id = $1", [zweit.agentId])).rows[0].abgemeldet).not.toBeNull();
+    expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("offen");
+    expect((await db.query("select count(*)::int as n from ereignisse where art = 'agent_abgemeldet'")).rows[0].n).toBe(1);
+  });
+
+  it("Website-Sitzung: signiert, endet mit „Abmelden“ und bei Sperre", async () => {
+    const { sitzungAusstellen, sitzungLesen } = await import("../src/konto.ts");
+    const g = "geheim";
+    const s = sitzungAusstellen(g, mit.menschId);
+    expect(await sitzungLesen(db, g, s)).toBe(mit.menschId);
+    expect(await sitzungLesen(db, g, s.replace(/^\d+/, String(fremd.menschId)))).toBeUndefined();
+    expect(await sitzungLesen(db, "anderes", s)).toBeUndefined();
+    expect(await sitzungLesen(db, g, sitzungAusstellen(g, mit.menschId, Date.now() - 15 * 86_400_000))).toBeUndefined();
+    await db.query("update menschen set sitzungen_ab = now() where id = $1", [mit.menschId]);
+    expect(await sitzungLesen(db, g, s)).toBeUndefined();
+    const neu = sitzungAusstellen(g, mit.menschId, Date.now() + 5);
+    expect(await sitzungLesen(db, g, neu)).toBe(mit.menschId);
+    await db.query("update menschen set gesperrt = true where id = $1", [mit.menschId]);
+    expect(await sitzungLesen(db, g, neu)).toBeUndefined();
+    await db.query("update menschen set gesperrt = false, sitzungen_ab = null where id = $1", [mit.menschId]);
   });
 });
 

@@ -244,15 +244,20 @@ export async function abbrechen(db: Db, wer: Wer, aufgabeId: number, grund: stri
 
 /** Läuft periodisch (pg-boss): abgelaufene Reservierungen geben ihre Aufgabe frei. */
 export async function leasesAufraeumen(db: Db): Promise<number> {
-  return transaktion(db, async (tx) => {
-    const abgelaufen = (await tx.query("select * from leases where beendet is null and laeuft_ab < now() for update")).rows;
-    for (const l of abgelaufen) {
-      await tx.query("update leases set beendet = now() where id = $1", [l.id]);
-      const a = await aufgabeSperren(tx, l.aufgabe_id);
-      if (a.zustand === "reserviert" || a.zustand === "in_arbeit") await wechseln(tx, a, "offen", "system", "reservierung_abgelaufen", { lease: Number(l.id), agent: Number(l.agent_id) });
-    }
-    return abgelaufen.length;
-  });
+  return transaktion(db, (tx) => leasesBeenden(tx, { abgelaufen: true }, "reservierung_abgelaufen"));
+}
+
+/** Beendet laufende Reservierungen (abgelaufen, Projekt gesperrt, Agent abgemeldet); die Aufgaben gehen zurück in den Pool. */
+export async function leasesBeenden(tx: Tx, wo: { abgelaufen: true } | { projekt: number } | { agent: number }, art: string): Promise<number> {
+  const [bedingung, wert] = "projekt" in wo ? ["aufgabe_id in (select id from aufgaben where projekt_id = $1)", wo.projekt]
+    : "agent" in wo ? ["agent_id = $1", wo.agent] : ["laeuft_ab < now() and $1::int is null", null];
+  const leases = (await tx.query(`select * from leases where beendet is null and ${bedingung} for update`, [wert])).rows;
+  for (const l of leases) {
+    await tx.query("update leases set beendet = now() where id = $1", [l.id]);
+    const a = await aufgabeSperren(tx, l.aufgabe_id);
+    if (a.zustand === "reserviert" || a.zustand === "in_arbeit") await wechseln(tx, a, "offen", "system", art, { lease: Number(l.id), agent: Number(l.agent_id) });
+  }
+  return leases.length;
 }
 
 /** Prüfstraße beginnt bzw. meldet ein Ergebnis (Signaturprüfung erfolgt vorher, siehe P5). */

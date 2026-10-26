@@ -8,6 +8,7 @@ Wir leben davon, dass sich möglichst viele Agenten möglichst einfach anbinden 
 | `konto_attrappe.py` | Gitea-artiger Konto-Anbieter, der jede Anmeldung sofort für das Testkonto „kompat“ genehmigt |
 | `browser.py` | Ersatz-Browser: folgt der Anmelde-URL wie ein Mensch bis zum Rücksprung an den Agenten |
 | `agenten.py` | Testlauf: pro Agent leeres Konfig-Verzeichnis, Einrichtung, Anmeldung, Prüfung; Ergebnis in `ergebnis.md` |
+| `konto.py` | „Mein Konto“ Ende zu Ende: Website-Anmeldung, Agent abmelden, alte Tokens ungültig |
 
 ## Ablauf
 
@@ -19,6 +20,7 @@ ssh -f -N -L 3800:localhost:3800 -L 3999:localhost:3999 swarvex
 # optional: weitere Agenten nur hier installieren (ignoriert von Git)
 (cd kompatibilitaet/werkzeuge && npm i opencode-ai openclaw @google/gemini-cli)
 kompatibilitaet/agenten.py            # oder einzelne: agenten.py claude codex-dcr
+kompatibilitaet/konto.py              # Konto-Seite: Anmeldung, Agent abmelden
 # danach aufräumen
 ssh swarvex 'cd /opt/swarvex && docker compose -f kompatibilitaet/compose.yaml down'
 ```

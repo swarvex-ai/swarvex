@@ -29,6 +29,9 @@ export function zugangPruefer(db: Db, anbieter: Provider, signaturJwk: Record<st
     const m = (await db.query("select gesperrt from menschen where id = $1", [menschId])).rows[0];
     if (!m || m.gesperrt) throw new NichtAngemeldet("Konto unbekannt oder gesperrt");
     const agentId = await agentZuordnen(db, anbieter, menschId, clientId);
+    // Auf der Konto-Seite abgemeldet: Tokens von vorher gelten nicht mehr, auch wenn sie noch nicht abgelaufen sind
+    const abgemeldet: Date | null = (await db.query("select abgemeldet from agenten where id = $1", [agentId])).rows[0]?.abgemeldet ?? null;
+    if (abgemeldet && Number(claims.iat) * 1000 <= abgemeldet.getTime()) throw new NichtAngemeldet("Agent wurde abgemeldet; bitte neu anmelden");
     return { menschId, agentId, clientId, token, scopes, ablauf: Number(claims.exp) };
   };
 }

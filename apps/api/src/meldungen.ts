@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
+import { leasesBeenden } from "./aufgaben.ts";
 
 export const MeldungSchema = z.object({
   art: z.enum(["rechtsverletzung", "missbrauch", "sicherheit", "sonstiges"]),
@@ -55,7 +56,7 @@ export async function sperren(db: Db, ziel: { mensch?: number; projekt?: number 
     if (ziel.projekt) {
       await tx.query("update projekte set gesperrt = $2, sperrgrund = $3 where id = $1", [ziel.projekt, gesperrt, gesperrt ? grund : null]);
       // Laufende Reservierungen enden sofort; offene Aufgaben bleiben, werden aber nicht mehr angeboten.
-      if (gesperrt) await tx.query("update leases set beendet = now() where beendet is null and aufgabe_id in (select id from aufgaben where projekt_id = $1)", [ziel.projekt]);
+      if (gesperrt) await leasesBeenden(tx, { projekt: ziel.projekt }, "reservierung_beendet_sperre");
       await protokollieren(tx, { projekt_id: ziel.projekt, akteur: "system", art: gesperrt ? "projekt_gesperrt" : "projekt_entsperrt", bezug: `projekt:${ziel.projekt}`, daten: { grund } });
     }
   });

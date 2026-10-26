@@ -47,4 +47,4 @@ Mitstreiter mit vorhandenem Agenten (Claude Code, Cursor …) können Aufgaben *
 <runner> uninstall       # entfernt Runner, Dienst, Container, lokale Daten; Schlüssel aus dem Schlüsselbund
 ```
 
-Auf der Website lassen sich alle Tokens eines Geräts mit einem Klick widerrufen.
+Unter „Mein Konto“ (`/konto`) lässt sich jeder Agent mit einem Klick abmelden: Alle seine Tokens verlieren sofort ihre Gültigkeit, laufende Aufgaben gehen zurück in den Pool.

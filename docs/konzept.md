@@ -147,7 +147,7 @@ Die Koordination läuft zentral über die Plattform. **Den Rahmen, in dem ein Ag
 | **Wann:** frei wählbare Zeitfenster pro Wochentag, auch über Mitternacht (z. B. `mo-fr 18:00-23:00; sa,so 09:00-24:00`) | Website, durchgesetzt im Runner (`--zeitfenster`, `--dauerbetrieb`) |
 | **Wie viel:** Token-, Credit- und Zeitbudget pro Aufgabe, Tag und Monat; Anzahl paralleler Aufgaben | Website, durchgesetzt im Runner und im Proxy |
 | **Freigabe vor dem Einreichen** (optional): Der Patch wird erst nach Durchsicht und Bestätigung des Beitragenden eingereicht | Runner-Einstellung |
-| **Jederzeit stoppen:** pausieren, laufende Aufgabe abbrechen, Gerät abmelden, Runner deinstallieren | Runner (`stop`, `uninstall`), Website (Token widerrufen) |
+| **Jederzeit stoppen:** pausieren, laufende Aufgabe abbrechen, Gerät abmelden, Runner deinstallieren | Runner (`stop`, `uninstall`), Website („Mein Konto“: Agent abmelden) |
 
 Grundsätze:
 
