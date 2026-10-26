@@ -3,7 +3,9 @@
 //   projekt-anlegen <slug> <datei.json>      Projekt + Ereignis „vision_veroeffentlicht“
 //   rolle-setzen <slug> [anbieter:]<login> <rolle>  z. B. github:nevs (ohne Anbieter: eindeutiger Login)
 //   repo-setzen <slug> <git-adresse>          SSH-Adresse für Snapshots (Deploy-Key, nur lesend)
-//   protokoll-pruefen                         Hash-Kette verifizieren, Kopf-Hash ausgeben
+//   protokoll-pruefen [koepfe.jsonl|url]      Hash-Kette verifizieren und mit veröffentlichten Köpfen vergleichen
+//                                             (ohne Angabe: die eigene Tabelle; besser: Datei aus dem Anker-Repo)
+//   kopf-veroeffentlichen                     Kopf-Hash jetzt signieren (sonst täglich automatisch)
 //   meldungen [alle]                          offene (bzw. alle) Meldungen anzeigen
 //   meldung <id> <in_pruefung|erledigt|abgelehnt> <ergebnis>
 //   sperren mensch <[anbieter:]login> <grund> | sperren projekt <slug> <grund>
@@ -12,6 +14,8 @@ import { readFile } from "node:fs/promises";
 import { migrieren, transaktion, verbinden } from "./db.ts";
 import { ketteVerifizieren, protokollieren } from "./ereignisse.ts";
 import { meldungAbschliessen, meldungenListe, sperren } from "./meldungen.ts";
+import { koepfeListe, kopfVeroeffentlichen, mitKoepfenVergleichen } from "./koepfe.ts";
+import { schluesselLaden } from "./auth/schluessel.ts";
 
 async function menschId(login: string): Promise<number> {
   const [anbieter, name] = login.includes(":") ? login.split(":", 2) : [null, login];
@@ -110,12 +114,23 @@ try {
     }
     case "protokoll-pruefen": {
       const e = await ketteVerifizieren(db);
-      console.log(JSON.stringify(e, null, 2));
-      process.exitCode = e.ok ? 0 : 1;
+      // Veröffentlichte Köpfe: JSON-Zeilen bzw. JSON-Liste mit {seq, hash}, aus Datei oder URL
+      const quelle = args[0];
+      const roh = !quelle ? null : /^https?:\/\//.test(quelle) ? await (await fetch(quelle)).text() : await readFile(quelle, "utf8");
+      const koepfe = roh === null ? await koepfeListe(db)
+        : roh.trim().startsWith("[") ? JSON.parse(roh) : roh.split("\n").filter((z) => z.trim()).map((z) => JSON.parse(z));
+      const vergleich = await mitKoepfenVergleichen(db, koepfe.map((k: { seq: number; hash: string }) => ({ seq: Number(k.seq), hash: k.hash })));
+      console.log(JSON.stringify({ ...e, koepfe: { quelle: quelle ?? "eigene Tabelle", ...vergleich } }, null, 2));
+      process.exitCode = e.ok && vergleich.abweichungen.length === 0 ? 0 : 1;
+      break;
+    }
+    case "kopf-veroeffentlichen": {
+      const k = await kopfVeroeffentlichen(db, (await schluesselLaden(db)).signatur);
+      console.log(k ? `seq ${k.seq} ${k.hash}` : "keine neuen Ereignisse seit dem letzten Kopf");
       break;
     }
     default:
-      console.error("Befehle: migrieren | projekt-anlegen <slug> <datei> | rolle-setzen <slug> <login> <rolle> | repo-setzen <slug> <git-adresse> | protokoll-pruefen");
+      console.error("Befehle: migrieren | projekt-anlegen | rolle-setzen | repo-setzen | protokoll-pruefen [koepfe] | kopf-veroeffentlichen | meldungen | meldung | sperren | entsperren");
       process.exitCode = 2;
   }
 } finally {

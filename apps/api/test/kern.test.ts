@@ -255,3 +255,41 @@ describe("Kennzahlen", () => {
     expect(z.spenden_monat.tokens).toBeGreaterThanOrEqual(5000); // Verbrauch aus dem ersten Durchlauf
   });
 });
+
+describe("Kopf-Hash veröffentlichen (#31)", () => {
+  it("signiert den Kopf und entlarvt eine neu berechnete Kette", async () => {
+    const { exportJWK, generateKeyPair, compactVerify } = await import("jose");
+    const { kopfVeroeffentlichen, mitKoepfenVergleichen } = await import("../src/koepfe.ts");
+    const { ereignisHash } = await import("../src/ereignisse.ts");
+    const { privateKey, publicKey } = await generateKeyPair("ES256", { extractable: true });
+    const jwk = { ...(await exportJWK(privateKey)), kid: "test" };
+    // Was ein Angreifer mit voller Datenbankkontrolle tun kann: Ereignisse ändern und die Kette danach neu berechnen.
+    // (Erster Aufruf ohne Änderung: repariert die Kette, die der Manipulationstest oben absichtlich beschädigt hat.)
+    const neuBerechnen = async (faelschen: boolean) => {
+      await db.query("alter table ereignisse disable trigger user");
+      let vorgaenger = "0".repeat(64);
+      for (const z of (await db.query("select * from ereignisse order by seq")).rows) {
+        const daten = faelschen && Number(z.seq) === 1 ? { ...z.daten, gefaelscht: true } : z.daten;
+        const hash = ereignisHash(vorgaenger, Number(z.seq), new Date(z.zeit).toISOString(),
+          { projekt_id: z.projekt_id === null ? null : Number(z.projekt_id), akteur: z.akteur, art: z.art, bezug: z.bezug, daten });
+        await db.query("update ereignisse set daten = $2, vorgaenger_hash = $3, hash = $4 where seq = $1", [z.seq, daten, vorgaenger, hash]);
+        vorgaenger = hash;
+      }
+      await db.query("alter table ereignisse enable trigger user");
+    };
+    await neuBerechnen(false);
+
+    const k = await kopfVeroeffentlichen(db, jwk);
+    expect(k).not.toBeNull();
+    const inhalt = JSON.parse(new TextDecoder().decode((await compactVerify(k!.jws, publicKey)).payload));
+    expect(inhalt).toMatchObject({ seq: k!.seq, hash: k!.hash });
+    expect(await kopfVeroeffentlichen(db, jwk)).toBeNull(); // nichts Neues seit dem letzten Kopf
+    expect((await mitKoepfenVergleichen(db, [k!])).abweichungen).toEqual([]);
+
+    await neuBerechnen(true);
+    expect((await ketteVerifizieren(db)).ok).toBe(true); // in sich stimmig …
+    const v = await mitKoepfenVergleichen(db, [k!]);   // … aber nicht mehr mit dem veröffentlichten Kopf
+    expect(v.abweichungen).toHaveLength(1);
+    expect(v.abweichungen[0]).toMatchObject({ seq: k!.seq, veroeffentlicht: k!.hash });
+  });
+});

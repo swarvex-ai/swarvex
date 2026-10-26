@@ -27,6 +27,7 @@ import { mcpBehandeln } from "./mcp.ts";
 import { aufruferIp, grenzenErstellen } from "./grenzen.ts";
 import { meldungAnlegen } from "./meldungen.ts";
 import { kontoBehandeln } from "./konto.ts";
+import { hashesAn, koepfeListe, kopfVeroeffentlichen } from "./koepfe.ts";
 import { ZodError } from "zod";
 
 const db = verbinden(konfig.datenbank);
@@ -52,6 +53,13 @@ await boss.schedule("leases-aufraeumen", "* * * * *");
 await boss.work("leases-aufraeumen", async () => {
   const n = await leasesAufraeumen(db);
   if (n) console.log(`leases-aufraeumen: ${n} abgelaufen`);
+});
+// Kopf-Hash täglich signieren (03:17 UTC); der externe Anker holt ihn danach ab.
+await boss.createQueue("kopf-veroeffentlichen");
+await boss.schedule("kopf-veroeffentlichen", "17 3 * * *");
+await boss.work("kopf-veroeffentlichen", async () => {
+  const k = await kopfVeroeffentlichen(db, schluessel.signatur);
+  if (k) console.log(`kopf-veroeffentlichen: seq ${k.seq} ${k.hash.slice(0, 16)}…`);
 });
 
 const grenze = grenzenErstellen();
@@ -129,6 +137,19 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname.startsWith("/pruefstrasse/")) return await pruefstrasse(req, res, url);
+
+    // Veröffentlichte Kopf-Hashes des Protokolls (für den externen Anker und alle, die nachprüfen wollen)
+    if (req.method === "GET" && url.pathname === "/api/protokoll/kopf") {
+      const k = (await koepfeListe(db, 1))[0];
+      return k ? json(res, 200, k, { "cache-control": "public, max-age=300", "access-control-allow-origin": "*" }) : json(res, 404, { error: "noch_kein_kopf" });
+    }
+    if (req.method === "GET" && url.pathname === "/api/protokoll/koepfe") {
+      return json(res, 200, await koepfeListe(db), { "cache-control": "public, max-age=300", "access-control-allow-origin": "*" });
+    }
+    if (req.method === "GET" && url.pathname === "/api/protokoll/hashes") {
+      const seqs = (url.searchParams.get("seq") ?? "").split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 200);
+      return json(res, 200, await hashesAn(db, seqs), { "cache-control": "no-store", "access-control-allow-origin": "*" });
+    }
 
     // „Mein Konto“: Website-Anmeldung, eigene Agenten und Beiträge
     if (url.pathname === "/api/konto" || url.pathname.startsWith("/api/konto/")) return await konto(req, res, url);

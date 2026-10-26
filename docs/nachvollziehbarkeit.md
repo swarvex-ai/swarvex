@@ -6,7 +6,7 @@ Beide Seiten müssen jederzeit sehen können, was passiert ist: der Visionär, w
 
 - Jede Zustandsänderung ist ein **Ereignis** in einer append-only Tabelle: Aufgabe angelegt, reserviert, eingereicht, geprüft, bewertet, gemerged; Budget verbraucht; Vertrauensstufe geändert; Freigabe erteilt.
 - Die Ereignisse sind **hash-verkettet**: Jedes trägt den Hash seines Vorgängers. Nachträgliche Änderungen fallen auf.
-- Der Kopf-Hash jedes Projekts wird täglich öffentlich veröffentlicht (Projektseite und Repo-Datei `PROTOKOLL.md`). So kann auch die Plattform ihn nicht unbemerkt umschreiben.
+- Der Kopf-Hash der Kette wird täglich signiert veröffentlicht (`/api/protokoll/kopf`, Projektseite) und von einem externen öffentlichen Repo verankert (`infra/protokoll-anker`). So kann auch die Plattform die Kette nicht unbemerkt umschreiben.
 - Das Protokoll ist öffentlich, mit Ausnahme personenbezogener Daten, die abschaltbar sind.
 
 ## Herkunft im Git-Verlauf

@@ -87,6 +87,10 @@
         <dd class:gut={p.protokoll.ok} class:schlecht={!p.protokoll.ok}>
           {p.protokoll.ok ? d.kette : d.ketteKaputt}, {p.protokoll.eintraege} {d.eintraege}
           <code class="hash" title={p.protokoll.kopf}>{p.protokoll.kopf.slice(0, 16)}…</code>
+          {#if p.protokoll.veroeffentlicht}
+            <span class="leise anker">{d.kopfVeroeffentlicht} {datum(p.protokoll.veroeffentlicht.zeit)}
+              (<a href="/api/protokoll/koepfe">{d.eintrag} {p.protokoll.veroeffentlicht.seq}</a>)</span>
+          {/if}
         </dd>
       </dl>
     </section>
@@ -157,6 +161,7 @@
   .kopf h1 { font-size: clamp(2.1rem, 4.5vw, 3.2rem); margin-bottom: 10px; }
   .aktionen { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
   .melden { font-size: .88rem; }
+  .anker { display: block; font-size: .85rem; margin-top: 4px; }
   .melden:hover { color: var(--text); }
   .vision { font-size: 1.2rem; color: var(--stahl); max-width: 62ch; margin: 0 0 10px; }
   .meta { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: .9rem; margin: 0; }

@@ -27,4 +27,6 @@ Das Statusboard und das MCP-Werkzeug `kennzahlen` nutzen dieselbe Funktion. Ein 
 
 ## Grenzen
 
-Wer die Datenbank vollständig kontrolliert, könnte die ganze Kette neu berechnen. Dagegen hilft die tägliche Veröffentlichung des Kopf-Hashs nach außen (*geplant*).
+Wer die Datenbank vollständig kontrolliert, könnte die ganze Kette neu berechnen. Deshalb signiert die Plattform jeden Tag den Kopf-Hash der Kette (`/api/protokoll/kopf`, Schlüssel unter `/jwks`). Ein eigenes öffentliches Repo holt ihn ab und hält ihn in seiner Git-Historie fest. Dort vergleicht es auch alle früheren Köpfe mit der heutigen Kette. Eine neu berechnete Kette passt dann nicht mehr zu den verankerten Köpfen, und das fällt auf.
+
+Jeder kann selbst einen Anker betreiben: Das Skript `infra/protokoll-anker/anker.mjs` aus dem Quellcode braucht nur Node und keine Zugangsdaten.

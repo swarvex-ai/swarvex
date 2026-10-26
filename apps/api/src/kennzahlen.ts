@@ -105,7 +105,9 @@ export async function projektDetail(db: Db, slug: string) {
   const ereignisse = (await db.query("select seq, zeit, akteur, art, bezug from ereignisse where projekt_id = $1 order by seq desc limit 20", [p.id])).rows
     .map((e) => ({ seq: Number(e.seq), zeit: e.zeit, wer: namen.get(e.akteur) ?? e.akteur, art: e.art, bezug: e.bezug }));
   const kette = await ketteVerifizieren(db);
+  const kopf = (await db.query("select seq, zeit from koepfe order by seq desc limit 1")).rows[0];
   const clean_room = p.verfahren === "clean_room" ? { vorbild: p.vorbild, ...(await nachweis(db, Number(p.id))) } : null;
   return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, aufgaben, beitragende, ereignisse,
-           protokoll: { ok: kette.ok, eintraege: kette.anzahl, kopf: kette.kopf } };
+           protokoll: { ok: kette.ok, eintraege: kette.anzahl, kopf: kette.kopf,
+                        veroeffentlicht: kopf ? { seq: Number(kopf.seq), zeit: kopf.zeit } : null } };
 }
