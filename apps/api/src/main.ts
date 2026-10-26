@@ -29,6 +29,7 @@ import { aufruferIp, grenzenErstellen } from "./grenzen.ts";
 import { meldungAnlegen } from "./meldungen.ts";
 import { kontoBehandeln } from "./konto.ts";
 import { hashesAn, koepfeListe, kopfVeroeffentlichen } from "./koepfe.ts";
+import { repoDaten } from "./repo.ts";
 import { ZodError } from "zod";
 
 const db = verbinden(konfig.datenbank);
@@ -168,6 +169,10 @@ const server = createServer(async (req, res) => {
     }
 
     // Öffentliche Rangliste für die Website (gleiche Zahlen wie Board und MCP)
+    // Sterne und Forks des Quellcode-Repos (zwischengespeichert, siehe repo.ts)
+    if (req.method === "GET" && url.pathname === "/api/repo") {
+      return json(res, 200, await repoDaten(), { "cache-control": "public, max-age=600" });
+    }
     if (req.method === "GET" && url.pathname === "/api/projects") {
       return json(res, 200, nachAussen(await projektListe(db)), { "cache-control": "public, max-age=10", "access-control-allow-origin": "*" });
     }

@@ -26,7 +26,7 @@
   async function laden() {
     try {
       const r = await fetch("/api/account", { cache: "no-store" });
-      if (r.status === 401) { zustand = "gast"; konto = null; return; }
+      if (r.status === 401) { r.body?.cancel(); zustand = "gast"; konto = null; return; }
       if (!r.ok) throw new Error(String(r.status));
       konto = await r.json();
       zustand = "da";

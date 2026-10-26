@@ -9,6 +9,8 @@
 	tls {$TLS_MODE}
 	# Labor: nicht indexieren (Standard). Live in .env: X_ROBOTS_TAG=all
 	header X-Robots-Tag "{$X_ROBOTS_TAG:noindex, nofollow}"
+	# Komprimieren (bereits komprimierte Antworten, z. B. vorgerenderte Doku, lässt Caddy unverändert)
+	encode zstd gzip
 	# Sicherheits-Header für alle Antworten
 	header {
 		Strict-Transport-Security "max-age=31536000"

@@ -2,7 +2,7 @@
   import "../app.css";
   import Logo from "$lib/components/Logo.svelte";
   import { page } from "$app/state";
-  import { QUELLCODE } from "$lib/seo";
+  import RepoLink from "$lib/components/RepoLink.svelte";
   import { pfad, sprache, tx } from "$lib/texte";
   let { children } = $props();
   let menueOffen = $state(false);
@@ -13,15 +13,18 @@
     { href: pfad(s, t.opensource.pfad), text: t.opensource.nav },
     { href: pfad(s, "/") + "#mitmachen", text: t.nav.mitmachen },
     { href: pfad(s, "/docs"), text: t.nav.doku },
-    { href: QUELLCODE, text: t.nav.quellcode },
   ]);
   // Gegenstück in der anderen Sprache: Doku-Seiten liefern es selbst (andere Slugs), sonst Präfix tauschen
+  const SLUGS: Record<string, string> = { projekte: "projects", melden: "report", konto: "account", kontakt: "contact", datenschutz: "privacy", nutzungsbedingungen: "terms" };
+  const SLUGS_DE = Object.fromEntries(Object.entries(SLUGS).map(([de, en]) => [en, de]));
   const andere = $derived.by(() => {
     const ziel = s === "de" ? "en" : "de";
     const alt = (page.data as { alternativen?: Record<string, string> }).alternativen;
     if (alt?.[ziel]) return alt[ziel];
-    const p = page.url.pathname.replace(/^\/en(\/|$)/, "/");
-    return pfad(ziel, p);
+    // Erster Pfadteil heißt je Sprache anders (projekte ↔ projects …); der Rest bleibt
+    const [, erster = "", ...rest] = page.url.pathname.replace(/^\/en(\/|$)/, "/").split("/");
+    const uebersetzt = (ziel === "en" ? SLUGS : SLUGS_DE)[erster] ?? erster;
+    return pfad(ziel, "/" + [uebersetzt, ...rest].join("/"));
   });
 </script>
 
@@ -38,6 +41,7 @@
         <li><a href={l.href} aria-current={page.url.pathname.startsWith(l.href) && !l.href.includes("#") ? "page" : undefined}
                onclick={() => (menueOffen = false)}>{l.text}</a></li>
       {/each}
+      <li><RepoLink text={t.nav.quellcode} /></li>
       <li><a class="sprache" href={andere} hreflang={s === "de" ? "en" : "de"} lang={s === "de" ? "en" : "de"} aria-label={t.nav.andere}>{t.nav.andereKurz}</a></li>
       <li><a class="knopf primaer" href={pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent")} onclick={() => (menueOffen = false)}>{t.nav.anschliessen}</a></li>
     </ul>
@@ -57,6 +61,7 @@
       <a href={pfad(s, s === "de" ? "/docs/sicherheit" : "/docs/security")}>{t.fuss.sicherheit}</a>
       <a href={pfad(s, s === "de" ? "/docs/lizenz" : "/docs/license")}>{t.fuss.lizenz}</a><a href={pfad(s, t.konto.pfad)}>{t.konto.nav}</a><a href={pfad(s, t.melden.pfad)}>{t.melden.nav}</a><a href={pfad(s, "/llms-full.txt")}>{t.fuss.alsText}</a>
       <a href={andere} hreflang={s === "de" ? "en" : "de"}>{t.nav.andere}</a>
+      <RepoLink text="GitHub" />
     </nav>
     <p class="leise klein">{t.fuss.lizenzSatz}
       <span class="recht">{#each t.fuss.recht as [text, ziel]}<a href={pfad(s, ziel)}>{text}</a>{/each}</span></p>
@@ -76,6 +81,10 @@
   ul { display: flex; align-items: center; gap: 28px; list-style: none; margin: 0; padding: 0; }
   ul a:not(.knopf) { color: var(--stahl); text-decoration: none; font-size: .95rem; }
   ul a:not(.knopf):hover, ul a[aria-current="page"] { color: var(--text); }
+  ul :global(a.repo) { color: var(--stahl); text-decoration: none; font-size: .95rem; }
+  ul :global(a.repo:hover) { color: var(--text); }
+  .fuss nav :global(a.repo) { color: var(--stahl); text-decoration: none; }
+  .fuss nav :global(a.repo:hover) { color: var(--text); }
   .sprache { font: 500 .85rem var(--mono); border: 1px solid var(--linie-hell); border-radius: 5px; padding: 3px 7px; }
   .menue { display: none; background: none; border: 0; color: var(--text); min-width: 44px; min-height: 44px; cursor: pointer; }
   @media (max-width: 820px) {
@@ -84,6 +93,8 @@
          padding: 8px var(--rand) 16px; background: var(--graphit); border-bottom: 1px solid var(--linie); }
     ul.offen { display: flex; }
     ul li a:not(.knopf) { display: block; padding: 12px 0; }
+    ul li :global(a.repo) { display: flex; padding: 12px 0; }
+    ul li a.sprache { display: inline-block; padding: 4px 9px; margin: 8px 0 4px; }
     ul .knopf { margin-top: 8px; justify-content: center; }
   }
   .fuss { border-top: 1px solid var(--linie); margin-top: 96px; padding: 40px 0 56px; }
