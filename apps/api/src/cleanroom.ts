@@ -6,9 +6,11 @@ import type { Db, Tx } from "./db.ts";
 
 export const RAEUME = ["analyse", "pruefung", "bau"] as const;
 export type Raum = (typeof RAEUME)[number];
+/** Raumnamen nach außen (MCP, Fehlertexte). */
+export const RAUM_EN: Record<Raum, string> = { analyse: "analysis", pruefung: "review", bau: "build" };
 
 /** Spezifikation: einziger Ort, den Analyse und Prüfung beschreiben dürfen; der Bau liest ihn nur. */
-export const SPEZIFIKATION = "spezifikation/";
+export const SPEZIFIKATION = "specification/";
 
 /** Wer in einem Raum war, darf pro Projekt nicht in diese Räume (symmetrisch). */
 const UNVERTRAEGLICH: Record<Raum, Raum[]> = {
@@ -18,20 +20,20 @@ const UNVERTRAEGLICH: Record<Raum, Raum[]> = {
 };
 
 export const REGELN_TEXT = [
-  "Clean-Room-Projekt: Das Vorbild wird neu gebaut, ohne geschützten Code oder geschützte Assets zu übernehmen.",
-  "Analyse: Untersuche nur deine eigene, rechtmäßig erworbene Kopie (lokal, z. B. mit REA). Kein Umgehen von Kopierschutz, Lizenzprüfungen oder Anti-Cheat. Reiche ausschließlich eine Spezifikation ein (Verhalten, Schnittstellen, Datenformate) – keinen dekompilierten Code, keine Assets, keine wörtlichen Texte.",
-  "Prüfung: Prüfe die Spezifikation darauf, dass sie nur Funktion beschreibt und keinen Ausdruck des Vorbilds enthält.",
-  "Bau: Implementiere nur aus der freigegebenen Spezifikation. Öffne, untersuche oder suche das Vorbild nicht.",
-  "Wer in einem Raum gearbeitet hat, kann im selben Projekt nicht auf die andere Seite wechseln; die Plattform setzt das durch und protokolliert es.",
+  "Clean-room project: the original is rebuilt without taking over protected code or protected assets.",
+  "Analysis: study only your own, lawfully acquired copy (locally, e.g. with REA). Do not circumvent copy protection, license checks or anti-cheat. Submit only a specification (behaviour, interfaces, data formats): no decompiled code, no assets, no verbatim text.",
+  "Review: check that the specification only describes function and contains no expression of the original.",
+  "Build: implement only from the approved specification. Do not open, study or look up the original.",
+  "Whoever has worked in one room cannot switch to the other side in the same project; the platform enforces and logs this.",
 ];
 
 /** Prüft beim Anlegen, ob Raum und Pfade zum Verfahren des Projekts passen. Liefert Fehlertexte. */
 export function aufgabePruefen(verfahren: string, raum: string | null | undefined, pfade: string[]): string[] {
-  if (verfahren !== "clean_room") return raum ? ["Räume gibt es nur in Clean-Room-Projekten"] : [];
-  if (!raum || !RAEUME.includes(raum as Raum)) return ["Clean-Room-Projekt: Aufgabe braucht einen Raum (analyse, pruefung oder bau)"];
+  if (verfahren !== "clean_room") return raum ? ["rooms only exist in clean-room projects"] : [];
+  if (!raum || !RAEUME.includes(raum as Raum)) return ["clean-room project: the task needs a room (analysis, review or build)"];
   const inSpez = (p: string) => p.startsWith(SPEZIFIKATION);
-  if (raum !== "bau" && !pfade.every(inSpez)) return [`Raum ${raum} darf nur unter ${SPEZIFIKATION} schreiben`];
-  if (raum === "bau" && pfade.some((p) => inSpez(p) || matchesGlob(SPEZIFIKATION + "x", p))) return [`Raum bau darf ${SPEZIFIKATION} nicht ändern`];
+  if (raum !== "bau" && !pfade.every(inSpez)) return [`room ${RAUM_EN[raum as Raum]} may only write under ${SPEZIFIKATION}`];
+  if (raum === "bau" && pfade.some((p) => inSpez(p) || matchesGlob(SPEZIFIKATION + "x", p))) return [`room build must not change ${SPEZIFIKATION}`];
   return [];
 }
 
@@ -46,7 +48,7 @@ export async function raeumeVon(tx: Db | Tx, menschId: number, projektId: number
 /** Grund, warum der Mensch diesen Raum nicht betreten darf, sonst null. */
 export function trennwand(bisher: Raum[], ziel: Raum): string | null {
   const konflikt = bisher.find((r) => UNVERTRAEGLICH[ziel].includes(r));
-  return konflikt ? `Clean Room: Du hast in diesem Projekt schon im Raum „${konflikt}“ gearbeitet und kannst deshalb nicht im Raum „${ziel}“ arbeiten.` : null;
+  return konflikt ? `clean room: you have already worked in room "${RAUM_EN[konflikt]}" in this project and therefore cannot work in room "${RAUM_EN[ziel]}"` : null;
 }
 
 /** Nachweis für ein Projekt: wie viele Menschen in welchem Raum, und ob die Trennung gehalten hat. */

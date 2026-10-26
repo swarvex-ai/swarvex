@@ -12,17 +12,17 @@ export async function kennzahlen(db: Db, slug: string) {
   const aufgaben = (await db.query("select a.id, a.stufe, a.zustand, a.faehigkeiten, m.titel as meilenstein from aufgaben a left join meilensteine m on m.id = a.meilenstein_id where a.projekt_id = $1 and a.zustand <> 'geschlossen'", [p.id])).rows;
   const gruppen = new Map<string, { gesamt: number; fertig: number }>();
   for (const a of aufgaben) {
-    const g = gruppen.get(a.meilenstein ?? "ohne Meilenstein") ?? { gesamt: 0, fertig: 0 };
+    const g = gruppen.get(a.meilenstein ?? "") ?? { gesamt: 0, fertig: 0 };
     g.gesamt += STUFEN_GEWICHT[a.stufe];
     if (ERLEDIGT.has(a.zustand)) g.fertig += STUFEN_GEWICHT[a.stufe];
-    gruppen.set(a.meilenstein ?? "ohne Meilenstein", g);
+    gruppen.set(a.meilenstein ?? "", g);
   }
-  const meilensteine = [...gruppen].map(([titel, g]) => ({ titel, fortschritt_prozent: g.gesamt ? Math.round((100 * g.fertig) / g.gesamt) : 0 }));
+  const meilensteine = [...gruppen].map(([titel, g]) => ({ titel: titel || null, fortschritt_prozent: g.gesamt ? Math.round((100 * g.fertig) / g.gesamt) : 0 }));
   const gesamt = meilensteine.length ? Math.round(meilensteine.reduce((s, m) => s + m.fortschritt_prozent, 0) / meilensteine.length) : 0;
   const aktiv = (await db.query(
     "select a.faehigkeiten from leases l join aufgaben a on a.id = l.aufgabe_id where a.projekt_id = $1 and l.beendet is null and l.laeuft_ab > now()", [p.id])).rows;
   const nachArt: Record<string, number> = {};
-  for (const l of aktiv) { const art = (l.faehigkeiten[0] ?? "sonstiges").split(".")[0]; nachArt[art] = (nachArt[art] ?? 0) + 1; }
+  for (const l of aktiv) { const art = (l.faehigkeiten[0] ?? "other").split(".")[0]; nachArt[art] = (nachArt[art] ?? 0) + 1; }
   const mitstreiter = (await db.query(
     "select count(distinct r.mensch_id)::int as menschen, (select count(distinct l.agent_id)::int from leases l join aufgaben a on a.id = l.aufgabe_id where a.projekt_id = $1) as agenten from projekt_rollen r where r.projekt_id = $1", [p.id])).rows[0];
   const vision = (await db.query("select zeit from ereignisse where projekt_id = $1 and art = 'vision_veroeffentlicht' order by seq limit 1", [p.id])).rows[0];
@@ -39,7 +39,7 @@ export async function kennzahlen(db: Db, slug: string) {
     projekt: p.slug, name: p.name, vision_kurz: p.vision_kurz, vision_veroeffentlicht: vision?.zeit ?? null,
     lead_modell: p.lead_modell, engine: p.engine, lizenz: `${p.lizenz_code} / ${p.lizenz_assets}`, ziel: p.ziel,
     fortschritt_prozent: gesamt, meilensteine,
-    fortschritt_berechnung: "angenommene Aufgaben ÷ alle Aufgaben je Meilenstein, gewichtet A=1 B=2 C=3 D=5; Gesamt = Mittel der Meilensteine",
+    fortschritt_berechnung: "accepted tasks ÷ all tasks per milestone, weighted A=1 B=2 C=3 D=5; total = mean of the milestones",
     agenten_aktiv: aktiv.length, agenten_aktiv_nach_art: nachArt,
     mitstreiter_menschen: mitstreiter.menschen, mitstreiter_agenten: mitstreiter.agenten,
     aufgaben_offen: offen, spenden_monat: spenden, zuletzt: zuletzt ? { zeit: zuletzt.zeit, art: zuletzt.art, bezug: zuletzt.bezug } : null,

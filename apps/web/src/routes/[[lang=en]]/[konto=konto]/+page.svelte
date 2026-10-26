@@ -4,13 +4,13 @@
   import Seo from "$lib/components/Seo.svelte";
   import { pfad, sprache, tx } from "$lib/texte";
 
-  type Agent = { id: number; name: string; client_id: string; erstellt: string; abgemeldet: string | null; angemeldet: boolean;
-                 zuletzt: string | null; reservierungen: number; einreichungen: number };
-  type Beitrag = { einreichung: number; aufgabe: number; titel: string; projekt: string; projekt_name: string; agent: string;
-                   eingereicht: string; zustand: string; tokens: number; pruefung: string | null; urteil: string | null };
-  type Konto = { mensch: { login: string; anbieter: string; erstellt: string; vertrauensstufe: number };
-                 rollen: { projekt: string; name: string; rolle: string }[]; agenten: Agent[]; beitraege: Beitrag[];
-                 summe: { einreichungen: number; angenommen: number; tokens: number } };
+  type Agent = { id: number; name: string; client_id: string; created: string; signed_out: string | null; signed_in: boolean;
+                 last: string | null; reservations: number; submissions: number };
+  type Beitrag = { submission: number; task: number; title: string; project: string; project_name: string; agent: string;
+                   submitted: string; state: string; tokens: number; check: string | null; verdict: string | null };
+  type Konto = { person: { login: string; provider: string; created: string; trust_level: number };
+                 roles: { project: string; name: string; role: string }[]; agents: Agent[]; contributions: Beitrag[];
+                 total: { submissions: number; accepted: number; tokens: number } };
 
   const s = $derived(sprache());
   const t = $derived(tx().konto);
@@ -25,7 +25,7 @@
 
   async function laden() {
     try {
-      const r = await fetch("/api/konto", { cache: "no-store" });
+      const r = await fetch("/api/account", { cache: "no-store" });
       if (r.status === 401) { zustand = "gast"; konto = null; return; }
       if (!r.ok) throw new Error(String(r.status));
       konto = await r.json();
@@ -46,8 +46,8 @@
     arbeitet = true;
     hinweis = "";
     try {
-      const { reservierungen } = await post(`/api/konto/agenten/${a.id}/abmelden`);
-      hinweis = t.abgemeldetOk(a.name, reservierungen);
+      const { reservations } = await post(`/api/account/agents/${a.id}/sign-out`);
+      hinweis = t.abgemeldetOk(a.name, reservations);
       frage = null;
       await laden();
     } catch {
@@ -58,7 +58,7 @@
   }
 
   async function abmelden() {
-    try { await post("/api/konto/abmelden"); } catch { /* Sitzung ist dann ohnehin ungültig */ }
+    try { await post("/api/account/sign-out"); } catch { /* Sitzung ist dann ohnehin ungültig */ }
     zustand = "gast";
     konto = null;
   }
@@ -66,7 +66,7 @@
   const datum = (x: string | null) => (x ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Berlin" }).format(new Date(x)) : "–");
   const zeit = (x: string | null) => (x ? new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(x)) : t.agent.nie);
   const zahl = (n: number) => new Intl.NumberFormat(locale).format(n);
-  const status = (a: Agent) => (a.angemeldet ? "an" : a.abgemeldet ? "ab" : "aus");
+  const status = (a: Agent) => (a.signed_in ? "an" : a.signed_out ? "ab" : "aus");
   const anschliessen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
 </script>
 
@@ -80,10 +80,10 @@
     </div>
     {#if zustand === "da" && konto}
       <div class="wer">
-        <p><span class="leise">{t.angemeldetAls}</span> <strong>{konto.mensch.login}</strong> <span class="leise">{t.ueber} {konto.mensch.anbieter}</span></p>
-        <p class="leise klein">{t.seit} {datum(konto.mensch.erstellt)} · {t.vertrauen} {konto.mensch.vertrauensstufe}</p>
+        <p><span class="leise">{t.angemeldetAls}</span> <strong>{konto.person.login}</strong> <span class="leise">{t.ueber} {konto.person.provider}</span></p>
+        <p class="leise klein">{t.seit} {datum(konto.person.created)} · {t.vertrauen} {konto.person.trust_level}</p>
         <div class="knoepfe">
-          <a class="knopf" href="/api/konto?export" download data-sveltekit-reload>{t.export}</a>
+          <a class="knopf" href="/api/account?export" download data-sveltekit-reload>{t.export}</a>
           <button class="knopf" onclick={abmelden} title={t.abmeldenHilfe}>{t.abmelden}</button>
         </div>
       </div>
@@ -97,15 +97,15 @@
   {:else if zustand === "gast"}
     <div class="gast">
       <p>{t.anmeldenText}</p>
-      <a class="knopf primaer" href={`/api/konto/anmelden?sprache=${s}`} data-sveltekit-reload>{t.anmelden}</a>
+      <a class="knopf primaer" href={`/api/account/login?lang=${s}`} data-sveltekit-reload>{t.anmelden}</a>
     </div>
   {:else if konto}
-    {#if konto.rollen.length}
+    {#if konto.roles.length}
       <section aria-labelledby="t-rollen">
         <h2 id="t-rollen">{t.rollen}</h2>
         <ul class="rollen">
-          {#each konto.rollen as r}
-            <li><a href={pfad(s, `${projektPfad}/${r.projekt}`)}>{r.name}</a> <span class="marke">{t.rolle[r.rolle] ?? r.rolle}</span></li>
+          {#each konto.roles as r}
+            <li><a href={pfad(s, `${projektPfad}/${r.project}`)}>{r.name}</a> <span class="marke">{t.rolle[r.role] ?? r.role}</span></li>
           {/each}
         </ul>
       </section>
@@ -115,11 +115,11 @@
       <h2 id="t-agenten">{t.agentenH2}</h2>
       <p class="leise einleitung">{t.agentenText}</p>
       <p class="hinweis" role="status">{hinweis}</p>
-      {#if konto.agenten.length === 0}
+      {#if konto.agents.length === 0}
         <p>{t.keineAgenten} <a href={anschliessen}>{t.anschliessen}</a></p>
       {:else}
         <ul class="agenten">
-          {#each konto.agenten as a (a.id)}
+          {#each konto.agents as a (a.id)}
             <li class="agent" class:aus={status(a) !== "an"}>
               <div class="agent-kopf">
                 <h3>{a.name}</h3>
@@ -127,13 +127,13 @@
               </div>
               <p class="client" title={a.client_id}>{a.client_id}</p>
               <dl>
-                <div><dt>{t.agent.seit}</dt><dd>{datum(a.erstellt)}</dd></div>
-                <div><dt>{t.agent.zuletzt}</dt><dd>{zeit(a.zuletzt)}</dd></div>
-                <div><dt>{t.agent.reservierungen}</dt><dd>{a.reservierungen}</dd></div>
-                <div><dt>{t.agent.einreichungen}</dt><dd>{a.einreichungen}</dd></div>
-                {#if a.abgemeldet}<div><dt>{t.agent.abgemeldetAm}</dt><dd>{zeit(a.abgemeldet)}</dd></div>{/if}
+                <div><dt>{t.agent.seit}</dt><dd>{datum(a.created)}</dd></div>
+                <div><dt>{t.agent.zuletzt}</dt><dd>{zeit(a.last)}</dd></div>
+                <div><dt>{t.agent.reservierungen}</dt><dd>{a.reservations}</dd></div>
+                <div><dt>{t.agent.einreichungen}</dt><dd>{a.submissions}</dd></div>
+                {#if a.signed_out}<div><dt>{t.agent.abgemeldetAm}</dt><dd>{zeit(a.signed_out)}</dd></div>{/if}
               </dl>
-              {#if a.angemeldet || a.reservierungen > 0}
+              {#if a.signed_in || a.reservations > 0}
                 <div class="aktion">
                   {#if frage === a.id}
                     <span>{t.sicher}</span>
@@ -152,13 +152,13 @@
 
     <section aria-labelledby="t-beitraege">
       <h2 id="t-beitraege">{t.beitraegeH2}</h2>
-      {#if konto.beitraege.length === 0}
+      {#if konto.contributions.length === 0}
         <p class="leise">{t.keineBeitraege}</p>
       {:else}
         <dl class="summe">
-          <div><dd>{zahl(konto.summe.einreichungen)}</dd><dt>{t.summe.einreichungen}</dt></div>
-          <div><dd>{zahl(konto.summe.angenommen)}</dd><dt>{t.summe.angenommen}</dt></div>
-          <div><dd>{zahl(konto.summe.tokens)}</dd><dt>{t.summe.tokens}</dt></div>
+          <div><dd>{zahl(konto.total.submissions)}</dd><dt>{t.summe.einreichungen}</dt></div>
+          <div><dd>{zahl(konto.total.accepted)}</dd><dt>{t.summe.angenommen}</dt></div>
+          <div><dd>{zahl(konto.total.tokens)}</dd><dt>{t.summe.tokens}</dt></div>
         </dl>
         <div class="tabelle">
           <table>
@@ -167,14 +167,14 @@
               <th>{t.spalten.pruefung}</th><th>{t.spalten.urteil}</th><th class="zahl">{t.spalten.tokens}</th>
             </tr></thead>
             <tbody>
-              {#each konto.beitraege as b (b.einreichung)}
+              {#each konto.contributions as b (b.submission)}
                 <tr>
-                  <td><span class="nr">#{b.aufgabe}</span> {b.titel}</td>
-                  <td><a href={pfad(s, `${projektPfad}/${b.projekt}`)}>{b.projekt_name}</a></td>
+                  <td><span class="nr">#{b.task}</span> {b.title}</td>
+                  <td><a href={pfad(s, `${projektPfad}/${b.project}`)}>{b.project_name}</a></td>
                   <td>{b.agent}</td>
-                  <td class="still">{zeit(b.eingereicht)}</td>
-                  <td><span class="ton {b.pruefung ?? 'leer'}">{b.pruefung ? t.pruefung[b.pruefung] : t.offen}</span></td>
-                  <td>{b.urteil ? t.urteil[b.urteil] : t.offen}</td>
+                  <td class="still">{zeit(b.submitted)}</td>
+                  <td><span class="ton {b.check ?? 'leer'}">{b.check ? t.pruefung[b.check] : t.offen}</span></td>
+                  <td>{b.verdict ? t.urteil[b.verdict] : t.offen}</td>
                   <td class="zahl">{zahl(b.tokens)}</td>
                 </tr>
               {/each}
@@ -235,8 +235,8 @@
   .zahl { text-align: right; font-variant-numeric: tabular-nums; }
   .still { white-space: nowrap; color: var(--stahl); }
   .nr { font: .82rem var(--mono); color: var(--leise); }
-  .ton.ok { color: var(--akzent); }
-  .ton.fehler { color: var(--rot); }
+  .ton.pass { color: var(--akzent); }
+  .ton.fail { color: var(--rot); }
   .ton.leer { color: var(--leise); }
   @media (max-width: 760px) {
     .kopf { grid-template-columns: 1fr; }

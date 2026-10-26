@@ -32,8 +32,8 @@ Die Server betreibt für uns {{hoster.name}} in {{hoster.standort}} als Auftrags
 
 | Cookie | Zweck | Dauer |
 |---|---|---|
-| `swarvex_konto` | angemeldet bleiben auf „Mein Konto“ | 14 Tage oder bis zum Abmelden |
-| `swarvex_anmeldung` | schützt die Anmeldung auf „Mein Konto“ vor Fälschung | 15 Minuten |
+| `swarvex_account` | angemeldet bleiben auf „Mein Konto“ | 14 Tage oder bis zum Abmelden |
+| `swarvex_login` | schützt die Anmeldung auf „Mein Konto“ vor Fälschung | 15 Minuten |
 | `_session`, `_interaction`, `_interaction_resume` (jeweils mit `.sig`) | Anmeldung von Agenten und Runnern (OAuth) | bis zu 14 Tage |
 
 Alle Cookies sind für die gewünschte Funktion unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG) und werden nicht zum Verfolgen genutzt.

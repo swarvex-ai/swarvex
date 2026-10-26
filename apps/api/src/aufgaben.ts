@@ -6,6 +6,9 @@ import { matchesGlob } from "node:path";
 import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { aufgabePruefen, raeumeVon, trennwand, type Raum } from "./cleanroom.ts";
+import { WERTE } from "./aussen.ts";
+
+const en = (zustand: string) => WERTE.zustand[zustand] ?? zustand;
 
 export const ZUSTAENDE = ["offen", "reserviert", "in_arbeit", "eingereicht", "pruefung", "geprueft_ok", "geprueft_fehler", "angenommen", "gemerged", "geschlossen"] as const;
 export type Zustand = (typeof ZUSTAENDE)[number];
@@ -34,13 +37,13 @@ const akteur = (w: Wer) => `agent:${w.agentId}`;
 
 async function aufgabeSperren(tx: Tx, id: number) {
   const r = await tx.query("select * from aufgaben where id = $1 for update", [id]);
-  if (!r.rows[0]) throw new Abgelehnt(`Aufgabe ${id} gibt es nicht`);
+  if (!r.rows[0]) throw new Abgelehnt(`task ${id} does not exist`);
   return r.rows[0];
 }
 
 async function wechseln(tx: Tx, aufgabe: any, nach: Zustand, wer: string, art: string, daten: Record<string, unknown> = {}) {
   const von = aufgabe.zustand as Zustand;
-  if (!UEBERGAENGE[von].includes(nach)) throw new Abgelehnt(`Übergang ${von} → ${nach} ist nicht erlaubt`);
+  if (!UEBERGAENGE[von].includes(nach)) throw new Abgelehnt(`transition ${en(von)} → ${en(nach)} is not allowed`);
   await tx.query("update aufgaben set zustand = $2 where id = $1", [aufgabe.id, nach]);
   await protokollieren(tx, { projekt_id: Number(aufgabe.projekt_id), akteur: wer, art, bezug: `aufgabe:${aufgabe.id}`, daten: { von, nach, ...daten } });
 }
@@ -52,13 +55,13 @@ export async function rollenVon(db: Db | Tx, menschId: number, projektId: number
 
 async function mussLeadSein(tx: Tx, menschId: number, projektId: number) {
   const rollen = await rollenVon(tx, menschId, projektId);
-  if (!rollen.includes("lead") && !rollen.includes("visionaer")) throw new Abgelehnt("Nur der Lead des Projekts darf das");
+  if (!rollen.includes("lead") && !rollen.includes("visionaer")) throw new Abgelehnt("only the project's lead may do this");
 }
 
 export async function projektPerSlug(db: Db | Tx, slug: string) {
   const r = await db.query("select * from projekte where slug = $1", [slug]);
-  if (!r.rows[0]) throw new Abgelehnt(`Projekt ${slug} gibt es nicht`);
-  if (r.rows[0].gesperrt) throw new Abgelehnt(`Projekt ${slug} ist gesperrt`);
+  if (!r.rows[0]) throw new Abgelehnt(`project ${slug} does not exist`);
+  if (r.rows[0].gesperrt) throw new Abgelehnt(`project ${slug} is blocked`);
   return r.rows[0];
 }
 
@@ -131,10 +134,10 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
   return transaktion(db, async (tx) => {
     const a = await aufgabeSperren(tx, aufgabeId);
     const m = (await tx.query("select vertrauensstufe, gesperrt from menschen where id = $1", [wer.menschId])).rows[0];
-    if (m.gesperrt) throw new Abgelehnt("Konto gesperrt");
-    if ((await tx.query("select gesperrt from projekte where id = $1", [a.projekt_id])).rows[0]?.gesperrt) throw new Abgelehnt("Projekt ist gesperrt");
-    if (m.vertrauensstufe < a.min_vertrauen) throw new Abgelehnt(`Vertrauensstufe ${a.min_vertrauen} nötig`);
-    if (a.zustand !== "offen") throw new Abgelehnt(`Aufgabe ist ${a.zustand}`);
+    if (m.gesperrt) throw new Abgelehnt("account blocked");
+    if ((await tx.query("select gesperrt from projekte where id = $1", [a.projekt_id])).rows[0]?.gesperrt) throw new Abgelehnt("project is blocked");
+    if (m.vertrauensstufe < a.min_vertrauen) throw new Abgelehnt(`trust level ${a.min_vertrauen} required`);
+    if (a.zustand !== "offen") throw new Abgelehnt(`task is ${en(a.zustand)}`);
     if (a.raum) {
       const grund = trennwand(await raeumeVon(tx, wer.menschId, Number(a.projekt_id)), a.raum);
       if (grund) throw new TrennwandVerletzt(grund, Number(a.projekt_id), a.raum);
@@ -155,14 +158,14 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
 
 async function aktiveLeaseVon(tx: Tx, aufgabeId: number, agentId: number) {
   const l = (await tx.query("select * from leases where aufgabe_id = $1 and beendet is null", [aufgabeId])).rows[0];
-  if (!l || Number(l.agent_id) !== agentId) throw new Abgelehnt("Diese Aufgabe ist nicht für dich reserviert");
-  if (new Date(l.laeuft_ab) < new Date()) throw new Abgelehnt("Reservierung abgelaufen");
+  if (!l || Number(l.agent_id) !== agentId) throw new Abgelehnt("this task is not reserved for you");
+  if (new Date(l.laeuft_ab) < new Date()) throw new Abgelehnt("reservation expired");
   return l;
 }
 
 export async function details(db: Db, wer: Wer, aufgabeId: number) {
   const a = (await db.query("select * from aufgaben where id = $1", [aufgabeId])).rows[0];
-  if (!a) throw new Abgelehnt(`Aufgabe ${aufgabeId} gibt es nicht`);
+  if (!a) throw new Abgelehnt(`task ${aufgabeId} does not exist`);
   const p = (await db.query("select slug, repo_url, engine from projekte where id = $1", [a.projekt_id])).rows[0];
   return { ...a, projekt: p.slug, repo_url: p.repo_url, engine: p.engine, grenzen: GRENZEN };
 }
@@ -200,15 +203,15 @@ export const GESCHUETZT = ["swarvex.yaml", ".devcontainer/**", ".devcontainer.js
 export function patchPruefen(patch: string, erlaubt: string[]): string[] {
   const fehler: string[] = [];
   const pfade = geaendertePfade(patch);
-  if (pfade.length === 0) fehler.push("Patch enthält keine Dateiänderungen");
+  if (pfade.length === 0) fehler.push("patch contains no file changes");
   for (const p of pfade) {
-    if (p.includes("..") || p.startsWith("/")) fehler.push(`unzulässiger Pfad: ${p}`);
-    else if (GESCHUETZT.some((g) => matchesGlob(p, g))) fehler.push(`geschützte Datei (Umgebung, Projektregeln oder CI): ${p}`);
-    else if (!erlaubt.some((g) => matchesGlob(p, g))) fehler.push(`außerhalb der erlaubten Pfade: ${p}`);
+    if (p.includes("..") || p.startsWith("/")) fehler.push(`invalid path: ${p}`);
+    else if (GESCHUETZT.some((g) => matchesGlob(p, g))) fehler.push(`protected file (environment, project rules or CI): ${p}`);
+    else if (!erlaubt.some((g) => matchesGlob(p, g))) fehler.push(`outside the allowed paths: ${p}`);
   }
-  if (pfade.length > GRENZEN.dateien) fehler.push(`zu viele Dateien: ${pfade.length} > ${GRENZEN.dateien}`);
+  if (pfade.length > GRENZEN.dateien) fehler.push(`too many files: ${pfade.length} > ${GRENZEN.dateien}`);
   const zeilen = patch.split("\n").filter((z) => /^[+-](?![+-]{2} )/.test(z)).length;
-  if (zeilen > GRENZEN.zeilen) fehler.push(`zu viele geänderte Zeilen: ${zeilen} > ${GRENZEN.zeilen}`);
+  if (zeilen > GRENZEN.zeilen) fehler.push(`too many changed lines: ${zeilen} > ${GRENZEN.zeilen}`);
   return fehler;
 }
 
@@ -264,7 +267,7 @@ export async function leasesBeenden(tx: Tx, wo: { abgelaufen: true } | { projekt
 export async function pruefungStarten(db: Db, einreichungId: number) {
   return transaktion(db, async (tx) => {
     const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];
-    if (!e) throw new Abgelehnt("Einreichung unbekannt");
+    if (!e) throw new Abgelehnt("unknown submission");
     const a = await aufgabeSperren(tx, e.aufgabe_id);
     await wechseln(tx, a, "pruefung", "pruefstrasse", "pruefung_gestartet", { einreichung: einreichungId });
   });
@@ -273,7 +276,7 @@ export async function pruefungStarten(db: Db, einreichungId: number) {
 export async function pruefungMelden(db: Db, einreichungId: number, ergebnis: "ok" | "fehler", bericht: string, signatur: string, quelle: "projekt" | "stichprobe" = "projekt") {
   return transaktion(db, async (tx) => {
     const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];
-    if (!e) throw new Abgelehnt("Einreichung unbekannt");
+    if (!e) throw new Abgelehnt("unknown submission");
     const a = await aufgabeSperren(tx, e.aufgabe_id);
     await tx.query("insert into pruefungen(einreichung_id, quelle, ergebnis, bericht, signatur) values ($1,$2,$3,$4,$5)", [einreichungId, quelle, ergebnis, bericht, signatur]);
     await wechseln(tx, a, ergebnis === "ok" ? "geprueft_ok" : "geprueft_fehler", "pruefstrasse", "pruefung_beendet", { einreichung: einreichungId, ergebnis, quelle });
@@ -285,12 +288,12 @@ export async function pruefungMelden(db: Db, einreichungId: number, ergebnis: "o
 export async function bewerten(db: Db, wer: Wer, einreichungId: number, urteil: "annehmen" | "nacharbeit" | "ablehnen", begruendung: string) {
   return transaktion(db, async (tx) => {
     const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];
-    if (!e) throw new Abgelehnt("Einreichung unbekannt");
+    if (!e) throw new Abgelehnt("unknown submission");
     const a = await aufgabeSperren(tx, e.aufgabe_id);
     await mussLeadSein(tx, wer.menschId, a.projekt_id);
     const autor = (await tx.query("select mensch_id from agenten where id = $1", [e.agent_id])).rows[0];
-    if (Number(autor.mensch_id) === wer.menschId) throw new Abgelehnt("Niemand bewertet seine eigene Einreichung – auch nicht über einen zweiten Agenten");
-    if (a.zustand !== "geprueft_ok") throw new Abgelehnt(`Bewerten erst nach grüner Prüfung (Aufgabe ist ${a.zustand})`);
+    if (Number(autor.mensch_id) === wer.menschId) throw new Abgelehnt("nobody reviews their own submission, not even through a second agent");
+    if (a.zustand !== "geprueft_ok") throw new Abgelehnt(`review only after a passing check (task is ${en(a.zustand)})`);
     await tx.query("insert into bewertungen(einreichung_id, agent_id, urteil, begruendung) values ($1,$2,$3,$4)", [einreichungId, wer.agentId, urteil, begruendung]);
     await wechseln(tx, a, urteil === "annehmen" ? "angenommen" : "offen", akteur(wer), "bewertet", { einreichung: einreichungId, urteil, begruendung });
   });

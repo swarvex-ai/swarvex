@@ -48,23 +48,23 @@ mcp = lambda: anfrage("POST", "/mcp", {"jsonrpc": "2.0", "id": 1, "method": "too
 pruefe("MCP mit Token", mcp() == 200)
 
 # 2. Website-Konto
-pruefe("ohne Sitzung 401", anfrage("GET", "/api/konto")[0] == 401)
-ende = folgen("/api/konto/anmelden?sprache=de", B + "/konto")
+pruefe("ohne Sitzung 401", anfrage("GET", "/api/account")[0] == 401)
+ende = folgen("/api/account/login?lang=de", B + "/konto")
 pruefe("Anmeldung endet auf /konto", ende == B + "/konto", ende)
-s, _, t = anfrage("GET", "/api/konto"); d = json.loads(t)
-agent = next(a for a in d["agenten"] if a["client_id"] == client)
-pruefe("Konto zeigt Agent angemeldet", s == 200 and agent["angemeldet"], d["mensch"]["login"])
+s, _, t = anfrage("GET", "/api/account"); d = json.loads(t)
+agent = next(a for a in d["agents"] if a["client_id"] == client)
+pruefe("Konto zeigt Agent angemeldet", s == 200 and agent["signed_in"], d["person"]["login"])
 
 # 3. Abmelden: fremde Herkunft abgewiesen, eigene ok
-pruefe("ohne Origin 403", anfrage("POST", f"/api/konto/agenten/{agent['id']}/abmelden", {})[0] == 403)
-pruefe("fremder Origin 403", anfrage("POST", f"/api/konto/agenten/{agent['id']}/abmelden", {}, {"origin": "https://boese.example"})[0] == 403)
-s, _, t = anfrage("POST", f"/api/konto/agenten/{agent['id']}/abmelden", {}, {"origin": B})
+pruefe("ohne Origin 403", anfrage("POST", f"/api/account/agents/{agent['id']}/sign-out", {})[0] == 403)
+pruefe("fremder Origin 403", anfrage("POST", f"/api/account/agents/{agent['id']}/sign-out", {}, {"origin": "https://boese.example"})[0] == 403)
+s, _, t = anfrage("POST", f"/api/account/agents/{agent['id']}/sign-out", {}, {"origin": B})
 pruefe("Agent abgemeldet", s == 200, t)
 pruefe("altes Access-Token abgewiesen", mcp() == 401)
 s, _, t = anfrage("POST", "/token", {"grant_type": "refresh_token", "refresh_token": tok["refresh_token"], "client_id": client}, form)
 pruefe("Refresh-Token ungültig", s == 400 and "invalid_grant" in t, s)
-agent = next(a for a in json.loads(anfrage("GET", "/api/konto")[2])["agenten"] if a["client_id"] == client)
-pruefe("Konto zeigt abgemeldet", not agent["angemeldet"] and agent["abgemeldet"])
+agent = next(a for a in json.loads(anfrage("GET", "/api/account")[2])["agents"] if a["client_id"] == client)
+pruefe("Konto zeigt abgemeldet", not agent["signed_in"] and agent["signed_out"])
 
 # 4. Neu anmelden geht wieder
 code = parse_qs(urlparse(folgen(auth, "http://127.0.0.1:9/cb")).query)["code"][0]
@@ -74,6 +74,6 @@ s, _, t = anfrage("POST", "/token", {"grant_type": "authorization_code", "code":
 tok = json.loads(t); pruefe("neu angemeldet, MCP geht wieder", mcp() == 200)
 
 # 5. Website abmelden
-pruefe("Website-Abmeldung", anfrage("POST", "/api/konto/abmelden", {}, {"origin": B})[0] == 200)
-pruefe("danach 401", anfrage("GET", "/api/konto")[0] == 401)
+pruefe("Website-Abmeldung", anfrage("POST", "/api/account/sign-out", {}, {"origin": B})[0] == 200)
+pruefe("danach 401", anfrage("GET", "/api/account")[0] == 401)
 print("alles grün")

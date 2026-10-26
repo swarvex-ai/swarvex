@@ -49,13 +49,13 @@ describe("Zustandsmaschine", () => {
     const e = await k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "fertig", eigene_tests: "ok", verbrauch: { tokens: 5000 } });
     expect(e).toHaveProperty("einreichung_id");
     const eid = (e as any).einreichung_id;
-    await expect(k.bewerten(db, lead, eid, "annehmen", "gut")).rejects.toThrow(/nach grüner Prüfung/);
+    await expect(k.bewerten(db, lead, eid, "annehmen", "gut")).rejects.toThrow(/after a passing check/);
     await k.pruefungStarten(db, eid);
     await k.pruefungMelden(db, eid, "ok", "alle Tests grün", "sig");
-    await expect(k.bewerten(db, mit, eid, "annehmen", "selbst")).rejects.toThrow(/Lead/);
+    await expect(k.bewerten(db, mit, eid, "annehmen", "selbst")).rejects.toThrow(/lead/);
     // Der Lead mit einem zweiten Agenten: auch das ist eine Selbstbewertung, falls er der Autor wäre.
     await db.query("insert into projekt_rollen values ((select id from projekte where slug='test'), $1, 'lead') on conflict do nothing", [mit.menschId]);
-    await expect(k.bewerten(db, { menschId: mit.menschId, agentId: lead.agentId }, eid, "annehmen", "selbst")).rejects.toThrow(/eigene Einreichung/);
+    await expect(k.bewerten(db, { menschId: mit.menschId, agentId: lead.agentId }, eid, "annehmen", "selbst")).rejects.toThrow(/own submission/);
     await db.query("delete from projekt_rollen where mensch_id = $1 and rolle = 'lead'", [mit.menschId]);
     await k.bewerten(db, lead, eid, "annehmen", "sauber umgesetzt");
     await k.gemergedMelden(db, eid, "abc123");
@@ -67,11 +67,11 @@ describe("Zustandsmaschine", () => {
 
   it("verbietet unerlaubte Übergänge und fremde Leases", async () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Fremd"));
-    await expect(k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "", eigene_tests: "", verbrauch: {} })).rejects.toThrow(/nicht für dich reserviert/);
+    await expect(k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "", eigene_tests: "", verbrauch: {} })).rejects.toThrow(/not reserved for you/);
     await k.reservieren(db, mit, a.id);
-    await expect(k.reservieren(db, fremd, a.id)).rejects.toThrow(/reserviert/);
-    await expect(k.fortschritt(db, fremd, a.id, "x", {})).rejects.toThrow(/nicht für dich/);
-    await expect(k.aufgabeAnlegen(db, mit, "test", neueAufgabe("kein Lead"))).rejects.toThrow(/Lead/);
+    await expect(k.reservieren(db, fremd, a.id)).rejects.toThrow(/reserved/);
+    await expect(k.fortschritt(db, fremd, a.id, "x", {})).rejects.toThrow(/not reserved for you/);
+    await expect(k.aufgabeAnlegen(db, mit, "test", neueAufgabe("kein Lead"))).rejects.toThrow(/lead/);
   });
 
   it("gibt abgelaufene Reservierungen zurück in den Pool", async () => {
@@ -100,7 +100,7 @@ describe("Pfadprüfung (S5)", () => {
     const boese = PATCH_OK.replaceAll("game/modules/vfx/neu.gd", "tools/run_tests.sh");
     const r = await k.einreichen(db, mit, a.id, { patch: boese, zusammenfassung: "", eigene_tests: "", verbrauch: {} });
     expect(r).toHaveProperty("abgewiesen");
-    expect(k.patchPruefen(PATCH_OK.replaceAll("game/modules/vfx/neu.gd", "game/modules/vfx/../../../etc/x"), ["game/modules/vfx/**"]).join()).toMatch(/unzulässiger Pfad/);
+    expect(k.patchPruefen(PATCH_OK.replaceAll("game/modules/vfx/neu.gd", "game/modules/vfx/../../../etc/x"), ["game/modules/vfx/**"]).join()).toMatch(/invalid path/);
     const art = (await db.query("select art from ereignisse where bezug = $1 order by seq desc limit 1", [`aufgabe:${a.id}`])).rows[0].art;
     expect(art).toBe("einreichung_abgewiesen");
   });
@@ -115,20 +115,20 @@ describe("Clean Room (E-26)", () => {
     await db.query("insert into projekt_rollen values ($1,$2,'lead')", [cr, lead.menschId]);
     const basis = { beschreibung: "x", stufe: "B" as const, faehigkeiten: ["spec"], akzeptanz: ["ok"] };
     // Raum ist Pflicht, Pfade passen zum Raum
-    await expect(k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "ohne Raum", pfade: ["spezifikation/a.md"] })).rejects.toThrow(/braucht einen Raum/);
-    await expect(k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "Analyse falsch", raum: "analyse", pfade: ["src/**"] })).rejects.toThrow(/nur unter spezifikation/);
-    await expect(k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "Bau falsch", raum: "bau", pfade: ["**"] })).rejects.toThrow(/nicht ändern/);
-    await expect(k.aufgabeAnlegen(db, lead, "test", { ...basis, titel: "Raum ohne CR", raum: "bau", pfade: ["game/**"] })).rejects.toThrow(/nur in Clean-Room/);
-    const analyse = await k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "Speichern beschreiben", raum: "analyse", pfade: ["spezifikation/**"] });
+    await expect(k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "ohne Raum", pfade: ["specification/a.md"] })).rejects.toThrow(/needs a room/);
+    await expect(k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "Analyse falsch", raum: "analyse", pfade: ["src/**"] })).rejects.toThrow(/only write under specification/);
+    await expect(k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "Bau falsch", raum: "bau", pfade: ["**"] })).rejects.toThrow(/must not change/);
+    await expect(k.aufgabeAnlegen(db, lead, "test", { ...basis, titel: "Raum ohne CR", raum: "bau", pfade: ["game/**"] })).rejects.toThrow(/only exist in clean-room/);
+    const analyse = await k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "Speichern beschreiben", raum: "analyse", pfade: ["specification/**"] });
     const bau1 = await k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "Speichern bauen", raum: "bau", pfade: ["src/**"] });
     const bau2 = await k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "Laden bauen", raum: "bau", pfade: ["src/**"] });
-    const analyse2 = await k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "Laden beschreiben", raum: "analyse", pfade: ["spezifikation/**"] });
+    const analyse2 = await k.aufgabeAnlegen(db, lead, "cr", { ...basis, titel: "Laden beschreiben", raum: "analyse", pfade: ["specification/**"] });
 
     await k.reservieren(db, mit, analyse.id);                               // mit analysiert …
-    await expect(k.reservieren(db, mit, bau1.id)).rejects.toThrow(/Clean Room/);   // … und darf nicht bauen
+    await expect(k.reservieren(db, mit, bau1.id)).rejects.toThrow(/clean room/);   // … und darf nicht bauen
     expect((await k.aufgabenPassend(db, mit, "cr")).map((a) => a.raum)).not.toContain("bau");
     await k.reservieren(db, fremd, bau1.id);                               // fremd baut …
-    await expect(k.reservieren(db, fremd, analyse2.id)).rejects.toThrow(/Clean Room/); // … und darf nicht analysieren
+    await expect(k.reservieren(db, fremd, analyse2.id)).rejects.toThrow(/clean room/); // … und darf nicht analysieren
     await k.reservieren(db, fremd, bau2.id);                               // weiter bauen geht
 
     const verweigert = (await db.query("select count(*)::int as n from ereignisse where art = 'clean_room_trennung' and projekt_id = $1", [cr])).rows[0].n;
@@ -143,11 +143,11 @@ describe("Clean Room (E-26)", () => {
 describe("Meldungen und Sperren (#19, #29)", () => {
   it("nimmt Meldungen an, prüft sie und protokolliert ohne persönliche Daten", async () => {
     const { meldungAnlegen, meldungenListe, meldungAbschliessen } = await import("../src/meldungen.ts");
-    const gut = { art: "rechtsverletzung", projekt: "test", bezug: "https://example.org/datei", beschreibung: "Diese Datei stammt aus meinem Spiel und wurde ohne Erlaubnis übernommen.",
-      name: "Rita Rechte", email: "rita@example.org", rechteinhaber: true, versichert: true };
+    const gut = { kind: "infringement", project: "test", location: "https://example.org/datei", description: "Diese Datei stammt aus meinem Spiel und wurde ohne Erlaubnis übernommen.",
+      name: "Rita Rechte", email: "rita@example.org", rights_holder: true, confirmed: true };
     const { id } = await meldungAnlegen(db, gut);
-    await expect(meldungAnlegen(db, { ...gut, versichert: false })).rejects.toThrow();
-    await expect(meldungAnlegen(db, { ...gut, beschreibung: "zu kurz" })).rejects.toThrow();
+    await expect(meldungAnlegen(db, { ...gut, confirmed: false })).rejects.toThrow();
+    await expect(meldungAnlegen(db, { ...gut, description: "zu kurz" })).rejects.toThrow();
     await expect(meldungAnlegen(db, { ...gut, website: "spam" })).rejects.toThrow();
     expect((await meldungenListe(db)).map((m) => Number(m.id))).toContain(id);
     const ereignis = (await db.query("select daten from ereignisse where bezug = $1", [`meldung:${id}`])).rows[0].daten;
@@ -166,14 +166,14 @@ describe("Meldungen und Sperren (#19, #29)", () => {
     // Die Reservierung endet, die Aufgabe ist wieder frei (nicht in „reserviert“ hängen geblieben)
     expect((await db.query("select zustand from aufgaben where id = $1", [offen.id])).rows[0].zustand).toBe("offen");
     expect((await db.query("select count(*)::int as n from leases where aufgabe_id = $1 and beendet is null", [offen.id])).rows[0].n).toBe(0);
-    await expect(k.aufgabenPassend(db, mit, "test")).rejects.toThrow(/gesperrt/);
-    await expect(k.reservieren(db, mit, offen.id)).rejects.toThrow(/gesperrt/);
+    await expect(k.aufgabenPassend(db, mit, "test")).rejects.toThrow(/blocked/);
+    await expect(k.reservieren(db, mit, offen.id)).rejects.toThrow(/blocked/);
     expect((await projektListe(db)).projekte.map((x) => x.projekt)).not.toContain("test");
     await sperren(db, { projekt: pid }, false, "Meldung erledigt");
     expect((await k.aufgabenPassend(db, mit, "test")).map((a) => a.id)).toContain(offen.id);
 
     await sperren(db, { mensch: fremd.menschId }, true, "Spam-Einreichungen");
-    await expect(k.reservieren(db, fremd, offen.id)).rejects.toThrow(/Konto gesperrt/);
+    await expect(k.reservieren(db, fremd, offen.id)).rejects.toThrow(/account blocked/);
     await sperren(db, { mensch: fremd.menschId }, false, "Einspruch berechtigt");
     const arten = (await db.query("select art from ereignisse where art like '%gesperrt' or art like '%entsperrt' order by seq")).rows.map((r) => r.art);
     expect(arten).toEqual(["projekt_gesperrt", "projekt_entsperrt", "mensch_gesperrt", "mensch_entsperrt"]);
@@ -204,7 +204,7 @@ describe("Mein Konto (#25)", () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Abmeldetest"));
     await k.reservieren(db, zweit, a.id);
 
-    await expect(agentAbmelden(db, fremd.menschId, zweit.agentId)).rejects.toThrow(/unbekannt/);
+    await expect(agentAbmelden(db, fremd.menschId, zweit.agentId)).rejects.toThrow(/unknown/);
     expect(await agentAbmelden(db, mit.menschId, zweit.agentId)).toEqual({ reservierungen: 1 });
     const rest = (await db.query("select id from oidc_payloads order by id")).rows.map((r) => r.id);
     expect(rest).toEqual(["g-fremd", "rt-g-fremd"]);
@@ -291,5 +291,28 @@ describe("Kopf-Hash veröffentlichen (#31)", () => {
     const v = await mitKoepfenVergleichen(db, [k!]);   // … aber nicht mehr mit dem veröffentlichten Kopf
     expect(v.abweichungen).toHaveLength(1);
     expect(v.abweichungen[0]).toMatchObject({ seq: k!.seq, veroeffentlicht: k!.hash });
+  });
+});
+
+describe("Englische Schnittstelle", () => {
+  it("lässt keine deutschen Feldnamen nach außen", async () => {
+    const { nachAussen, FELDER } = await import("../src/aussen.ts");
+    const { projektListe, projektDetail } = await import("../src/kennzahlen.ts");
+    const { kontoDaten } = await import("../src/konto.ts");
+    const { koepfeListe } = await import("../src/koepfe.ts");
+    const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Schnittstelle"));
+    const proben = [a, await k.aufgabenPassend(db, mit, "test"), await k.details(db, mit, a.id), await k.reservieren(db, mit, a.id),
+      await kennzahlen(db, "test"), await projektListe(db), await projektDetail(db, "test"), await kontoDaten(db, mit.menschId), await koepfeListe(db)];
+    // Erlaubt: englische Zielnamen und Felder, die in beiden Sprachen gleich sind
+    const erlaubt = new Set([...Object.values(FELDER), "id", "slug", "name", "engine", "patch", "email", "commit", "code", "other"]);
+    const fremd = new Set<string>();
+    const sammeln = (x: unknown) => {
+      if (Array.isArray(x)) return x.forEach(sammeln);
+      // agents_active_by_kind hat dynamische Schlüssel (Fähigkeitsarten wie code, asset, spec)
+      if (x && typeof x === "object" && !(x instanceof Date)) for (const [key, v] of Object.entries(x)) { if (!erlaubt.has(key)) fremd.add(key); if (key !== "agents_active_by_kind") sammeln(v); }
+    };
+    sammeln(nachAussen(proben));
+    expect([...fremd]).toEqual([]);
+    expect(JSON.stringify(nachAussen(proben))).not.toMatch(/"(offen|reserviert|angenommen|annehmen|visionaer|mitstreiter|analyse|bau)"/);
   });
 });

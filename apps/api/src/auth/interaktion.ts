@@ -80,7 +80,7 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
       const ablauf = Date.now() + 120_000;
       // Website-Anmeldung („Mein Konto“, konto.ts) statt Agenten-Anmeldung: state beginnt mit "konto-<nonce>"
       const ziel = uid.startsWith(KONTO_PRAEFIX)
-        ? `/api/konto/fertig?m=${menschId}&t=${ablauf}&s=${signieren(geheimnis, `konto:${uid}:${menschId}:${ablauf}`)}`
+        ? `/api/account/done?m=${menschId}&t=${ablauf}&s=${signieren(geheimnis, `konto:${uid}:${menschId}:${ablauf}`)}`
         : `/interaction/${uid}/login?m=${menschId}&t=${ablauf}&s=${signieren(geheimnis, `login:${uid}:${menschId}:${ablauf}`)}`;
       // Keine Server-Weiterleitung: Die Kette begann mit einem Formular auf Gitea (fremde Site),
       // und manche Browser senden dann das SameSite=Lax-Interaktions-Cookie nicht mit.

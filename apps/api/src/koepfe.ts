@@ -12,7 +12,7 @@ export type Kopf = { seq: number; hash: string; zeit: string; jws: string };
 /** Signiert den aktuellen Kopf und speichert ihn; ohne neue Ereignisse seit dem letzten Mal bleibt alles, wie es ist. */
 export async function kopfVeroeffentlichen(db: Db, signatur: Record<string, unknown>): Promise<Kopf | null> {
   const kette = await ketteVerifizieren(db);
-  if (!kette.ok) throw new Error(`Kette beschädigt, kein Kopf veröffentlicht: ${kette.fehler}`);
+  if (!kette.ok) throw new Error(`log chain broken, no head published: ${kette.fehler}`);
   const kopf = (await db.query("select seq, hash from ereignisse order by seq desc limit 1")).rows[0];
   if (!kopf) return null;
   const seq = Number(kopf.seq);
@@ -20,8 +20,8 @@ export async function kopfVeroeffentlichen(db: Db, signatur: Record<string, unkn
   if (letzter && Number(letzter.seq) === seq) return null;
   const zeit = new Date().toISOString();
   const schluessel = await importJWK(signatur as any, "ES256");
-  const jws = await new CompactSign(new TextEncoder().encode(JSON.stringify({ iss: konfig.basis, seq, hash: kopf.hash, zeit })))
-    .setProtectedHeader({ alg: "ES256", kid: String(signatur.kid), typ: "swarvex-kopf" })
+  const jws = await new CompactSign(new TextEncoder().encode(JSON.stringify({ iss: konfig.basis, seq, hash: kopf.hash, time: zeit })))
+    .setProtectedHeader({ alg: "ES256", kid: String(signatur.kid), typ: "swarvex-head" })
     .sign(schluessel);
   await db.query("insert into koepfe(seq, hash, zeit, jws) values ($1,$2,$3,$4)", [seq, kopf.hash, zeit, jws]);
   return { seq, hash: kopf.hash, zeit, jws };

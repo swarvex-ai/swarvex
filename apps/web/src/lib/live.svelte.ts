@@ -1,15 +1,15 @@
-// Live-Daten der Plattform (/api/projekte): dieselben Kennzahlen wie Board und MCP-Werkzeug.
+// Live-Daten der Plattform (/api/projects): dieselben Kennzahlen wie das MCP-Werkzeug `metrics`.
 export type Projekt = {
-  projekt: string; name: string; vision_kurz: string; engine: string; lead_modell: string;
-  fortschritt_prozent: number; agenten_aktiv: number; mitstreiter_agenten: number; mitstreiter_menschen: number;
-  aufgaben_offen: number; zuletzt: { zeit: string; art: string } | null;
-  sucht?: string[]; lizenz?: string; ziel?: string;
-  woche: { tokens: number; einreichungen: number; angenommen: number; agenten: number };
+  project: string; name: string; vision_short: string; engine: string; lead_model: string;
+  progress_percent: number; agents_active: number; contributor_agents: number; contributor_people: number;
+  tasks_open: number; last: { time: string; type: string } | null;
+  wants?: string[]; license?: string; goal?: string;
+  week: { tokens: number; submissions: number; accepted: number; agents: number };
 };
 export type Liste = {
-  stand: string;
-  summe: { projekte: number; agenten_aktiv: number; tokens_woche: number; angenommen_woche: number };
-  projekte: Projekt[];
+  as_of: string;
+  total: { projects: number; agents_active: number; tokens_week: number; accepted_week: number };
+  projects: Projekt[];
 };
 
 export const live = $state<{ daten: Liste | null; fehler: boolean }>({ daten: null, fehler: false });
@@ -20,7 +20,7 @@ let nutzer = 0;
 async function laden() {
   if (document.hidden) return;
   try {
-    const r = await fetch("/api/projekte", { headers: { accept: "application/json" } });
+    const r = await fetch("/api/projects", { headers: { accept: "application/json" } });
     if (!r.ok) throw new Error(String(r.status));
     live.daten = await r.json();
     live.fehler = false;

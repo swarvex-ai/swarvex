@@ -1,6 +1,7 @@
-// MCP-Gateway (Streamable HTTP, zustandslos). Welche Werkzeuge ein Agent sieht, hängt von
+// MCP-Gateway (Streamable HTTP, zustandslos). Werkzeuge, Parameter und Ergebnisse sind englisch (aussen.ts). Welche Werkzeuge ein Agent sieht, hängt von
 // den Rollen seines Menschen ab (docs/architektur.md, „MCP-Gateway: Werkzeuge pro Rolle“).
-import { REGELN_TEXT } from "./cleanroom.ts";
+import { REGELN_TEXT, type Raum } from "./cleanroom.ts";
+import { nachAussen, umkehren, verbrauchRein, WERTE } from "./aussen.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -10,14 +11,14 @@ import * as k from "./aufgaben.ts";
 import { kennzahlen } from "./kennzahlen.ts";
 import type { Zugang } from "./auth/zugang.ts";
 
-const text = (wert: unknown) => ({ content: [{ type: "text" as const, text: typeof wert === "string" ? wert : JSON.stringify(wert, null, 2) }] });
+const text = (wert: unknown) => ({ content: [{ type: "text" as const, text: typeof wert === "string" ? wert : JSON.stringify(nachAussen(wert), null, 2) }] });
 
 /** Werkzeug-Aufruf mit einheitlicher Fehlerbehandlung: fachliche Ablehnungen sind Tool-Fehler, keine Abstürze. */
 function sicher<A>(f: (a: A) => Promise<unknown>) {
   return async (a: A) => {
     try { return text(await f(a)); }
     catch (e) {
-      if (e instanceof k.Abgelehnt) return { ...text(`Abgelehnt: ${e.message}`), isError: true };
+      if (e instanceof k.Abgelehnt) return { ...text(`Rejected: ${e.message}`), isError: true };
       throw e;
     }
   };
@@ -28,77 +29,86 @@ async function istLeadIrgendwo(db: Db, menschId: number) {
   return r.rowCount! > 0;
 }
 
+const RAUM_REIN = umkehren(WERTE.raum) as Record<string, Raum>;
+const URTEIL_REIN = umkehren(WERTE.urteil) as Record<string, "annehmen" | "nacharbeit" | "ablehnen">;
+const usage = z.record(z.string(), z.number()).default({}).describe("Usage so far, e.g. {\"tokens\": 12000, \"requests\": 8, \"seconds\": 340}");
+
 export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
   const s = new McpServer({ name: "swarvex", version: "0.1.0" });
   const wer = { menschId: z0.menschId, agentId: z0.agentId };
 
-  s.registerTool("projekt_kontext", {
-    description: "Vision, Ziel, Engine, Lizenz, Lead-Modell und deine Rolle in einem Projekt.",
-    inputSchema: { projekt: z.string().describe("Projekt-Slug, z. B. rend-and-run-test") },
-  }, sicher(async ({ projekt }) => {
-    const p = await k.projektPerSlug(db, projekt);
+  s.registerTool("project_context", {
+    description: "Vision, goal, engine, licenses, lead model and your roles in a project.",
+    inputSchema: { project: z.string().describe("Project slug, e.g. rend-and-run-test") },
+  }, sicher(async ({ project }) => {
+    const p = await k.projektPerSlug(db, project);
     return { projekt: p.slug, name: p.name, vision: p.vision_md, ziel: p.ziel, engine: p.engine, repo: p.repo_url,
       lizenz_code: p.lizenz_code, lizenz_assets: p.lizenz_assets, lead_modell: p.lead_modell,
-      deine_rollen: await k.rollenVon(db, wer.menschId, p.id), regeln: "Beiträge nur als Patch in den erlaubten Pfaden; mit der Einreichung versicherst du die Rechte daran (docs/beitragserklaerung.md).",
+      deine_rollen: await k.rollenVon(db, wer.menschId, p.id),
+      regeln: "Contribute only as a patch within the allowed paths; by submitting you confirm you hold the rights to it (contribution statement).",
       verfahren: p.verfahren, ...(p.verfahren === "clean_room" ? { vorbild: p.vorbild, clean_room_regeln: REGELN_TEXT } : {}) };
   }));
 
-  s.registerTool("kennzahlen", {
-    description: "Statusboard eines Projekts: Fortschritt in %, aktive Agenten, offene Aufgaben, letzter Vorgang.",
-    inputSchema: { projekt: z.string() },
-  }, sicher(async ({ projekt }) => kennzahlen(db, projekt)));
+  s.registerTool("metrics", {
+    description: "A project's status: progress in %, active agents, open tasks, last event. The website shows the same numbers.",
+    inputSchema: { project: z.string() },
+  }, sicher(async ({ project }) => kennzahlen(db, project)));
 
-  s.registerTool("aufgaben_passend", {
-    description: "Offene Aufgaben, die du bearbeiten darfst; optional gefiltert nach deinen Fähigkeiten (z. B. code.gdscript).",
-    inputSchema: { projekt: z.string(), faehigkeiten: z.array(z.string()).optional() },
-  }, sicher(async ({ projekt, faehigkeiten }) => k.aufgabenPassend(db, wer, projekt, faehigkeiten)));
+  s.registerTool("matching_tasks", {
+    description: "Open tasks you may work on, optionally filtered by your capabilities (e.g. code.gdscript).",
+    inputSchema: { project: z.string(), capabilities: z.array(z.string()).optional() },
+  }, sicher(async ({ project, capabilities }) => k.aufgabenPassend(db, wer, project, capabilities)));
 
-  s.registerTool("aufgabe_reservieren", {
-    description: "Reserviert eine offene Aufgabe für diesen Agenten (Lease mit Ablaufzeit).",
-    inputSchema: { aufgabe_id: z.number().int() },
-  }, sicher(async ({ aufgabe_id }) => k.reservieren(db, wer, aufgabe_id)));
+  s.registerTool("reserve_task", {
+    description: "Reserves an open task for this agent (a lease with an expiry; report_progress extends it).",
+    inputSchema: { task_id: z.number().int() },
+  }, sicher(async ({ task_id }) => k.reservieren(db, wer, task_id)));
 
-  s.registerTool("aufgabe_details", {
-    description: "Vollständige Aufgabe: Beschreibung, erlaubte Pfade, Akzeptanzkriterien, Basis-Commit, Grenzen.",
-    inputSchema: { aufgabe_id: z.number().int() },
-  }, sicher(async ({ aufgabe_id }) => k.details(db, wer, aufgabe_id)));
+  s.registerTool("task_details", {
+    description: "The full task: description, allowed paths, acceptance criteria, base commit, limits.",
+    inputSchema: { task_id: z.number().int() },
+  }, sicher(async ({ task_id }) => k.details(db, wer, task_id)));
 
-  s.registerTool("fortschritt_melden", {
-    description: "Lebenszeichen: verlängert die Reservierung und meldet Fortschritt und Verbrauch.",
-    inputSchema: { aufgabe_id: z.number().int(), notiz: z.string(), verbrauch: z.record(z.string(), z.number()).default({}) },
-  }, sicher(async ({ aufgabe_id, notiz, verbrauch }) => k.fortschritt(db, wer, aufgabe_id, notiz, verbrauch)));
+  s.registerTool("report_progress", {
+    description: "Heartbeat: extends the reservation and reports progress and usage.",
+    inputSchema: { task_id: z.number().int(), note: z.string(), usage },
+  }, sicher(async ({ task_id, note, usage }) => k.fortschritt(db, wer, task_id, note, verbrauchRein(usage))));
 
-  s.registerTool("ergebnis_einreichen", {
-    description: "Reicht das Ergebnis als Patch (git format-patch/diff gegen den Basis-Commit) ein. Mit der Einreichung versicherst du, alle Rechte daran zu halten.",
+  s.registerTool("submit_result", {
+    description: "Submits the result as a patch (git format-patch/diff against the base commit). By submitting you confirm that you hold all rights to it.",
     inputSchema: {
-      aufgabe_id: z.number().int(), patch: z.string(), zusammenfassung: z.string(),
-      eigene_tests: z.string().default(""), verbrauch: z.record(z.string(), z.number()).default({}),
-      rechte_versichert: z.literal(true).describe("Bestätigung der Beitragserklärung"),
+      task_id: z.number().int(), patch: z.string(), summary: z.string(),
+      own_tests: z.string().default("").describe("What you ran yourself and how it went"), usage,
+      rights_confirmed: z.literal(true).describe("Confirms the contribution statement"),
     },
-  }, sicher(async ({ aufgabe_id, patch, zusammenfassung, eigene_tests, verbrauch }) => k.einreichen(db, wer, aufgabe_id, { patch, zusammenfassung, eigene_tests, verbrauch })));
+  }, sicher(async ({ task_id, patch, summary, own_tests, usage }) => k.einreichen(db, wer, task_id, { patch, zusammenfassung: summary, eigene_tests: own_tests, verbrauch: verbrauchRein(usage) })));
 
-  s.registerTool("abbruch_melden", {
-    description: "Gibt eine reservierte Aufgabe mit Begründung zurück in den Pool.",
-    inputSchema: { aufgabe_id: z.number().int(), grund: z.string() },
-  }, sicher(async ({ aufgabe_id, grund }) => { await k.abbrechen(db, wer, aufgabe_id, grund); return "zurückgegeben"; }));
+  s.registerTool("abandon_task", {
+    description: "Hands a reserved task back to the pool, with a reason.",
+    inputSchema: { task_id: z.number().int(), reason: z.string() },
+  }, sicher(async ({ task_id, reason }) => { await k.abbrechen(db, wer, task_id, reason); return "handed back"; }));
 
   if (await istLeadIrgendwo(db, wer.menschId)) {
-    s.registerTool("aufgabe_anlegen", {
-      description: "(Lead) Legt eine Aufgabe an: Stufe A–D, Fähigkeiten, erlaubte Pfade (Globs), Akzeptanzkriterien, Basis-Commit, optional Meilenstein. In Clean-Room-Projekten Pflicht: raum (analyse/pruefung schreiben nur unter spezifikation/, bau nie dort).",
+    s.registerTool("create_task", {
+      description: "(Lead) Creates a task: level A–D, capabilities, allowed paths (globs), acceptance criteria, base commit, optional milestone. Required in clean-room projects: room (analysis and review only write under specification/, build never does).",
       inputSchema: {
-        projekt: z.string(), titel: z.string(), beschreibung: z.string(), stufe: z.enum(["A", "B", "C", "D"]),
-        faehigkeiten: z.array(z.string()), pfade: z.array(z.string()), akzeptanz: z.array(z.string()),
-        basis_commit: z.string().optional(), lease_minuten: z.number().int().min(5).max(24 * 60).optional(),
-        min_vertrauen: z.number().int().min(0).max(3).optional(), meilenstein: z.string().optional(),
-        raum: z.enum(["analyse", "pruefung", "bau"]).optional().describe("Nur Clean-Room-Projekte: analyse (Vorbild untersuchen, Spezifikation schreiben), pruefung (Spezifikation prüfen), bau (aus der Spezifikation implementieren)"),
+        project: z.string(), title: z.string(), description: z.string(), level: z.enum(["A", "B", "C", "D"]),
+        capabilities: z.array(z.string()), paths: z.array(z.string()), acceptance: z.array(z.string()),
+        base_commit: z.string().optional(), lease_minutes: z.number().int().min(5).max(24 * 60).optional(),
+        min_trust: z.number().int().min(0).max(3).optional(), milestone: z.string().optional(),
+        room: z.enum(["analysis", "review", "build"]).optional().describe("Clean-room projects only: analysis (study the original, write the specification), review (check the specification), build (implement from the specification)"),
       },
-    }, sicher(async ({ projekt, ...a }) => k.aufgabeAnlegen(db, wer, projekt, a)));
+    }, sicher(async (a) => k.aufgabeAnlegen(db, wer, a.project, {
+      titel: a.title, beschreibung: a.description, stufe: a.level, faehigkeiten: a.capabilities, pfade: a.paths, akzeptanz: a.acceptance,
+      basis_commit: a.base_commit, lease_minuten: a.lease_minutes, min_vertrauen: a.min_trust, meilenstein: a.milestone,
+      raum: a.room ? RAUM_REIN[a.room] : undefined,
+    })));
 
-    s.registerTool("einreichungen_offen", {
-      description: "(Lead) Einreichungen eines Projekts mit Prüfergebnis, die auf deine Bewertung warten.",
-      inputSchema: { projekt: z.string() },
-    }, sicher(async ({ projekt }) => {
-      const p = await k.projektPerSlug(db, projekt);
+    s.registerTool("pending_submissions", {
+      description: "(Lead) A project's submissions with their check results, waiting for your review.",
+      inputSchema: { project: z.string() },
+    }, sicher(async ({ project }) => {
+      const p = await k.projektPerSlug(db, project);
       const r = await db.query(
         `select e.id as einreichung_id, a.id as aufgabe_id, a.titel, a.zustand, e.zusammenfassung, e.patch, p.ergebnis as pruefung, p.bericht
          from einreichungen e join aufgaben a on a.id = e.aufgabe_id
@@ -107,10 +117,10 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       return r.rows;
     }));
 
-    s.registerTool("einreichung_bewerten", {
-      description: "(Lead) Bewertet eine geprüfte Einreichung: annehmen, nacharbeit (zurück in den Pool) oder ablehnen – immer mit Begründung.",
-      inputSchema: { einreichung_id: z.number().int(), urteil: z.enum(["annehmen", "nacharbeit", "ablehnen"]), begruendung: z.string().min(3) },
-    }, sicher(async ({ einreichung_id, urteil, begruendung }) => { await k.bewerten(db, wer, einreichung_id, urteil, begruendung); return "bewertet"; }));
+    s.registerTool("review_submission", {
+      description: "(Lead) Reviews a checked submission: accept, rework (back to the pool) or reject, always with a reason.",
+      inputSchema: { submission_id: z.number().int(), verdict: z.enum(["accept", "rework", "reject"]), reason: z.string().min(3) },
+    }, sicher(async ({ submission_id, verdict, reason }) => { await k.bewerten(db, wer, submission_id, URTEIL_REIN[verdict], reason); return "reviewed"; }));
   }
   return s;
 }

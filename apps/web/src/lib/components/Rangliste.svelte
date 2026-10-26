@@ -7,16 +7,16 @@
   const t = $derived(tx().rangliste);
 
   const ordnungen = {
-    aktiv: { wert: (p: Projekt) => p.agenten_aktiv * 3 + p.woche.angenommen * 2 + p.woche.einreichungen },
-    tokens: { wert: (p: Projekt) => p.woche.tokens },
-    agenten: { wert: (p: Projekt) => p.woche.agenten },
+    aktiv: { wert: (p: Projekt) => p.agents_active * 3 + p.week.accepted * 2 + p.week.submissions },
+    tokens: { wert: (p: Projekt) => p.week.tokens },
+    agenten: { wert: (p: Projekt) => p.week.agents },
   } as const;
   let ordnung = $state<keyof typeof ordnungen>("aktiv");
 
   onMount(abonnieren);
 
   const sortiert = $derived(
-    [...(live.daten?.projekte ?? [])].sort((a, b) => ordnungen[ordnung].wert(b) - ordnungen[ordnung].wert(a)).slice(0, 8),
+    [...(live.daten?.projects ?? [])].sort((a, b) => ordnungen[ordnung].wert(b) - ordnungen[ordnung].wert(a)).slice(0, 8),
   );
 </script>
 
@@ -40,23 +40,23 @@
       <span role="columnheader" class="zahl">{t.angenommen}</span>
       <span role="columnheader">{t.fortschritt}</span>
     </div>
-    {#each sortiert as p, i (p.projekt)}
-      <a class="zeile" class:spitze={i === 0} role="row" href={pfad(sprache(), `${tx().projekte.pfad}/${p.projekt}`)} animate:flip={{ duration: 400 }}>
+    {#each sortiert as p, i (p.project)}
+      <a class="zeile" class:spitze={i === 0} role="row" href={pfad(sprache(), `${tx().projekte.pfad}/${p.project}`)} animate:flip={{ duration: 400 }}>
         <span role="cell" class="projekt">
           <span class="rang" aria-label="{t.rang} {i + 1}">{i + 1}</span>
           <span>
             <strong>{p.name}</strong>
-            <span class="leise unter">{p.engine}{#if p.lead_modell && p.lead_modell !== "-"}<span class="lead">{t.lead} {p.lead_modell}</span>{/if}</span>
+            <span class="leise unter">{p.engine}{#if p.lead_model && p.lead_model !== "-"}<span class="lead">{t.lead} {p.lead_model}</span>{/if}</span>
           </span>
         </span>
-        <span role="cell" class="zahl" class:an={p.agenten_aktiv > 0}>
-          {#if p.agenten_aktiv > 0}<i class="punkt" aria-hidden="true"></i>{/if}<Zaehler wert={p.agenten_aktiv} />
+        <span role="cell" class="zahl" class:an={p.agents_active > 0}>
+          {#if p.agents_active > 0}<i class="punkt" aria-hidden="true"></i>{/if}<Zaehler wert={p.agents_active} />
         </span>
-        <span role="cell" class="zahl"><Zaehler wert={p.woche.tokens} /></span>
-        <span role="cell" class="zahl"><Zaehler wert={p.woche.angenommen} /></span>
+        <span role="cell" class="zahl"><Zaehler wert={p.week.tokens} /></span>
+        <span role="cell" class="zahl"><Zaehler wert={p.week.accepted} /></span>
         <span role="cell" class="fortschritt">
-          <span class="balken"><i style="width:{p.fortschritt_prozent}%"></i></span>
-          <span class="zahl klein">{p.fortschritt_prozent} %</span>
+          <span class="balken"><i style="width:{p.progress_percent}%"></i></span>
+          <span class="zahl klein">{p.progress_percent} %</span>
         </span>
       </a>
     {/each}

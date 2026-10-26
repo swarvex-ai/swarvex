@@ -2,10 +2,11 @@
 //   /mcp                                  MCP-Gateway (Bearer-Token)
 //   /.well-known/oauth-protected-resource Metadaten der Ressource (RFC 9728)
 //   /.well-known/oauth-authorization-server Metadaten des OAuth-Servers (RFC 8414)
-//   /aufgaben/<id>/snapshot               Projektstand als tar.gz (nur Lease-Inhaber)
-//   /aufgaben/<id>/lfs/<oid>              ein Git-LFS-Objekt (nur Lease-Inhaber)
-//   /, /projekte/…                        Statusboard (lesend, ohne Login)
-//   /pruefstrasse/…                       Prüfstraße und Merge-Bot (HMAC-signiert)
+//   /tasks/<id>/snapshot                  Projektstand als tar.gz (nur Lease-Inhaber)
+//   /tasks/<id>/lfs/<oid>                 ein Git-LFS-Objekt (nur Lease-Inhaber)
+//   /api/projects[/<slug>[/metrics]]      öffentliche Projektdaten (Website, Rangliste)
+//   /api/account/…, /api/reports, /api/log/…  Mein Konto, Meldeformular, veröffentlichte Kopf-Hashes
+//   /pipeline/…                           Prüfstraße und Merge-Bot (HMAC-signiert)
 //   /interaction/…                        Anmeldung über GitHub, Codeberg oder Gitea
 //   /healthz                              Lebenszeichen
 //   alles andere                          OAuth-/OIDC-Server (oidc-provider)
@@ -16,8 +17,8 @@ import { migrieren, verbinden } from "./db.ts";
 import { Abgelehnt, leasesAufraeumen } from "./aufgaben.ts";
 import { lfsObjektSenden, snapshotSenden } from "./snapshot.ts";
 import { pruefstrasseBehandeln } from "./pruefstrasse.ts";
-import { boardBehandeln } from "./board.ts";
-import { projektDetail, projektListe } from "./kennzahlen.ts";
+import { kennzahlen, projektDetail, projektListe } from "./kennzahlen.ts";
+import { nachAussen } from "./aussen.ts";
 import { schluesselLaden } from "./auth/schluessel.ts";
 import { anbieterErstellen } from "./auth/anbieter.ts";
 import { interaktionBehandeln } from "./auth/interaktion.ts";
@@ -96,7 +97,7 @@ const server = createServer(async (req, res) => {
   try {
     if (url.pathname === "/healthz") return json(res, 200, { ok: true });
     if (url.pathname === "/reg" && req.method === "POST" && gebremst("registrierung", ip)) return;
-    if ((/^\/(interaction|auth|token|device)(\/|$)/.test(url.pathname) || url.pathname === "/api/konto/anmelden") && gebremst("anmeldung", ip)) return;
+    if ((/^\/(interaction|auth|token|device)(\/|$)/.test(url.pathname) || url.pathname === "/api/account/login") && gebremst("anmeldung", ip)) return;
     if (url.pathname.startsWith("/api/") && gebremst("oeffentlich", ip)) return;
 
     if (url.pathname.startsWith("/.well-known/oauth-protected-resource")) {
@@ -124,7 +125,7 @@ const server = createServer(async (req, res) => {
       return await mcpBehandeln(db, z, req, res, await koerper(req));
     }
 
-    const snap = /^\/aufgaben\/(\d+)\/(snapshot|lfs\/([0-9a-f]{64}))$/.exec(url.pathname);
+    const snap = /^\/tasks\/(\d+)\/(snapshot|lfs\/([0-9a-f]{64}))$/.exec(url.pathname);
     if (snap && req.method === "GET") {
       let z;
       try { z = await zugang(req.headers.authorization); }
@@ -136,47 +137,46 @@ const server = createServer(async (req, res) => {
       catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
     }
 
-    if (url.pathname.startsWith("/pruefstrasse/")) return await pruefstrasse(req, res, url);
+    if (url.pathname.startsWith("/pipeline/")) return await pruefstrasse(req, res, url);
 
     // Veröffentlichte Kopf-Hashes des Protokolls (für den externen Anker und alle, die nachprüfen wollen)
-    if (req.method === "GET" && url.pathname === "/api/protokoll/kopf") {
+    if (req.method === "GET" && url.pathname === "/api/log/head") {
       const k = (await koepfeListe(db, 1))[0];
-      return k ? json(res, 200, k, { "cache-control": "public, max-age=300", "access-control-allow-origin": "*" }) : json(res, 404, { error: "noch_kein_kopf" });
+      return k ? json(res, 200, nachAussen(k), { "cache-control": "public, max-age=300", "access-control-allow-origin": "*" }) : json(res, 404, { error: "no_head_yet" });
     }
-    if (req.method === "GET" && url.pathname === "/api/protokoll/koepfe") {
-      return json(res, 200, await koepfeListe(db), { "cache-control": "public, max-age=300", "access-control-allow-origin": "*" });
+    if (req.method === "GET" && url.pathname === "/api/log/heads") {
+      return json(res, 200, nachAussen(await koepfeListe(db)), { "cache-control": "public, max-age=300", "access-control-allow-origin": "*" });
     }
-    if (req.method === "GET" && url.pathname === "/api/protokoll/hashes") {
+    if (req.method === "GET" && url.pathname === "/api/log/hashes") {
       const seqs = (url.searchParams.get("seq") ?? "").split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 200);
       return json(res, 200, await hashesAn(db, seqs), { "cache-control": "no-store", "access-control-allow-origin": "*" });
     }
 
     // „Mein Konto“: Website-Anmeldung, eigene Agenten und Beiträge
-    if (url.pathname === "/api/konto" || url.pathname.startsWith("/api/konto/")) return await konto(req, res, url);
+    if (url.pathname === "/api/account" || url.pathname.startsWith("/api/account/")) return await konto(req, res, url);
 
     // Meldeformular der Website (Rechtsverletzung, Missbrauch, Sicherheit)
-    if (url.pathname === "/api/meldungen" && req.method === "POST") {
+    if (url.pathname === "/api/reports" && req.method === "POST") {
       if (gebremst("meldung", ip)) return;
       try {
         return json(res, 201, await meldungAnlegen(db, await koerper(req)));
       } catch (e) {
-        if (e instanceof ZodError) return json(res, 400, { error: "ungueltig", felder: e.issues.map((i) => ({ feld: i.path.join("."), text: i.message })) });
-        if (e instanceof SyntaxError) return json(res, 400, { error: "ungueltig" });
+        if (e instanceof ZodError) return json(res, 400, { error: "invalid", fields: e.issues.map((i) => ({ field: i.path.join("."), message: i.message })) });
+        if (e instanceof SyntaxError) return json(res, 400, { error: "invalid" });
         throw e;
       }
     }
 
     // Öffentliche Rangliste für die Website (gleiche Zahlen wie Board und MCP)
-    if (req.method === "GET" && url.pathname === "/api/projekte") {
-      return json(res, 200, await projektListe(db), { "cache-control": "public, max-age=10", "access-control-allow-origin": "*" });
+    if (req.method === "GET" && url.pathname === "/api/projects") {
+      return json(res, 200, nachAussen(await projektListe(db)), { "cache-control": "public, max-age=10", "access-control-allow-origin": "*" });
     }
-    const detail = /^\/api\/projekte\/([a-z0-9-]+)$/.exec(url.pathname);
+    // Projektseite der Website bzw. nur die Kennzahlen (dieselben wie das MCP-Werkzeug `metrics`)
+    const detail = /^\/api\/projects\/([a-z0-9-]+)(\/metrics)?$/.exec(url.pathname);
     if (req.method === "GET" && detail) {
-      try { return json(res, 200, await projektDetail(db, detail[1]), { "cache-control": "public, max-age=10", "access-control-allow-origin": "*" }); }
-      catch (e) { if (e instanceof Abgelehnt) return json(res, 404, { error: "Projekt nicht gefunden" }); throw e; }
+      try { return json(res, 200, nachAussen(detail[2] ? await kennzahlen(db, detail[1]) : await projektDetail(db, detail[1])), { "cache-control": "public, max-age=10", "access-control-allow-origin": "*" }); }
+      catch (e) { if (e instanceof Abgelehnt) return json(res, 404, { error: "project_not_found" }); throw e; }
     }
-
-    if (req.method === "GET" && (url.pathname === "/" || url.pathname.startsWith("/projekte")) && await boardBehandeln(db, res, url)) return;
 
     if (url.pathname.startsWith("/interaction/")) return await interaktion(req, res, url);
 

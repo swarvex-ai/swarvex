@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Meldeformular (Notice and Takedown): schickt an POST /api/meldungen, Betreiber bearbeiten Meldungen über die CLI.
+  // Meldeformular (Notice and Takedown): schickt an POST /api/reports, Betreiber bearbeiten Meldungen über die CLI.
   import { tick, untrack } from "svelte";
   import Seo from "$lib/components/Seo.svelte";
   import { pfad, sprache, tx } from "$lib/texte";
@@ -9,8 +9,8 @@
   const t = $derived(tx().melden);
   const f = $derived(t.felder);
 
-  let art = $state("rechtsverletzung");
-  let projekt = $state(untrack(() => data.projekt)); // Vorbelegung aus ?projekt=, danach frei editierbar
+  let art = $state("infringement");
+  let projekt = $state(untrack(() => data.projekt)); // Vorbelegung aus ?project=, danach frei editierbar
   let bezug = $state(untrack(() => data.bezug));
   let beschreibung = $state("");
   let name = $state("");
@@ -46,9 +46,9 @@
     }
     sendet = true;
     try {
-      const r = await fetch("/api/meldungen", {
+      const r = await fetch("/api/reports", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ art, projekt: projekt.trim(), bezug: bezug.trim(), beschreibung, name, email, rechteinhaber, versichert, website }),
+        body: JSON.stringify({ kind: art, project: projekt.trim(), location: bezug.trim(), description: beschreibung, name, email, rights_holder: rechteinhaber, confirmed: versichert, website }),
       });
       if (r.status === 201) {
         nummer = (await r.json()).id;
@@ -57,9 +57,10 @@
       } else if (r.status === 429) {
         meldung = t.fehler.zuViele;
       } else if (r.status === 400) {
-        const felder = ((await r.json()).felder ?? []) as { feld: string }[];
-        const zuordnung: Record<string, string> = { email: t.fehler.email, beschreibung: t.fehler.kurz, versichert: t.fehler.versichert };
-        fehler = Object.fromEntries(felder.map((x) => [x.feld, zuordnung[x.feld] ?? t.fehler.felder]));
+        // Felder der API (englisch) → Formularfelder und Texte
+        const felder = ((await r.json()).fields ?? []) as { field: string }[];
+        const zuordnung: Record<string, [string, string]> = { email: ["email", t.fehler.email], description: ["beschreibung", t.fehler.kurz], confirmed: ["versichert", t.fehler.versichert] };
+        fehler = Object.fromEntries(felder.map((x) => zuordnung[x.field] ?? [x.field, t.fehler.felder]));
         meldung = t.fehler.felder;
       } else {
         meldung = t.fehler.allgemein;
@@ -94,7 +95,7 @@
           <select id="m-art" bind:value={art}>
             {#each Object.entries(t.arten) as [wert, text]}<option value={wert}>{text}</option>{/each}
           </select>
-          {#if art === "sicherheit"}
+          {#if art === "security"}
             <p class="hilfe">{t.luecke} <a href={pfad(s, s === "de" ? "/docs/sicherheit" : "/docs/security")}>{t.lueckeLink}</a></p>
           {/if}
         </div>

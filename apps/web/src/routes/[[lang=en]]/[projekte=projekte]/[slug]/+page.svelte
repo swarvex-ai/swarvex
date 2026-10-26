@@ -21,22 +21,22 @@
   const zeit = (x: string) => new Intl.DateTimeFormat(t.sprache, { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(x));
 
   // Aufgaben-Filter: offen / in Arbeit (reserviert bis Prüfung) / fertig (angenommen, übernommen)
-  const gruppe = (z: string) => (z === "offen" ? "offen" : ["angenommen", "gemerged"].includes(z) ? "fertig" : "arbeit");
+  const gruppe = (z: string) => (z === "open" ? "offen" : ["accepted", "merged"].includes(z) ? "fertig" : "arbeit");
   let filter = $state<"alle" | "offen" | "arbeit" | "fertig">("alle");
-  const aufgaben = $derived((p.aufgaben as { id: number; titel: string; stufe: string; zustand: string; meilenstein: string | null; arbeitet: string | null; beitrag_von: string | null }[])
-    .filter((a) => filter === "alle" || gruppe(a.zustand) === filter));
-  const ton = (z: string) => (z === "geprueft_fehler" ? "rot" : ["eingereicht", "pruefung"].includes(z) ? "bernstein" : z === "offen" ? "leise" : "akzent");
+  const aufgaben = $derived((p.tasks as { id: number; title: string; level: string; state: string; milestone: string | null; working: string | null; contribution_by: string | null }[])
+    .filter((a) => filter === "alle" || gruppe(a.state) === filter));
+  const ton = (z: string) => (z === "check_failed" ? "rot" : ["submitted", "checking"].includes(z) ? "bernstein" : z === "open" ? "leise" : "akzent");
   const mitmachen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
   const liste = $derived(pfad(s, t.pfad));
 </script>
 
 <Seo
   titel={`${p.name}: ${t.titel} – swarvex`}
-  beschreibung={p.vision_kurz}
-  pfad={pfad(s, `${t.pfad}/${p.projekt}`)}
-  alternativen={{ de: `/projekte/${p.projekt}`, en: `/en/projects/${p.projekt}` }}
-  daten={[{ "@type": "SoftwareSourceCode", name: p.name, description: p.vision_kurz, codeRepository: p.repo_url, programmingLanguage: p.engine,
-            url: SEITE + pfad(s, `${t.pfad}/${p.projekt}`) }]}
+  beschreibung={p.vision_short}
+  pfad={pfad(s, `${t.pfad}/${p.project}`)}
+  alternativen={{ de: `/projekte/${p.project}`, en: `/en/projects/${p.project}` }}
+  daten={[{ "@type": "SoftwareSourceCode", name: p.name, description: p.vision_short, codeRepository: p.repo_url, programmingLanguage: p.engine,
+            url: SEITE + pfad(s, `${t.pfad}/${p.project}`) }]}
 />
 
 <article class="huelle">
@@ -45,51 +45,51 @@
   <header class="kopf">
     <div>
       <h1>{p.name}</h1>
-      <p class="vision">{p.vision_kurz}</p>
-      <p class="meta leise">{d.veroeffentlicht} {datum(p.vision_veroeffentlicht)}<span>{d.ziel}: {p.ziel}</span></p>
+      <p class="vision">{p.vision_short}</p>
+      <p class="meta leise">{d.veroeffentlicht} {datum(p.vision_published)}<span>{d.ziel}: {p.goal}</span></p>
     </div>
     <div class="aktionen">
       <a class="knopf primaer" href={mitmachen}>{d.mitmachen}</a>
-      <a class="melden leise" href={`${pfad(s, tx().melden.pfad)}?projekt=${encodeURIComponent(p.projekt)}`}>{d.melden}</a>
+      <a class="melden leise" href={`${pfad(s, tx().melden.pfad)}?project=${encodeURIComponent(p.project)}`}>{d.melden}</a>
     </div>
   </header>
 
   <section aria-labelledby="t-kennzahlen">
     <h2 id="t-kennzahlen" class="sr">{d.kennzahlen}</h2>
     <dl class="kennzahlen">
-      <div class="gross"><dt>{t.fortschritt}</dt><dd><span class="wert">{p.fortschritt_prozent} %</span><span class="balken"><i style="width:{p.fortschritt_prozent}%"></i></span></dd></div>
-      <div class:an={p.agenten_aktiv > 0}><dt>{t.jetzt}</dt><dd><span class="wert"><Zaehler wert={p.agenten_aktiv} /></span></dd></div>
-      <div><dt>{t.offen}</dt><dd><span class="wert"><Zaehler wert={p.aufgaben_offen} /></span></dd></div>
-      <div><dt>{d.beteiligte}</dt><dd><span class="wert">{p.mitstreiter_menschen}</span> <span class="leise">{d.menschen}, {p.mitstreiter_agenten} {d.agenten}</span></dd></div>
-      <div><dt>{d.gespendet}</dt><dd><span class="wert"><Zaehler wert={Number(p.spenden_monat.tokens)} /></span> <span class="leise">Tokens, {p.spenden_monat.anfragen} {d.anfragen}</span></dd></div>
+      <div class="gross"><dt>{t.fortschritt}</dt><dd><span class="wert">{p.progress_percent} %</span><span class="balken"><i style="width:{p.progress_percent}%"></i></span></dd></div>
+      <div class:an={p.agents_active > 0}><dt>{t.jetzt}</dt><dd><span class="wert"><Zaehler wert={p.agents_active} /></span></dd></div>
+      <div><dt>{t.offen}</dt><dd><span class="wert"><Zaehler wert={p.tasks_open} /></span></dd></div>
+      <div><dt>{d.beteiligte}</dt><dd><span class="wert">{p.contributor_people}</span> <span class="leise">{d.menschen}, {p.contributor_agents} {d.agenten}</span></dd></div>
+      <div><dt>{d.gespendet}</dt><dd><span class="wert"><Zaehler wert={Number(p.donated_this_month.tokens)} /></span> <span class="leise">Tokens, {p.donated_this_month.requests} {d.anfragen}</span></dd></div>
     </dl>
   </section>
 
   <div class="zwei">
     <section aria-labelledby="t-meilensteine">
       <h2 id="t-meilensteine">{d.meilensteine}</h2>
-      {#if p.meilensteine.length}
+      {#if p.milestones.length}
         <ul class="meilensteine">
-          {#each p.meilensteine as m}
-            <li><span>{m.titel}</span><span class="balken"><i style="width:{m.fortschritt_prozent}%"></i></span><span class="zahl">{m.fortschritt_prozent} %</span></li>
+          {#each p.milestones as m}
+            <li><span>{m.title ?? d.ohneMeilenstein}</span><span class="balken"><i style="width:{m.progress_percent}%"></i></span><span class="zahl">{m.progress_percent} %</span></li>
           {/each}
         </ul>
       {:else}<p class="leise">{d.keineMeilensteine}</p>{/if}
-      <details class="klein"><summary>{d.berechnung}</summary><p class="leise">{p.fortschritt_berechnung}</p></details>
+      <details class="klein"><summary>{d.berechnung}</summary><p class="leise">{d.berechnungText}</p></details>
     </section>
     <section aria-labelledby="t-steckbrief">
       <h2 id="t-steckbrief" class="sr">Steckbrief</h2>
       <dl class="steckbrief">
         <dt>{d.engine}</dt><dd>{p.engine}</dd>
-        <dt>{d.lizenz}</dt><dd>{p.lizenz}</dd>
-        <dt>{d.leadModell}</dt><dd>{p.lead_modell}</dd>
+        <dt>{d.lizenz}</dt><dd>{p.license}</dd>
+        <dt>{d.leadModell}</dt><dd>{p.lead_model}</dd>
         <dt>{d.protokoll}</dt>
-        <dd class:gut={p.protokoll.ok} class:schlecht={!p.protokoll.ok}>
-          {p.protokoll.ok ? d.kette : d.ketteKaputt}, {p.protokoll.eintraege} {d.eintraege}
-          <code class="hash" title={p.protokoll.kopf}>{p.protokoll.kopf.slice(0, 16)}…</code>
-          {#if p.protokoll.veroeffentlicht}
-            <span class="leise anker">{d.kopfVeroeffentlicht} {datum(p.protokoll.veroeffentlicht.zeit)}
-              (<a href="/api/protokoll/koepfe">{d.eintrag} {p.protokoll.veroeffentlicht.seq}</a>)</span>
+        <dd class:gut={p.log.ok} class:schlecht={!p.log.ok}>
+          {p.log.ok ? d.kette : d.ketteKaputt}, {p.log.entries} {d.eintraege}
+          <code class="hash" title={p.log.head}>{p.log.head.slice(0, 16)}…</code>
+          {#if p.log.published}
+            <span class="leise anker">{d.kopfVeroeffentlicht} {datum(p.log.published.time)}
+              (<a href="/api/log/heads">{d.eintrag} {p.log.published.seq}</a>)</span>
           {/if}
         </dd>
       </dl>
@@ -113,10 +113,10 @@
             {#each aufgaben as a (a.id)}
               <tr>
                 <td class="zahl leise">{a.id}</td>
-                <td>{a.titel}{#if a.meilenstein}<span class="unter leise">{a.meilenstein}</span>{/if}</td>
-                <td class="zahl">{a.stufe}</td>
-                <td><span class="zustand {ton(a.zustand)}">{t.zustand[a.zustand] ?? a.zustand}</span></td>
-                <td class="leise">{a.arbeitet ?? a.beitrag_von ?? ""}</td>
+                <td>{a.title}{#if a.milestone}<span class="unter leise">{a.milestone}</span>{/if}</td>
+                <td class="zahl">{a.level}</td>
+                <td><span class="zustand {ton(a.state)}">{t.zustand[a.state] ?? a.state}</span></td>
+                <td class="leise">{a.working ?? a.contribution_by ?? ""}</td>
               </tr>
             {/each}
           </tbody>
@@ -127,10 +127,10 @@
 
   <section aria-labelledby="t-beitragende">
     <h2 id="t-beitragende">{d.beitragende}</h2>
-    {#if p.beitragende.length}
+    {#if p.contributors.length}
       <ul class="beitragende">
-        {#each p.beitragende as b}
-          <li><strong>{b.mensch}</strong><span class="leise">{b.agenten.join(", ")}</span><span class="zahl">{b.angenommen} / {b.eingereicht} {d.eingereicht}</span></li>
+        {#each p.contributors as b}
+          <li><strong>{b.person}</strong><span class="leise">{b.agents.join(", ")}</span><span class="zahl">{b.accepted} / {b.submitted} {d.eingereicht}</span></li>
         {/each}
       </ul>
     {:else}<p class="leise">{d.keineBeitragende} <a href={mitmachen}>{d.mitmachen}</a></p>{/if}
@@ -139,8 +139,8 @@
   <section aria-labelledby="t-protokoll">
     <h2 id="t-protokoll">{d.protokoll} <span class="leise klein-titel">{d.neueste}</span></h2>
     <ol class="protokoll">
-      {#each p.ereignisse as e (e.seq)}
-        <li><span class="zahl leise">#{e.seq}</span><span class="zeit leise">{zeit(e.zeit)}</span><span>{t.art[e.art] ?? e.art}</span><span class="leise wer">{t.akteure[e.wer] ?? e.wer}</span></li>
+      {#each p.events as e (e.seq)}
+        <li><span class="zahl leise">#{e.seq}</span><span class="zeit leise">{zeit(e.time)}</span><span>{t.art[e.type] ?? e.type}</span><span class="leise wer">{t.akteure[e.who] ?? e.who}</span></li>
       {/each}
     </ol>
   </section>
@@ -150,7 +150,7 @@
     <pre>{p.vision_md}</pre>
   </details>
 
-  <p class="fuss leise">{d.gleich} <code>kennzahlen</code>. <a href="/api/projekte/{p.projekt}">{d.json}</a>. {t.stand}.</p>
+  <p class="fuss leise">{d.gleich} <code>metrics</code>. <a href="/api/projects/{p.project}/metrics">{d.json}</a>. {t.stand}.</p>
 </article>
 
 <style>

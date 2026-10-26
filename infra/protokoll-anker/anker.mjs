@@ -30,20 +30,20 @@ const verankert = existsSync(DATEI) ? readFileSync(DATEI, "utf8").split("\n").fi
 const fehler = [];
 
 // 1. Neuen Kopf holen, prüfen und anhängen
-const kopf = await holen("/api/protokoll/kopf");
+const kopf = await holen("/api/log/head");
 await signaturPruefen(kopf);
 const letzter = verankert.at(-1);
 if (letzter && kopf.seq < letzter.seq) fehler.push(`Kopf ging zurück: ${kopf.seq} < ${letzter.seq}`);
 else if (letzter && kopf.seq === letzter.seq && kopf.hash !== letzter.hash) fehler.push(`Kopf ${kopf.seq} hat jetzt einen anderen Hash`);
 else if (!letzter || kopf.seq > letzter.seq) {
-  appendFileSync(DATEI, JSON.stringify({ seq: kopf.seq, hash: kopf.hash, zeit: kopf.zeit, jws: kopf.jws }) + "\n");
+  appendFileSync(DATEI, JSON.stringify({ seq: kopf.seq, hash: kopf.hash, time: kopf.time, jws: kopf.jws }) + "\n");
   console.log(`verankert: seq ${kopf.seq} ${kopf.hash}`);
 } else console.log(`unverändert: seq ${kopf.seq}`);
 
 // 2. Alle früheren Köpfe gegen die heutige Kette prüfen
 for (let i = 0; i < verankert.length; i += 200) {
   const teil = verankert.slice(i, i + 200);
-  const ist = await holen(`/api/protokoll/hashes?seq=${teil.map((k) => k.seq).join(",")}`);
+  const ist = await holen(`/api/log/hashes?seq=${teil.map((k) => k.seq).join(",")}`);
   for (const k of teil) if (ist[k.seq] !== k.hash) fehler.push(`seq ${k.seq}: verankert ${k.hash}, Plattform ${ist[k.seq]}`);
 }
 console.log(`${verankert.length} frühere Köpfe geprüft`);

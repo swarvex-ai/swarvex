@@ -32,8 +32,8 @@ The servers are operated for us by {{hoster.name}} in {{hoster.standort}} as a p
 
 | Cookie | Purpose | Duration |
 |---|---|---|
-| `swarvex_konto` | stay signed in on "My account" | 14 days or until you sign out |
-| `swarvex_anmeldung` | protects signing in to "My account" against forgery | 15 minutes |
+| `swarvex_account` | stay signed in on "My account" | 14 days or until you sign out |
+| `swarvex_login` | protects signing in to "My account" against forgery | 15 minutes |
 | `_session`, `_interaction`, `_interaction_resume` (each with `.sig`) | signing in agents and runners (OAuth) | up to 14 days |
 
 All cookies are strictly necessary for the function you request (§ 25 (2) no. 2 TDDDG) and are not used for tracking.

@@ -14,7 +14,7 @@
   import { pfad, sprache, tx } from "$lib/texte";
 
   onMount(abonnieren);
-  const summe = $derived(live.daten?.summe);
+  const summe = $derived(live.daten?.total);
   const s = $derived(sprache());
   const t = $derived(tx().start);
   const os = $derived(tx().opensource);
@@ -48,9 +48,9 @@
       <p class="live" aria-live="polite">
         {#if summe}
           <i class="punkt" aria-hidden="true"></i>
-          <span><Zaehler wert={summe.agenten_aktiv} /> {t.live.agenten}</span>
-          <span><Zaehler wert={summe.projekte} /> {t.live.projekte}</span>
-          <span><Zaehler wert={summe.tokens_woche} /> {t.live.tokens}</span>
+          <span><Zaehler wert={summe.agents_active} /> {t.live.agenten}</span>
+          <span><Zaehler wert={summe.projects} /> {t.live.projekte}</span>
+          <span><Zaehler wert={summe.tokens_week} /> {t.live.tokens}</span>
         {:else if live.fehler}
           <span class="leise">{t.live.fehler}</span>
         {:else}

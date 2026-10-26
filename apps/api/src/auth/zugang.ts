@@ -15,23 +15,23 @@ export function zugangPruefer(db: Db, anbieter: Provider, signaturJwk: Record<st
   const jwks = createLocalJWKSet({ keys: [oeffentlich(signaturJwk) as any] });
   return async (authorization: string | undefined): Promise<Zugang> => {
     const token = /^Bearer (.+)$/i.exec(authorization ?? "")?.[1];
-    if (!token) throw new NichtAngemeldet("Kein Token");
+    if (!token) throw new NichtAngemeldet("no token");
     let claims;
     try {
       ({ payload: claims } = await jwtVerify(token, jwks, { issuer: konfig.basis, audience: RESSOURCE(), algorithms: ["ES256"] }));
     } catch (e) {
-      throw new NichtAngemeldet(`Token ungültig: ${(e as Error).message}`);
+      throw new NichtAngemeldet(`invalid token: ${(e as Error).message}`);
     }
     const scopes = String(claims.scope ?? "").split(" ");
-    if (!scopes.includes("mcp")) throw new NichtAngemeldet("Scope mcp fehlt");
+    if (!scopes.includes("mcp")) throw new NichtAngemeldet("scope mcp missing");
     const menschId = Number(claims.sub);
     const clientId = String(claims.client_id);
     const m = (await db.query("select gesperrt from menschen where id = $1", [menschId])).rows[0];
-    if (!m || m.gesperrt) throw new NichtAngemeldet("Konto unbekannt oder gesperrt");
+    if (!m || m.gesperrt) throw new NichtAngemeldet("account unknown or blocked");
     const agentId = await agentZuordnen(db, anbieter, menschId, clientId);
     // Auf der Konto-Seite abgemeldet: Tokens von vorher gelten nicht mehr, auch wenn sie noch nicht abgelaufen sind
     const abgemeldet: Date | null = (await db.query("select abgemeldet from agenten where id = $1", [agentId])).rows[0]?.abgemeldet ?? null;
-    if (abgemeldet && Number(claims.iat) * 1000 <= abgemeldet.getTime()) throw new NichtAngemeldet("Agent wurde abgemeldet; bitte neu anmelden");
+    if (abgemeldet && Number(claims.iat) * 1000 <= abgemeldet.getTime()) throw new NichtAngemeldet("agent was signed out; please sign in again");
     return { menschId, agentId, clientId, token, scopes, ablauf: Number(claims.exp) };
   };
 }
@@ -43,7 +43,7 @@ async function agentZuordnen(db: Db, anbieter: Provider, menschId: number, clien
   const vorhanden = (await db.query("select id, mensch_id from agenten where client_id = $1", [clientId])).rows;
   const eigener = vorhanden.find((a) => Number(a.mensch_id) === menschId);
   if (eigener) return Number(eigener.id);
-  if (vorhanden.length && !clientId.startsWith("https://")) throw new NichtAngemeldet("Client gehört einem anderen Menschen");
+  if (vorhanden.length && !clientId.startsWith("https://")) throw new NichtAngemeldet("client belongs to another person");
   const client = await anbieter.Client.find(clientId);
   const name = client?.clientName ?? clientId;
   return transaktion(db, async (tx) => {

@@ -13,7 +13,7 @@ const patch = (pfad: string) => `diff --git a/${pfad} b/${pfad}
 describe("Patch-Regeln", () => {
   it("weist geschützte Dateien ab, auch wenn das Muster sie erlaubt", () => {
     for (const p of ["swarvex.yaml", "AGENTS.md", ".devcontainer/devcontainer.json", ".github/workflows/ci.yml"]) {
-      expect(patchPruefen(patch(p), ["**"]).join(), p).toMatch(/geschützte Datei/);
+      expect(patchPruefen(patch(p), ["**"]).join(), p).toMatch(/protected file/);
     }
   });
   it("lässt normale Dateien in erlaubten Pfaden durch", () => {

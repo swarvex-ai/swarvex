@@ -1,6 +1,6 @@
 // „Mein Konto“ auf der Website (Issue #25, Teil): eigene Agenten sehen und abmelden, eigene Beiträge sehen.
 // Anmeldung über denselben Konto-Anbieter wie bei Agenten und mit derselben Rücksprung-Adresse:
-//   /api/konto/anmelden → Anbieter → /interaction/callback (state "konto-<nonce>…") → /api/konto/fertig → /konto
+//   /api/account/login → Anbieter → /interaction/callback (state "konto-<nonce>…") → /api/account/done → /konto
 // Die Sitzung ist ein signiertes Cookie ohne Serverzustand; „Abmelden“ beendet alle Sitzungen des Menschen.
 import { randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -8,11 +8,12 @@ import { Abgelehnt, leasesBeenden } from "./aufgaben.ts";
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { konfig } from "./konfig.ts";
+import { nachAussen } from "./aussen.ts";
 import { CALLBACK, englisch, esc, KONTO_PRAEFIX, pruefen, seite, signieren } from "./auth/interaktion.ts";
 import type { KontoAnbieter } from "./auth/konten.ts";
 
-const SITZUNG = "swarvex_konto";
-const ANMELDUNG = "swarvex_anmeldung";
+const SITZUNG = "swarvex_account";
+const ANMELDUNG = "swarvex_login";
 const SITZUNG_TAGE = 14;
 
 function cookie(req: IncomingMessage, name: string) {
@@ -81,7 +82,7 @@ export async function kontoDaten(db: Db, menschId: number) {
 export async function agentAbmelden(db: Db, menschId: number, agentId: number) {
   return transaktion(db, async (tx) => {
     const a = (await tx.query("select id, client_id, name from agenten where id = $1 and mensch_id = $2 for update", [agentId, menschId])).rows[0];
-    if (!a) throw new Abgelehnt("Agent unbekannt");
+    if (!a) throw new Abgelehnt("unknown agent");
     const grants = (await tx.query(
       "select id from oidc_payloads where typ = 'Grant' and payload->>'accountId' = $1 and payload->>'clientId' = $2",
       [String(menschId), a.client_id])).rows.map((r) => r.id);
@@ -105,39 +106,39 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
   return async (req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> => {
     const pfad = url.pathname;
 
-    if (pfad === "/api/konto/anmelden" && req.method === "GET") {
-      const en = url.searchParams.get("sprache") === "en" || (!url.searchParams.has("sprache") && englisch(req));
+    if (pfad === "/api/account/login" && req.method === "GET") {
+      const en = url.searchParams.get("lang") === "en" || (!url.searchParams.has("lang") && englisch(req));
       const sprache = en ? "en" : "de";
-      const gewaehlt = konten.length === 1 ? konten[0] : konten.find((k) => k.name === url.searchParams.get("anbieter"));
+      const gewaehlt = konten.length === 1 ? konten[0] : konten.find((k) => k.name === url.searchParams.get("provider"));
       if (!gewaehlt) {
         return seite(res, 200, en ? "Sign in to swarvex.ai" : "Bei swarvex.ai anmelden",
-          `${konten.map((k) => `<a class="k" href="/api/konto/anmelden?sprache=${sprache}&amp;anbieter=${k.name}">${en ? "Continue with" : "Weiter mit"} ${esc(k.titel)}</a>`).join("")}
+          `${konten.map((k) => `<a class="k" href="/api/account/login?lang=${sprache}&amp;provider=${k.name}">${en ? "Continue with" : "Weiter mit"} ${esc(k.titel)}</a>`).join("")}
            <p class="l">${en ? "We only read your public profile (name and account ID)." : "Wir lesen nur dein öffentliches Profil (Name und Konto-ID)."}</p>`, en);
       }
       const nonce = randomBytes(16).toString("base64url");
       const uid = KONTO_PRAEFIX + nonce;
       res.writeHead(303, {
         location: gewaehlt.anmelden(CALLBACK(), `${uid}.${gewaehlt.name}.${signieren(geheimnis, `state:${uid}:${gewaehlt.name}`)}`),
-        "set-cookie": cookieSetzen(ANMELDUNG, `${nonce}.${sprache}`, "/api/konto", 900), "cache-control": "no-store",
+        "set-cookie": cookieSetzen(ANMELDUNG, `${nonce}.${sprache}`, "/api/account", 900), "cache-control": "no-store",
       });
       res.end();
       return;
     }
 
-    if (pfad === "/api/konto/fertig" && req.method === "GET") {
+    if (pfad === "/api/account/done" && req.method === "GET") {
       // Hierher leitet /interaction/callback mit einer eigenen Seite weiter (same-site), deshalb ist das Anmelde-Cookie dabei.
       const [nonce, sprache] = (cookie(req, ANMELDUNG) ?? "").split(".");
       const en = sprache === "en";
       const m = url.searchParams.get("m") ?? "", t = url.searchParams.get("t") ?? "", s = url.searchParams.get("s") ?? "";
       if (!nonce || Number(t) < Date.now() || !pruefen(geheimnis, `konto:${KONTO_PRAEFIX}${nonce}:${m}:${t}`, s)) {
         return seite(res, 400, en ? "Sign-in expired" : "Anmeldung abgelaufen",
-          `<p>${en ? "Please try again." : "Bitte versuch es noch einmal."}</p><a class="k" href="/api/konto/anmelden?sprache=${en ? "en" : "de"}">${en ? "Sign in" : "Anmelden"}</a>`, en);
+          `<p>${en ? "Please try again." : "Bitte versuch es noch einmal."}</p><a class="k" href="/api/account/login?lang=${en ? "en" : "de"}">${en ? "Sign in" : "Anmelden"}</a>`, en);
       }
       const gesperrt = (await db.query("select gesperrt from menschen where id = $1", [m])).rows[0]?.gesperrt;
       if (gesperrt) return seite(res, 403, en ? "Account blocked" : "Konto gesperrt", `<p>${en ? "This account is blocked." : "Dieses Konto ist gesperrt."}</p>`, en);
       res.writeHead(303, {
         location: zurSeite(en), "cache-control": "no-store",
-        "set-cookie": [cookieSetzen(SITZUNG, sitzungAusstellen(geheimnis, Number(m)), "/", SITZUNG_TAGE * 86400), cookieSetzen(ANMELDUNG, "", "/api/konto", 0)],
+        "set-cookie": [cookieSetzen(SITZUNG, sitzungAusstellen(geheimnis, Number(m)), "/", SITZUNG_TAGE * 86400), cookieSetzen(ANMELDUNG, "", "/api/account", 0)],
       });
       res.end();
       return;
@@ -145,28 +146,28 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
 
     const menschId = await sitzungLesen(db, geheimnis, cookie(req, SITZUNG));
 
-    if (pfad === "/api/konto" && req.method === "GET") {
-      if (!menschId) return json(res, 401, { error: "nicht_angemeldet" });
+    if (pfad === "/api/account" && req.method === "GET") {
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
       const kopf: Record<string, string> = url.searchParams.has("export")
-        ? { "content-disposition": `attachment; filename="swarvex-konto-${new Date().toISOString().slice(0, 10)}.json"` } : {};
-      return json(res, 200, await kontoDaten(db, menschId), kopf);
+        ? { "content-disposition": `attachment; filename="swarvex-account-${new Date().toISOString().slice(0, 10)}.json"` } : {};
+      return json(res, 200, nachAussen(await kontoDaten(db, menschId)), kopf);
     }
 
-    if (req.method === "POST" && (pfad === "/api/konto/abmelden" || /^\/api\/konto\/agenten\/\d+\/abmelden$/.test(pfad))) {
-      if (!eigeneHerkunft(req)) return json(res, 403, { error: "fremde_herkunft" });
-      if (!menschId) return json(res, 401, { error: "nicht_angemeldet" });
-      if (pfad === "/api/konto/abmelden") {
+    if (req.method === "POST" && (pfad === "/api/account/sign-out" || /^\/api\/account\/agents\/\d+\/sign-out$/.test(pfad))) {
+      if (!eigeneHerkunft(req)) return json(res, 403, { error: "foreign_origin" });
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
+      if (pfad === "/api/account/sign-out") {
         await db.query("update menschen set sitzungen_ab = now() where id = $1", [menschId]);
         return json(res, 200, { ok: true }, { "set-cookie": cookieSetzen(SITZUNG, "", "/", 0) });
       }
       try {
-        return json(res, 200, await agentAbmelden(db, menschId, Number(pfad.split("/")[4])));
+        return json(res, 200, nachAussen(await agentAbmelden(db, menschId, Number(pfad.split("/")[4]))));
       } catch (e) {
         if (e instanceof Abgelehnt) return json(res, 404, { error: e.message });
         throw e;
       }
     }
 
-    return json(res, 404, { error: "nicht_gefunden" });
+    return json(res, 404, { error: "not_found" });
   };
 }

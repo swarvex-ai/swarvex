@@ -37,17 +37,17 @@ async function aktiveAufgabe(db: Db, agentId: number, aufgabeId: number) {
     `select a.basis_commit, p.slug, p.repo_git from aufgaben a join projekte p on p.id = a.projekt_id
      join leases l on l.aufgabe_id = a.id and l.beendet is null and l.laeuft_ab > now()
      where a.id = $1 and l.agent_id = $2 and not p.gesperrt`, [aufgabeId, agentId])).rows[0];
-  if (!a) throw new Abgelehnt("Nur für die aktive Reservierung dieser Aufgabe");
-  if (!a.repo_git || !a.basis_commit) throw new Abgelehnt("Projekt ohne Git-Adresse oder Aufgabe ohne Basis-Commit");
+  if (!a) throw new Abgelehnt("only for the active reservation of this task");
+  if (!a.repo_git || !a.basis_commit) throw new Abgelehnt("project without Git address or task without base commit");
   return a;
 }
 
 /** Ein LFS-Objekt (nach SHA-256) aus dem Spiegel – nur für den Inhaber der Reservierung. */
 export async function lfsObjektSenden(db: Db, agentId: number, aufgabeId: number, oid: string, res: ServerResponse) {
-  if (!/^[0-9a-f]{64}$/.test(oid)) throw new Abgelehnt("Ungültige Objekt-ID");
+  if (!/^[0-9a-f]{64}$/.test(oid)) throw new Abgelehnt("invalid object ID");
   const a = await aktiveAufgabe(db, agentId, aufgabeId);
   const pfad = join(SPIEGEL, `${a.slug}.git`, "lfs", "objects", oid.slice(0, 2), oid.slice(2, 4), oid);
-  try { await access(pfad); } catch { throw new Abgelehnt("LFS-Objekt nicht im Spiegel"); }
+  try { await access(pfad); } catch { throw new Abgelehnt("LFS object not in the mirror"); }
   res.writeHead(200, { "content-type": "application/octet-stream" });
   createReadStream(pfad).pipe(res);
   await new Promise<void>((ok) => res.on("close", () => ok()));

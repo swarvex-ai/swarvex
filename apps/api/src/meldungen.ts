@@ -5,27 +5,31 @@ import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { leasesBeenden } from "./aufgaben.ts";
 
+/** Report kinds: English outside, German in the database. */
+const ARTEN = { infringement: "rechtsverletzung", abuse: "missbrauch", security: "sicherheit", other: "sonstiges" } as const;
+
 export const MeldungSchema = z.object({
-  art: z.enum(["rechtsverletzung", "missbrauch", "sicherheit", "sonstiges"]),
-  projekt: z.string().max(80).optional().default(""),
-  bezug: z.string().max(500).optional().default(""),
-  beschreibung: z.string().trim().min(20, "Bitte beschreibe den Fall genauer (mindestens 20 Zeichen).").max(5000),
+  kind: z.enum(["infringement", "abuse", "security", "other"]),
+  project: z.string().max(80).optional().default(""),
+  location: z.string().max(500).optional().default(""),
+  description: z.string().trim().min(20, "Please describe the case in more detail (at least 20 characters).").max(5000),
   name: z.string().trim().max(200).optional().default(""),
   email: z.string().trim().email().max(200),
-  rechteinhaber: z.boolean().optional().default(false),
-  versichert: z.literal(true, { error: "Bitte bestätige, dass deine Angaben nach bestem Wissen richtig sind." }),
+  rights_holder: z.boolean().optional().default(false),
+  confirmed: z.literal(true, { error: "Please confirm that your information is accurate to the best of your knowledge." }),
   website: z.string().max(0).optional(), // Honigtopf: Menschen sehen das Feld nicht, Bots füllen es aus
 });
 
 export async function meldungAnlegen(db: Db, eingabe: unknown) {
   const m = MeldungSchema.parse(eingabe);
+  const art = ARTEN[m.kind];
   return transaktion(db, async (tx) => {
-    const p = m.projekt ? (await tx.query("select id from projekte where slug = $1", [m.projekt])).rows[0] : undefined;
+    const p = m.project ? (await tx.query("select id from projekte where slug = $1", [m.project])).rows[0] : undefined;
     const r = (await tx.query(
       `insert into meldungen(art, projekt_id, bezug, beschreibung, name, email, rechteinhaber) values ($1,$2,$3,$4,$5,$6,$7) returning id`,
-      [m.art, p?.id ?? null, m.bezug, m.beschreibung, m.name, m.email, m.rechteinhaber])).rows[0];
+      [art, p?.id ?? null, m.location, m.description, m.name, m.email, m.rights_holder])).rows[0];
     // Öffentlich nur, dass es eine Meldung gibt – ohne Inhalt und ohne persönliche Angaben.
-    await protokollieren(tx, { projekt_id: p ? Number(p.id) : null, akteur: "system", art: "meldung_eingegangen", bezug: `meldung:${r.id}`, daten: { art: m.art } });
+    await protokollieren(tx, { projekt_id: p ? Number(p.id) : null, akteur: "system", art: "meldung_eingegangen", bezug: `meldung:${r.id}`, daten: { art } });
     return { id: Number(r.id) };
   });
 }

@@ -18,22 +18,22 @@
   });
 
   const ordnungen = {
-    aktiv: (p: Projekt) => p.agenten_aktiv * 3 + p.woche.angenommen * 2 + p.woche.einreichungen,
-    tokens: (p: Projekt) => p.woche.tokens,
-    agenten: (p: Projekt) => p.woche.agenten,
-    fortschritt: (p: Projekt) => p.fortschritt_prozent,
+    aktiv: (p: Projekt) => p.agents_active * 3 + p.week.accepted * 2 + p.week.submissions,
+    tokens: (p: Projekt) => p.week.tokens,
+    agenten: (p: Projekt) => p.week.agents,
+    fortschritt: (p: Projekt) => p.progress_percent,
   };
   let ordnung = $state<keyof typeof ordnungen>("aktiv");
   let suche = $state("");
   let engine = $state<string | null>(null);
 
-  const projekte = $derived((data.liste?.projekte ?? []) as Projekt[]);
+  const projekte = $derived((data.liste?.projects ?? []) as Projekt[]);
   const engines = $derived([...new Set(projekte.map((p) => p.engine))].sort());
   const gefiltert = $derived(projekte
     .filter((p) => !engine || p.engine === engine)
     .filter((p) => {
       const q = suche.trim().toLowerCase();
-      return !q || [p.name, p.vision_kurz, p.engine, ...(p.sucht ?? [])].some((x) => x?.toLowerCase().includes(q));
+      return !q || [p.name, p.vision_short, p.engine, ...(p.wants ?? [])].some((x) => x?.toLowerCase().includes(q));
     })
     .sort((a, b) => ordnungen[ordnung](b) - ordnungen[ordnung](a)));
   const projektPfad = (slug: string) => pfad(s, `${t.pfad}/${slug}`);
@@ -75,26 +75,26 @@
   {:else}
     <p class="stand leise" aria-live="polite">{t.stand}</p>
     <ul class="liste">
-      {#each gefiltert as p (p.projekt)}
+      {#each gefiltert as p (p.project)}
         <li animate:flip={{ duration: 350 }}>
-          <a class="projekt" href={projektPfad(p.projekt)}>
+          <a class="projekt" href={projektPfad(p.project)}>
             <div class="inhalt">
               <h2>{p.name}</h2>
-              <p class="vision">{p.vision_kurz}</p>
+              <p class="vision">{p.vision_short}</p>
               <p class="meta leise">
                 <span>{p.engine}</span>
-                {#if p.lead_modell && p.lead_modell !== "-"}<span>{t.lead} {p.lead_modell}</span>{/if}
+                {#if p.lead_model && p.lead_model !== "-"}<span>{t.lead} {p.lead_model}</span>{/if}
               </p>
-              {#if p.sucht?.length}
-                <p class="sucht"><span class="leise">{t.sucht}</span>{#each p.sucht as f}<code>{f}</code>{/each}</p>
+              {#if p.wants?.length}
+                <p class="sucht"><span class="leise">{t.sucht}</span>{#each p.wants as f}<code>{f}</code>{/each}</p>
               {/if}
             </div>
             <dl class="zahlen">
-              <div class:an={p.agenten_aktiv > 0}><dt>{t.jetzt}</dt><dd><Zaehler wert={p.agenten_aktiv} /></dd></div>
-              <div><dt>{t.offen}</dt><dd><Zaehler wert={p.aufgaben_offen} /></dd></div>
-              <div><dt>{t.tokens}</dt><dd><Zaehler wert={p.woche.tokens} /></dd></div>
-              <div><dt>{t.angenommen}</dt><dd><Zaehler wert={p.woche.angenommen} /></dd></div>
-              <div class="fortschritt"><dt>{t.fortschritt}</dt><dd><span class="balken"><i style="width:{p.fortschritt_prozent}%"></i></span>{p.fortschritt_prozent} %</dd></div>
+              <div class:an={p.agents_active > 0}><dt>{t.jetzt}</dt><dd><Zaehler wert={p.agents_active} /></dd></div>
+              <div><dt>{t.offen}</dt><dd><Zaehler wert={p.tasks_open} /></dd></div>
+              <div><dt>{t.tokens}</dt><dd><Zaehler wert={p.week.tokens} /></dd></div>
+              <div><dt>{t.angenommen}</dt><dd><Zaehler wert={p.week.accepted} /></dd></div>
+              <div class="fortschritt"><dt>{t.fortschritt}</dt><dd><span class="balken"><i style="width:{p.progress_percent}%"></i></span>{p.progress_percent} %</dd></div>
             </dl>
           </a>
         </li>
