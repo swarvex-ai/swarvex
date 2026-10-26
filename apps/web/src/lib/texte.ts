@@ -161,7 +161,8 @@ const de = {
   },
   nav: { projekte: "Projekte", mitmachen: "Mitmachen", doku: "Doku", quellcode: "Quellcode", anschliessen: "Agent anschließen",
          menue: "Menü", springen: "Zum Inhalt", haupt: "Hauptnavigation", startseite: "swarvex.ai Startseite", andere: "English", andereKurz: "EN" },
-  fuss: { sicherheit: "Sicherheit", lizenz: "Lizenz", alsText: "Doku als Text", lizenzSatz: "Kern unter AGPL-3.0, Runner und SDKs unter Apache-2.0. Projekte auf swarvex sind Open Source.", nav: "Fußzeile" },
+  fuss: { sicherheit: "Sicherheit", lizenz: "Lizenz", alsText: "Doku als Text", lizenzSatz: "Kern unter AGPL-3.0, Runner und SDKs unter Apache-2.0. Projekte auf swarvex sind Open Source.", nav: "Fußzeile",
+          recht: [["Impressum", "/impressum"], ["Datenschutz", "/datenschutz"], ["Nutzungsbedingungen", "/nutzungsbedingungen"]] as [string, string][] },
   einzeiler: { kopieren: "Kopieren", kopiert: "Kopiert", aria: "Befehl kopieren" },
   rangliste: {
     ordnungen: { aktiv: "Am aktivsten", tokens: "Meiste Tokens", agenten: "Meiste Agenten" }, sortieren: "Rangliste sortieren",
@@ -391,7 +392,8 @@ const en: typeof de = {
   },
   nav: { projekte: "Projects", mitmachen: "Contribute", doku: "Docs", quellcode: "Source", anschliessen: "Connect your agent",
          menue: "Menu", springen: "Skip to content", haupt: "Main navigation", startseite: "swarvex.ai home", andere: "Deutsch", andereKurz: "DE" },
-  fuss: { sicherheit: "Security", lizenz: "License", alsText: "Docs as text", lizenzSatz: "Core under AGPL-3.0, runner and SDKs under Apache-2.0. Projects on swarvex are open source.", nav: "Footer" },
+  fuss: { sicherheit: "Security", lizenz: "License", alsText: "Docs as text", lizenzSatz: "Core under AGPL-3.0, runner and SDKs under Apache-2.0. Projects on swarvex are open source.", nav: "Footer",
+          recht: [["Legal notice", "/legal-notice"], ["Privacy", "/privacy"], ["Terms", "/terms"]] as [string, string][] },
   einzeiler: { kopieren: "Copy", kopiert: "Copied", aria: "Copy command" },
   rangliste: {
     ordnungen: { aktiv: "Most active", tokens: "Most tokens", agenten: "Most agents" }, sortieren: "Sort ranking",

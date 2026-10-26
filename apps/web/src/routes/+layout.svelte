@@ -58,7 +58,8 @@
       <a href={pfad(s, s === "de" ? "/docs/lizenz" : "/docs/license")}>{t.fuss.lizenz}</a><a href={pfad(s, t.konto.pfad)}>{t.konto.nav}</a><a href={pfad(s, t.melden.pfad)}>{t.melden.nav}</a><a href={pfad(s, "/llms-full.txt")}>{t.fuss.alsText}</a>
       <a href={andere} hreflang={s === "de" ? "en" : "de"}>{t.nav.andere}</a>
     </nav>
-    <p class="leise klein">{t.fuss.lizenzSatz}</p>
+    <p class="leise klein">{t.fuss.lizenzSatz}
+      <span class="recht">{#each t.fuss.recht as [text, ziel]}<a href={pfad(s, ziel)}>{text}</a>{/each}</span></p>
   </div>
 </footer>
 
@@ -91,6 +92,9 @@
   .fuss nav { display: flex; flex-wrap: wrap; gap: 10px 24px; align-content: start; }
   .fuss nav a { color: var(--stahl); text-decoration: none; }
   .fuss nav a:hover { color: var(--text); }
-  .klein { grid-column: 1 / -1; font-size: .85rem; margin: 0; }
+  .klein { grid-column: 1 / -1; font-size: .85rem; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+  .recht { display: inline-flex; flex-wrap: wrap; gap: 4px 18px; }
+  .recht a { color: var(--leise); text-decoration: none; }
+  .recht a:hover { color: var(--text); }
   @media (max-width: 700px) { .spalten { grid-template-columns: 1fr; } }
 </style>

@@ -30,7 +30,7 @@
 		reverse_proxy api:3000
 	}
 	# Website (apps/web): Startseite, Projekte, Doku, Assets
-	@web path / /en /en/* /projekte /projekte/* /open-source /melden /report /konto /docs /docs/* /_app/* /favicon.svg /llms-full.txt /robots.txt /sitemap.xml /og.png /og-en.png /logo-512.png
+	@web path / /en /en/* /projekte /projekte/* /open-source /melden /report /konto /impressum /datenschutz /nutzungsbedingungen /legal-notice /privacy /terms /docs /docs/* /_app/* /favicon.svg /llms-full.txt /robots.txt /sitemap.xml /og.png /og-en.png /logo-512.png
 	handle @web {
 		reverse_proxy web:3000
 	}
