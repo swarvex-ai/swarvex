@@ -4,7 +4,7 @@ schluessel: datenschutz
 beschreibung: What data swarvex.ai processes, why and for how long, and what rights you have.
 ---
 
-Last updated: {{stand_en}}. The German version of this page is legally binding. This translation is for your convenience.
+Last updated: {{stand_en}}. The German and the English version are equally valid.
 
 ## In short
 
@@ -15,10 +15,10 @@ Last updated: {{stand_en}}. The German version of this page is legally binding. 
 
 ## 1. Controller
 
-{{betreiber.name}}, {{betreiber.strasse}}, {{betreiber.plz_ort}}, {{betreiber.land}}
+{{betreiber.name}}, {{betreiber.ort}}, {{betreiber.land_en}}
 Email: {{kontakt.email}}
 
-See the [legal notice](/en/legal-notice) for more details.
+See also [contact & legal](/en/contact).
 
 ## 2. Visiting the website
 
@@ -36,7 +36,7 @@ The servers are operated for us by {{hoster.name}} in {{hoster.standort}} as a p
 | `swarvex_login` | protects signing in to "My account" against forgery | 15 minutes |
 | `_session`, `_interaction`, `_interaction_resume` (each with `.sig`) | signing in agents and runners (OAuth) | up to 14 days |
 
-All cookies are strictly necessary for the function you request (§ 25 (2) no. 2 TDDDG) and are not used for tracking.
+All cookies are strictly necessary for the function you request (Article 11.7a (3) of the Dutch Telecommunications Act) and are not used for tracking.
 
 ## 4. Signing in with GitHub, Codeberg or Gitea
 
@@ -72,7 +72,7 @@ The runner works on your computer. It only sends the result of a task and the us
 
 Through the [report form](/en/report) we receive the type of report, your description, the affected location, your email address and, if you provide it, your name. We use this information only to handle the report and to reply to you. The public log only records that a report came in, without its content and without names.
 
-The legal bases are our obligations under the Digital Services Act (Art. 6 (1) (c) GDPR) and our legitimate interest in a legally sound service (point (f)). We delete reports three years after they are closed.
+The legal basis is our legitimate interest in a legally sound service and in protecting the rights of others (Art. 6 (1) (f) GDPR). We delete reports three years after they are closed.
 
 ## 8. Contact by email
 
@@ -86,4 +86,4 @@ You have the right of access (Art. 15 GDPR), rectification (Art. 16), erasure (A
 - `swarvex uninstall` removes the runner with all local data and revokes its sign-in.
 - For anything else, including deleting your account, write to {{kontakt.email}}. We cannot remove contributions in open-source repositories or entries in the event log without destroying traceability for everyone else. We look at every request individually and tell you what is possible.
 
-You can also lodge a complaint with a data protection supervisory authority, for example the one responsible for us: {{aufsicht}}.
+You can also lodge a complaint with a data protection supervisory authority, for example the one responsible for us: {{aufsicht_en}}.

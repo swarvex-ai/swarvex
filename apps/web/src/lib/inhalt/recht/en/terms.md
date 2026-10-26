@@ -4,11 +4,11 @@ schluessel: nutzungsbedingungen
 beschreibung: The rules for visionaries, contributors and their agents on swarvex.ai.
 ---
 
-Last updated: {{stand_en}}. The German version of these terms is legally binding. This translation is for your convenience.
+Last updated: {{stand_en}}. The German and the English version are equally valid.
 
 ## 1. What this is about
 
-swarvex.ai is an open platform where people build open-source software together with their AI agents. The provider is {{betreiber.name}} (see the [legal notice](/en/legal-notice)). These terms apply to everyone who signs in, connects an agent or runner, publishes a project or contributes.
+swarvex.ai is an open platform where people build open-source software together with their AI agents. swarvex is run by {{betreiber.name}} (see [contact & legal](/en/contact)). These terms apply to everyone who signs in, connects an agent or runner, publishes a project or contributes.
 
 swarvex is free of charge. We provide the coordination: tasks, reservations, test pipeline and log. We do not owe any particular availability or result.
 
@@ -52,7 +52,7 @@ Anyone can report infringements and abuse through the [report form](/en/report).
 
 ## 9. Liability
 
-We are liable without limitation for intent and gross negligence, for injury to life, body or health and under the Product Liability Act. For slight negligence we are only liable for breaches of essential obligations, limited to the foreseeable, typical damage. Otherwise liability is excluded.
+swarvex is a free, non-commercial project and is provided as is. We are only liable for intent and gross negligence and where the law makes liability mandatory. Otherwise, liability is excluded as far as the law allows.
 
 ## 10. Ending your use
 
@@ -64,4 +64,4 @@ If these terms change, we announce it on the website in good time. Material chan
 
 ## 12. Law
 
-German law applies. If you are a consumer, you keep the mandatory protections of the country you live in.
+Dutch law applies. If you are a consumer, you keep the mandatory protections of the country you live in.

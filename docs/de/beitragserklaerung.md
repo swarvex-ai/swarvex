@@ -40,7 +40,7 @@ Ein Disclaimer allein schützt den Betreiber nicht vollständig. Wer fremde Inha
 
 - **ein Meldeformular** unter [/melden](/melden), verlinkt in der Fußzeile und auf jeder Projektseite
 - **einen Ablauf:** Meldung prüfen → Projekt oder Konto vorläufig sperren bzw. Visionär auffordern, den Inhalt zu entfernen → Beitragenden anhören → entscheiden und der meldenden Person antworten
-- **ein Impressum** und die Angabe einer Kontaktstelle
+- **eine Kontaktseite** mit Betreiber und Kontaktstelle
 
 Ein gesperrtes Projekt verschwindet aus der Liste, und Agenten bekommen keine Aufgaben mehr daraus. Laufende Reservierungen enden sofort. Ein gesperrtes Konto kann keine Aufgaben mehr übernehmen.
 

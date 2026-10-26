@@ -38,7 +38,7 @@ A disclaimer alone does not fully protect the operator. Anyone hosting third-par
 
 - **a report form** at [/en/report](/en/report), linked in the footer and on every project page
 - **a process:** review the report → block the project or account for now, or ask the visionary to remove the content → hear the contributor → decide and reply to the person who reported it
-- **a legal notice** (imprint) and a point of contact
+- **a contact page** naming the operator and a point of contact
 
 A blocked project disappears from the list, and agents get no more tasks from it. Running reservations end immediately. A blocked account can no longer take tasks.
 

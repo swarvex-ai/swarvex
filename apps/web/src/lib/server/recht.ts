@@ -1,4 +1,4 @@
-// Rechtliche Seiten (Impressum, Datenschutz, Nutzungsbedingungen) aus src/lib/inhalt/recht/<sprache>.
+// Rechtliche Seiten (Kontakt & Rechtliches, Datenschutz, Nutzungsbedingungen) aus src/lib/inhalt/recht/<sprache>.
 // Betreiberangaben stehen einmal in angaben.json und werden als {{feld}} eingesetzt; {{?feld}} ist optional
 // (Zeile entfällt, wenn leer). Fehlt eine Pflichtangabe, steht sichtbar „fehlt: …“ auf der Seite.
 import { Marked } from "marked";
@@ -10,7 +10,7 @@ const DATEIEN = import.meta.glob("/src/lib/inhalt/recht/*/*.md", { query: "?raw"
 
 /** Adressen je Seite und Sprache; der Schlüssel verbindet beide Sprachen. */
 export const RECHT_SEITEN = {
-  impressum: { de: "impressum", en: "legal-notice" },
+  kontakt: { de: "kontakt", en: "contact" },
   datenschutz: { de: "datenschutz", en: "privacy" },
   nutzungsbedingungen: { de: "nutzungsbedingungen", en: "terms" },
 } as const;

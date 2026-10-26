@@ -1,2 +1,2 @@
-// Rechtliche Seiten: /impressum, /datenschutz, /nutzungsbedingungen und /en/legal-notice, /en/privacy, /en/terms.
-export const match = (p: string) => ["impressum", "datenschutz", "nutzungsbedingungen", "legal-notice", "privacy", "terms"].includes(p);
+// Rechtliche Seiten: /kontakt, /datenschutz, /nutzungsbedingungen und /en/contact, /en/privacy, /en/terms.
+export const match = (p: string) => ["kontakt", "datenschutz", "nutzungsbedingungen", "contact", "privacy", "terms"].includes(p);

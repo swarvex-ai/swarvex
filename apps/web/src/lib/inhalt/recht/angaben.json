@@ -1,11 +1,10 @@
 {
-  "_hinweis": "Angaben des Betreibers für Impressum, Datenschutz und Nutzungsbedingungen. Leere Felder erscheinen auf der Website als ‚fehlt‘.",
-  "betreiber": { "name": "", "zusatz": "", "strasse": "", "plz_ort": "", "land": "Deutschland" },
-  "kontakt": { "email": "", "telefon": "" },
-  "verantwortlich_inhalt": "",
-  "ust_id": "",
+  "_hinweis": "Angaben des Betreibers für Kontakt, Datenschutz und Nutzungsbedingungen. Leere Felder erscheinen auf der Website als ‚fehlt‘.",
+  "betreiber": { "name": "", "ort": "", "land": "Niederlande", "land_en": "Netherlands" },
+  "kontakt": { "email": "" },
   "hoster": { "name": "", "standort": "" },
-  "aufsicht": "",
+  "aufsicht": "die Autoriteit Persoonsgegevens (autoriteitpersoonsgegevens.nl)",
+  "aufsicht_en": "the Dutch Data Protection Authority, Autoriteit Persoonsgegevens (autoriteitpersoonsgegevens.nl)",
   "stand": "26.10.2026",
   "stand_en": "26 October 2026"
 }

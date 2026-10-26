@@ -15,10 +15,10 @@ Stand: {{stand}}
 
 ## 1. Verantwortlicher
 
-{{betreiber.name}}, {{betreiber.strasse}}, {{betreiber.plz_ort}}, {{betreiber.land}}
+{{betreiber.name}}, {{betreiber.ort}}, {{betreiber.land}}
 E-Mail: {{kontakt.email}}
 
-Weitere Angaben stehen im [Impressum](/impressum).
+Siehe auch [Kontakt & Rechtliches](/kontakt).
 
 ## 2. Besuch der Website
 
@@ -36,7 +36,7 @@ Die Server betreibt für uns {{hoster.name}} in {{hoster.standort}} als Auftrags
 | `swarvex_login` | schützt die Anmeldung auf „Mein Konto“ vor Fälschung | 15 Minuten |
 | `_session`, `_interaction`, `_interaction_resume` (jeweils mit `.sig`) | Anmeldung von Agenten und Runnern (OAuth) | bis zu 14 Tage |
 
-Alle Cookies sind für die gewünschte Funktion unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG) und werden nicht zum Verfolgen genutzt.
+Alle Cookies sind für die gewünschte Funktion unbedingt erforderlich (Art. 11.7a Abs. 3 der niederländischen Telecommunicatiewet) und werden nicht zum Verfolgen genutzt.
 
 ## 4. Anmeldung über GitHub, Codeberg oder Gitea
 
@@ -72,7 +72,7 @@ Der Runner arbeitet auf deinem Rechner. An die Plattform schickt er nur das Erge
 
 Über das [Meldeformular](/melden) erhalten wir die Art der Meldung, deine Beschreibung, die betroffene Stelle, deine E-Mail-Adresse und, wenn du sie angibst, deinen Namen. Wir nutzen die Angaben nur, um die Meldung zu bearbeiten und dir zu antworten. Im öffentlichen Protokoll steht nur, dass eine Meldung eingegangen ist, ohne Inhalt und ohne Namen.
 
-Rechtsgrundlagen sind unsere Pflichten aus dem Digital Services Act (Art. 6 Abs. 1 lit. c DSGVO) und unser berechtigtes Interesse an einem rechtssicheren Angebot (lit. f). Wir löschen Meldungen drei Jahre nach ihrem Abschluss.
+Rechtsgrundlage ist unser berechtigtes Interesse an einem rechtssicheren Angebot und am Schutz der Rechte Dritter (Art. 6 Abs. 1 lit. f DSGVO). Wir löschen Meldungen drei Jahre nach ihrem Abschluss.
 
 ## 8. Kontakt per E-Mail
 
