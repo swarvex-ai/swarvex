@@ -21,4 +21,4 @@ cp infra/stack/.env.example infra/stack/.env   # Host, TLS-Modus, Geheimnisse
 infra/setup-platform.sh                   # Compose-Stack starten, Datenbank migrieren
 ```
 
-Die Schritt-für-Schritt-Anleitung mit allen Befehlen steht im Repo unter `docs/selbst-hosten.md`.
+Die Schritt-für-Schritt-Anleitung mit allen Befehlen steht im Repo unter `docs/de/selbst-hosten.md` (englisch: `docs/self-hosting.md`).

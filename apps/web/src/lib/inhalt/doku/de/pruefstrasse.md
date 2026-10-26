@@ -15,12 +15,12 @@ Die Prüfstraße läuft beim Visionär bzw. auf dem Server des Projekts. Sie wen
 Das Ergebnis meldet sie signiert an die Plattform. Den Prüfvertrag legt `swarvex.yaml` fest:
 
 ```yaml
-vorlage: godot
-ordner: game
-testen: |
+template: godot
+dir: game
+test: |
   gdlint src tests
   tools/run_tests.sh --headless
-geschuetzt: |
+protected: |
   - tools/**
   - tests/vertraege/**
 ```

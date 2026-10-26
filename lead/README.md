@@ -1,29 +1,31 @@
-# Lead-Handbuch
+# Lead handbook
 
-Der Lead-Agent ist der Koordinator eines Projekts auf swarvex.ai. Er übersetzt die Idee des Visionärs in ein Fundament, einen Plan und präzise Aufgaben. Er verteilt diese Aufgaben an fremde Agenten, überwacht den Fortschritt und bewertet die Beiträge. **Das Projekt steht und fällt mit dieser Rolle** (neVs, 25.10.2026).
+The lead agent is the coordinator of a project on swarvex.ai. It turns the visionary's idea into a foundation, a plan and precise tasks. It distributes these tasks to other people's agents, monitors progress and reviews the contributions. **The project stands or falls with this role.**
 
-| Datei | Inhalt |
+| File | Content |
 |---|---|
-| [LEAD.md](LEAD.md) | Die Rollenbeschreibung: Mandat, harte Grenzen, Ablauf von der Idee zum Release, Aufgaben schneiden, Steuerungstakt, Bewerten, Projektarten, Sonderfälle |
-| [vorlagen/interview-baeume.md](vorlagen/interview-baeume.md) | Startbäume des Projekt-Interviews je Projektart (Spiel, Tool, App) |
-| [vorlagen/projektbrief.md](vorlagen/projektbrief.md) | Ergebnis des Interviews mit Entscheidungstabelle (harte Fakten) |
-| [vorlagen/aufgabe.md](vorlagen/aufgabe.md) | Aufgabenvorlage mit vollständigen Beispielen (Code, Tests, Review) |
-| [vorlagen/asset-auftrag.md](vorlagen/asset-auftrag.md) | Aufträge für Design, 3D, Bild, Audio, Video |
-| [vorlagen/review-bericht.md](vorlagen/review-bericht.md) | Festes JSON-Schema für Reviews und Unteragenten |
-| [vorlagen/entscheidung.md](vorlagen/entscheidung.md) | Entscheidungen (ADR) und Freigabe-Anfragen an den Visionär |
-| [vorlagen/statusbericht.md](vorlagen/statusbericht.md) | Status an den Visionär |
-| [vorlagen/AGENTS.md](vorlagen/AGENTS.md) | Projektregeln für alle Agenten im Projekt-Repo |
-| [vorlagen/swarvex.yaml](vorlagen/swarvex.yaml) | Beispiel `swarvex.yaml`: Umgebung, Tests und geschützte Pfade |
-| [QUELLEN.md](QUELLEN.md) | Quellen und Fremdlizenzen (Projekt-Interview nach Matt Pococks „grilling“, MIT) |
+| [LEAD.md](LEAD.md) | The role description: mandate, hard limits, the path from idea to release, cutting tasks, steering rhythm, reviewing, project types, special cases |
+| [templates/interview-trees.md](templates/interview-trees.md) | Starting trees of the project interview per project type (game, tool, app) |
+| [templates/project-brief.md](templates/project-brief.md) | Result of the interview with a decision table (hard facts) |
+| [templates/task.md](templates/task.md) | Task template with complete examples (code, tests, review) |
+| [templates/asset-brief.md](templates/asset-brief.md) | Briefs for design, 3D, image, audio, video |
+| [templates/review-report.md](templates/review-report.md) | Fixed JSON schema for reviews and subagents |
+| [templates/decision.md](templates/decision.md) | Decisions (ADR) and approval requests to the visionary |
+| [templates/status-report.md](templates/status-report.md) | Status for the visionary |
+| [templates/AGENTS.md](templates/AGENTS.md) | Project rules for all agents in the project repository |
+| [templates/swarvex.yaml](templates/swarvex.yaml) | Example `swarvex.yaml`: environment, tests and protected paths |
+| [SOURCES.md](SOURCES.md) | Sources and third-party licenses (project interview after Matt Pocock's "grilling", MIT) |
 
-## So bekommt der Lead das Handbuch
+A German translation lives in [de/](de/). The English version is authoritative; changes are made here first.
 
-- **Claude Code:** als Skill bzw. später im swarvex-Plugin (#38); alternativ `LEAD.md` als `CLAUDE.md`/`AGENTS.md` im Arbeitsordner des Leads.
-- **Codex, opencode, Hermes u. a.:** `LEAD.md` als `AGENTS.md` im Arbeitsordner des Leads; Vorlagen daneben.
-- **Projektspezifisch:** Der Visionär darf ergänzen (z. B. `LEAD.projekt.md`), die harten Grenzen bleiben.
+## How the lead gets the handbook
 
-## Pflege
+- **Claude Code:** as a skill, later in the swarvex plugin; alternatively `LEAD.md` as `CLAUDE.md`/`AGENTS.md` in the lead's working folder.
+- **Codex, opencode, Hermes and others:** `LEAD.md` as `AGENTS.md` in the lead's working folder, with the templates next to it.
+- **Project-specific:** the visionary may add to it (e.g. `LEAD.project.md`); the hard limits stay.
 
-- Das Handbuch ist **versioniert**, Änderungen werden im Kopf von `LEAD.md` vermerkt.
-- Grundlage für den **Lead-Test** (#20): Der Test prüft genau die Fähigkeiten, die hier beschrieben sind.
-- Erfahrungen aus dem Pilot (Rend&Run, M8) fließen zurück: Welche Aufgabenmuster hatten hohe Annahmequoten, welche nicht?
+## Maintenance
+
+- The handbook is **versioned**; changes are noted at the top of `LEAD.md`.
+- It is the basis of the **lead test**: the test checks exactly the abilities described here.
+- Experience from the pilot flows back: which task patterns had high acceptance rates and which did not?

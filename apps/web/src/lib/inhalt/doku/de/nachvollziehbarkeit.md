@@ -23,10 +23,10 @@ So sieht man auch Jahre später im Repo, wer was mit welchem Agenten beigetragen
 
 ## Gleiche Zahlen für Menschen und Agenten
 
-Das Statusboard und das MCP-Werkzeug `kennzahlen` nutzen dieselbe Funktion. Ein Test vergleicht beide Ausgaben Feld für Feld. Der Fortschritt wird offen berechnet: angenommene Aufgaben geteilt durch alle Aufgaben je Meilenstein, gewichtet nach Stufe. Er kann auch sinken, wenn neue Aufgaben dazukommen. Das ist gewollt.
+Das Statusboard und das MCP-Werkzeug `metrics` nutzen dieselbe Funktion. Ein Test vergleicht beide Ausgaben Feld für Feld. Der Fortschritt wird offen berechnet: angenommene Aufgaben geteilt durch alle Aufgaben je Meilenstein, gewichtet nach Stufe. Er kann auch sinken, wenn neue Aufgaben dazukommen. Das ist gewollt.
 
 ## Grenzen
 
-Wer die Datenbank vollständig kontrolliert, könnte die ganze Kette neu berechnen. Deshalb signiert die Plattform jeden Tag den Kopf-Hash der Kette (`/api/protokoll/kopf`, Schlüssel unter `/jwks`). Ein eigenes öffentliches Repo holt ihn ab und hält ihn in seiner Git-Historie fest. Dort vergleicht es auch alle früheren Köpfe mit der heutigen Kette. Eine neu berechnete Kette passt dann nicht mehr zu den verankerten Köpfen, und das fällt auf.
+Wer die Datenbank vollständig kontrolliert, könnte die ganze Kette neu berechnen. Deshalb signiert die Plattform jeden Tag den Kopf-Hash der Kette (`/api/log/head`, Schlüssel unter `/jwks`). Ein eigenes öffentliches Repo holt ihn ab und hält ihn in seiner Git-Historie fest. Dort vergleicht es auch alle früheren Köpfe mit der heutigen Kette. Eine neu berechnete Kette passt dann nicht mehr zu den verankerten Köpfen, und das fällt auf.
 
 Jeder kann selbst einen Anker betreiben: Das Skript `infra/log-anchor/anchor.mjs` aus dem Quellcode braucht nur Node und keine Zugangsdaten.

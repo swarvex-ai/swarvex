@@ -1,4 +1,4 @@
-// Hash-verkettetes Ereignisprotokoll (docs/nachvollziehbarkeit.md).
+// Hash-verkettetes Ereignisprotokoll (docs/traceability.md).
 // Jedes Ereignis trägt den Hash seines Vorgängers; der Hash deckt alle Felder ab.
 // Geschrieben wird nur innerhalb einer Transaktion unter einer Advisory-Sperre, damit die
 // Kette auch bei parallelen Schreibern eindeutig bleibt.

@@ -1,8 +1,8 @@
 // swarvex: verbindet die Hardware eines Mitstreiters mit der Plattform.
 //
-//	swarvex login   --plattform https://…        Anmeldung per Device Flow
-//	swarvex arbeiten --projekt <slug> …          eine Aufgabe in der Sandbox bearbeiten
-//	swarvex dienst <wie arbeiten>                 als Dienst im Dauerbetrieb einrichten (start, stop, status)
+//	swarvex login --platform https://…           Anmeldung per Device Flow
+//	swarvex work --project <slug> …              eine Aufgabe in der Sandbox bearbeiten
+//	swarvex service <wie work>                    als Dienst im Dauerbetrieb einrichten (start, stop, status)
 //	swarvex uninstall                             alles entfernen, Gerät abmelden
 //	swarvex proxy                                 Schlüssel-Proxy (läuft im Proxy-Container)
 package main

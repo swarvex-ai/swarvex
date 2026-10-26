@@ -1,114 +1,113 @@
-# Bauplan
+# Roadmap
 
-Den aktuellen Stand führen die Issues und Meilensteine im Tracker. Diese Datei zeigt die Struktur.
+The issues and milestones in the tracker hold the current state. This file shows the structure.
 
-Reihenfolge: **P Machbarkeitsnachweis (lokal, kostenlos)** → M0 → M1 → **M2 Durchstich** (alles einmal echt von Ende zu Ende) → M3–M7 (teils parallel) → M8 Pilot.
+Order: **P proof of concept (local, free)** → M0 → M1 → **M2 end-to-end run** (everything once for real, end to end) → M3–M7 (partly in parallel) → M8 pilot.
 
+## P Proof of concept (local)
 
-## P Machbarkeitsnachweis (lokal)
+Completed on 25 Oct 2026 with "go".
 
-Abgeschlossen am 25.10.2026 mit „Go“.
+- Test environment on the home server
+- Minimal platform: tasks, leases, event log, MCP gateway with OAuth
+- Lead connection: Claude Code via MCP
+- Runner prototype: device sign-in, Podman sandbox, key proxy, opencode + a local model
+- Test pipeline: headless Godot, signed result, merge bot
+- Attack tests S1–S10
+- One-liner test in a fresh VM
+- Go/no-go report
 
-- Testumgebung auf dem Unraid  `umsetzung kern`
-- Minimal-Plattform: Aufgaben, Leases, Ereignisprotokoll, MCP-Gateway mit OAuth  `umsetzung kern mcp`
-- Lead-Anbindung: Claude Code per MCP  `umsetzung mcp lead`
-- Runner-Prototyp: Device-Login, Podman-Sandbox, Schlüssel-Proxy, opencode + Ollama  `umsetzung runner sicherheit`
-- Prüfstraße: Gitea Actions + Godot headless, signiertes Ergebnis, Merge-Bot  `umsetzung pruefstrasse`
-- Angriffstests S1–S10  `umsetzung sicherheit`
-- Einzeiler-Test in frischer VM  `umsetzung runner`
-- Go/No-Go-Bericht  `entscheidung`
+## M0 Foundations
 
-## M0 Grundlagen
+Open fundamental decisions, legal matters, threat model. Nothing gets built without them that would have to be rebuilt later.
 
-Offene Grundsatzentscheidungen, Recht, Bedrohungsmodell. Ohne diese Punkte wird nichts gebaut, was später umgebaut werden müsste.
+- E-01 name and domain
+- E-06 identity solution
+- E-08 object storage
+- E-13 license of the platform and the runner
+- ~~E-16 check the terms of services and subscriptions~~ (decided: rights lie with the contributors)
+- E-17 pilot project as open source
+- Threat model
 
-- E-01 Name und Domain festlegen  `entscheidung recht`
-- E-06 Identitätslösung wählen (Zitadel vs. Bibliothek)  `entscheidung sicherheit`
-- E-08 Objektspeicher wählen (Garage vs. SeaweedFS)  `entscheidung kern`
-- E-13 Lizenz der Plattform und des Runners festlegen  `entscheidung recht`
-- ~~E-16 Nutzungsbedingungen von Diensten und Abos prüfen~~ (entschieden: Rechte liegen bei den Beitragenden)  `entscheidung recht spenden`
-- E-17 Rend&Run als Open-Source-Pilot prüfen  `entscheidung pilot recht`
-- Bedrohungsmodell ausarbeiten  `spezifikation sicherheit`
+## M1 Specification
 
-## M1 Spezifikation
+Protocol, schemas, state machine, traceability: in writing and as JSON Schema before code exists.
 
-Protokoll, Schemata, Zustandsmaschine, Nachvollziehbarkeit – schriftlich und als JSON-Schema, bevor Code entsteht.
+- Task lifecycle as a state machine
+- Task schema and test contract (`swarvex.yaml`)
+- MCP tools per role
+- Event log and hash chain
+- Origin: Git trailers and asset manifest
 
-- Aufgaben-Lebenszyklus als Zustandsmaschine spezifizieren  `spezifikation kern`
-- Aufgaben-Schema und Prüfvertrag (swarvex.yaml) spezifizieren  `spezifikation kern pruefstrasse`
-- MCP-Werkzeuge pro Rolle spezifizieren  `spezifikation mcp`
-- Ereignisprotokoll und Hash-Kette spezifizieren  `spezifikation kern`
-- Herkunft: Git-Trailer und Asset-Manifest spezifizieren  `spezifikation pruefstrasse`
+## M2 End-to-end run
 
-## M2 Durchstich
+A single task runs for real from end to end: the lead creates it → the runner (Linux) works on it in the sandbox → the test pipeline checks it → the lead accepts it → the merge bot merges it, everything logged. Minimal, but with the final components.
 
-Eine einzige Aufgabe läuft echt von Ende zu Ende: Lead legt an → Runner (Linux) bearbeitet in Sandbox → Prüfstraße (Godot) prüft → Lead nimmt an → Merge-Bot merged, alles protokolliert. Minimal, aber mit den endgültigen Komponenten.
+- Monorepo skeleton with CI
+- PostgreSQL schema and migrations
+- Identity (sign-in + device flow)
+- Coordination core: tasks, leases, timeouts
+- Event log with hash chain
+- Minimal MCP gateway (Streamable HTTP + OAuth)
+- Minimal runner (Linux): sign-in, sandbox, patch
+- Minimal test pipeline
+- Merge bot with trailers and DCO
+- End-to-end test with a copy of the pilot game
 
-- Monorepo-Gerüst mit CI  `umsetzung kern`
-- PostgreSQL-Schema und Migrationen (Kern)  `umsetzung kern`
-- Identität anbinden (Login + Device Flow)  `umsetzung sicherheit`
-- Koordinations-Kern: Aufgaben, Leases, Zeitüberschreitungen  `umsetzung kern`
-- Ereignisprotokoll mit Hash-Kette  `umsetzung kern`
-- MCP-Gateway minimal (Streamable HTTP + OAuth)  `umsetzung mcp`
-- Runner minimal (Linux): Login, Sandbox, Patch  `umsetzung runner`
-- Prüfstraße minimal: Godot-Adapter + Gitea-Actions-Workflow  `umsetzung pruefstrasse`
-- Merge-Bot mit Trailern und DCO  `umsetzung pruefstrasse`
-- Durchstich-Test mit Rend&Run-Kopie  `umsetzung pilot`
+## M3 Core and security
 
-## M3 Kern und Sicherheit
+Make the end-to-end run robust: complete tools, leases, spot checks, runners for macOS/Windows, hardening.
 
-Den Durchstich belastbar machen: vollständige Werkzeuge, Leases, Stichproben, Runner für macOS/Windows, Härtung.
+- Complete MCP tools
+- Direct mode for text tasks
+- Runner: schedule, budget guard, service mode
+- Runner: more agent programs (Claude Code, Codex, Hermes)
+- Runner for macOS and Windows
+- One-line installer and release pipeline
+- Spot checks on platform hardware
+- Operations: production compose, backups, monitoring
 
-- MCP-Werkzeuge vollständig  `umsetzung mcp`
-- Direkt-Modus für Text-Aufgaben  `umsetzung mcp`
-- Runner: Zeitplan, Budgetwächter, Dienstbetrieb  `umsetzung runner`
-- Runner: weitere Engines (Claude Code, Codex, Hermes)  `umsetzung runner`
-- Runner für macOS und Windows  `umsetzung runner`
-- Installer-Einzeiler und Release-Pipeline  `umsetzung runner sicherheit`
-- Stichproben-Prüfung auf Plattform-Hardware  `umsetzung pruefstrasse sicherheit`
-- Betrieb: Compose-Produktion, Backups, Monitoring  `umsetzung kern`
+## M4 Donations
 
-## M4 Spenden
+Donating credits and capacity: budgets, adapters (Meshy), brief + upload, asset checks.
 
-Credits und Kapazität spenden: Budgets, Adapter (Meshy), Auftrag+Upload, Asset-Prüfung, Lizenzliste.
+- Budgets and commitments per service
+- Meshy asset adapter (preview → approval → final)
+- Brief + upload (any service)
+- Asset checks (import, polygons, skeleton, screenshot)
+- Contribution statement, plan note and report form
 
-- Budgets und Zusagen pro Dienst  `umsetzung spenden`
-- Asset-Adapter Meshy (Vorschau → Freigabe → Finale)  `umsetzung spenden`
-- Auftrag + Upload (beliebige Dienste)  `umsetzung spenden`
-- Asset-Prüfung (Import, Polygone, Skelett, Screenshot)  `umsetzung pruefstrasse spenden`
-- Beitragserklärung, Tarif-Hinweis und Meldeformular  `umsetzung spenden recht`
+## M5 Lead and expectations
 
-## M5 Lead und Erwartungen
+Lead test, expectation calculator, metrics, multiple assignment.
 
-Lead-Test, Erwartungsrechner, Kennzahlen, Mehrfachvergabe.
-
-- Lead-Test: Aufgabensatz und Auswertung  `umsetzung lead`
-- Erwartungsrechner  `umsetzung lead`
-- Kennzahlen pro Projekt und Mitstreiter  `umsetzung lead`
-- Mehrfachvergabe und Wettbewerb  `umsetzung lead kern`
+- Lead test: task set and evaluation
+- Expectation calculator
+- Metrics per project and contributor
+- Multiple assignment and competition
 
 ## M6 Website
 
-Öffentliche Seiten, Dashboards für beide Seiten, Projekt-Assistent.
+Public pages, dashboards for both sides, project assistant.
 
-- Website-Gerüst und öffentliche Seiten  `umsetzung web`
-- Mitmachen: Einzeiler, Zuordnungen, Budgets  `umsetzung web`
-- Dashboards: Meine Beiträge und Projekt-Cockpit  `umsetzung web`
-- Projekt-starten-Assistent  `umsetzung web`
-- Regeln, Transparenz, Doku  `umsetzung web`
+- Website skeleton and public pages
+- Contribute: one-liner, assignments, budgets
+- Dashboards: my contributions and project cockpit
+- Start-a-project assistant
+- Rules, transparency, docs
 
-## M7 Vertrauen und Missbrauch
+## M7 Trust and abuse
 
-Vertrauensstufen, Identität, Ratenlimits, Diff-Regeln, Meldungen.
+Trust levels, identity, rate limits, diff rules, reports.
 
-- Vertrauensstufen: Auf- und Abstieg  `umsetzung sicherheit`
-- Identität, Ratenlimits, Sperren, Meldungen  `umsetzung sicherheit`
-- Diff-Regeln: geschützte Pfade und verbotene APIs  `umsetzung sicherheit pruefstrasse`
+- Trust levels: moving up and down
+- Identity, rate limits, blocks, reports
+- Diff rules: protected paths and forbidden APIs
 
 ## M8 Pilot
 
-Rend&Run als erstes öffentliches Projekt mit ersten externen Teilnehmern; Auswertung.
+The pilot game as the first public project with the first external participants; evaluation.
 
-- Rend&Run schwarmfähig machen (Module, Verträge, Tests)  `umsetzung pilot`
-- Rend&Run öffentlich auf der Plattform  `umsetzung pilot`
-- Pilot-Auswertung  `umsetzung pilot lead`
+- Make the pilot game swarm-ready (modules, contracts, tests)
+- Pilot game public on the platform
+- Pilot evaluation

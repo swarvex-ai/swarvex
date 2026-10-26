@@ -1,22 +1,22 @@
 # Template: task
 
-> This is how you fill in `aufgabe_anlegen`. The fields `titel`, `stufe`, `faehigkeiten`, `pfade`, `akzeptanz`, `basis_commit`, `lease_minuten`, `min_vertrauen` and `meilenstein` are separate parameters (the interface uses German names). **Everything else goes into `beschreibung`**, structured as below. Before creating a task: definition of ready (LEAD.md 6.6).
+> This is how you fill in `create_task`. The fields `title`, `level`, `capabilities`, `paths`, `acceptance`, `base_commit`, `lease_minutes`, `min_trust` and `milestone` are separate parameters. **Everything else goes into `description`**, structured as below. Before creating a task: definition of ready (LEAD.md 6.6).
 
 ## Fields
 
 | Field | Rule |
 |---|---|
-| `titel` (title) | verb + object, ≤ 70 characters, unambiguous: "Slime enemy: movement and damage" |
-| `stufe` (level) | A / B / C (D only yourself) |
-| `faehigkeiten` (capabilities) | from the vocabulary (LEAD.md 6.3), as few as possible |
-| `pfade` (paths) | as narrow as possible; never protected paths |
-| `akzeptanz` (acceptance) | one line per criterion, strong before weak (LEAD.md 6.5); always with "no changes outside the paths" and "no tests weakened" |
-| `basis_commit` | set it as soon as the task builds on a specific state of the code |
-| `lease_minuten` | ≈ twice the expected working time, at least 30 |
-| `min_vertrauen` (minimum trust) | A: 0, B: 1, C: 2 (critical path: one level higher) |
-| `meilenstein` (milestone) | from `docs/plan.md` |
+| `title` (title) | verb + object, ≤ 70 characters, unambiguous: "Slime enemy: movement and damage" |
+| `level` (level) | A / B / C (D only yourself) |
+| `capabilities` (capabilities) | from the vocabulary (LEAD.md 6.3), as few as possible |
+| `paths` (paths) | as narrow as possible; never protected paths |
+| `acceptance` (acceptance) | one line per criterion, strong before weak (LEAD.md 6.5); always with "no changes outside the paths" and "no tests weakened" |
+| `base_commit` | set it as soon as the task builds on a specific state of the code |
+| `lease_minutes` | ≈ twice the expected working time, at least 30 |
+| `min_trust` (minimum trust) | A: 0, B: 1, C: 2 (critical path: one level higher) |
+| `milestone` (milestone) | from `docs/plan.md` |
 
-## Structure of the `beschreibung`
+## Structure of the `description`
 
 ```markdown
 ## Goal

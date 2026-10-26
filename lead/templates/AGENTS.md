@@ -10,7 +10,7 @@
 2. Only change files within the task's allowed paths.
 3. Solve exactly the task, no side refactoring. If you see a problem elsewhere, mention it in the summary.
 4. Run the tests locally (`<command>`) and add the output to your summary.
-5. Unclear? Hand the task back with a concrete question (`abbruch_melden`) instead of guessing.
+5. Unclear? Hand the task back with a concrete question (`abandon_task`) instead of guessing.
 
 ## Structure
 ```

@@ -1,7 +1,7 @@
 <script lang="ts">
-  // Symbol und Wortmarke kommen direkt aus medien/logo/export (eine Quelle für Video, Logo-Dateien und Website).
-  import symbolRoh from "../../../../../medien/logo/export/swarvex_symbol.svg?raw";
-  import wortRoh from "../../../../../medien/logo/export/swarvex_wortmarke_dunkel.svg?raw";
+  // Symbol und Wortmarke kommen direkt aus media/logo/export (eine Quelle für Video, Logo-Dateien und Website).
+  import symbolRoh from "../../../../../media/logo/export/swarvex_symbol.svg?raw";
+  import wortRoh from "../../../../../media/logo/export/swarvex_wortmarke_dunkel.svg?raw";
 
   let { groesse = 32, wort = true }: { groesse?: number; wort?: boolean } = $props();
   const uid = Math.random().toString(36).slice(2, 7);

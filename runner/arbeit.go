@@ -560,7 +560,7 @@ func einruecken(text string) string {
 }
 
 // dauerbetrieb holt in den offenen Zeitfenstern laufend Aufgaben. Jede Aufgabe läuft als eigener
-// Kindprozess („arbeiten“ ohne --dauerbetrieb), damit ein Fehler nicht den ganzen Runner beendet.
+// Kindprozess („work“ ohne --continuous), damit ein Fehler nicht den ganzen Runner beendet.
 // Exit-Codes des Kindes: 0 erledigt, 3 keine passende Aufgabe, 4 außerhalb bzw. zu kurz vor Fensterende,
 // 5 gestoppt vor der Reservierung, 6 Tagesbudget verbraucht.
 func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
@@ -639,7 +639,7 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
 	fmt.Println("Continuous mode ended.")
 }
 
-// ohneDauerbetrieb entfernt --dauerbetrieb aus den Argumenten für den Kindprozess.
+// ohneDauerbetrieb entfernt --continuous aus den Argumenten für den Kindprozess.
 func ohneDauerbetrieb(args []string) []string {
 	var r []string
 	for _, a := range args {

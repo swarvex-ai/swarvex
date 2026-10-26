@@ -4,5 +4,5 @@ schluessel: lead-vorlagen
 gruppe: Lead
 reihenfolge: 26
 beschreibung: What a good task looks like, with complete examples.
-quelle: lead/en/templates/task.md
+quelle: lead/templates/task.md
 ---

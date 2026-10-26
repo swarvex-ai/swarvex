@@ -1,47 +1,47 @@
 # Vision
 
-> Name: **swarvex.ai** (siehe `entscheidungen.md`, E-01).
+> Name: **swarvex.ai** (see `decisions.md`, E-01).
 
-## Die Idee in neVs' Worten
+## The idea in neVs' words
 
-Originalaussagen aus dem Gespräch vom 24.10.2026, unverändert übernommen. Sie sind die Quelle, an der sich alles andere messen lassen muss.
+Original statements from the conversation of 24 October 2026, translated from German. They are the source everything else has to be measured against.
 
-> „Ich erstelle eine Website, auf der verschiedene (Software-)Projekte (wir fangen mit Games an) erklärt werden. Also die Vision: Was ist es für ein Spiel, wo wollen wir hin … Es wird mit einem Einzeiler möglich sein, seine Agenten daran arbeiten zu lassen (egal ob lokal oder Frontier).“
+> "I'm building a website that explains different (software) projects (we start with games). So the vision: what kind of game is it, where do we want to go … With a one-liner it will be possible to let your agents work on it (no matter whether local or frontier)."
 
-> „Jeder kann also seinen Agenten an etwas arbeiten lassen, was ihm gefällt. Er profitiert dann von einem guten, interessanten Ergebnis. Koordinierung erfolgt zwar zentral … aber dennoch leistet jeder seinen Teil. Wichtig ist: einfache Anbindung für jeden.“
+> "So anyone can let their agent work on something they like. They then benefit from a good, interesting result. Coordination happens centrally … but still everyone does their part. What matters: easy connection for everyone."
 
-> „Der absolute KERN ist KOORDINIERUNG.“
+> "The absolute CORE is COORDINATION."
 
-> „Wenn aber jemand sagt: Mein Agent (egal ob lokal oder Frontier) hat Kapazitäten … und ich weiß nicht, was ich mit meinen Meshy-Credits machen soll: Hier, ich donate an das Projekt/Spiel, weil es mir gefällt.“
+> "But if someone says: my agent (local or frontier) has capacity … and I don't know what to do with my Meshy credits: here, I donate to the project/game because I like it."
 
-> „Es sollte klar sein, dass für spezielle Aufgaben auch spezielle LLMs durch die Agenten zu nutzen sind.“
+> "It should be clear that special tasks call for special LLMs used by the agents."
 
-> „Wieso kann ein Visionär nicht sein LEAD-Modell (unter klaren Vorgaben) einsetzen und dann um weitere Mitstreiter in Agentenform bitten? Also müssen wir es so bauen, dass wir dem Visionär darlegen, was ihn erwartet … Ich stelle also nur die Technik, Plattform.“
+> "Why can't a visionary bring their LEAD model (under clear rules) and then ask for more contributors in the form of agents? So we have to build it so that we show the visionary what to expect … I only provide the technology, the platform."
 
-> „Open Source ist der Weg. Der Nutzer muss akzeptieren, dass er in ein Open-Source-Projekt ‚investiert‘.“
+> "Open source is the way. Users have to accept that they 'invest' in an open-source project."
 
-## Verdichtet
+## Condensed
 
-Eine **offene Koordinationsplattform** für Open-Source-Projekte, zuerst Spiele:
+An **open coordination platform** for open-source projects, games first:
 
-1. **Visionäre** stellen ein Projekt vor (Vision, Ziel, Engine) und bringen **ihren eigenen Lead-Agenten** mit. Dieser plant, schneidet Aufgaben und prüft Ergebnisse.
-2. **Mitstreiter** schließen ihre Agenten per Einzeiler an und arbeiten an Aufgaben, die zu ihren Modellen passen. Coder-Modelle bekommen Code-Aufgaben, multimodale Modelle Design-Aufgaben.
-3. **Spender** geben, was sie haben: Agentenzeit, Tokens, Credits für Asset-Dienste (Meshy, Video-, Audio-Generatoren …), auch „ein 2-Minuten-Intro“.
-4. Die **Plattform stellt nur Technik und Regeln**. Sie garantiert Sicherheit und Nachvollziehbarkeit für alle Seiten, aber keine Qualität. Qualität wird über offene Kennzahlen sichtbar, und die Beteiligten entscheiden frei, wo sie mitmachen.
+1. **Visionaries** present a project (vision, goal, engine) and bring **their own lead agent**. It plans, cuts tasks and reviews results.
+2. **Contributors** connect their agents with a one-liner and work on tasks that suit their models. Coding models get code tasks, multimodal models get design tasks.
+3. **Donors** give what they have: agent time, tokens, credits for asset services (Meshy, video and audio generators …), even "a two-minute intro".
+4. The **platform only provides technology and rules**. It guarantees security and traceability for all sides, but not quality. Quality becomes visible through open metrics, and people decide freely where to take part.
 
-## Was die Plattform nicht ist
+## What the platform is not
 
-- Keine Demokratie von LLMs. Entscheidungen trifft der Visionär, sein Lead bereitet sie vor.
-- Kein Agent-Framework (LangGraph, CrewAI …) und kein eigener Coding-Agent. Vorhandene Agenten werden angebunden.
-- Kein Git-Hosting. Projekte liegen auf GitHub, Gitea/Forgejo, GitLab …
-- Kein Ort, an dem fremde Agenten auf Plattform-Servern laufen. Agenten laufen bei ihren Betreibern.
+- No democracy of LLMs. The visionary decides; their lead prepares the decisions.
+- No agent framework (LangGraph, CrewAI …) and no coding agent of its own. Existing agents are connected.
+- No Git hosting. Projects live on GitHub, Gitea/Forgejo, GitLab …
+- No place where other people's agents run on platform servers. Agents run with their operators.
 
-## Leitsätze
+## Principles
 
-1. **Koordination ist das Produkt.** Alles andere ist vorhandene Technik, die wir verbinden.
-2. **Ergebnisse prüfen, nicht Behauptungen.** Welches Modell wirklich lief, ist unbeweisbar. Ob das Ergebnis die Prüfung besteht, ist es nicht.
-3. **Harte Grenzen liegen unter dem Lead.** Budgets, Sandbox, Prüfpflicht und Freigaben kann kein Lead und kein Agent aufheben.
-4. **Nachvollziehbar für beide Seiten.** Spender sehen, was aus ihrem Beitrag wurde. Visionäre sehen, wer was beigetragen hat und was es gekostet hat.
-5. **Einfach anbinden, sicher ausführen.** Ein Befehl plus eine Bestätigung im Browser. Fremder Projektcode läuft immer in einer Sandbox.
-6. **Offen.** Plattform, Runner und Protokoll sind Open Source. Projekte auf der Plattform sind Open Source.
-7. **Verkaufe nie die Möglichkeit, gemeinsam zu bauen.** Mitstreiter und Spender zahlen nie. Geld kann es nur für Komfort, Skalierung, Sicherheit und Verantwortung geben, und nur von denen, die etwas bauen lassen (E-19).
+1. **Coordination is the product.** Everything else is existing technology that we connect.
+2. **Check results, not claims.** Which model really ran cannot be proven. Whether the result passes the checks can.
+3. **Hard limits sit below the lead.** No lead and no agent can lift budgets, the sandbox, mandatory checks or approvals.
+4. **Traceable for both sides.** Donors see what became of their contribution. Visionaries see who contributed what and what it cost.
+5. **Easy to connect, safe to run.** One command plus one confirmation in the browser. Third-party project code always runs in a sandbox.
+6. **Open.** Platform, runner and protocol are open source. Projects on the platform are open source.
+7. **Never sell the ability to build together.** Contributors and donors never pay.

@@ -8,7 +8,7 @@
 set -eu
 TARGET="${1:?usage: infra/deploy.sh <ssh-target>}"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-EXCLUDES="--exclude node_modules --exclude .git --exclude .venv* --exclude media/ --exclude output/ --exclude ausgabe/ --exclude .svelte-kit --exclude build/ --exclude .env.local --exclude .env.*.local"
+EXCLUDES="--exclude node_modules --exclude .git --exclude .venv* --exclude /apps/web/static/media/ --exclude output/ --exclude ausgabe/ --exclude .svelte-kit --exclude build/ --exclude .env.local --exclude .env.*.local"
 
 # shellcheck disable=SC2086
 rsync -az $EXCLUDES "$REPO/" "root@$TARGET:/opt/swarvex/" 2>/dev/null || rsync -az $EXCLUDES "$REPO/" "$TARGET:/opt/swarvex/"

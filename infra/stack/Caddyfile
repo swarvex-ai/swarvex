@@ -19,7 +19,7 @@
 		uri strip_prefix /downloads
 		file_server
 	}
-	# Erklärvideo und andere Medien (liegen neben den Downloads, siehe docs/selbst-hosten.md)
+	# Erklärvideo und andere Medien (liegen neben den Downloads, siehe docs/self-hosting.md)
 	handle /media/* {
 		root * /srv
 		file_server

@@ -1,22 +1,22 @@
 # Vorlage: Aufgabe
 
-> So füllst du `aufgabe_anlegen` aus. Die Felder `titel`, `stufe`, `faehigkeiten`, `pfade`, `akzeptanz`, `basis_commit`, `lease_minuten`, `min_vertrauen` und `meilenstein` sind eigene Parameter. **Alles andere steht in `beschreibung`**, gegliedert wie unten. Vor dem Anlegen: Bereit-Checkliste (LEAD.md 6.6).
+> So füllst du `create_task` aus. Die Felder `title`, `level`, `capabilities`, `paths`, `acceptance`, `base_commit`, `lease_minutes`, `min_trust` und `milestone` sind eigene Parameter. **Alles andere steht in `description`**, gegliedert wie unten. Vor dem Anlegen: Bereit-Checkliste (LEAD.md 6.6).
 
 ## Felder
 
 | Feld | Regel |
 |---|---|
-| `titel` | Verb + Gegenstand, ≤ 70 Zeichen, eindeutig: „Gegner Schleim: Bewegung und Schaden“ |
-| `stufe` | A / B / C (D nur du selbst) |
-| `faehigkeiten` | aus dem Vokabular (LEAD.md 6.3), so wenige wie möglich |
-| `pfade` | so eng wie möglich; nie geschützte Pfade |
-| `akzeptanz` | eine Zeile je Kriterium, stark vor schwach (LEAD.md 6.5); immer mit „keine Änderungen außerhalb der Pfade“ und „keine Tests geschwächt“ |
-| `basis_commit` | setzen, sobald die Aufgabe auf einem bestimmten Code-Stand aufbaut |
-| `lease_minuten` | ≈ doppelte erwartete Bearbeitungszeit, mind. 30 |
-| `min_vertrauen` | A: 0, B: 1, C: 2 (kritischer Pfad: eine Stufe höher) |
-| `meilenstein` | aus `docs/plan.md` |
+| `title` | Verb + Gegenstand, ≤ 70 Zeichen, eindeutig: „Gegner Schleim: Bewegung und Schaden“ |
+| `level` | A / B / C (D nur du selbst) |
+| `capabilities` | aus dem Vokabular (LEAD.md 6.3), so wenige wie möglich |
+| `paths` | so eng wie möglich; nie geschützte Pfade |
+| `acceptance` | eine Zeile je Kriterium, stark vor schwach (LEAD.md 6.5); immer mit „keine Änderungen außerhalb der Pfade“ und „keine Tests geschwächt“ |
+| `base_commit` | setzen, sobald die Aufgabe auf einem bestimmten Code-Stand aufbaut |
+| `lease_minutes` | ≈ doppelte erwartete Bearbeitungszeit, mind. 30 |
+| `min_trust` | A: 0, B: 1, C: 2 (kritischer Pfad: eine Stufe höher) |
+| `milestone` | aus `docs/plan.md` |
 
-## Gliederung der `beschreibung`
+## Gliederung der `description`
 
 ```markdown
 ## Ziel

@@ -46,23 +46,23 @@ sh /opt/swarvex/infra/setup-platform.sh
 
 ```bash
 cd /opt/swarvex/infra/stack
-docker compose cp projekt.json api:/tmp/projekt.json
-docker compose exec -T api node src/cli.ts projekt-anlegen <slug> /tmp/projekt.json
-docker compose exec -T api node src/cli.ts repo-setzen <slug> ssh://git@<host>/<owner>/<repo>.git
+docker compose cp project.json api:/tmp/project.json
+docker compose exec -T api node src/cli.ts create-project <slug> /tmp/project.json
+docker compose exec -T api node src/cli.ts set-repo <slug> ssh://git@<host>/<owner>/<repo>.git
 # nachdem sich der Visionär einmal angemeldet hat:
-docker compose exec -T api node src/cli.ts rolle-setzen <slug> github:<login> lead
-docker compose exec -T api node src/cli.ts protokoll-pruefen
+docker compose exec -T api node src/cli.ts set-role <slug> github:<login> lead
+docker compose exec -T api node src/cli.ts check-log
 ```
 
 **Meldungen bearbeiten** (Formular unter `/melden`): Der Grund einer Sperre steht im öffentlichen Protokoll, schreib ihn also ohne persönliche Daten.
 
 ```bash
-docker compose exec -T api node src/cli.ts meldungen            # offene Meldungen; "meldungen alle" zeigt auch erledigte
-docker compose exec -T api node src/cli.ts meldung <id> in_pruefung "Visionär angeschrieben"
-docker compose exec -T api node src/cli.ts sperren projekt <slug> "Takedown wegen Meldung #<id>"
-docker compose exec -T api node src/cli.ts sperren mensch github:<login> "Spam-Einreichungen"
-docker compose exec -T api node src/cli.ts entsperren projekt <slug> "Inhalt entfernt"
-docker compose exec -T api node src/cli.ts meldung <id> erledigt "Datei entfernt, Projekt wieder frei"
+docker compose exec -T api node src/cli.ts reports            # offene Meldungen; "reports all" zeigt auch erledigte
+docker compose exec -T api node src/cli.ts report <id> in_review "Visionär angeschrieben"
+docker compose exec -T api node src/cli.ts block project <slug> "Takedown wegen Meldung #<id>"
+docker compose exec -T api node src/cli.ts block person github:<login> "Spam-Einreichungen"
+docker compose exec -T api node src/cli.ts unblock project <slug> "Inhalt entfernt"
+docker compose exec -T api node src/cli.ts report <id> done "Datei entfernt, Projekt wieder frei"
 ```
 
 Die Antwort an die meldende Person geht per E-Mail von Hand raus.
@@ -90,14 +90,14 @@ curl -fsSL --cacert ca.crt https://<BASE_HOST>/install.sh | SWARVEX_CA=$PWD/ca.c
 
 Der Installer läuft als normaler Nutzer, prüft rootless Podman, lädt das Release, prüft Signatur und Prüfsumme (bei Fehler Abbruch ohne Installation), baut Proxy- und Sandbox-Image und startet die Anmeldung im Browser. Releases erzeugt `infra/release.sh` (Signatur mit `ssh-keygen -Y`).
 
-**Git-LFS:** Der Snapshot enthält nur LFS-Zeiger. Der Runner holt jedes Objekt einmal über `/aufgaben/<id>/lfs/<oid>`, prüft SHA-256 und Größe und speichert es in `~/.cache/swarvex/lfs/`.
+**Git-LFS:** Der Snapshot enthält nur LFS-Zeiger. Der Runner holt jedes Objekt einmal über `/tasks/<id>/lfs/<oid>`, prüft SHA-256 und Größe und speichert es in `~/.cache/swarvex/lfs/`.
 
 Für Betreiber und Tests gibt es `infra/setup-contributor.sh` (als root, baut Runner und Images für einen Nutzer `runner`). Danach:
 
 ```bash
-swarvex login --plattform https://<BASE_HOST> [--ca ~/swarvex-ca.crt]
-swarvex arbeiten --projekt <slug> --modell "<modell>" --modell-url http://<modellserver>:<port> \
-  [--modell-key-datei <datei>] --budget-tokens 1500000 --zeitlimit 75m
+swarvex login --platform https://<BASE_HOST> [--ca ~/swarvex-ca.crt]
+swarvex work --project <slug> --model "<modell>" --model-url http://<modellserver>:<port> \
+  [--model-key-file <datei>] --budget-tokens 1500000 --time-limit 75m
 ```
 
-Die Angriffstests laufen mit `swarvex angriffstest --skript …` und `angriffe/aussen.py` (siehe `angriffstests.md`).
+Die Angriffstests laufen mit `swarvex attack-test --script …` und `angriffe/aussen.py` (siehe `angriffstests.md`).

@@ -22,15 +22,15 @@ Runner (dein Rechner)
 
 | Befehl | Wirkung |
 |---|---|
-| `swarvex login --plattform <url>` | Gerät im Browser anmelden |
-| `swarvex arbeiten --projekt <p> --modell <m> --modell-url <url>` | eine passende Aufgabe holen und abarbeiten |
-| `swarvex umgebung [ordner]` | Umgebung eines Projekts zeigen, bauen und testen (für Visionäre vor dem Einstellen) |
-| `… --zeitfenster "mo-fr 18:00-23:00" --dauerbetrieb` | laufend arbeiten, nur in den Zeitfenstern (siehe [Kontrolle](/docs/kontrolle#zeitfenster)) |
-| `… --tagesbudget-tokens 2000000` | höchstens so viele Tokens pro Tag; danach wartet der Runner bis Mitternacht |
-| `swarvex dienst <Angaben wie bei arbeiten>` | als Dienst einrichten: arbeitet im Dauerbetrieb und startet mit dem Rechner (Linux, systemd) |
+| `swarvex login --platform <url>` | Gerät im Browser anmelden |
+| `swarvex work --project <p> --model <m> --model-url <url>` | eine passende Aufgabe holen und abarbeiten |
+| `swarvex env [ordner]` | Umgebung eines Projekts zeigen, bauen und testen (für Visionäre vor dem Einstellen) |
+| `… --schedule "mo-fr 18:00-23:00" --continuous` | laufend arbeiten, nur in den Zeitfenstern (siehe [Kontrolle](/docs/kontrolle#zeitfenster)) |
+| `… --daily-budget-tokens 2000000` | höchstens so viele Tokens pro Tag; danach wartet der Runner bis Mitternacht |
+| `swarvex service <Angaben wie bei arbeiten>` | als Dienst einrichten: arbeitet im Dauerbetrieb und startet mit dem Rechner (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | Dienst anhalten (laufende Aufgabe geht sofort zurück in den Pool), starten, Zustand und Verbrauch heute |
 | `swarvex uninstall` | alles entfernen: Dienst, Container, Images, Daten, Programm; die Anmeldung wird bei der Plattform widerrufen |
-| `swarvex angriffstest …` | eingebaute Sicherheitsprüfungen der Sandbox |
+| `swarvex attack-test …` | eingebaute Sicherheitsprüfungen der Sandbox |
 
 ## Ablauf einer Aufgabe
 
@@ -44,11 +44,11 @@ Runner (dein Rechner)
 ## Als Dienst
 
 ```bash
-swarvex dienst --projekt mein-spiel --modell "<modell>" --modell-url <adresse> \
-  --zeitfenster "mo-fr 18:00-23:00; sa,so 09:00-24:00" --tagesbudget-tokens 2000000
+swarvex service --project mein-spiel --model "<modell>" --model-url <adresse> \
+  --schedule "mo-fr 18:00-23:00; sa,so 09:00-24:00" --daily-budget-tokens 2000000
 loginctl enable-linger   # einmal: Dienst läuft auch ohne angemeldete Sitzung
 ```
 
-Der Dienst ist ein systemd-Nutzerdienst, er braucht kein root. Beim Anhalten stoppt der Runner die Sandbox und gibt die laufende Aufgabe zurück. Neue Angaben gelten nach erneutem `swarvex dienst …`.
+Der Dienst ist ein systemd-Nutzerdienst, er braucht kein root. Beim Anhalten stoppt der Runner die Sandbox und gibt die laufende Aufgabe zurück. Neue Angaben gelten nach erneutem `swarvex service …`.
 
 *Geplant:* Einstellungen von der Website, weitere Agenten-Programme (Claude Code, Codex, Hermes), macOS (launchd) und Windows.

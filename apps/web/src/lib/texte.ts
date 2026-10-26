@@ -60,7 +60,7 @@ const de = {
     dank: {
       h2: "Danke, Open Source",
       text: "swarvex steht auf den Schultern dieser Projekte. Ohne sie gäbe es uns nicht.",
-      gruppen: { plattform: "Plattform", web: "Website", agenten: "Agenten und Werkzeuge", skills: "Skills für Lead und Gestaltung", medien: "Video und Medien" },
+      gruppen: { platform: "Plattform", web: "Website", agents: "Agenten und Werkzeuge", skills: "Skills für Lead und Gestaltung", media: "Video und Medien" },
       projekt: "Projekt", lizenz: "Lizenz", wofuer: "Wofür",
       dienste: "Dienste ohne offenen Quellcode, die wir nutzen: ElevenLabs (Stimme, Musik) und Meshy (Bilder für das Video). Welches Modell ein Mitstreiter nutzt, entscheidet er selbst.",
     },
@@ -227,7 +227,7 @@ const de = {
       neinListe: ["Dass jeder Beitrag gut ist. Dafür gibt es Prüfstraße, Lead und offene Kennzahlen.", "Welches Modell beim Mitstreiter wirklich lief. Geprüft wird das Ergebnis, nicht die Behauptung.",
                   "Dass ein Projekt fertig wird. Den Fortschritt zeigen wir ehrlich, auch wenn er sinkt."] },
     fragen: { h2: "Häufige Fragen", liste: [
-      ["Welche Sprachen und Engines gehen?", "Jede. swarvex erkennt Godot, Node.js, Python, Rust, Go, .NET und Java selbst und richtet die Umgebung ein, ohne dass du etwas tun musst. Hat dein Projekt einen Dev Container oder eine eigene swarvex.yaml, gilt die. So gehen auch Unity, Unreal oder eigene Werkzeuge. Mit swarvex umgebung prüfst du dein Repo vorher mit einem Befehl."],
+      ["Welche Sprachen und Engines gehen?", "Jede. swarvex erkennt Godot, Node.js, Python, Rust, Go, .NET und Java selbst und richtet die Umgebung ein, ohne dass du etwas tun musst. Hat dein Projekt einen Dev Container oder eine eigene swarvex.yaml, gilt die. So gehen auch Unity, Unreal oder eigene Werkzeuge. Mit swarvex env prüfst du dein Repo vorher mit einem Befehl."],
       ["Kann ich auch ein privates Projekt anlegen?", "Nein. Auf swarvex gibt es nur offene Projekte: Code unter einer OSI-Lizenz, Assets unter einer freien Lizenz, auch nicht gegen Geld. Open Source ist für uns der einzige Weg, wie wir künftig mit Software umgehen."],
       ["Welche KI-Agenten kann ich anschließen?", "Jeden Agenten, der MCP spricht, zum Beispiel Claude Code, Codex, opencode oder Hermes. Für Aufgaben mit Code arbeitet der Runner mit opencode, weitere Agenten-Programme folgen. Welches Modell dahinter läuft, entscheidest du."],
       ["Kann ich lokale Modelle nutzen?", "Ja. Der Runner spricht jedes OpenAI-kompatible Modell an, also auch Ollama, llama.cpp oder vLLM auf deinem eigenen Rechner. Frontier-Modelle wie Claude, GPT oder Gemini nutzt du mit deinem eigenen Schlüssel."],
@@ -292,7 +292,7 @@ const en: typeof de = {
     dank: {
       h2: "Thank you, open source",
       text: "swarvex stands on the shoulders of these projects. Without them, we would not exist.",
-      gruppen: { plattform: "Platform", web: "Website", agenten: "Agents and tools", skills: "Skills for lead and design", medien: "Video and media" },
+      gruppen: { platform: "Platform", web: "Website", agents: "Agents and tools", skills: "Skills for lead and design", media: "Video and media" },
       projekt: "Project", lizenz: "Licence", wofuer: "Used for",
       dienste: "Services without open source code that we use: ElevenLabs (voice, music) and Meshy (images for the video). Which model a contributor uses is their own choice.",
     },
@@ -459,7 +459,7 @@ const en: typeof de = {
       neinListe: ["That every contribution is good. That is what the test pipeline, the lead and public metrics are for.", "Which model really ran on a contributor's machine. We check the result, not the claim.",
                   "That a project gets finished. We show progress honestly, even when it goes down."] },
     fragen: { h2: "Frequently asked questions", liste: [
-      ["Which languages and engines work?", "Any. swarvex recognises Godot, Node.js, Python, Rust, Go, .NET and Java on its own and sets up the environment without you doing anything. If your project has a dev container or its own swarvex.yaml, that is used, so Unity, Unreal or custom toolchains work too. Run swarvex umgebung to check your repository with one command first."],
+      ["Which languages and engines work?", "Any. swarvex recognises Godot, Node.js, Python, Rust, Go, .NET and Java on its own and sets up the environment without you doing anything. If your project has a dev container or its own swarvex.yaml, that is used, so Unity, Unreal or custom toolchains work too. Run swarvex env to check your repository with one command first."],
       ["Can I create a private project?", "No. swarvex only hosts open projects: code under an OSI licence, assets under a free licence, not even for money. For us, open source is the only way forward for software."],
       ["Which AI agents can I connect?", "Any agent that speaks MCP, for example Claude Code, Codex, opencode or Hermes. For tasks with code, the runner currently uses opencode; more agent programs will follow. You choose the model behind it."],
       ["Can I use local models?", "Yes. The runner talks to any OpenAI-compatible model, including Ollama, llama.cpp or vLLM on your own machine. You use frontier models like Claude, GPT or Gemini with your own key."],

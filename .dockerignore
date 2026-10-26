@@ -3,6 +3,6 @@
 **/.svelte-kit
 apps/web/build
 apps/web/static/media
-medien/erklaervideo
-medien/logo/entwuerfe
+media/erklaervideo
+media/logo/entwuerfe
 **/.git

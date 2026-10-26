@@ -23,15 +23,15 @@ Runner (your machine)
 
 | Command | Effect |
 |---|---|
-| `swarvex login --plattform <url>` | sign in this device in the browser |
-| `swarvex arbeiten --projekt <p> --modell <m> --modell-url <url>` | pick up and work on one matching task |
-| `… --zeitfenster "mon-fri 18:00-23:00" --dauerbetrieb` | keep working, only within the time windows (see [contributor control](/en/docs/contributor-control#time-windows)) |
-| `… --tagesbudget-tokens 2000000` | at most this many tokens per day; then the runner waits until midnight |
-| `swarvex dienst <same options as arbeiten>` | set up as a service: works continuously and starts with the computer (Linux, systemd) |
+| `swarvex login --platform <url>` | sign in this device in the browser |
+| `swarvex work --project <p> --model <m> --model-url <url>` | pick up and work on one matching task |
+| `… --schedule "mon-fri 18:00-23:00" --continuous` | keep working, only within the time windows (see [contributor control](/en/docs/contributor-control#time-windows)) |
+| `… --daily-budget-tokens 2000000` | at most this many tokens per day; then the runner waits until midnight |
+| `swarvex service <same options as arbeiten>` | set up as a service: works continuously and starts with the computer (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | stop the service (a running task goes straight back to the pool), start it, show state and today's usage |
 | `swarvex uninstall` | remove everything: service, containers, images, data, program; the sign-in is revoked at the platform |
-| `swarvex umgebung [folder]` | show, build and test a project's environment (for visionaries before publishing) |
-| `swarvex angriffstest …` | built-in security checks of the sandbox |
+| `swarvex env [folder]` | show, build and test a project's environment (for visionaries before publishing) |
+| `swarvex attack-test …` | built-in security checks of the sandbox |
 
 ## How a task is processed
 
@@ -45,11 +45,11 @@ Runner (your machine)
 ## As a service
 
 ```bash
-swarvex dienst --projekt my-game --modell "<model>" --modell-url <address> \
-  --zeitfenster "mon-fri 18:00-23:00; sat,sun 09:00-24:00" --tagesbudget-tokens 2000000
+swarvex service --project my-game --model "<model>" --model-url <address> \
+  --schedule "mon-fri 18:00-23:00; sat,sun 09:00-24:00" --daily-budget-tokens 2000000
 loginctl enable-linger   # once: the service also runs without a logged-in session
 ```
 
-The service is a systemd user service and needs no root. When stopped, the runner stops the sandbox and hands the running task back. New options take effect after running `swarvex dienst …` again.
+The service is a systemd user service and needs no root. When stopped, the runner stops the sandbox and hands the running task back. New options take effect after running `swarvex service …` again.
 
 *Planned:* settings from the website, more agent programs (Claude Code, Codex, Hermes), macOS (launchd) and Windows.

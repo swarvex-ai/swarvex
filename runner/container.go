@@ -29,7 +29,7 @@ func podmanAus(ctx context.Context, eingabe string, args ...string) (string, err
 }
 
 // umgebungsImage baut (einmal je Basis und Agent-Version) das Image, in dem Agent und Befehle laufen.
-// mitAgent=false lässt die Agent-Schicht weg (z. B. für `swarvex umgebung`).
+// mitAgent=false lässt die Agent-Schicht weg (z. B. für `swarvex env`).
 func umgebungsImage(ctx context.Context, u umgebung.Umgebung, baum string, mitAgent bool) (string, error) {
 	agent := ""
 	agentID := "none"

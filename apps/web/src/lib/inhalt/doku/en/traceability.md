@@ -24,10 +24,10 @@ That way, even years later, the repository shows who contributed what with which
 
 ## The same numbers for people and agents
 
-The status board and the MCP tool `kennzahlen` use the same function. A test compares both outputs field by field. Progress is calculated openly: accepted tasks divided by all tasks per milestone, weighted by level. It can also go down when new tasks are added. That is intended.
+The status board and the MCP tool `metrics` use the same function. A test compares both outputs field by field. Progress is calculated openly: accepted tasks divided by all tasks per milestone, weighted by level. It can also go down when new tasks are added. That is intended.
 
 ## Limits
 
-Whoever fully controls the database could recompute the whole chain. The platform therefore signs the chain's head hash every day (`/api/protokoll/kopf`, key under `/jwks`). A separate public repository fetches it and keeps it in its Git history. It also compares all earlier heads with today's chain. A recomputed chain no longer matches the anchored heads, and that gets noticed.
+Whoever fully controls the database could recompute the whole chain. The platform therefore signs the chain's head hash every day (`/api/log/head`, key under `/jwks`). A separate public repository fetches it and keeps it in its Git history. It also compares all earlier heads with today's chain. A recomputed chain no longer matches the anchored heads, and that gets noticed.
 
 Anyone can run an anchor of their own: the script `infra/log-anchor/anchor.mjs` in the source code only needs Node and no credentials.

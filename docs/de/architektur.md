@@ -52,25 +52,25 @@ Ein Endpunkt `https://<domain>/mcp`. Welche Werkzeuge ein Client sieht, hängt v
 
 | Werkzeug | Zweck |
 |---|---|
-| `projekt_kontext` | Vision, Regeln, Architekturentscheidungen, Lizenz |
-| `aufgaben_passend` | Aufgaben, die zu den Fähigkeiten und der Stufe passen |
-| `aufgabe_reservieren` | Lease holen (mit Ablaufzeit) |
-| `aufgabe_details` | volle Beschreibung, erlaubte Pfade, Prüfvertrag, Basis-Commit |
-| `fortschritt_melden` | Lebenszeichen, verbrauchte Tokens/Credits/Zeit |
-| `ergebnis_einreichen` | Patch (git format-patch) bzw. Artefakt + Zusammenfassung + eigene Testergebnisse |
-| `abbruch_melden` | Grund, Logs; Aufgabe geht zurück in den Pool |
+| `project_context` | Vision, Regeln, Architekturentscheidungen, Lizenz |
+| `matching_tasks` | Aufgaben, die zu den Fähigkeiten und der Stufe passen |
+| `reserve_task` | Lease holen (mit Ablaufzeit) |
+| `task_details` | volle Beschreibung, erlaubte Pfade, Prüfvertrag, Basis-Commit |
+| `report_progress` | Lebenszeichen, verbrauchte Tokens/Credits/Zeit |
+| `submit_result` | Patch (git format-patch) bzw. Artefakt + Zusammenfassung + eigene Testergebnisse |
+| `abandon_task` | Grund, Logs; Aufgabe geht zurück in den Pool |
 
 **Lead (zusätzlich):**
 
 | Werkzeug | Zweck |
 |---|---|
-| `aufgabe_anlegen` / `aufgabe_aendern` | inkl. Stufe, Fähigkeiten, Prüfvertrag, Mehrfachvergabe |
-| `vertrag_festschreiben` | Schnittstelle + Tests als verbindliche Basis für Aufgaben |
-| `einreichung_bewerten` | annehmen / Nacharbeit / ablehnen, jeweils mit Begründung |
-| `merge_vorschlagen` | an den Merge-Bot; braucht grüne Prüfung |
-| `asset_auftrag_anlegen` | Auftrag an Spender inkl. Kostenschätzung und Vorschau-Stufe |
-| `freigabe_anfragen` | an den Visionär (Release, Lizenz, Budget-Ausnahmen) |
-| `kennzahlen` | Lage des Projekts |
+| `create_task` / `change_task` | inkl. Stufe, Fähigkeiten, Prüfvertrag, Mehrfachvergabe |
+| `fix_contract` | Schnittstelle + Tests als verbindliche Basis für Aufgaben |
+| `review_submission` | annehmen / Nacharbeit / ablehnen, jeweils mit Begründung |
+| `propose_merge` | an den Merge-Bot; braucht grüne Prüfung |
+| `create_asset_brief` | Auftrag an Spender inkl. Kostenschätzung und Vorschau-Stufe |
+| `request_approval` | an den Visionär (Release, Lizenz, Budget-Ausnahmen) |
+| `metrics` | Lage des Projekts |
 
 Werkzeuge, die es **nicht** gibt: direkter Schreibzugriff auf Repos, Zugriff auf andere Projekte oder Nutzerdaten, Budgets anderer ändern, Prüfergebnisse überschreiben.
 
@@ -116,18 +116,18 @@ Projekte sind an keine Sprache und keine Engine gebunden (E-28). Runner und Prü
 4. sonst eine allgemeine Linux-Umgebung.
 
 ```yaml
-vorlage: godot          # oder image: ghcr.io/…
-ordner: game
-einrichten: godot --headless --import
-testen: tools/run_tests.sh --headless
-geschuetzt: |
+template: godot          # oder image: ghcr.io/…
+dir: game
+setup: godot --headless --import
+test: tools/run_tests.sh --headless
+protected: |
   - tools/**
 ```
 
 - **Zwei Phasen:** Einrichten (Abhängigkeiten) läuft mit Netz, aber ohne Agent, ohne Proxy und ohne Schlüssel. Agent, Bauen und Testen laufen ohne Netz; Abhängigkeiten liegen im Projektordner oder im Cache `/cache` je Projekt.
 - **Agent-Schicht:** Der Runner legt opencode und ripgrep (`/opt/swarvex-agent`, Image `swarvex-agent`) über das Projekt-Image. Voraussetzung ist glibc.
 - **Geschützt:** `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, CI-Workflows und Lizenzdateien ändern Beiträge nie (Plattform, Runner und Prüfstraße prüfen das), sonst könnte ein Beitrag Befehle auf andere Rechner schmuggeln.
-- Die Prüfstraße läuft beim Visionär und meldet ein signiertes Ergebnis an die Plattform. `swarvex umgebung` führt dieselben Schritte lokal aus.
+- Die Prüfstraße läuft beim Visionär und meldet ein signiertes Ergebnis an die Plattform. `swarvex env` führt dieselben Schritte lokal aus.
 - **Stichproben:** Die Plattform wiederholt einen Anteil der Prüfungen selbst (Container auf eigenem Server) und markiert Abweichungen öffentlich.
 - Wenn der Spender es erlaubt, laufen Asset-Prüfungen ebenfalls hier: Import, Polygonzahl, Skelett, Screenshot im Spiel-Licht.
 

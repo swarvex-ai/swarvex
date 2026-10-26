@@ -1,6 +1,6 @@
 package main
 
-// Angriffstests (docs/angriffstests.md, S1–S10): startet Proxy und Sandbox mit exakt denselben
+// Angriffstests (docs/attack-tests.md, S1–S10): startet Proxy und Sandbox mit exakt denselben
 // Einstellungen wie `arbeiten`, führt aber statt des Agenten ein Angriffsskript aus. So wird
 // genau die Sandbox angegriffen, die echte Aufgaben bekommen.
 

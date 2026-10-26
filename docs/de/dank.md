@@ -1,6 +1,6 @@
 # Danke, Open Source
 
-swarvex steht auf den Schultern dieser Projekte. Ohne sie gäbe es uns nicht. Die Liste ist die Quelle der Seite „Open Source“ auf der Website (`docs/dank.json`).
+swarvex steht auf den Schultern dieser Projekte. Ohne sie gäbe es uns nicht. Die Liste ist die Quelle der Seite „Open Source“ auf der Website (`docs/thanks.json`).
 
 ## Plattform
 

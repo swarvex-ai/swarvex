@@ -1,17 +1,17 @@
 # Example swarvex.yaml (Godot game). Lives in the root of the project repository and is a protected path:
 # only the lead and the visionary change it. Without this file swarvex detects the project type itself;
-# here you only set what differs. Check it with: swarvex umgebung
+# here you only set what differs. Check it with: swarvex env
 # Principle: deterministic, fast (< 10 min), meaningful. Fix flaky steps immediately.
-vorlage: godot
-ordner: game
-einrichten: godot --headless --import >/dev/null 2>&1 || true
-testen: |
+template: godot
+dir: game
+setup: godot --headless --import >/dev/null 2>&1 || true
+test: |
   gdlint src tests
   tools/run_tests.sh --headless
   tools/run_tests.sh --headless tests/vertraege
   tools/measure.sh --frame-ms-p95 8 --ladezeit-ms 200
-hinweis: Create scenes only through the editor import; constants live in src/konstanten.gd.
-geschuetzt: |
+note: Create scenes only through the editor import; constants live in src/konstanten.gd.
+protected: |
   - project.godot
   - tools/**
   - tests/vertraege/**

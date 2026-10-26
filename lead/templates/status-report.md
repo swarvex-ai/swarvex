@@ -6,7 +6,7 @@
 <Where are we, what went well, what is stuck?>
 
 ## Milestone <name>
-- Progress: <x %> (according to `kennzahlen`) · planned completion: <date> · assessment: on track / at risk / delayed
+- Progress: <x %> (according to `metrics`) · planned completion: <date> · assessment: on track / at risk / delayed
 - Critical path: <next tasks on it, status>
 
 ## Swarm

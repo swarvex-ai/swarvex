@@ -22,4 +22,4 @@ cp infra/stack/.env.example infra/stack/.env   # host, TLS mode, secrets
 infra/setup-platform.sh                   # start the Compose stack, migrate the database
 ```
 
-The step-by-step guide with all commands is in the repository at `docs/selbst-hosten.md` (German).
+The step-by-step guide with all commands is in the repository at `docs/self-hosting.md`.

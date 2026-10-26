@@ -1,8 +1,8 @@
 <script lang="ts">
   // Das Logo wie am Ende des Erklärvideos: Auf Klick fliegen die vier Agenten-Ströme mit Spuren
   // ins Sechseck, das Sechseck entsteht mit Lichtring und Strahlen, dazu der Ton aus dem Video.
-  // Geometrie wie medien/logo/bauen_logo.py; Ton aus den Geräuschen des Erklärvideos (Schwarm + Einschlag).
-  import wortRoh from "../../../../../medien/logo/export/swarvex_wortmarke_dunkel.svg?raw";
+  // Geometrie wie media/logo/bauen_logo.py; Ton aus den Geräuschen des Erklärvideos (Schwarm + Einschlag).
+  import wortRoh from "../../../../../media/logo/export/swarvex_wortmarke_dunkel.svg?raw";
   import tonUrl from "$lib/ton/logo.mp3?url";
 
   let { groesse = 72, label }: { groesse?: number; label: string } = $props();

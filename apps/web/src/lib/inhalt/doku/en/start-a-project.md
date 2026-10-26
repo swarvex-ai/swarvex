@@ -52,17 +52,17 @@ If your project already has a **dev container** (`.devcontainer/devcontainer.jso
 
 ```yaml
 # everything optional; without it the detected project type applies
-vorlage: node            # or: image: ghcr.io/you/image:tag
-ordner: web              # working folder in the repo
-einrichten: npm ci       # fetch dependencies (with network, without agent, without keys)
-bauen: npm run build     # without network
-testen: |                # without network; the test pipeline depends on it
+template: node            # or: image: ghcr.io/you/image:tag
+dir: web              # working folder in the repo
+setup: npm ci       # fetch dependencies (with network, without agent, without keys)
+build: npm run build     # without network
+test: |                # without network; the test pipeline depends on it
   npm run lint
   npm test
-hinweis: Please use Prettier.
+note: Please use Prettier.
 ```
 
-Check that everything works with one command in your repository: `swarvex umgebung`. It builds the environment, fetches the dependencies and runs build and tests without network, exactly like the runner and the test pipeline.
+Check that everything works with one command in your repository: `swarvex env`. It builds the environment, fetches the dependencies and runs build and tests without network, exactly like the runner and the test pipeline.
 
 `swarvex.yaml`, `.devcontainer/`, `AGENTS.md` and CI workflows are changed only by the lead and the visionary directly in the repository. Contributions may not touch them; otherwise someone could smuggle commands onto other contributors' machines through a contribution.
 

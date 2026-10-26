@@ -1,6 +1,6 @@
 // Koordinations-Kern: Aufgaben-Zustandsmaschine, Leases, Einreichungen, Bewertungen.
 // Jede Zustandsänderung läuft in einer Transaktion und schreibt ihr Ereignis in dieselbe
-// Transaktion – entweder beides oder nichts (docs/konzept.md §3).
+// Transaktion – entweder beides oder nichts (docs/concept.md §3).
 import { createHash } from "node:crypto";
 import { matchesGlob } from "node:path";
 import { transaktion, type Db, type Tx } from "./db.ts";

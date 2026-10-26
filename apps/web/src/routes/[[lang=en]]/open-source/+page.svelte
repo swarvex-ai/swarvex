@@ -1,15 +1,15 @@
 <script lang="ts">
-  // Manifest, Clean-Room-Verfahren und Dankesliste. Die Liste kommt aus docs/dank.json (auch Quelle von DANK.md).
+  // Manifest, Clean-Room-Verfahren und Dankesliste. Die Liste kommt aus docs/thanks.json (auch Quelle von DANK.md).
   import Flagge from "$lib/components/Flagge.svelte";
   import Seo from "$lib/components/Seo.svelte";
   import { SEITE } from "$lib/seo";
   import { pfad, sprache, tx } from "$lib/texte";
-  import dank from "../../../../../../docs/dank.json";
+  import dank from "../../../../../../docs/thanks.json";
 
   const s = $derived(sprache());
   const t = $derived(tx().opensource);
-  type Eintrag = { name: string; url: string; lizenz: string; de: string; en: string; gruppe: string };
-  const gruppen = $derived(Object.entries(t.dank.gruppen).map(([k, titel]) => ({ k, titel, eintraege: (dank as Eintrag[]).filter((e) => e.gruppe === k) })));
+  type Eintrag = { name: string; url: string; license: string; de: string; en: string; group: string };
+  const gruppen = $derived(Object.entries(t.dank.gruppen).map(([k, titel]) => ({ k, titel, eintraege: (dank as Eintrag[]).filter((e) => e.group === k) })));
   const daten = $derived([{ "@type": "WebPage", "@id": `${SEITE}${pfad(s, t.pfad)}`, name: t.h1, description: t.beschreibung, inLanguage: s,
     isPartOf: { "@id": `${SEITE}/#website` } }]);
 </script>
@@ -64,7 +64,7 @@
         <thead><tr><th scope="col">{t.dank.projekt}</th><th scope="col">{t.dank.lizenz}</th><th scope="col">{t.dank.wofuer}</th></tr></thead>
         <tbody>
           {#each g.eintraege as e}
-            <tr><td><a href={e.url} rel="noopener">{e.name}</a></td><td class="lizenz">{e.lizenz}</td><td>{s === "en" ? e.en : e.de}</td></tr>
+            <tr><td><a href={e.url} rel="noopener">{e.name}</a></td><td class="lizenz">{e.license}</td><td>{s === "en" ? e.en : e.de}</td></tr>
           {/each}
         </tbody>
       </table>

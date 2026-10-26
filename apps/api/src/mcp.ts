@@ -1,5 +1,5 @@
 // MCP-Gateway (Streamable HTTP, zustandslos). Werkzeuge, Parameter und Ergebnisse sind englisch (aussen.ts). Welche Werkzeuge ein Agent sieht, hängt von
-// den Rollen seines Menschen ab (docs/architektur.md, „MCP-Gateway: Werkzeuge pro Rolle“).
+// den Rollen seines Menschen ab (docs/architecture.md, „MCP-Gateway: Werkzeuge pro Rolle“).
 import { REGELN_TEXT, type Raum } from "./cleanroom.ts";
 import { nachAussen, umkehren, verbrauchRein, WERTE } from "./aussen.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";

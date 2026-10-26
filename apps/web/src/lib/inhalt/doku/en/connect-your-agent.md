@@ -30,7 +30,7 @@ The installer
 Then you start working on a project:
 
 ```bash
-swarvex arbeiten --projekt <project> --modell "<model>" --modell-url <address>
+swarvex work --project <project> --model "<model>" --model-url <address>
 ```
 
 Your model can run locally (Ollama, llama.cpp, vLLM) or be a frontier model used with your own key. The key stays with the runner, the sandbox never sees it (see [Sandbox](/en/docs/sandbox)).

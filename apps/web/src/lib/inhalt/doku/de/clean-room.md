@@ -11,15 +11,15 @@ Manche Werkzeuge gibt es nur geschlossen: eingestellt, teuer oder an einen Herst
 
 | Raum | Wer | Was | Schreibt |
 |---|---|---|---|
-| `analyse` | Mitstreiter mit eigener, rechtmäßig erworbener Kopie des Vorbilds | untersucht das Vorbild lokal, z. B. mit [REA](https://github.com/morluto/rea), und beschreibt Verhalten, Schnittstellen und Datenformate | nur `spezifikation/` |
-| `pruefung` | andere Mitstreiter | liest die Beschreibung gegen und streicht alles, was Ausdruck statt Funktion ist | nur `spezifikation/` |
-| `bau` | wieder andere Mitstreiter | implementiert nur aus der freigegebenen Spezifikation | alles außer `spezifikation/` |
+| `analysis` | Mitstreiter mit eigener, rechtmäßig erworbener Kopie des Vorbilds | untersucht das Vorbild lokal, z. B. mit [REA](https://github.com/morluto/rea), und beschreibt Verhalten, Schnittstellen und Datenformate | nur `specification/` |
+| `review` | andere Mitstreiter | liest die Beschreibung gegen und streicht alles, was Ausdruck statt Funktion ist | nur `specification/` |
+| `build` | wieder andere Mitstreiter | implementiert nur aus der freigegebenen Spezifikation | alles außer `specification/` |
 
 ## Die Trennwand
 
 Die Plattform setzt sie pro Mensch und Projekt durch:
 
-- Wer im Raum `analyse` gearbeitet hat, bekommt im selben Projekt keine Aufgaben aus `bau` oder `pruefung` angeboten und kann sie nicht reservieren.
+- Wer im Raum `analysis` gearbeitet hat, bekommt im selben Projekt keine Aufgaben aus `build` oder `review` angeboten und kann sie nicht reservieren.
 - Wer gebaut hat, kann nicht mehr analysieren.
 - Jeder Versuch, die Wand zu überschreiten, steht im Protokoll (`clean_room_trennung`).
 - Die Projektseite zeigt, wie viele Menschen in welchem Raum gearbeitet haben und ob die Trennung gehalten hat.
@@ -34,8 +34,8 @@ Das Vorbild selbst sieht die Plattform nie. Analysierende untersuchen ihre eigen
 
 ## Rechtlicher Rahmen
 
-Clean Room ist ein anerkanntes Verfahren, aber kein Freibrief. Ob ein Projekt zulässig ist, hängt vom Vorbild, seiner Lizenz und dem Recht des Landes ab. In der EU erlaubt die Softwarerichtlinie rechtmäßigen Nutzern, die Funktion eines Programms zu beobachten und zu untersuchen (Art. 5 Abs. 3, in Deutschland § 69d Abs. 3 UrhG); für die Herstellung von Interoperabilität gelten engere Regeln zur Dekompilierung (Art. 6, § 69e UrhG). Jedes Clean-Room-Projekt nennt deshalb seine Rechtsgrundlage (`vorbild.rechtsgrundlage`). Bevor das erste Projekt öffentlich startet, prüft eine Fachperson Verfahren und Texte.
+Clean Room ist ein anerkanntes Verfahren, aber kein Freibrief. Ob ein Projekt zulässig ist, hängt vom Vorbild, seiner Lizenz und dem Recht des Landes ab. In der EU erlaubt die Softwarerichtlinie rechtmäßigen Nutzern, die Funktion eines Programms zu beobachten und zu untersuchen (Art. 5 Abs. 3, in Deutschland § 69d Abs. 3 UrhG); für die Herstellung von Interoperabilität gelten engere Regeln zur Dekompilierung (Art. 6, § 69e UrhG). Jedes Clean-Room-Projekt nennt deshalb seine Rechtsgrundlage (`original.legal_basis`). Bevor das erste Projekt öffentlich startet, prüft eine Fachperson Verfahren und Texte.
 
 ## Für den Lead
 
-Das Lead-Handbuch beschreibt im Abschnitt „Clean-Room-Neubau“, wie man die Aufgaben schneidet (pro Funktion Analyse → Prüfung → Bau), und die Interview-Vorlagen enthalten einen eigenen Fragenbaum dafür. Beim Anlegen einer Aufgabe ist `raum` Pflicht; die Plattform prüft, dass Analyse und Prüfung nur unter `spezifikation/` schreiben und der Bau dort nie.
+Das Lead-Handbuch beschreibt im Abschnitt „Clean-Room-Neubau“, wie man die Aufgaben schneidet (pro Funktion Analyse → Prüfung → Bau), und die Interview-Vorlagen enthalten einen eigenen Fragenbaum dafür. Beim Anlegen einer Aufgabe ist `room` Pflicht; die Plattform prüft, dass Analyse und Prüfung nur unter `specification/` schreiben und der Bau dort nie.

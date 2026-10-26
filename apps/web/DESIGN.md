@@ -55,7 +55,7 @@ Text ist linksbündig, nur der Abschluss-Aufruf steht zentriert. Die Inhaltsbrei
 ## Prinzipien
 
 1. **Kühnheit nur an einer Stelle:** die Schwarm-Grafik im Hero. Vier Ströme von Agenten-Partikeln laufen in das Projekt-Sechseck, wie im Logo, darunter ein leiser Matrix-Regen. Alles andere bleibt ruhig.
-2. **Echte Zahlen statt Behauptungen:** Die Rangliste und die Live-Zeile lesen `/api/projekte`. Gibt es keine Daten, steht ehrlich „noch ruhig“ da, und es werden keine Beispielzahlen erfunden.
+2. **Echte Zahlen statt Behauptungen:** Die Rangliste und die Live-Zeile lesen `/api/projects`. Gibt es keine Daten, steht ehrlich „noch ruhig“ da, und es werden keine Beispielzahlen erfunden.
 3. **Bewegung erklärt etwas:** die scroll-gesteuerte Grafik bei „So funktioniert es“, Zahlen, die beim Aktualisieren hochzählen, und der Schalter im Kontroll-Panel. Keine Einblend-Animation an jedem Abschnitt.
 4. **Der Befehl ist der wichtigste Knopf:** Der Einzeiler ist kopierbar und überall gleich geschrieben.
 5. **Qualitätsboden:** responsiv ab 360 px, sichtbarer Tastaturfokus, `prefers-reduced-motion` (Canvas steht still), Kontrast ≥ 4.5:1, Video mit Untertiteln, keine Emojis als Icons.

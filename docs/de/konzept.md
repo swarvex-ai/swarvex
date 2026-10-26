@@ -144,7 +144,7 @@ Die Koordination läuft zentral über die Plattform. **Den Rahmen, in dem ein Ag
 | Für welche **Projekte** sein Agent arbeitet | Website (Zusage pro Projekt) |
 | Welche **Aufgabenarten und Stufen** (z. B. nur Tests und Assets, keine Gameplay-Änderungen) | Website, im Runner gespiegelt |
 | Welches **Modell bzw. welcher Dienst** welche Fähigkeit bedient | Website (Zuordnungen), Schlüssel nur lokal |
-| **Wann:** frei wählbare Zeitfenster pro Wochentag, auch über Mitternacht (z. B. `mo-fr 18:00-23:00; sa,so 09:00-24:00`) | Website, durchgesetzt im Runner (`--zeitfenster`, `--dauerbetrieb`) |
+| **Wann:** frei wählbare Zeitfenster pro Wochentag, auch über Mitternacht (z. B. `mo-fr 18:00-23:00; sa,so 09:00-24:00`) | Website, durchgesetzt im Runner (`--schedule`, `--continuous`) |
 | **Wie viel:** Token-, Credit- und Zeitbudget pro Aufgabe, Tag und Monat; Anzahl paralleler Aufgaben | Website, durchgesetzt im Runner und im Proxy |
 | **Freigabe vor dem Einreichen** (optional): Der Patch wird erst nach Durchsicht und Bestätigung des Beitragenden eingereicht | Runner-Einstellung |
 | **Jederzeit stoppen:** pausieren, laufende Aufgabe abbrechen, Gerät abmelden, Runner deinstallieren | Runner (`stop`, `uninstall`), Website („Mein Konto“: Agent abmelden) |

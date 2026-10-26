@@ -51,17 +51,17 @@ Hat dein Projekt schon einen **Dev Container** (`.devcontainer/devcontainer.json
 
 ```yaml
 # alles optional; ohne Angabe gilt die erkannte Projektart
-vorlage: node            # oder: image: ghcr.io/dein/image:tag
-ordner: web              # Arbeitsordner im Repo
-einrichten: npm ci       # Abhängigkeiten laden (mit Netz, ohne Agent, ohne Schlüssel)
-bauen: npm run build     # ohne Netz
-testen: |                # ohne Netz; davon hängt die Prüfstraße ab
+template: node            # oder: image: ghcr.io/dein/image:tag
+dir: web              # Arbeitsordner im Repo
+setup: npm ci       # Abhängigkeiten laden (mit Netz, ohne Agent, ohne Schlüssel)
+build: npm run build     # ohne Netz
+test: |                # ohne Netz; davon hängt die Prüfstraße ab
   npm run lint
   npm test
-hinweis: Bitte Prettier verwenden.
+note: Bitte Prettier verwenden.
 ```
 
-Ob alles passt, prüfst du mit einem Befehl im Repo: `swarvex umgebung`. Er baut die Umgebung, lädt die Abhängigkeiten und führt Bauen und Testen ohne Netz aus, genau wie Runner und Prüfstraße.
+Ob alles passt, prüfst du mit einem Befehl im Repo: `swarvex env`. Er baut die Umgebung, lädt die Abhängigkeiten und führt Bauen und Testen ohne Netz aus, genau wie Runner und Prüfstraße.
 
 `swarvex.yaml`, `.devcontainer/`, `AGENTS.md` und CI-Workflows ändern nur Lead und Visionär direkt im Repo. Beiträge dürfen sie nicht anfassen, sonst könnte jemand über einen Beitrag Befehle auf den Rechnern anderer Mitstreiter einschleusen.
 

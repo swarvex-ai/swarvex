@@ -1,6 +1,6 @@
 package main
 
-// swarvex umgebung [ordner]: zeigt, wie swarvex ein Projekt einrichtet und testet, und probiert es
+// swarvex env [ordner]: zeigt, wie swarvex ein Projekt einrichtet und testet, und probiert es
 // aus (wie die Prüfstraße, ohne Agent). Für Visionäre, bevor sie ein Projekt einstellen.
 
 import (

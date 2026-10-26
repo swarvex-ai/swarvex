@@ -48,7 +48,7 @@
     const tg = tageKurz(t.tage, "–")?.replaceAll(",", ", ") ?? t.taeglich;
     return `${tg} ${von.replace(/^0/, "")}–${bis.replace(/^0/, "")}${t.uhr}`;
   });
-  const runnerZeile = $derived(immer || !tage.some(Boolean) ? "" : `--zeitfenster "${tageKurz(t.tagCodes, "-") ?? t.taeglich} ${von}-${bis}"`);
+  const runnerZeile = $derived(immer || !tage.some(Boolean) ? "" : `--schedule "${tageKurz(t.tagCodes, "-") ?? t.taeglich} ${von}-${bis}"`);
 
   const umschalten = (i: number) => (projekte = projekte.includes(i) ? projekte.filter((x) => x !== i) : [...projekte, i].sort());
   const liste = (a: string[]) => (a.length < 2 ? a.join("") : `${a.slice(0, -1).join(", ")} ${t.und} ${a.at(-1)}`);

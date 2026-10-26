@@ -16,12 +16,12 @@ The test pipeline runs on the visionary's side or on the project's server. It ap
 It reports the result to the platform with a signature. `swarvex.yaml` defines the test contract:
 
 ```yaml
-vorlage: godot
-ordner: game
-testen: |
+template: godot
+dir: game
+test: |
   gdlint src tests
   tools/run_tests.sh --headless
-geschuetzt: |
+protected: |
   - tools/**
   - tests/vertraege/**
 ```

@@ -6,7 +6,7 @@
 <Wo stehen wir, was lief gut, was hakt?>
 
 ## Meilenstein <Name>
-- Fortschritt: <x %> (laut `kennzahlen`) · geplant fertig: <Datum> · Einschätzung: im Plan / gefährdet / verzögert
+- Fortschritt: <x %> (laut `metrics`) · geplant fertig: <Datum> · Einschätzung: im Plan / gefährdet / verzögert
 - Kritischer Pfad: <nächste Aufgaben darauf, Stand>
 
 ## Schwarm
