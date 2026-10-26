@@ -9,6 +9,15 @@
 	tls {$TLS_MODE}
 	# Labor: nicht indexieren (Standard). Live in .env: X_ROBOTS_TAG=all
 	header X-Robots-Tag "{$X_ROBOTS_TAG:noindex, nofollow}"
+	# Sicherheits-Header für alle Antworten
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		-Server
+	}
 	# Einzeiler-Installer und signierte Runner-Releases (infra/release.sh)
 	handle /install.sh {
 		root * /srv

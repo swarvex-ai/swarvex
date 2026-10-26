@@ -18,8 +18,27 @@ if [ -f "$STACK/.env" ]; then BASE_HOST=${BASE_HOST:-$(grep ^BASE_HOST= "$STACK/
 echo "== 1. Packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq curl ca-certificates docker.io docker-compose git git-lfs jq rsync openssh-client >/dev/null
+apt-get install -y -qq curl ca-certificates docker.io docker-compose git git-lfs jq rsync openssh-client ufw unattended-upgrades >/dev/null
 systemctl enable --now docker >/dev/null
+
+echo "== 1b. Hardening"
+# Automatic security updates (Debian security archive only)
+printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' > /etc/apt/apt.conf.d/20auto-upgrades
+systemctl enable --now unattended-upgrades >/dev/null 2>&1 || true
+# Firewall: only SSH and web. Docker publishes 80/443 itself; nothing else is reachable from outside.
+ufw default deny incoming >/dev/null
+ufw default allow outgoing >/dev/null
+for port in 22/tcp 80/tcp 443/tcp 443/udp; do ufw allow "$port" >/dev/null; done
+ufw --force enable >/dev/null
+echo "   firewall: $(ufw status | head -1)"
+# SSH: keys only, but only if a key is already installed (otherwise we would lock ourselves out)
+if [ -s /root/.ssh/authorized_keys ]; then
+  printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n' > /etc/ssh/sshd_config.d/10-swarvex.conf
+  sshd -t && systemctl reload ssh
+  echo "   ssh: keys only"
+else
+  echo "   ssh: WARNING no key in /root/.ssh/authorized_keys, password login stays enabled"
+fi
 
 echo "== 2. Secrets (.env, created only once)"
 if [ ! -f "$STACK/.env" ]; then

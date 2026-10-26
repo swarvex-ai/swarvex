@@ -40,7 +40,7 @@ GITHUB_CLIENT_ID=<id> GITHUB_CLIENT_SECRET=<secret> \
 sh /opt/swarvex/infra/setup-platform.sh
 ```
 
-`TLS_MODE` ist die E-Mail-Adresse für Let's Encrypt; `internal` erzeugt eine eigene CA (für Tests ohne öffentliche Domain). Das Skript installiert Pakete, erzeugt `.env` mit zufälligen Geheimnissen (nur beim ersten Lauf), legt die Deploy-Keys an, startet den Stack, baut Prüfstraße und Prüf-Image und aktiviert die Timer `swarvex-check` und `swarvex-merge`.
+`TLS_MODE` ist die E-Mail-Adresse für Let's Encrypt; `internal` erzeugt eine eigene CA (für Tests ohne öffentliche Domain). Das Skript installiert Pakete, härtet den Server (Firewall nur mit SSH und Web, automatische Sicherheitsupdates, SSH nur noch mit Schlüssel, sobald einer hinterlegt ist), erzeugt `.env` mit zufälligen Geheimnissen (nur beim ersten Lauf), legt die Deploy-Keys an, startet den Stack, baut Prüfstraße und Prüf-Image und aktiviert die Timer `swarvex-check` und `swarvex-merge`.
 
 **Projekt anlegen** (Vorlage `infra/stack/project-example.json`; Code unter einer OSI-Lizenz, Assets unter einer freien Lizenz):
 
