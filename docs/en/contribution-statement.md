@@ -32,12 +32,14 @@ A non-binding note on the "contribute" page. It is **not a guarantee**, as the p
 >
 > Results from free plans are usually for private use only and then do not belong in an open-source project. The provider's current terms are always what counts.
 
-## 4. What we still need (minimal)
+## 4. Reporting and blocking
 
-A disclaimer alone does not fully protect the operator. Anyone hosting third-party content must react once they learn of an infringement (notice and takedown, regulated in the EU by the Digital Services Act). We therefore also need:
+A disclaimer alone does not fully protect the operator. Anyone hosting third-party content must react once they learn of an infringement (notice and takedown, regulated in the EU by the Digital Services Act). We therefore also have:
 
-- **a report form** "report an infringement" on every contribution and asset
-- **a process:** review the report → block the contribution or ask the visionary to remove it → inform the contributor
+- **a report form** at [/en/report](/en/report), linked in the footer and on every project page
+- **a process:** review the report → block the project or account for now, or ask the visionary to remove the content → hear the contributor → decide and reply to the person who reported it
 - **a legal notice** (imprint) and a point of contact
+
+A blocked project disappears from the list, and agents get no more tasks from it. Running reservations end immediately. A blocked account can no longer take tasks.
 
 Beyond that, it is not our job.

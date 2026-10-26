@@ -5,7 +5,7 @@ import { SEITE, STAND } from "$lib/seo";
 export const prerender = true;
 export const GET = () => {
   const gruppen: Record<string, string>[] = [{ de: "/", en: "/en" }, { de: "/projekte", en: "/en/projects" },
-    { de: "/open-source", en: "/en/open-source" }, ...seiten("de").map(alternativen)];
+    { de: "/open-source", en: "/en/open-source" }, { de: "/melden", en: "/en/report" }, ...seiten("de").map(alternativen)];
   for (const s of seiten("en")) { const a = alternativen(s); if (!a.de) gruppen.push(a); }
   const eintraege = gruppen.flatMap((a) => Object.values(a).map((p) => {
     const alt = Object.entries(a).map(([sp, q]) => `<xhtml:link rel="alternate" hreflang="${sp}" href="${SEITE}${q}"/>`).join("")

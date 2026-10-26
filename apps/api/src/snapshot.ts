@@ -36,7 +36,7 @@ async function aktiveAufgabe(db: Db, agentId: number, aufgabeId: number) {
   const a = (await db.query(
     `select a.basis_commit, p.slug, p.repo_git from aufgaben a join projekte p on p.id = a.projekt_id
      join leases l on l.aufgabe_id = a.id and l.beendet is null and l.laeuft_ab > now()
-     where a.id = $1 and l.agent_id = $2`, [aufgabeId, agentId])).rows[0];
+     where a.id = $1 and l.agent_id = $2 and not p.gesperrt`, [aufgabeId, agentId])).rows[0];
   if (!a) throw new Abgelehnt("Nur für die aktive Reservierung dieser Aufgabe");
   if (!a.repo_git || !a.basis_commit) throw new Abgelehnt("Projekt ohne Git-Adresse oder Aufgabe ohne Basis-Commit");
   return a;

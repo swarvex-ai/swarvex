@@ -54,6 +54,19 @@ docker compose exec -T api node src/cli.ts rolle-setzen <slug> github:<login> le
 docker compose exec -T api node src/cli.ts protokoll-pruefen
 ```
 
+**Meldungen bearbeiten** (Formular unter `/melden`): Der Grund einer Sperre steht im öffentlichen Protokoll, schreib ihn also ohne persönliche Daten.
+
+```bash
+docker compose exec -T api node src/cli.ts meldungen            # offene Meldungen; "meldungen alle" zeigt auch erledigte
+docker compose exec -T api node src/cli.ts meldung <id> in_pruefung "Visionär angeschrieben"
+docker compose exec -T api node src/cli.ts sperren projekt <slug> "Takedown wegen Meldung #<id>"
+docker compose exec -T api node src/cli.ts sperren mensch github:<login> "Spam-Einreichungen"
+docker compose exec -T api node src/cli.ts entsperren projekt <slug> "Inhalt entfernt"
+docker compose exec -T api node src/cli.ts meldung <id> erledigt "Datei entfernt, Projekt wieder frei"
+```
+
+Die Antwort an die meldende Person geht per E-Mail von Hand raus.
+
 Kontrolle: `curl https://<BASIS_HOST>/healthz` und `curl https://<BASIS_HOST>/.well-known/oauth-protected-resource`.
 
 Updates vom Arbeitsrechner aus: `infra/ausrollen.sh <ssh-ziel>`. Das Skript kopiert das Repo ohne `--delete` (Dateien, die nur auf dem Server liegen, bleiben erhalten) und gleicht danach die reinen Quellcode-Ordner mit `--delete` ab.

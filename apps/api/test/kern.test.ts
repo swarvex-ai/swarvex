@@ -140,6 +140,42 @@ describe("Clean Room (E-26)", () => {
   });
 });
 
+describe("Meldungen und Sperren (#19, #29)", () => {
+  it("nimmt Meldungen an, prüft sie und protokolliert ohne persönliche Daten", async () => {
+    const { meldungAnlegen, meldungenListe, meldungAbschliessen } = await import("../src/meldungen.ts");
+    const gut = { art: "rechtsverletzung", projekt: "test", bezug: "https://example.org/datei", beschreibung: "Diese Datei stammt aus meinem Spiel und wurde ohne Erlaubnis übernommen.",
+      name: "Rita Rechte", email: "rita@example.org", rechteinhaber: true, versichert: true };
+    const { id } = await meldungAnlegen(db, gut);
+    await expect(meldungAnlegen(db, { ...gut, versichert: false })).rejects.toThrow();
+    await expect(meldungAnlegen(db, { ...gut, beschreibung: "zu kurz" })).rejects.toThrow();
+    await expect(meldungAnlegen(db, { ...gut, website: "spam" })).rejects.toThrow();
+    expect((await meldungenListe(db)).map((m) => Number(m.id))).toContain(id);
+    const ereignis = (await db.query("select daten from ereignisse where bezug = $1", [`meldung:${id}`])).rows[0].daten;
+    expect(JSON.stringify(ereignis)).not.toMatch(/rita|Rita|example\.org/);
+    await meldungAbschliessen(db, id, "erledigt", "Datei entfernt");
+    expect((await meldungenListe(db)).map((m) => Number(m.id))).not.toContain(id);
+  });
+
+  it("sperrt Projekte und Menschen und hebt Sperren wieder auf", async () => {
+    const { sperren } = await import("../src/meldungen.ts");
+    const { projektListe } = await import("../src/kennzahlen.ts");
+    const pid = Number((await db.query("select id from projekte where slug = 'test'")).rows[0].id);
+    const offen = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Sperrtest"));
+    await sperren(db, { projekt: pid }, true, "Takedown wegen Meldung");
+    await expect(k.aufgabenPassend(db, mit, "test")).rejects.toThrow(/gesperrt/);
+    await expect(k.reservieren(db, mit, offen.id)).rejects.toThrow(/gesperrt/);
+    expect((await projektListe(db)).projekte.map((x) => x.projekt)).not.toContain("test");
+    await sperren(db, { projekt: pid }, false, "Meldung erledigt");
+    expect((await k.aufgabenPassend(db, mit, "test")).map((a) => a.id)).toContain(offen.id);
+
+    await sperren(db, { mensch: fremd.menschId }, true, "Spam-Einreichungen");
+    await expect(k.reservieren(db, fremd, offen.id)).rejects.toThrow(/Konto gesperrt/);
+    await sperren(db, { mensch: fremd.menschId }, false, "Einspruch berechtigt");
+    const arten = (await db.query("select art from ereignisse where art like '%gesperrt' or art like '%entsperrt' order by seq")).rows.map((r) => r.art);
+    expect(arten).toEqual(["projekt_gesperrt", "projekt_entsperrt", "mensch_gesperrt", "mensch_entsperrt"]);
+  });
+});
+
 describe("Ereignisprotokoll (S9)", () => {
   it("ist unveränderlich und erkennt Manipulation", async () => {
     expect((await ketteVerifizieren(db)).ok).toBe(true);

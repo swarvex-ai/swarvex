@@ -4,9 +4,27 @@
 //   rolle-setzen <slug> [anbieter:]<login> <rolle>  z. B. github:nevs (ohne Anbieter: eindeutiger Login)
 //   repo-setzen <slug> <git-adresse>          SSH-Adresse für Snapshots (Deploy-Key, nur lesend)
 //   protokoll-pruefen                         Hash-Kette verifizieren, Kopf-Hash ausgeben
+//   meldungen [alle]                          offene (bzw. alle) Meldungen anzeigen
+//   meldung <id> <in_pruefung|erledigt|abgelehnt> <ergebnis>
+//   sperren mensch <[anbieter:]login> <grund> | sperren projekt <slug> <grund>
+//   entsperren mensch <[anbieter:]login> | entsperren projekt <slug>
 import { readFile } from "node:fs/promises";
 import { migrieren, transaktion, verbinden } from "./db.ts";
 import { ketteVerifizieren, protokollieren } from "./ereignisse.ts";
+import { meldungAbschliessen, meldungenListe, sperren } from "./meldungen.ts";
+
+async function menschId(login: string): Promise<number> {
+  const [anbieter, name] = login.includes(":") ? login.split(":", 2) : [null, login];
+  const treffer = (await db.query("select id from menschen where login = $1 and ($2::text is null or konto_provider = $2)", [name, anbieter])).rows;
+  if (treffer.length !== 1) throw new Error(treffer.length ? `Login ${name} gibt es bei mehreren Anbietern; bitte als anbieter:login angeben` : `Mensch ${login} unbekannt`);
+  return Number(treffer[0].id);
+}
+
+async function projektId(slug: string): Promise<number> {
+  const p = (await db.query("select id from projekte where slug = $1", [slug])).rows[0];
+  if (!p) throw new Error(`Projekt ${slug} unbekannt`);
+  return Number(p.id);
+}
 
 const db = verbinden(process.env.DATABASE_URL ?? "");
 
@@ -61,6 +79,33 @@ try {
         await protokollieren(tx, { projekt_id: Number(p.id), akteur: "system", art: "repo_gesetzt", bezug: `projekt:${p.id}`, daten: { repo_git: adresse } });
         console.log(`${slug}: Repo ${adresse}`);
       });
+      break;
+    }
+    case "meldungen": {
+      for (const m of await meldungenListe(db, args[0] !== "alle")) {
+        console.log(`#${m.id} [${m.zustand}] ${m.art}${m.projekt ? ` · ${m.projekt}` : ""} · ${m.erstellt.toISOString().slice(0, 16)} · ${m.name || "–"} <${m.email}>${m.rechteinhaber ? " (Rechteinhaber)" : ""}`);
+        if (m.bezug) console.log(`   Bezug: ${m.bezug}`);
+        console.log(`   ${m.beschreibung.replace(/\n/g, "\n   ")}`);
+        if (m.ergebnis) console.log(`   Ergebnis: ${m.ergebnis}`);
+      }
+      break;
+    }
+    case "meldung": {
+      const [id, zustand, ...ergebnis] = args;
+      if (!["in_pruefung", "erledigt", "abgelehnt"].includes(zustand)) throw new Error("Zustand: in_pruefung, erledigt oder abgelehnt");
+      await meldungAbschliessen(db, Number(id), zustand as "in_pruefung" | "erledigt" | "abgelehnt", ergebnis.join(" "));
+      console.log(`Meldung ${id}: ${zustand}`);
+      break;
+    }
+    case "sperren":
+    case "entsperren": {
+      const [art, ziel, ...grund] = args;
+      const gesperrt = befehl === "sperren";
+      if (gesperrt && !grund.length) throw new Error("Bitte einen Grund angeben (steht im öffentlichen Protokoll)");
+      if (art === "mensch") await sperren(db, { mensch: await menschId(ziel) }, gesperrt, grund.join(" "));
+      else if (art === "projekt") await sperren(db, { projekt: await projektId(ziel) }, gesperrt, grund.join(" "));
+      else throw new Error("sperren mensch|projekt <ziel> <grund>");
+      console.log(`${art} ${ziel} ${gesperrt ? "gesperrt" : "entsperrt"}`);
       break;
     }
     case "protokoll-pruefen": {

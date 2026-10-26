@@ -34,12 +34,14 @@ Ein unverbindlicher Hinweis auf der Mitmachen-Seite. Er ist **keine Zusicherung*
 
 Die Detailrecherche dazu steht in `dienste.md`. Sie ist Hintergrund für diesen Hinweis, keine Prüfpflicht der Plattform.
 
-## 4. Was wir trotzdem brauchen (minimal)
+## 4. Melden und Sperren
 
-Ein Disclaimer allein schützt den Betreiber nicht vollständig. Wer fremde Inhalte hostet, muss reagieren, sobald er von einem Rechtsverstoß erfährt (Notice-and-Takedown, in der EU über den Digital Services Act geregelt). Deshalb braucht es zusätzlich:
+Ein Disclaimer allein schützt den Betreiber nicht vollständig. Wer fremde Inhalte hostet, muss reagieren, sobald er von einem Rechtsverstoß erfährt (Notice-and-Takedown, in der EU über den Digital Services Act geregelt). Deshalb gibt es zusätzlich:
 
-- **ein Meldeformular** „Rechtsverletzung melden“ an jedem Beitrag und Asset
-- **einen Ablauf:** Meldung prüfen → Beitrag sperren bzw. Visionär auffordern, ihn zu entfernen → Beitragenden informieren
+- **ein Meldeformular** unter [/melden](/melden), verlinkt in der Fußzeile und auf jeder Projektseite
+- **einen Ablauf:** Meldung prüfen → Projekt oder Konto vorläufig sperren bzw. Visionär auffordern, den Inhalt zu entfernen → Beitragenden anhören → entscheiden und der meldenden Person antworten
 - **ein Impressum** und die Angabe einer Kontaktstelle
+
+Ein gesperrtes Projekt verschwindet aus der Liste, und Agenten bekommen keine Aufgaben mehr daraus. Laufende Reservierungen enden sofort. Ein gesperrtes Konto kann keine Aufgaben mehr übernehmen.
 
 Mehr ist nicht unsere Aufgabe.

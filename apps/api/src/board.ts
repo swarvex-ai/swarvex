@@ -51,7 +51,7 @@ function senden(res: ServerResponse, status: number, html: string) {
 
 export async function boardBehandeln(db: Db, res: ServerResponse, url: URL): Promise<boolean> {
   if (url.pathname === "/projekte" || url.pathname === "/") {
-    const liste = (await db.query("select slug from projekte order by id")).rows;
+    const liste = (await db.query("select slug from projekte where not gesperrt order by id")).rows;
     const karten = await Promise.all(liste.map(async ({ slug }) => {
       const k = await kennzahlen(db, slug);
       return `<a class="karte" href="/projekte/${esc(slug)}" style="text-decoration:none;color:inherit">

@@ -25,6 +25,8 @@ import { kontoAnbieterLaden } from "./auth/konten.ts";
 import { NichtAngemeldet, zugangPruefer } from "./auth/zugang.ts";
 import { mcpBehandeln } from "./mcp.ts";
 import { aufruferIp, grenzenErstellen } from "./grenzen.ts";
+import { meldungAnlegen } from "./meldungen.ts";
+import { ZodError } from "zod";
 
 const db = verbinden(konfig.datenbank);
 const neu = await migrieren(db);
@@ -125,6 +127,18 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname.startsWith("/pruefstrasse/")) return await pruefstrasse(req, res, url);
+
+    // Meldeformular der Website (Rechtsverletzung, Missbrauch, Sicherheit)
+    if (url.pathname === "/api/meldungen" && req.method === "POST") {
+      if (gebremst("meldung", ip)) return;
+      try {
+        return json(res, 201, await meldungAnlegen(db, await koerper(req)));
+      } catch (e) {
+        if (e instanceof ZodError) return json(res, 400, { error: "ungueltig", felder: e.issues.map((i) => ({ feld: i.path.join("."), text: i.message })) });
+        if (e instanceof SyntaxError) return json(res, 400, { error: "ungueltig" });
+        throw e;
+      }
+    }
 
     // Öffentliche Rangliste für die Website (gleiche Zahlen wie Board und MCP)
     if (req.method === "GET" && url.pathname === "/api/projekte") {

@@ -58,6 +58,7 @@ async function mussLeadSein(tx: Tx, menschId: number, projektId: number) {
 export async function projektPerSlug(db: Db | Tx, slug: string) {
   const r = await db.query("select * from projekte where slug = $1", [slug]);
   if (!r.rows[0]) throw new Abgelehnt(`Projekt ${slug} gibt es nicht`);
+  if (r.rows[0].gesperrt) throw new Abgelehnt(`Projekt ${slug} ist gesperrt`);
   return r.rows[0];
 }
 
@@ -131,6 +132,7 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
     const a = await aufgabeSperren(tx, aufgabeId);
     const m = (await tx.query("select vertrauensstufe, gesperrt from menschen where id = $1", [wer.menschId])).rows[0];
     if (m.gesperrt) throw new Abgelehnt("Konto gesperrt");
+    if ((await tx.query("select gesperrt from projekte where id = $1", [a.projekt_id])).rows[0]?.gesperrt) throw new Abgelehnt("Projekt ist gesperrt");
     if (m.vertrauensstufe < a.min_vertrauen) throw new Abgelehnt(`Vertrauensstufe ${a.min_vertrauen} nötig`);
     if (a.zustand !== "offen") throw new Abgelehnt(`Aufgabe ist ${a.zustand}`);
     if (a.raum) {

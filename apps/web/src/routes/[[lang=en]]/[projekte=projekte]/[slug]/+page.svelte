@@ -50,6 +50,7 @@
     </div>
     <div class="aktionen">
       <a class="knopf primaer" href={mitmachen}>{d.mitmachen}</a>
+      <a class="melden leise" href={`${pfad(s, tx().melden.pfad)}?projekt=${encodeURIComponent(p.projekt)}`}>{d.melden}</a>
     </div>
   </header>
 
@@ -154,6 +155,9 @@
   .pfad a { color: var(--stahl); }
   .kopf { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; margin: 12px 0 28px; }
   .kopf h1 { font-size: clamp(2.1rem, 4.5vw, 3.2rem); margin-bottom: 10px; }
+  .aktionen { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+  .melden { font-size: .88rem; }
+  .melden:hover { color: var(--text); }
   .vision { font-size: 1.2rem; color: var(--stahl); max-width: 62ch; margin: 0 0 10px; }
   .meta { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: .9rem; margin: 0; }
   section { margin-top: 44px; }
@@ -221,6 +225,7 @@
 
   @media (max-width: 900px) {
     .kopf, .zwei { grid-template-columns: 1fr; }
+    .aktionen { align-items: flex-start; }
     .kennzahlen { grid-template-columns: 1fr 1fr; }
     .gross { grid-column: 1 / -1; }
     .steckbrief { margin-top: 24px; }

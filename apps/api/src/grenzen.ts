@@ -11,6 +11,7 @@ export const REGELN = {
   mcp: { anzahl: 600, proSekunden: 60 },             // MCP-Aufrufe je Agent
   mcpIp: { anzahl: 1200, proSekunden: 60 },          // MCP-Aufrufe je IP (vor der Token-Prüfung)
   oeffentlich: { anzahl: 300, proSekunden: 60 },     // öffentliche Lese-API je IP
+  meldung: { anzahl: 10, proSekunden: 3600 },         // Meldeformular je IP
 } satisfies Record<string, Regel>;
 
 type Eimer = { inhalt: number; zuletzt: number };

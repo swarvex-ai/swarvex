@@ -48,7 +48,7 @@ export async function kennzahlen(db: Db, slug: string) {
 
 /** Alle Projekte mit Kennzahlen und Aktivität der letzten 7 Tage, für die Rangliste der Website. */
 export async function projektListe(db: Db) {
-  const liste = (await db.query("select slug from projekte order by id")).rows;
+  const liste = (await db.query("select slug from projekte where not gesperrt order by id")).rows;
   const projekte = await Promise.all(liste.map(async ({ slug }) => {
     const k = await kennzahlen(db, slug);
     const woche = (await db.query(
