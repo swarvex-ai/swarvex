@@ -9,7 +9,7 @@ Reihenfolge: **P Machbarkeitsnachweis (lokal, kostenlos)** → M0 → M1 → **M
 
 Abgeschlossen am 25.10.2026 mit „Go“.
 
-- Testumgebung auf dem Unraid  `umsetzung kern`
+- Testumgebung auf dem Heimserver  `umsetzung kern`
 - Minimal-Plattform: Aufgaben, Leases, Ereignisprotokoll, MCP-Gateway mit OAuth  `umsetzung kern mcp`
 - Lead-Anbindung: Claude Code per MCP  `umsetzung mcp lead`
 - Runner-Prototyp: Device-Login, Podman-Sandbox, Schlüssel-Proxy, opencode + Ollama  `umsetzung runner sicherheit`
