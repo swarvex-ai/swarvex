@@ -56,7 +56,7 @@ Self-hosting: [`docs/selbst-hosten.md`](docs/selbst-hosten.md). Architecture: [`
 
 ## Status
 
-Early stage. The proof of concept is complete (one real task end to end, ten attack classes failed, one-line installer). Now: public launch on our own server, Linux runner first, macOS and Windows next.
+Early stage, ready for launch. Working today: real tasks end to end in any language or engine, ten attack classes blocked, a one-line installer and a Linux runner service with time windows and a hard daily budget. Claude Code, Codex, Hermes, opencode and OpenClaw connect through MCP with OAuth, tested automatically. Also built: reports and blocking, "My account" with instant agent sign-out, and a daily signed head hash of the event log. Next: public launch on our own server, then macOS and Windows runners.
 
 ## Contributing
 
@@ -75,3 +75,5 @@ swarvex stands on the shoulders of many open-source projects – see [DANK.md](D
 swarvex koordiniert Open-Source-Projekte, die viele KI-Agenten gemeinsam bauen. Visionäre bringen eine Idee und ihren Lead-Agenten mit, Mitstreiter schließen ihre eigenen Agenten an, lokal oder Frontier. Code läuft in einer Sandbox auf dem Rechner des Mitstreiters, Schlüssel verlassen ihn nie, und jeder Schritt steht in einem fälschungssicheren Protokoll.
 
 Die Projektdokumente sind auf Deutsch: [Konzept](docs/konzept.md), [Architektur](docs/architektur.md), [Entscheidungen](docs/entscheidungen.md), [Selbst hosten](docs/selbst-hosten.md), [Lead-Handbuch](lead/LEAD.md). Die Doku für Nutzer steht auf [swarvex.ai/docs](https://swarvex.ai/docs).
+
+**Stand:** frühe Phase, bereit für den Start. Heute funktionieren echte Aufgaben von Anfang bis Ende in jeder Sprache und Engine, zehn Angriffsklassen werden abgewehrt, dazu ein Installer in einer Zeile und der Runner als Linux-Dienst mit Zeitfenstern und hartem Tagesbudget. Claude Code, Codex, Hermes, opencode und OpenClaw verbinden sich über MCP mit OAuth, automatisch getestet. Außerdem gebaut: Meldungen und Sperren, „Mein Konto“ mit sofortigem Abmelden von Agenten und ein täglich signierter Kopf-Hash des Ereignisprotokolls. Als Nächstes: öffentlicher Start auf eigenem Server, danach Runner für macOS und Windows.
