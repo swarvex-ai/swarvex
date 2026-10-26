@@ -28,7 +28,7 @@ jobs:
       TEST_DATABASE_URL: postgres://swarvex:swarvex@localhost:5432/swarvex_test
       # Module mit Laufzeit-Konfiguration (konfig.ts) brauchen sie auch in den Tests
       DATABASE_URL: postgres://swarvex:swarvex@localhost:5432/swarvex_test
-      BASIS_URL: http://localhost:3000
+      BASE_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        modul: [runner, pruefstrasse]
+        modul: [runner, pipeline]
     defaults:
       run:
         working-directory: ${{ matrix.modul }}

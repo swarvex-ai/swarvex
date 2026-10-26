@@ -1,5 +1,5 @@
-# Schlüssel-Proxy: nur das statische Runner-Binary im Proxy-Modus, sonst nichts.
+# Key proxy: only the static runner binary in proxy mode, nothing else.
 FROM scratch
-COPY swarvex /swarvex
+COPY --chmod=755 swarvex /swarvex
 USER 65534:65534
 ENTRYPOINT ["/swarvex", "proxy"]

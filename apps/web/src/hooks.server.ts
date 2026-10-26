@@ -11,8 +11,8 @@ export const handle: Handle = ({ event, resolve }) => {
 // im Browser über Caddy. So sind Projektseiten schon im ausgelieferten HTML vollständig.
 export const handleFetch: HandleFetch = ({ request, fetch }) => {
   const url = new URL(request.url);
-  if (url.pathname.startsWith("/api/") && env.API_INTERN) {
-    return fetch(new Request(env.API_INTERN + url.pathname + url.search, request));
+  if (url.pathname.startsWith("/api/") && env.API_INTERNAL) {
+    return fetch(new Request(env.API_INTERNAL + url.pathname + url.search, request));
   }
   return fetch(request);
 };

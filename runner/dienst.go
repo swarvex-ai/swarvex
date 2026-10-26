@@ -2,9 +2,9 @@ package main
 
 // Dienstbetrieb und Aufräumen:
 //
-//	swarvex dienst <Angaben wie bei arbeiten>   Runner als Dienst einrichten (Dauerbetrieb, startet mit dem Rechner)
+//	swarvex service <Angaben wie bei work>      Runner als Dienst einrichten (Dauerbetrieb, startet mit dem Rechner)
 //	swarvex start | stop | status               Dienst starten, anhalten (laufende Aufgabe geht zurück), Zustand
-//	swarvex uninstall [--ja]                    alles entfernen: Dienst, Container, Images, Daten, Anmeldung
+//	swarvex uninstall [--yes]                    alles entfernen: Dienst, Container, Images, Daten, Anmeldung
 //
 // Linux: systemd-Nutzerdienst (kein root). macOS (launchd) und Windows folgen.
 
@@ -33,7 +33,7 @@ func dienstDatei() string {
 }
 
 // pfadFlags enthalten Dateien; im Dienst gilt ein anderes Arbeitsverzeichnis, deshalb absolut machen.
-var pfadFlags = map[string]bool{"modell-key-datei": true}
+var pfadFlags = map[string]bool{"model-key-file": true}
 
 // absolutePfade macht Dateiangaben absolut (--x wert und --x=wert).
 func absolutePfade(args []string) []string {
@@ -71,13 +71,13 @@ func systemdQuote(s string) string {
 }
 
 func dienstEinheit(programm string, args []string) string {
-	teile := []string{systemdQuote(programm), "arbeiten", "--dauerbetrieb"}
+	teile := []string{systemdQuote(programm), "work", "--continuous"}
 	for _, a := range args {
 		teile = append(teile, systemdQuote(a))
 	}
-	return `# Eingerichtet von „swarvex dienst“. Ändern: swarvex dienst <neue Angaben>. Entfernen: swarvex uninstall.
+	return `# Set up by "swarvex service". Change: swarvex service <new options>. Remove: swarvex uninstall.
 [Unit]
-Description=swarvex Runner (arbeitet in den Zeitfenstern an Open-Source-Aufgaben)
+Description=swarvex runner (works on open-source tasks within its time windows)
 Documentation=https://swarvex.ai/docs/runner
 After=network-online.target
 Wants=network-online.target
@@ -86,7 +86,7 @@ Wants=network-online.target
 ExecStart=` + strings.Join(teile, " ") + `
 Restart=on-failure
 RestartSec=60
-# Beim Anhalten bekommt auch die laufende Aufgabe SIGTERM: Sie stoppt die Sandbox und gibt sich zurück.
+# On stop the running task also gets SIGTERM: it stops the sandbox and hands itself back.
 KillMode=control-group
 TimeoutStopSec=120
 Nice=10
@@ -98,8 +98,8 @@ WantedBy=default.target
 
 func nurLinux() {
 	if runtime.GOOS != "linux" {
-		fehlerAus("Der Dienstbetrieb ist im Moment nur unter Linux verfügbar (macOS und Windows folgen). " +
-			"Starte den Runner bis dahin im Vordergrund: swarvex arbeiten --dauerbetrieb …")
+		fehlerAus("Running as a service is currently only available on Linux (macOS and Windows will follow). " +
+			"Until then, run the runner in the foreground: swarvex work --continuous …")
 	}
 }
 
@@ -111,8 +111,8 @@ func systemctl(args ...string) (string, error) {
 func dienstBefehl(args []string) {
 	nurLinux()
 	if len(args) == 0 {
-		fehlerAus(`Angaben wie bei „arbeiten“ nötig, z. B.:
-  swarvex dienst --projekt mein-spiel --modell <name> --modell-url <url> --zeitfenster "mo-fr 18:00-23:00" --tagesbudget-tokens 2000000`)
+		fehlerAus(`the same options as for "work" are required, e.g.:
+  swarvex service --project my-game --model <name> --model-url <url> --schedule "mon-fri 18:00-23:00" --daily-budget-tokens 2000000`)
 	}
 	args = absolutePfade(args)
 	programm, err := os.Executable()
@@ -121,13 +121,13 @@ func dienstBefehl(args []string) {
 		fehlerAus(err.Error())
 	}
 	// Angaben vorher prüfen, damit der Dienst nicht in einer Neustart-Schleife landet.
-	pruefung := exec.Command(programm, append([]string{"arbeiten", "--nur-pruefen"}, ohneDauerbetrieb(args)...)...)
+	pruefung := exec.Command(programm, append([]string{"work", "--check-only"}, ohneDauerbetrieb(args)...)...)
 	pruefung.Stdout, pruefung.Stderr = os.Stdout, os.Stderr
 	if pruefung.Run() != nil {
 		os.Exit(2)
 	}
 	if _, err := zugangLaden(); err != nil {
-		fehlerAus("Noch nicht angemeldet: zuerst `swarvex login`.")
+		fehlerAus("Not signed in yet: run `swarvex login` first.")
 	}
 	datei := dienstDatei()
 	pruefen(os.MkdirAll(filepath.Dir(datei), 0o755))
@@ -139,58 +139,58 @@ func dienstBefehl(args []string) {
 		fehlerAus("systemctl --user enable: " + aus)
 	}
 	if aus, err := systemctl("restart", dienstName); err != nil {
-		fehlerAus("Dienst starten: " + aus)
+		fehlerAus("starting the service: " + aus)
 	}
-	fmt.Println("Dienst eingerichtet und gestartet:", datei)
-	fmt.Println("  Zustand: swarvex status · Anhalten: swarvex stop · Protokoll: journalctl --user -u swarvex -f")
+	fmt.Println("Service set up and started:", datei)
+	fmt.Println("  State: swarvex status · Stop: swarvex stop · Log: journalctl --user -u swarvex -f")
 	if aus, _ := exec.Command("loginctl", "show-user", os.Getenv("USER"), "-p", "Linger", "--value").Output(); strings.TrimSpace(string(aus)) != "yes" {
-		fmt.Println("Hinweis: Der Dienst läuft nur, solange du angemeldet bist. Damit er auch nach einem Neustart")
-		fmt.Println("ohne Anmeldung arbeitet, einmal ausführen: loginctl enable-linger")
+		fmt.Println("Note: the service only runs while you are logged in. To keep it working after a reboot")
+		fmt.Println("without a login, run once: loginctl enable-linger")
 	}
 }
 
 func startBefehl() {
 	nurLinux()
 	if _, err := os.Stat(dienstDatei()); err != nil {
-		fehlerAus("Kein Dienst eingerichtet: zuerst `swarvex dienst …`.")
+		fehlerAus("No service set up: run `swarvex service …` first.")
 	}
 	if aus, err := systemctl("start", dienstName); err != nil {
 		fehlerAus(aus)
 	}
-	fmt.Println("Dienst läuft.")
+	fmt.Println("Service is running.")
 }
 
 func stopBefehl() {
 	nurLinux()
 	if _, err := os.Stat(dienstDatei()); err != nil {
-		fmt.Println("Kein Dienst eingerichtet. Ein Runner im Vordergrund stoppt mit Strg+C.")
+		fmt.Println("No service set up. A runner in the foreground stops with Ctrl+C.")
 		return
 	}
-	fmt.Println("Halte an … eine laufende Aufgabe wird beendet und zurückgegeben.")
+	fmt.Println("Stopping … a running task is ended and handed back.")
 	if aus, err := systemctl("stop", dienstName); err != nil {
 		fehlerAus(aus)
 	}
-	fmt.Println("Angehalten. Weiter mit: swarvex start")
+	fmt.Println("Stopped. Continue with: swarvex start")
 }
 
 func statusBefehl() {
-	fmt.Printf("Verbrauch heute: %d Tokens\n", verbrauchAmTag(verbrauchsDatei(), time.Now()))
+	fmt.Printf("Usage today: %d tokens\n", verbrauchAmTag(verbrauchsDatei(), time.Now()))
 	if z, err := zugangLaden(); err == nil {
-		fmt.Println("Angemeldet bei:", z.Plattform)
+		fmt.Println("Signed in at:", z.Plattform)
 	} else {
-		fmt.Println("Nicht angemeldet.")
+		fmt.Println("Not signed in.")
 	}
 	if runtime.GOOS != "linux" {
 		return
 	}
 	if _, err := os.Stat(dienstDatei()); err != nil {
-		fmt.Println("Dienst: nicht eingerichtet")
+		fmt.Println("Service: not set up")
 		return
 	}
 	zustand, _ := systemctl("is-active", dienstName)
-	fmt.Println("Dienst:", zustand)
+	fmt.Println("Service:", zustand)
 	if aus, err := exec.Command("journalctl", "--user", "-u", "swarvex", "-n", "5", "--no-pager", "-o", "cat").Output(); err == nil && len(aus) > 0 {
-		fmt.Println("Letzte Meldungen:")
+		fmt.Println("Latest messages:")
 		fmt.Print(string(aus))
 	}
 }
@@ -198,13 +198,13 @@ func statusBefehl() {
 // uninstallBefehl entfernt alles, was der Runner angelegt hat, und meldet das Gerät bei der Plattform ab.
 func uninstallBefehl(args []string) {
 	fs := flag.NewFlagSet("uninstall", flag.ExitOnError)
-	ja := fs.Bool("ja", false, "ohne Rückfrage")
+	ja := fs.Bool("yes", false, "do not ask")
 	fs.Parse(args)
 	if !*ja {
-		fmt.Print("Runner, Dienst, Container, Images, Arbeitsdaten und Anmeldung entfernen? [j/N] ")
+		fmt.Print("Remove the runner, service, containers, images, work data and sign-in? [y/N] ")
 		antwort, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-		if a := strings.ToLower(strings.TrimSpace(antwort)); a != "j" && a != "ja" && a != "y" && a != "yes" {
-			fmt.Println("Abgebrochen, nichts entfernt.")
+		if a := strings.ToLower(strings.TrimSpace(antwort)); a != "y" && a != "yes" && a != "j" && a != "ja" {
+			fmt.Println("Cancelled, nothing removed.")
 			return
 		}
 	}
@@ -221,7 +221,7 @@ func uninstallBefehl(args []string) {
 			systemctl("disable", "--now", dienstName)
 			err := os.Remove(dienstDatei())
 			systemctl("daemon-reload")
-			schritt("Dienst angehalten und entfernt", err)
+			schritt("service stopped and removed", err)
 		}
 	}
 	// 2. Gerät bei der Plattform abmelden: Refresh-Token widerrufen (danach gilt auch kein Access-Token mehr lange)
@@ -235,7 +235,7 @@ func uninstallBefehl(args []string) {
 				err = fmt.Errorf("HTTP %d", r.StatusCode)
 			}
 		}
-		schritt("Anmeldung bei "+z.Plattform+" widerrufen", err)
+		schritt("sign-in at "+z.Plattform+" revoked", err)
 	}
 	// 3. Container, Images und Netz in Podman
 	if _, err := exec.LookPath("podman"); err == nil {
@@ -257,21 +257,21 @@ func uninstallBefehl(args []string) {
 			}
 		}
 		exec.Command("podman", "network", "rm", "-f", "swarvex-intern").Run()
-		schritt(fmt.Sprintf("Container, %d Images und Netz entfernt", len(images)), err)
+		schritt(fmt.Sprintf("containers, %d images and network removed", len(images)), err)
 	}
 	// 4. Arbeitsdaten (Snapshots, Caches, Protokolle, Verbrauch) und Konfiguration mit Anmeldung
-	schritt("Arbeitsdaten entfernt ("+datenOrdner()+")", os.RemoveAll(datenOrdner()))
-	schritt("Konfiguration und Anmeldung entfernt ("+konfigOrdner()+")", os.RemoveAll(konfigOrdner()))
+	schritt("work data removed ("+datenOrdner()+")", os.RemoveAll(datenOrdner()))
+	schritt("configuration and sign-in removed ("+konfigOrdner()+")", os.RemoveAll(konfigOrdner()))
 	// Ordner unter dem alten Namen (vor der Umbenennung in swarvex), falls noch vorhanden
 	for _, alt := range []string{filepath.Join(filepath.Dir(konfigOrdner()), "schwarm-runner"), filepath.Join(filepath.Dir(datenOrdner()), "schwarm-runner")} {
 		if _, err := os.Stat(alt); err == nil {
-			schritt("Alter Ordner entfernt ("+alt+")", os.RemoveAll(alt))
+			schritt("old folder removed ("+alt+")", os.RemoveAll(alt))
 		}
 	}
 	// 5. Das Programm selbst
 	if programm, err := os.Executable(); err == nil {
 		programm, _ = filepath.EvalSymlinks(programm)
-		schritt("Programm entfernt ("+programm+")", os.Remove(programm))
+		schritt("program removed ("+programm+")", os.Remove(programm))
 	}
-	fmt.Println("Fertig. Deinen Modell-Schlüssel (--modell-key-datei) hat der Runner nie kopiert; die Datei bleibt, wo sie ist.")
+	fmt.Println("Done. The runner never copied your model key (--model-key-file); that file stays where it is.")
 }

@@ -1,12 +1,12 @@
 # Gleiche Datei für Labor und Live; der Unterschied steht in der .env:
-#   Labor: BASIS_HOST=<IP>     TLS_MODUS=internal          (Caddys interne CA)
-#   Live:  BASIS_HOST=<Domain> TLS_MODUS=<admin@domain>   (Let's Encrypt, E-Mail für Ablaufwarnungen)
+#   Labor: BASE_HOST=<IP>     TLS_MODE=internal          (Caddys interne CA)
+#   Live:  BASE_HOST=<Domain> TLS_MODE=<admin@domain>   (Let's Encrypt, E-Mail für Ablaufwarnungen)
 {
 	# Clients senden für IP-Adressen keinen Servernamen (SNI); bei Domains wirkungslos.
-	default_sni {$BASIS_HOST}
+	default_sni {$BASE_HOST}
 }
-{$BASIS_HOST} {
-	tls {$TLS_MODUS}
+{$BASE_HOST} {
+	tls {$TLS_MODE}
 	# Labor: nicht indexieren (Standard). Live in .env: X_ROBOTS_TAG=all
 	header X-Robots-Tag "{$X_ROBOTS_TAG:noindex, nofollow}"
 	# Einzeiler-Installer und signierte Runner-Releases (infra/release.sh)

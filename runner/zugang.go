@@ -19,8 +19,16 @@ import (
 )
 
 type zugangsdaten struct {
+	Plattform    string `json:"platform"`
+	CAPfad       string `json:"ca_path,omitempty"`
+	ClientID     string `json:"client_id"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+// zugangAlt: Format vor der Umstellung auf Englisch (zugang.json); wird beim ersten Laden übernommen.
+type zugangAlt struct {
 	Plattform    string `json:"plattform"`
-	CAPfad       string `json:"ca_pfad,omitempty"`
+	CAPfad       string `json:"ca_pfad"`
 	ClientID     string `json:"client_id"`
 	RefreshToken string `json:"refresh_token"`
 }
@@ -46,9 +54,21 @@ func umziehen(neu, alt string) string {
 }
 
 func zugangLaden() (*zugangsdaten, error) {
-	roh, err := os.ReadFile(filepath.Join(konfigOrdner(), "zugang.json"))
+	roh, err := os.ReadFile(filepath.Join(konfigOrdner(), "access.json"))
 	if err != nil {
-		return nil, fmt.Errorf("nicht angemeldet – zuerst `swarvex login`")
+		alt, err2 := os.ReadFile(filepath.Join(konfigOrdner(), "zugang.json"))
+		if err2 != nil {
+			return nil, fmt.Errorf("not signed in: run `swarvex login` first")
+		}
+		var a zugangAlt
+		if err := json.Unmarshal(alt, &a); err != nil {
+			return nil, err
+		}
+		z := &zugangsdaten{Plattform: a.Plattform, CAPfad: a.CAPfad, ClientID: a.ClientID, RefreshToken: a.RefreshToken}
+		if err := zugangSpeichern(z); err == nil {
+			os.Remove(filepath.Join(konfigOrdner(), "zugang.json"))
+		}
+		return z, nil
 	}
 	var z zugangsdaten
 	return &z, json.Unmarshal(roh, &z)
@@ -59,7 +79,7 @@ func zugangSpeichern(z *zugangsdaten) error {
 		return err
 	}
 	roh, _ := json.MarshalIndent(z, "", "  ")
-	return os.WriteFile(filepath.Join(konfigOrdner(), "zugang.json"), roh, 0o600)
+	return os.WriteFile(filepath.Join(konfigOrdner(), "access.json"), roh, 0o600)
 }
 
 // httpClient vertraut zusätzlich der lokalen CA der Plattform (Machbarkeitsnachweis).
@@ -87,11 +107,11 @@ func formPost(c *http.Client, ziel string, werte url.Values, aus any) (int, erro
 
 func loginBefehl(args []string) {
 	fs := flag.NewFlagSet("login", flag.ExitOnError)
-	plattform := fs.String("plattform", "", "Adresse der Plattform, z. B. https://swarvex.ai")
-	ca := fs.String("ca", "", "PEM-Datei der Plattform-CA (nur für lokale Tests)")
+	plattform := fs.String("platform", "", "address of the platform, e.g. https://swarvex.ai")
+	ca := fs.String("ca", "", "PEM file of the platform CA (local tests only)")
 	fs.Parse(args)
 	if *plattform == "" {
-		fehlerAus("--plattform fehlt")
+		fehlerAus("--platform is missing")
 	}
 	basis := strings.TrimRight(*plattform, "/")
 	c := httpClient(*ca)
@@ -99,7 +119,7 @@ func loginBefehl(args []string) {
 	// 1. Als nativer Client registrieren (einmal pro Gerät).
 	host, _ := os.Hostname()
 	reg := map[string]any{
-		"client_name":                fmt.Sprintf("swarvex-Runner (%s)", host),
+		"client_name":                fmt.Sprintf("swarvex runner (%s)", host),
 		"application_type":           "native",
 		"redirect_uris":              []string{},
 		"response_types":             []string{},
@@ -116,7 +136,7 @@ func loginBefehl(args []string) {
 	json.NewDecoder(r.Body).Decode(&client)
 	r.Body.Close()
 	if client.ClientID == "" {
-		fehlerAus("Registrierung fehlgeschlagen: " + client.Fehler)
+		fehlerAus("registration failed: " + client.Fehler)
 	}
 
 	// 2. Gerätecode anfordern und dem Menschen zeigen.
@@ -131,7 +151,7 @@ func loginBefehl(args []string) {
 		"client_id": {client.ClientID}, "scope": {"openid offline_access mcp"}, "resource": {basis + "/mcp"},
 	}, &geraet)
 	pruefen(err)
-	fmt.Printf("\nÖffne im Browser:\n\n    %s\n\nund bestätige den Code  %s\n\n", geraet.VerificationURI, geraet.UserCode)
+	fmt.Printf("\nOpen in your browser:\n\n    %s\n\nand confirm the code  %s\n\n", geraet.VerificationURI, geraet.UserCode)
 
 	// 3. Warten, bis der Mensch bestätigt hat.
 	intervall := time.Duration(max(geraet.Interval, 5)) * time.Second
@@ -155,16 +175,16 @@ func loginBefehl(args []string) {
 			continue
 		case "":
 			if tok.RefreshToken == "" {
-				fehlerAus("kein Refresh-Token erhalten")
+				fehlerAus("no refresh token received")
 			}
 			pruefen(zugangSpeichern(&zugangsdaten{Plattform: basis, CAPfad: *ca, ClientID: client.ClientID, RefreshToken: tok.RefreshToken}))
-			fmt.Println("Angemeldet. Zugang gespeichert in", filepath.Join(konfigOrdner(), "zugang.json"))
+			fmt.Println("Signed in. Access saved in", filepath.Join(konfigOrdner(), "access.json"))
 			return
 		default:
-			fehlerAus("Anmeldung abgebrochen: " + tok.Error)
+			fehlerAus("sign-in cancelled: " + tok.Error)
 		}
 	}
-	fehlerAus("Gerätecode abgelaufen")
+	fehlerAus("device code expired")
 }
 
 // zugriffstoken holt mit dem Refresh-Token ein frisches Access-Token (und speichert das rotierte Refresh-Token).
@@ -181,7 +201,7 @@ func zugriffstoken(z *zugangsdaten) (string, error) {
 		return "", err
 	}
 	if tok.AccessToken == "" {
-		return "", fmt.Errorf("Token-Erneuerung fehlgeschlagen: %s – neu anmelden mit `swarvex login`", tok.Error)
+		return "", fmt.Errorf("token refresh failed: %s; sign in again with `swarvex login`", tok.Error)
 	}
 	if tok.RefreshToken != "" && tok.RefreshToken != z.RefreshToken {
 		z.RefreshToken = tok.RefreshToken
@@ -199,6 +219,6 @@ func pruefen(err error) {
 }
 
 func fehlerAus(text string) {
-	fmt.Fprintln(os.Stderr, "Fehler:", text)
+	fmt.Fprintln(os.Stderr, "error:", text)
 	os.Exit(1)
 }

@@ -9,9 +9,9 @@ import (
 )
 
 func TestDienstEinheit(t *testing.T) {
-	e := dienstEinheit("/home/a b/.local/bin/swarvex", []string{"--projekt", "spiel", "--modell", "Qwen 3 $x", "--zeitfenster", "mo-fr 18:00-23:00; sa 09:00-12:00"})
+	e := dienstEinheit("/home/a b/.local/bin/swarvex", []string{"--project", "game", "--model", "Qwen 3 $x", "--schedule", "mon-fri 18:00-23:00; sat 09:00-12:00"})
 	for _, soll := range []string{
-		`ExecStart="/home/a b/.local/bin/swarvex" arbeiten --dauerbetrieb --projekt spiel --modell "Qwen 3 $$x" --zeitfenster "mo-fr 18:00-23:00; sa 09:00-12:00"`,
+		`ExecStart="/home/a b/.local/bin/swarvex" work --continuous --project game --model "Qwen 3 $$x" --schedule "mon-fri 18:00-23:00; sat 09:00-12:00"`,
 		"KillMode=control-group", "Restart=on-failure", "WantedBy=default.target",
 	} {
 		if !strings.Contains(e, soll) {
@@ -22,8 +22,8 @@ func TestDienstEinheit(t *testing.T) {
 
 func TestAbsolutePfade(t *testing.T) {
 	wd, _ := os.Getwd()
-	r := absolutePfade([]string{"--projekt", "x", "--modell-key-datei", "key.txt", "--modell-key-datei=/abs/k"})
-	soll := []string{"--projekt", "x", "--modell-key-datei=" + filepath.Join(wd, "key.txt"), "--modell-key-datei=/abs/k"}
+	r := absolutePfade([]string{"--project", "x", "--model-key-file", "key.txt", "--model-key-file=/abs/k"})
+	soll := []string{"--project", "x", "--model-key-file=" + filepath.Join(wd, "key.txt"), "--model-key-file=/abs/k"}
 	if strings.Join(r, "|") != strings.Join(soll, "|") {
 		t.Errorf("%v != %v", r, soll)
 	}

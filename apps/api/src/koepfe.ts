@@ -1,6 +1,6 @@
 // Kopf-Hash des Ereignisprotokolls nach außen veröffentlichen (Issue #31, Restrisiko aus P6).
 // Täglich signiert die Plattform den Kopf der Kette (JWS, ES256, derselbe Schlüssel wie unter /jwks).
-// Ein öffentliches Anker-Repo holt ihn ab und hält ihn in seiner Git-Historie fest (infra/protokoll-anker).
+// Ein öffentliches Anker-Repo holt ihn ab und hält ihn in seiner Git-Historie fest (infra/log-anchor).
 // Prüfen: Die Kette muss in sich stimmen UND an jeder veröffentlichten Stelle denselben Hash haben.
 import { CompactSign, importJWK } from "jose";
 import type { Db } from "./db.ts";

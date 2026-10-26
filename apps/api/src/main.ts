@@ -33,13 +33,13 @@ import { ZodError } from "zod";
 
 const db = verbinden(konfig.datenbank);
 const neu = await migrieren(db);
-if (neu.length) console.log("Migrationen:", neu.join(", "));
+if (neu.length) console.log("migrations:", neu.join(", "));
 
 const schluessel = await schluesselLaden(db);
 const anbieter = anbieterErstellen(db, schluessel);
 const konten = kontoAnbieterLaden();
 const interaktion = interaktionBehandeln(anbieter, db, schluessel.cookies[0], konten);
-console.log(`Konto-Anbieter: ${konten.map((k) => k.name).join(", ")}`);
+console.log(`account providers: ${konten.map((k) => k.name).join(", ")}`);
 const zugang = zugangPruefer(db, anbieter, schluessel.signatur);
 const konto = kontoBehandeln(db, schluessel.cookies[0], konten);
 const oidc = anbieter.callback();
@@ -53,14 +53,14 @@ await boss.createQueue("leases-aufraeumen");
 await boss.schedule("leases-aufraeumen", "* * * * *");
 await boss.work("leases-aufraeumen", async () => {
   const n = await leasesAufraeumen(db);
-  if (n) console.log(`leases-aufraeumen: ${n} abgelaufen`);
+  if (n) console.log(`lease cleanup: ${n} expired`);
 });
 // Kopf-Hash täglich signieren (03:17 UTC); der externe Anker holt ihn danach ab.
 await boss.createQueue("kopf-veroeffentlichen");
 await boss.schedule("kopf-veroeffentlichen", "17 3 * * *");
 await boss.work("kopf-veroeffentlichen", async () => {
   const k = await kopfVeroeffentlichen(db, schluessel.signatur);
-  if (k) console.log(`kopf-veroeffentlichen: seq ${k.seq} ${k.hash.slice(0, 16)}…`);
+  if (k) console.log(`head published: seq ${k.seq} ${k.hash.slice(0, 16)}…`);
 });
 
 const grenze = grenzenErstellen();
@@ -77,7 +77,7 @@ async function koerper(req: IncomingMessage): Promise<unknown> {
   let groesse = 0;
   for await (const t of req) {
     groesse += (t as Buffer).length;
-    if (groesse > 2_000_000) throw new Error("Anfrage zu groß");
+    if (groesse > 2_000_000) throw new Error("request too large");
     teile.push(t as Buffer);
   }
   const roh = Buffer.concat(teile).toString("utf8");
@@ -187,7 +187,7 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(konfig.port, () => console.log(`swarvex läuft auf :${konfig.port} (${konfig.basis})`));
+server.listen(konfig.port, () => console.log(`swarvex listening on :${konfig.port} (${konfig.basis})`));
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, async () => { server.close(); await boss.stop(); await db.end(); process.exit(0); });

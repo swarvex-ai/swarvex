@@ -19,7 +19,7 @@ This adds `Signed-off-by: Your Name <you@example.org>` and certifies that you wr
 | `apps/api` | `npm ci && npm run typecheck && npm test` (tests need PostgreSQL, see CI) |
 | `apps/web` | `npm ci && npx svelte-check && npm run build` |
 | `runner`, `pruefstrasse` | `go vet ./... && go test ./...` |
-| Agent connection changed | run the compatibility test in `kompatibilitaet/` |
+| Agent connection changed | run the compatibility test in `compat/` |
 
 Keep changes focused, explain *why* in the description, and update the docs when behaviour changes. Code comments and project documents are written in German; issues and pull requests may be in English or German.
 

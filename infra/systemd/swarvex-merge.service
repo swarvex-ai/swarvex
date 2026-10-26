@@ -1,0 +1,8 @@
+[Unit]
+Description=swarvex test pipeline: merge
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/swarvex-data/pipeline.env
+ExecStart=/usr/local/bin/swarvex-pipeline merge

@@ -11,8 +11,8 @@ import type { ServerResponse } from "node:http";
 import type { Db } from "./db.ts";
 import { Abgelehnt } from "./aufgaben.ts";
 
-const SPIEGEL = process.env.SPIEGEL_ORDNER ?? "/daten/spiegel";
-const GIT_SSH = `ssh -i ${process.env.DEPLOY_KEY ?? "/daten/deploy_key"} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${SPIEGEL}/known_hosts`;
+const SPIEGEL = process.env.MIRROR_DIR ?? "/data/mirror";
+const GIT_SSH = `ssh -i ${process.env.DEPLOY_KEY ?? "/data/deploy_key"} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${SPIEGEL}/known_hosts`;
 
 function git(args: string[], cwd?: string): Promise<void> {
   return new Promise((ok, fehler) => {

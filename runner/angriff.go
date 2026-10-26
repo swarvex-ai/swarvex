@@ -16,23 +16,23 @@ import (
 )
 
 func angriffstestBefehl(args []string) {
-	fs := flag.NewFlagSet("angriffstest", flag.ExitOnError)
-	skript := fs.String("skript", "", "Angriffsskript (wird in die Sandbox gelegt und dort ausgeführt)")
-	modell := fs.String("modell", "Qwen3.8 Flash Next", "Modellname")
-	upstream := fs.String("modell-url", "http://127.0.0.1:8080", "Modell-URL (OpenAI-kompatibel)")
-	keyDatei := fs.String("modell-key-datei", "", "Schlüsseldatei (für S1 ein Köder-Schlüssel)")
-	budget := fs.Int("budget-tokens", 400000, "Token-Budget")
-	zeit := fs.Duration("zeitlimit", 10*time.Minute, "Zeitlimit")
+	fs := flag.NewFlagSet("attack-test", flag.ExitOnError)
+	skript := fs.String("script", "", "attack script (placed into the sandbox and run there)")
+	modell := fs.String("model", "Qwen3.8 Flash Next", "model name")
+	upstream := fs.String("model-url", "http://127.0.0.1:8080", "model URL (OpenAI-compatible)")
+	keyDatei := fs.String("model-key-file", "", "key file (for S1 a decoy key)")
+	budget := fs.Int("budget-tokens", 400000, "token budget")
+	zeit := fs.Duration("time-limit", 10*time.Minute, "time limit")
 	fs.Parse(args)
 	if *skript == "" {
-		fehlerAus("--skript fehlt")
+		fehlerAus("--script is missing")
 	}
-	ordner := filepath.Join(datenOrdner(), "angriff", time.Now().Format("20060102-150405"))
-	baum := filepath.Join(ordner, "baum")
+	ordner := filepath.Join(datenOrdner(), "attack", time.Now().Format("20060102-150405"))
+	baum := filepath.Join(ordner, "tree")
 	pruefen(os.MkdirAll(baum, 0o755))
 	inhalt, err := os.ReadFile(*skript)
 	pruefen(err)
-	pruefen(os.WriteFile(filepath.Join(baum, "angriff.sh"), inhalt, 0o755))
+	pruefen(os.WriteFile(filepath.Join(baum, "attack.sh"), inhalt, 0o755))
 	key := ""
 	if *keyDatei != "" {
 		roh, err := os.ReadFile(*keyDatei)
@@ -41,18 +41,18 @@ func angriffstestBefehl(args []string) {
 	}
 	ctx, stopp := context.WithTimeout(context.Background(), *zeit)
 	defer stopp()
-	a := aufgabe{ID: time.Now().Unix() % 100000, Titel: "Angriffstest", Engine: "test"}
+	a := aufgabe{ID: time.Now().Unix() % 100000, Titel: "attack test", Engine: "test"}
 	// Angriffe laufen in derselben Umgebung wie echte Aufgaben (hier: allgemeine Linux-Umgebung).
 	u, err := umgebung.Ermitteln(baum)
 	pruefen(err)
 	image, err := umgebungsImage(ctx, u, baum, true)
 	pruefen(err)
-	verbrauch, aus, err := sandboxAusfuehren(ctx, a, u, image, baum, cacheOrdner("angriffstest"), ordner, *upstream, key, *modell, *budget, []string{"sh", "/work/angriff.sh"})
+	verbrauch, aus, err := sandboxAusfuehren(ctx, a, u, image, baum, cacheOrdner("attack-test"), ordner, *upstream, key, *modell, *budget, []string{"sh", "/work/attack.sh"})
 	fmt.Println(aus)
-	fmt.Printf("--- Verbrauch laut Proxy: %v\n", verbrauch)
+	fmt.Printf("--- usage according to the proxy: %v\n", verbrauch)
 	proxyLog, _ := os.ReadFile(filepath.Join(ordner, "proxy.log"))
-	fmt.Printf("--- Proxy-Protokoll:\n%s\n", proxyLog)
+	fmt.Printf("--- proxy log:\n%s\n", proxyLog)
 	if err != nil {
-		fmt.Println("--- Sandbox-Ende:", err)
+		fmt.Println("--- sandbox ended:", err)
 	}
 }

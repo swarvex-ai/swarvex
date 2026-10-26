@@ -1,8 +1,0 @@
-[Unit]
-Description=swarvex-Prüfstraße: mergen
-After=network-online.target docker.service
-
-[Service]
-Type=oneshot
-EnvironmentFile=/opt/swarvex-daten/pruefstrasse.env
-ExecStart=/usr/local/bin/swarvex-pruefstrasse mergen

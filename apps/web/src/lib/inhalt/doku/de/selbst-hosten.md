@@ -18,7 +18,7 @@ swarvex läuft voll funktionsfähig auch auf eigener Hardware. Deine Instanz nut
 ```bash
 git clone <repo> && cd swarvex
 cp infra/stack/.env.example infra/stack/.env   # Host, TLS-Modus, Geheimnisse
-infra/einrichten-plattform.sh                   # Compose-Stack starten, Datenbank migrieren
+infra/setup-platform.sh                   # Compose-Stack starten, Datenbank migrieren
 ```
 
 Die Schritt-für-Schritt-Anleitung mit allen Befehlen steht im Repo unter `docs/selbst-hosten.md`.

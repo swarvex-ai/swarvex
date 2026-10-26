@@ -32,36 +32,36 @@ func podmanAus(ctx context.Context, eingabe string, args ...string) (string, err
 // mitAgent=false lässt die Agent-Schicht weg (z. B. für `swarvex umgebung`).
 func umgebungsImage(ctx context.Context, u umgebung.Umgebung, baum string, mitAgent bool) (string, error) {
 	agent := ""
-	agentID := "ohne"
+	agentID := "none"
 	if mitAgent {
 		id, err := podmanAus(ctx, "", "image", "inspect", "--format", "{{.Id}}", agentImage)
 		if err != nil {
-			return "", fmt.Errorf("Agent-Image %s fehlt – Runner neu installieren (install.sh)", agentImage)
+			return "", fmt.Errorf("agent image %s is missing; reinstall the runner (install.sh)", agentImage)
 		}
 		agent, agentID = agentImage, id
 	}
 	h := sha256.Sum256([]byte(u.Kennung(baum) + "\n" + agentID))
-	name := "swarvex-umgebung-" + hex.EncodeToString(h[:])[:16]
+	name := "swarvex-env-" + hex.EncodeToString(h[:])[:16]
 	if _, err := podmanAus(ctx, "", "image", "exists", name); err == nil {
 		return name, nil
 	}
 	basis := ""
 	if u.Dockerfile != "" {
 		// Eigenes Dockerfile des Projekts (Dev Container): einmal bauen, ohne Agent und ohne Schlüssel.
-		basis = "swarvex-basis-" + u.Kennung(baum)
+		basis = "swarvex-base-" + u.Kennung(baum)
 		if _, err := podmanAus(ctx, "", "image", "exists", basis); err != nil {
 			if aus, err := podmanAus(ctx, "", "build", "-q", "-t", basis, "-f", filepath.Join(baum, u.Dockerfile), filepath.Join(baum, u.Kontext)); err != nil {
-				return "", fmt.Errorf("Dockerfile des Projekts bauen: %s", letzteZeilen(aus, 20))
+				return "", fmt.Errorf("building the project's Dockerfile: %s", letzteZeilen(aus, 20))
 			}
 		}
 	}
-	leer, err := os.MkdirTemp("", "swarvex-bau-")
+	leer, err := os.MkdirTemp("", "swarvex-build-")
 	if err != nil {
 		return "", err
 	}
 	defer os.RemoveAll(leer)
 	if aus, err := podmanAus(ctx, u.Containerfile(basis, agent), "build", "-q", "-t", name, "-f", "-", leer); err != nil {
-		return "", fmt.Errorf("Umgebung bauen: %s", letzteZeilen(aus, 20))
+		return "", fmt.Errorf("building the environment: %s", letzteZeilen(aus, 20))
 	}
 	return name, nil
 }
@@ -93,7 +93,7 @@ func einrichten(ctx context.Context, u umgebung.Umgebung, image, baum, cache, pr
 	}
 	ctx, stopp := context.WithTimeout(ctx, 20*time.Minute)
 	defer stopp()
-	name := "swarvex-einrichten-" + zufall(6)
+	name := "swarvex-setup-" + zufall(6)
 	args := append(containerArgs(name, baum, cache, u.Ordner, 1200), image, "sh", "-ec", u.Einrichten)
 	cmd := exec.CommandContext(ctx, "podman", args...)
 	cmd.Cancel = func() error { exec.Command("podman", "kill", name).Run(); return cmd.Process.Kill() }
@@ -101,14 +101,14 @@ func einrichten(ctx context.Context, u umgebung.Umgebung, image, baum, cache, pr
 	aus, err := cmd.CombinedOutput()
 	os.WriteFile(protokoll, aus, 0o644)
 	if err != nil {
-		return fmt.Errorf("Einrichten fehlgeschlagen (%v): %s", err, letzteZeilen(string(aus), 15))
+		return fmt.Errorf("setup failed (%v): %s", err, letzteZeilen(string(aus), 15))
 	}
 	return nil
 }
 
 // ohneNetz führt einen Befehl der Umgebung ohne jedes Netz aus (Bauen, Testen).
 func ohneNetz(ctx context.Context, u umgebung.Umgebung, image, baum, cache, befehl string, sekunden int) (string, error) {
-	name := "swarvex-befehl-" + zufall(6)
+	name := "swarvex-cmd-" + zufall(6)
 	args := append(containerArgs(name, baum, cache, u.Ordner, sekunden), "--network", "none")
 	args = append(args, image, "sh", "-ec", befehl)
 	cmd := exec.CommandContext(ctx, "podman", args...)

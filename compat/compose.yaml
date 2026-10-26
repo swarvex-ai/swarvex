@@ -1,0 +1,31 @@
+# Test instance for the agent compatibility test (agents.py, account.py), separate from the lab stack:
+# own database, a fake account provider instead of Gitea. Everything in the VM's host network; the
+# workstation reaches it through an SSH tunnel as http://localhost:3800 (MCP allows HTTP only on localhost).
+# Start: docker compose -f compat/compose.yaml up -d --build
+name: compat
+services:
+  pg:
+    image: postgres:18
+    network_mode: host
+    environment: { POSTGRES_PASSWORD: compat, PGPORT: "55432" }
+    command: ["postgres", "-c", "listen_addresses=127.0.0.1"]
+    tmpfs: [/var/lib/postgresql]
+    healthcheck: { test: ["CMD", "pg_isready", "-p", "55432"], interval: 2s, retries: 30 }
+  provider:
+    image: python:3.13-slim
+    network_mode: host
+    volumes: [./fake_provider.py:/fake_provider.py:ro]
+    command: ["python", "/fake_provider.py", "3999"]
+  api:
+    build: ../apps/api
+    network_mode: host
+    environment:
+      DATABASE_URL: postgres://postgres:compat@127.0.0.1:55432/postgres
+      BASE_URL: http://localhost:3800
+      PORT: "3800"
+      GITEA_URL: http://localhost:3999
+      GITEA_CLIENT_ID: compat
+      GITEA_CLIENT_SECRET: compat
+      GITEA_TITLE: Test account
+    depends_on:
+      pg: { condition: service_healthy }

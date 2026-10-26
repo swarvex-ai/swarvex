@@ -34,7 +34,7 @@ func TestErkennung(t *testing.T) {
 		{map[string]string{"go.mod": "module x"}, "go", true},
 		{map[string]string{"App.csproj": "<Project/>"}, "dotnet", true},
 		{map[string]string{"pom.xml": "<project/>"}, "java-maven", true},
-		{map[string]string{"README.md": "nur Text"}, "standard", false},
+		{map[string]string{"README.md": "nur Text"}, "default", false},
 	}
 	for _, f := range faelle {
 		u, err := Ermitteln(projekt(t, f.dateien))
@@ -55,7 +55,7 @@ func TestErkennung(t *testing.T) {
 }
 
 func TestSwarvexYaml(t *testing.T) {
-	w := projekt(t, map[string]string{"package.json": `{}`, "swarvex.yaml": "# Kommentar\nordner: web/\ntesten: |\n  npm run lint\n  npm test\nhinweis: \"Bitte Prettier\"  # Stil\n"})
+	w := projekt(t, map[string]string{"package.json": `{}`, "swarvex.yaml": "# comment\ndir: web/\ntest: |\n  npm run lint\n  npm test\nnote: \"Bitte Prettier\"  # style\n"})
 	u, err := Ermitteln(w)
 	if err != nil {
 		t.Fatal(err)
@@ -63,11 +63,11 @@ func TestSwarvexYaml(t *testing.T) {
 	if u.Vorlage != "node" || u.Quelle != "swarvex.yaml" || u.Ordner != "web" || u.Testen != "npm run lint\nnpm test" || u.Hinweis != "Bitte Prettier" {
 		t.Errorf("unerwartet: %+v", u)
 	}
-	u, err = Ermitteln(projekt(t, map[string]string{"swarvex.yaml": "image: ghcr.io/beispiel/unity:2023\ntesten: ./test.sh\n"}))
-	if err != nil || u.Image != "ghcr.io/beispiel/unity:2023" || u.Vorlage != "eigenes-image" {
+	u, err = Ermitteln(projekt(t, map[string]string{"swarvex.yaml": "image: ghcr.io/beispiel/unity:2023\ntest: ./test.sh\n"}))
+	if err != nil || u.Image != "ghcr.io/beispiel/unity:2023" || u.Vorlage != "custom-image" {
 		t.Errorf("eigenes Image: %+v %v", u, err)
 	}
-	for _, kaputt := range []string{"vorlage: cobol\n", "unbekannt: 1\n", "  eingerueckt: 1\n"} {
+	for _, kaputt := range []string{"template: cobol\n", "unknown: 1\n", "  indented: 1\n", "testen: echo\n"} {
 		if _, err := Ermitteln(projekt(t, map[string]string{"swarvex.yaml": kaputt})); err == nil {
 			t.Errorf("%q hätte abgelehnt werden müssen", kaputt)
 		}
@@ -94,7 +94,7 @@ func TestDevcontainer(t *testing.T) {
 }
 
 func TestYamlUeberDevcontainer(t *testing.T) {
-	u, err := Ermitteln(projekt(t, map[string]string{".devcontainer/devcontainer.json": `{"image":"docker.io/library/debian:trixie-slim","postCreateCommand":"echo ja"}`, "swarvex.yaml": "testen: echo test\n"}))
+	u, err := Ermitteln(projekt(t, map[string]string{".devcontainer/devcontainer.json": `{"image":"docker.io/library/debian:trixie-slim","postCreateCommand":"echo ja"}`, "swarvex.yaml": "test: echo test\n"}))
 	if err != nil || u.Image != "docker.io/library/debian:trixie-slim" || u.Einrichten != "echo ja" || u.Testen != "echo test" || u.Quelle != "swarvex.yaml" {
 		t.Errorf("swarvex.yaml soll nur Befehle überschreiben: %+v %v", u, err)
 	}
@@ -114,7 +114,7 @@ func TestGeschuetzt(t *testing.T) {
 	if !IstGeschuetzt("LICENSE.md") {
 		t.Error("Lizenzdateien müssen geschützt sein")
 	}
-	u, err := Ermitteln(projekt(t, map[string]string{"go.mod": "module x", "swarvex.yaml": "geschuetzt: |\n  - tests/vertraege/**\n  - tools/**\n"}))
+	u, err := Ermitteln(projekt(t, map[string]string{"go.mod": "module x", "swarvex.yaml": "protected: |\n  - tests/vertraege/**\n  - tools/**\n"}))
 	if err != nil || !u.Gesperrt("tests/vertraege/a_test.go") || !u.Gesperrt("tools/x.sh") || u.Gesperrt("src/a.go") || !u.Gesperrt("AGENTS.md") {
 		t.Errorf("projekteigene Sperren: %+v %v", u.Geschuetzt, err)
 	}

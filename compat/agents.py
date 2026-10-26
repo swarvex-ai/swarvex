@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Agenten-Kompatibilitätstest: Echte Agenten-Programme melden sich per MCP-OAuth an swarvex an
-und rufen danach die Werkzeuge auf. Jeder Agent bekommt eine eigene, leere Konfiguration
-(eigenes HOME bzw. Konfig-Verzeichnis); die echte Einrichtung des Rechners bleibt unberührt.
+"""Agent compatibility test: real agent programs sign in to swarvex via MCP OAuth and then call
+the tools. Every agent gets its own empty configuration (own HOME or config directory); the
+machine's real setup stays untouched.
 
-Voraussetzung: Test-Stack läuft (compose.yaml) und ist per Tunnel als http://localhost:3800 erreichbar:
-  ssh -f -N -L 3800:localhost:3800 -L 3999:localhost:3999 swarvex
+Requires the test stack (compose.yaml), reachable through a tunnel as http://localhost:3800:
+  ssh -f -N -L 3800:localhost:3800 -L 3999:localhost:3999 <platform-vm>
 
-Aufruf: kompatibilitaet/agenten.py [agent …]     (ohne Angabe: alle installierten)
-Ergebnis: Tabelle auf der Konsole und kompatibilitaet/ergebnis.md
+Usage: compat/agents.py [agent …]     (without arguments: all installed)
+Result: a table on the console and in compat/results.md
 """
 import json, os, pty, re, select, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
@@ -74,7 +74,7 @@ def umgebung(heim):
     oeffnen.chmod(0o755)
     env = {k: v for k, v in os.environ.items() if not k.startswith(("CLAUDE", "CODEX", "HERMES", "OPENCODE", "OPENCLAW", "GEMINI"))}
     env.update(HOME=str(heim), XDG_CONFIG_HOME=str(heim / ".config"), XDG_DATA_HOME=str(heim / ".local/share"),
-               BROWSER=str(oeffnen), KOMPAT_PROTOKOLL=str(heim / "browser.log"), TERM="xterm-256color", NO_COLOR="1")
+               BROWSER=str(oeffnen), COMPAT_LOG=str(heim / "browser.log"), TERM="xterm-256color", NO_COLOR="1")
     return env, browser_datei
 
 
@@ -150,7 +150,7 @@ def gemini(heim, prog):
     lauf([prog, "mcp", "add", "--scope", "user", "--transport", "http", "swarvex", URL], env, heim, 90)
     _, liste = lauf([prog, "mcp", "list"], env, heim, 90)
     sauber = " ".join(re.sub(chr(27) + r"\[[0-9;?]*[a-zA-Z]", "", liste).split())
-    return None, "Einrichtung: " + (sauber[sauber.find("swarvex"):][:110] if "swarvex" in sauber else sauber[-110:]) + " (Anmeldung nur interaktiv: /mcp auth swarvex)", liste
+    return None, "setup: " + (sauber[sauber.find("swarvex"):][:110] if "swarvex" in sauber else sauber[-110:]) + " (sign-in only interactive: /mcp auth swarvex)", liste
 
 
 AGENTEN = {
@@ -167,26 +167,26 @@ AGENTEN = {
 
 def main(namen):
     namen = namen or list(AGENTEN)
-    (HIER / "ausgabe").mkdir(exist_ok=True)
-    basis = Path(tempfile.mkdtemp(prefix="lauf-", dir=HIER / "ausgabe"))
+    (HIER / "output").mkdir(exist_ok=True)
+    basis = Path(tempfile.mkdtemp(prefix="run-", dir=HIER / "output"))
     ergebnisse = []
     for name in namen:
         programm, pruefung = AGENTEN[name]
-        prog = shutil.which(programm) or str(HIER / "werkzeuge/node_modules/.bin" / programm)
+        prog = shutil.which(programm) or str(HIER / "tools/node_modules/.bin" / programm)
         if not Path(prog).exists():
-            ergebnisse.append((name, None, "nicht installiert"))
+            ergebnisse.append((name, None, "not installed"))
             continue
         try:
             erfolg, info, roh = pruefung(basis / name, prog)
         except Exception as e:  # ein Agent darf den Lauf nicht abbrechen
-            erfolg, info, roh = False, f"Fehler: {e}", ""
-        (basis / name / "ausgabe.txt").write_text(roh)
+            erfolg, info, roh = False, f"error: {e}", ""
+        (basis / name / "output.txt").write_text(roh)
         ergebnisse.append((name, erfolg, info))
         print(f"{'✔' if erfolg else ('–' if erfolg is None else '✘')} {name}: {info}", flush=True)
-    tabelle = "| Agent | Ergebnis | Hinweis |\n|---|---|---|\n" + "".join(
+    tabelle = "| Agent | Result | Note |\n|---|---|---|\n" + "".join(
         f"| {n} | {'✔' if e else ('–' if e is None else '✘')} | {i.replace('|', '/')[:140]} |\n" for n, e, i in ergebnisse)
-    (HIER / "ergebnis.md").write_text(f"# Agenten-Kompatibilität\n\nStand: {time.strftime('%d.%m.%Y %H:%M')}\n\n{tabelle}\nRohdaten: {basis.relative_to(HIER)}\n")
-    print(f"\nRohdaten: {basis}")
+    (HIER / "results.md").write_text(f"# Agent compatibility\n\nAs of: {time.strftime('%Y-%m-%d %H:%M')}\n\n{tabelle}\nRaw data: {basis.relative_to(HIER)}\n")
+    print(f"\nRaw data: {basis}")
 
 
 if __name__ == "__main__":

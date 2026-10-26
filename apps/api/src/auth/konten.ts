@@ -4,7 +4,7 @@
 //   GITHUB_CLIENT_ID/GITHUB_CLIENT_SECRET
 //   CODEBERG_CLIENT_ID/CODEBERG_CLIENT_SECRET   (CODEBERG_URL, Standard https://codeberg.org)
 //   GITEA_URL/GITEA_CLIENT_ID/GITEA_CLIENT_SECRET
-// Rücksprung-Adresse bei jedem Anbieter: <BASIS_URL>/interaction/callback
+// Rücksprung-Adresse bei jedem Anbieter: <BASE_URL>/interaction/callback
 
 export type KontoNutzer = { id: string; login: string; erstellt: Date | null };
 
@@ -37,7 +37,7 @@ function giteaArtig(name: string, titel: string, basis: string, clientId: string
         method: "POST", headers: { "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify({ client_id: clientId, client_secret: geheimnis, code, grant_type: "authorization_code", redirect_uri: rueckkehr }),
       });
-      if (!t.access_token) throw new Error(`${titel}: kein Token`);
+      if (!t.access_token) throw new Error(`${titel}: no token`);
       const n = await jsonHolen<{ id: number; login: string; created?: string }>(`${url}/api/v1/user`, { headers: { authorization: `token ${t.access_token}` } });
       return { id: String(n.id), login: n.login, erstellt: n.created ? new Date(n.created) : null };
     },
@@ -58,7 +58,7 @@ function github(clientId: string, geheimnis: string): KontoAnbieter {
         method: "POST", headers: { "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify({ client_id: clientId, client_secret: geheimnis, code, redirect_uri: rueckkehr }),
       });
-      if (!t.access_token) throw new Error("GitHub: kein Token");
+      if (!t.access_token) throw new Error("GitHub: no token");
       const n = await jsonHolen<{ id: number; login: string; created_at?: string }>("https://api.github.com/user", {
         headers: { authorization: `Bearer ${t.access_token}`, accept: "application/vnd.github+json", "user-agent": "swarvex" },
       });
@@ -75,8 +75,8 @@ export function kontoAnbieterLaden(env: NodeJS.ProcessEnv = process.env): KontoA
     liste.push(giteaArtig("codeberg", "Codeberg", env.CODEBERG_URL ?? "https://codeberg.org", env.CODEBERG_CLIENT_ID, env.CODEBERG_CLIENT_SECRET));
   }
   if (env.GITEA_URL && env.GITEA_CLIENT_ID && env.GITEA_CLIENT_SECRET) {
-    liste.push(giteaArtig("gitea", env.GITEA_TITEL ?? "Gitea", env.GITEA_URL, env.GITEA_CLIENT_ID, env.GITEA_CLIENT_SECRET));
+    liste.push(giteaArtig("gitea", env.GITEA_TITLE ?? "Gitea", env.GITEA_URL, env.GITEA_CLIENT_ID, env.GITEA_CLIENT_SECRET));
   }
-  if (!liste.length) throw new Error("Kein Konto-Anbieter konfiguriert (GITHUB_*, CODEBERG_* oder GITEA_*)");
+  if (!liste.length) throw new Error("no account provider configured (GITHUB_*, CODEBERG_* or GITEA_*)");
   return liste;
 }

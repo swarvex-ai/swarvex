@@ -15,12 +15,12 @@ import (
 )
 
 func umgebungBefehl(args []string) {
-	fs := flag.NewFlagSet("umgebung", flag.ExitOnError)
-	nurZeigen := fs.Bool("nur-zeigen", false, "nur anzeigen, nichts bauen oder ausführen")
+	fs := flag.NewFlagSet("env", flag.ExitOnError)
+	nurZeigen := fs.Bool("show-only", false, "only show, do not build or run anything")
 	fs.Usage = func() {
-		fmt.Fprintln(os.Stderr, "Aufruf: swarvex umgebung [--nur-zeigen] [projektordner]")
-		fmt.Fprintln(os.Stderr, "Erkennt die Umgebung (swarvex.yaml, Dev Container oder Projektart), baut sie, lädt die")
-		fmt.Fprintln(os.Stderr, "Abhängigkeiten und führt Bauen und Testen ohne Netz aus – so wie Runner und Prüfstraße.")
+		fmt.Fprintln(os.Stderr, "usage: swarvex env [--show-only] [project-folder]")
+		fmt.Fprintln(os.Stderr, "Detects the environment (swarvex.yaml, dev container or project type), builds it, fetches the")
+		fmt.Fprintln(os.Stderr, "dependencies and runs build and test without network, just like the runner and the test pipeline.")
 	}
 	fs.Parse(args)
 	wurzel := "."
@@ -30,60 +30,60 @@ func umgebungBefehl(args []string) {
 	wurzel, _ = filepath.Abs(wurzel)
 	u, err := umgebung.Ermitteln(wurzel)
 	pruefen(err)
-	fmt.Printf("Umgebung:   %s (Quelle: %s)\n", u.Vorlage, u.Quelle)
+	fmt.Printf("Environment: %s (source: %s)\n", u.Vorlage, u.Quelle)
 	if u.Image != "" {
-		fmt.Printf("Image:      %s\n", u.Image)
+		fmt.Printf("Image:       %s\n", u.Image)
 	}
 	if u.Dockerfile != "" {
-		fmt.Printf("Dockerfile: %s\n", u.Dockerfile)
+		fmt.Printf("Dockerfile:  %s\n", u.Dockerfile)
 	}
 	if u.Ordner != "" {
-		fmt.Printf("Ordner:     %s\n", u.Ordner)
+		fmt.Printf("Folder:      %s\n", u.Ordner)
 	}
 	zeigen := func(name, befehl string) {
 		if befehl == "" {
 			befehl = "–"
 		}
-		fmt.Printf("%-11s %s\n", name+":", einruecken(befehl)[4:])
+		fmt.Printf("%-12s %s\n", name+":", einruecken(befehl)[4:])
 	}
-	zeigen("Einrichten", u.Einrichten)
-	zeigen("Bauen", u.Bauen)
-	zeigen("Testen", u.Testen)
+	zeigen("Setup", u.Einrichten)
+	zeigen("Build", u.Bauen)
+	zeigen("Test", u.Testen)
 	if *nurZeigen {
 		return
 	}
 
 	ctx := context.Background()
-	fmt.Println("\n== Umgebung bauen")
+	fmt.Println("\n== Building the environment")
 	image, err := umgebungsImage(ctx, u, wurzel, false)
 	pruefen(err)
-	cache := cacheOrdner("lokal-" + filepath.Base(wurzel))
-	fmt.Println("== Einrichten (mit Netz, ohne Agent)")
-	protokoll := filepath.Join(os.TempDir(), "swarvex-einrichten.log")
+	cache := cacheOrdner("local-" + filepath.Base(wurzel))
+	fmt.Println("== Setup (with network, without agent)")
+	protokoll := filepath.Join(os.TempDir(), "swarvex-setup.log")
 	if err := einrichten(ctx, u, image, wurzel, cache, protokoll); err != nil {
 		fehlerAus(err.Error())
 	}
 	gruen := true
-	for _, schritt := range []struct{ name, befehl string }{{"Bauen", u.Bauen}, {"Testen", u.Testen}} {
+	for _, schritt := range []struct{ name, befehl string }{{"Build", u.Bauen}, {"Test", u.Testen}} {
 		if schritt.befehl == "" {
 			continue
 		}
-		fmt.Printf("== %s (ohne Netz)\n", schritt.name)
+		fmt.Printf("== %s (without network)\n", schritt.name)
 		start := time.Now()
 		aus, err := ohneNetz(ctx, u, image, wurzel, cache, schritt.befehl, 1800)
 		fmt.Println(letzteZeilen(aus, 40))
 		if err != nil {
-			fmt.Printf("✘ %s fehlgeschlagen nach %s: %v\n", schritt.name, time.Since(start).Round(time.Second), err)
+			fmt.Printf("✘ %s failed after %s: %v\n", schritt.name, time.Since(start).Round(time.Second), err)
 			gruen = false
 			break
 		}
 		fmt.Printf("✔ %s in %s\n", schritt.name, time.Since(start).Round(time.Second))
 	}
 	if u.Testen == "" {
-		fmt.Println("Hinweis: keine automatischen Tests hinterlegt – in swarvex.yaml mit „testen:“ ergänzen, dann prüft die Prüfstraße jeden Beitrag.")
+		fmt.Println("Note: no automated tests configured. Add \"test:\" to swarvex.yaml so the test pipeline checks every contribution.")
 	}
 	if !gruen {
 		os.Exit(1)
 	}
-	fmt.Println("\n✓ Das Projekt ist bereit für swarvex.")
+	fmt.Println("\n✓ The project is ready for swarvex.")
 }

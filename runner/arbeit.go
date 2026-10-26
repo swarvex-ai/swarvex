@@ -29,49 +29,49 @@ import (
 
 type aufgabe struct {
 	ID           int64    `json:"id"`
-	Titel        string   `json:"titel"`
-	Beschreibung string   `json:"beschreibung"`
-	Stufe        string   `json:"stufe"`
-	Pfade        []string `json:"pfade"`
-	Akzeptanz    []string `json:"akzeptanz"`
-	BasisCommit  string   `json:"basis_commit"`
-	Projekt      string   `json:"projekt"`
+	Titel        string   `json:"title"`
+	Beschreibung string   `json:"description"`
+	Stufe        string   `json:"level"`
+	Pfade        []string `json:"paths"`
+	Akzeptanz    []string `json:"acceptance"`
+	BasisCommit  string   `json:"base_commit"`
+	Projekt      string   `json:"project"`
 	Engine       string   `json:"engine"`
 	Grenzen      struct {
-		Zeilen  int `json:"zeilen"`
-		Dateien int `json:"dateien"`
-	} `json:"grenzen"`
+		Zeilen  int `json:"lines"`
+		Dateien int `json:"files"`
+	} `json:"limits"`
 }
 
 func arbeitenBefehl(args []string) {
-	fs := flag.NewFlagSet("arbeiten", flag.ExitOnError)
-	projekt := fs.String("projekt", "", "Projekt-Slug")
-	nur := fs.Int64("aufgabe", 0, "bestimmte Aufgabe (sonst die erste passende)")
-	modell := fs.String("modell", "", "Modellname beim Anbieter")
-	upstream := fs.String("modell-url", "", "OpenAI-kompatible Basis-URL des Modells (ohne /v1)")
-	keyDatei := fs.String("modell-key-datei", "", "Datei mit dem API-Schlüssel des Modells (optional)")
-	budget := fs.Int("budget-tokens", 400000, "Token-Budget für diese Aufgabe")
-	tagesbudget := fs.Int64("tagesbudget-tokens", 0, "höchstens so viele Tokens pro Kalendertag über alle Aufgaben (0 = keine Tagesgrenze)")
-	zeit := fs.Duration("zeitlimit", 90*time.Minute, "maximale Laufzeit der Sandbox")
-	faehigkeiten := fs.String("faehigkeiten", "", "kommagetrennt, z. B. gdscript,godot-4,headless-test")
-	fensterText := fs.String("zeitfenster", "", `wann gearbeitet werden darf, z. B. "mo-fr 18:00-23:00; sa,so 09:00-24:00" oder "täglich 22:00-07:00" (leer = immer)`)
-	amEnde := fs.String("am-fensterende", "stopp", "stopp: Sandbox endet spätestens mit dem Zeitfenster; fertig: laufende Aufgabe darf fertig werden")
-	mindest := fs.Duration("mindestzeit", 15*time.Minute, "keine neue Aufgabe beginnen, wenn das Zeitfenster vorher endet (nur bei stopp)")
-	dauer := fs.Bool("dauerbetrieb", false, "laufend Aufgaben holen; außerhalb der Zeitfenster bis zum nächsten Fenster warten")
-	pause := fs.Duration("pause", 5*time.Minute, "Wartezeit im Dauerbetrieb, wenn keine passende Aufgabe offen ist")
-	nurPruefen := fs.Bool("nur-pruefen", false, "nur die Angaben prüfen, nichts reservieren (für `swarvex dienst`)")
+	fs := flag.NewFlagSet("work", flag.ExitOnError)
+	projekt := fs.String("project", "", "project slug")
+	nur := fs.Int64("task", 0, "a specific task (otherwise the first matching one)")
+	modell := fs.String("model", "", "model name at the provider")
+	upstream := fs.String("model-url", "", "OpenAI-compatible base URL of the model (without /v1)")
+	keyDatei := fs.String("model-key-file", "", "file containing the model's API key (optional)")
+	budget := fs.Int("budget-tokens", 400000, "token budget for this task")
+	tagesbudget := fs.Int64("daily-budget-tokens", 0, "at most this many tokens per calendar day across all tasks (0 = no daily limit)")
+	zeit := fs.Duration("time-limit", 90*time.Minute, "maximum run time of the sandbox")
+	faehigkeiten := fs.String("capabilities", "", "comma-separated, e.g. code.gdscript,code.javascript")
+	fensterText := fs.String("schedule", "", `when work is allowed, e.g. "mon-fri 18:00-23:00; sat,sun 09:00-24:00" or "daily 22:00-07:00" (empty = always)`)
+	amEnde := fs.String("at-window-end", "stop", "stop: the sandbox ends with the time window at the latest; finish: a running task may finish")
+	mindest := fs.Duration("min-time", 15*time.Minute, "do not start a new task if the time window ends sooner (only with stop)")
+	dauer := fs.Bool("continuous", false, "keep taking tasks; outside the time windows wait for the next window")
+	pause := fs.Duration("pause", 5*time.Minute, "wait time in continuous mode when no matching task is open")
+	nurPruefen := fs.Bool("check-only", false, "only check the options, reserve nothing (used by `swarvex service`)")
 	fs.Parse(args)
 	if *projekt == "" || *modell == "" || *upstream == "" {
-		fehlerAus("--projekt, --modell und --modell-url sind nötig")
+		fehlerAus("--project, --model and --model-url are required")
 	}
 	fenster, err := zeitfensterLesen(*fensterText)
 	pruefen(err)
-	if *amEnde != "stopp" && *amEnde != "fertig" {
-		fehlerAus("--am-fensterende kennt nur stopp oder fertig")
+	if *amEnde != "stop" && *amEnde != "finish" {
+		fehlerAus("--at-window-end accepts only stop or finish")
 	}
 	if *keyDatei != "" {
 		if _, err := os.Stat(*keyDatei); err != nil {
-			fehlerAus("--modell-key-datei: " + err.Error())
+			fehlerAus("--model-key-file: " + err.Error())
 		}
 	}
 	if *nurPruefen {
@@ -86,7 +86,7 @@ func arbeitenBefehl(args []string) {
 	// spätestens mit dem Fenster; reicht die Restzeit nicht für eine sinnvolle Aufgabe, beginnt keine neue.
 	if !fenster.offen(time.Now()) {
 		if n, ok := fenster.naechsterBeginn(time.Now()); ok {
-			fmt.Printf("Außerhalb der Zeitfenster. Nächstes Fenster ab %s.\n", zeitpunkt(n))
+			fmt.Printf("Outside the time windows. Next window from %s.\n", zeitpunkt(n))
 		}
 		os.Exit(4)
 	}
@@ -94,23 +94,23 @@ func arbeitenBefehl(args []string) {
 	if *tagesbudget > 0 {
 		rest := *tagesbudget - verbrauchAmTag(verbrauchsDatei(), time.Now())
 		if rest < min(int64(*budget), *tagesbudget)/10 {
-			fmt.Printf("Tagesbudget von %d Tokens ist verbraucht. Weiter ab %s.\n", *tagesbudget, zeitpunkt(mitternacht(time.Now())))
+			fmt.Printf("Daily budget of %d tokens is used up. Continuing from %s.\n", *tagesbudget, zeitpunkt(mitternacht(time.Now())))
 			os.Exit(6)
 		}
 		if int64(*budget) > rest {
 			*budget = int(rest)
-			fmt.Printf("Aufgabenbudget auf den Rest des Tagesbudgets gekürzt: %d Tokens.\n", rest)
+			fmt.Printf("Task budget reduced to what is left of the daily budget: %d tokens.\n", rest)
 		}
 	}
-	if *amEnde == "stopp" && len(fenster) > 0 {
+	if *amEnde == "stop" && len(fenster) > 0 {
 		rest := fenster.verbleibend(time.Now())
 		if rest < *mindest {
-			fmt.Printf("Zeitfenster endet in %s, zu kurz für eine neue Aufgabe (--mindestzeit %s).\n", rest, *mindest)
+			fmt.Printf("Time window ends in %s, too short for a new task (--min-time %s).\n", rest, *mindest)
 			os.Exit(4)
 		}
 		if *zeit > rest {
 			*zeit = rest
-			fmt.Printf("Zeitlimit auf das Ende des Zeitfensters gekürzt: %s.\n", rest.Round(time.Minute))
+			fmt.Printf("Time limit reduced to the end of the time window: %s.\n", rest.Round(time.Minute))
 		}
 	}
 
@@ -131,47 +131,47 @@ func arbeitenBefehl(args []string) {
 		var liste []struct {
 			ID int64 `json:"id"`
 		}
-		filter := map[string]any{"projekt": *projekt}
+		filter := map[string]any{"project": *projekt}
 		if *faehigkeiten != "" {
-			filter["faehigkeiten"] = strings.Split(*faehigkeiten, ",")
+			filter["capabilities"] = strings.Split(*faehigkeiten, ",")
 		}
-		pruefen(m.werkzeug("aufgaben_passend", filter, &liste))
+		pruefen(m.werkzeug("matching_tasks", filter, &liste))
 		if len(liste) == 0 {
-			fmt.Println("Keine passende offene Aufgabe.")
+			fmt.Println("No matching open task.")
 			os.Exit(3) // Dauerbetrieb wartet dann und fragt später wieder
 		}
 		id = liste[0].ID
 	}
 	if basis.Err() != nil {
-		fmt.Println("Gestoppt, keine Aufgabe reserviert.")
+		fmt.Println("Stopped, no task reserved.")
 		os.Exit(5)
 	}
 	var lease map[string]any
-	pruefen(m.werkzeug("aufgabe_reservieren", map[string]any{"aufgabe_id": id}, &lease))
+	pruefen(m.werkzeug("reserve_task", map[string]any{"task_id": id}, &lease))
 	// Ab hier gibt jeder Fehler die Aufgabe sofort zurück in den Pool.
 	abbrechen := func(grund string) {
-		m.werkzeug("abbruch_melden", map[string]any{"aufgabe_id": id, "grund": grund}, nil)
+		m.werkzeug("abandon_task", map[string]any{"task_id": id, "reason": grund}, nil)
 		fehlerAus(grund)
 	}
 	gestoppt := func() {
 		if basis.Err() != nil {
-			abbrechen("Runner wurde gestoppt")
+			abbrechen("runner was stopped")
 		}
 	}
 	var a aufgabe
-	if err := m.werkzeug("aufgabe_details", map[string]any{"aufgabe_id": id}, &a); err != nil {
-		abbrechen("Aufgabe lesen: " + err.Error())
+	if err := m.werkzeug("task_details", map[string]any{"task_id": id}, &a); err != nil {
+		abbrechen("reading the task: " + err.Error())
 	}
-	fmt.Printf("Aufgabe %d reserviert: %s\n", a.ID, a.Titel)
+	fmt.Printf("Task %d reserved: %s\n", a.ID, a.Titel)
 
 	// 2. Snapshot holen und entpacken (ohne .git, ohne Symlinks, ohne Pfade nach außen).
-	ordner := filepath.Join(datenOrdner(), "arbeit", fmt.Sprint(id))
+	ordner := filepath.Join(datenOrdner(), "work", fmt.Sprint(id))
 	os.RemoveAll(ordner)
-	arbeitsbaum := filepath.Join(ordner, "baum")
+	arbeitsbaum := filepath.Join(ordner, "tree")
 	gitDir := filepath.Join(ordner, "git") // außerhalb des Sandbox-Mounts
 	pruefen(os.MkdirAll(arbeitsbaum, 0o755))
 	if err := snapshotHolen(z, token, id, arbeitsbaum); err != nil {
-		abbrechen("Snapshot: " + err.Error())
+		abbrechen("snapshot: " + err.Error())
 	}
 	// LFS-Dateien aufgelöst, aber nicht in Git aufgenommen: Patches ändern keine Binärassets
 	// (dafür gibt es Asset-Aufträge); so muss Git die großen Dateien auch nicht kopieren.
@@ -180,23 +180,23 @@ func arbeitenBefehl(args []string) {
 		abbrechen("LFS: " + err.Error())
 	}
 	if err := gitBasis(gitDir, arbeitsbaum, lfsPfade); err != nil {
-		abbrechen("Basis-Commit: " + err.Error())
+		abbrechen("base commit: " + err.Error())
 	}
 	gestoppt()
 
 	// 2b. Umgebung des Projekts: erkennen, Image bauen, Abhängigkeiten laden (mit Netz, ohne Agent und Schlüssel).
 	u, err := umgebung.Ermitteln(arbeitsbaum)
 	if err != nil {
-		abbrechen("Umgebung: " + err.Error())
+		abbrechen("environment: " + err.Error())
 	}
-	fmt.Printf("Umgebung: %s (%s)\n", u.Vorlage, u.Quelle)
+	fmt.Printf("Environment: %s (%s)\n", u.Vorlage, u.Quelle)
 	image, err := umgebungsImage(basis, u, arbeitsbaum, true)
 	gestoppt()
 	if err != nil {
 		abbrechen(err.Error())
 	}
 	cache := cacheOrdner(*projekt)
-	err = einrichten(basis, u, image, arbeitsbaum, cache, filepath.Join(ordner, "einrichten.log"))
+	err = einrichten(basis, u, image, arbeitsbaum, cache, filepath.Join(ordner, "setup.log"))
 	gestoppt()
 	if err != nil {
 		abbrechen(err.Error())
@@ -208,7 +208,7 @@ func arbeitenBefehl(args []string) {
 	go func() {
 		t := time.NewTicker(5 * time.Minute)
 		defer t.Stop()
-		m.werkzeug("fortschritt_melden", map[string]any{"aufgabe_id": id, "notiz": "Sandbox gestartet"}, nil)
+		m.werkzeug("report_progress", map[string]any{"task_id": id, "note": "sandbox started"}, nil)
 		for {
 			select {
 			case <-ctx.Done():
@@ -217,7 +217,7 @@ func arbeitenBefehl(args []string) {
 				if neu, err := zugriffstoken(z); err == nil {
 					m.token = neu
 				}
-				m.werkzeug("fortschritt_melden", map[string]any{"aufgabe_id": id, "notiz": "arbeitet"}, nil)
+				m.werkzeug("report_progress", map[string]any{"task_id": id, "note": "working"}, nil)
 			}
 		}
 	}()
@@ -232,23 +232,23 @@ func arbeitenBefehl(args []string) {
 	verbrauch, protokoll, err := sandboxAusfuehren(ctx, a, u, image, arbeitsbaum, cache, ordner, *upstream, key, *modell, *budget, nil)
 	stopp()
 	if err := verbrauchMerken(verbrauchsDatei(), id, tokensAus(verbrauch), time.Now()); err != nil {
-		fmt.Fprintln(os.Stderr, "Verbrauch merken:", err)
+		fmt.Fprintln(os.Stderr, "recording usage:", err)
 	}
 	gestoppt()
 	if err != nil {
-		abbrechen("Sandbox: " + err.Error())
+		abbrechen("sandbox: " + err.Error())
 	}
 
 	// 5. Patch bilden (Git-Verzeichnis liegt außerhalb der Sandbox) und selbst prüfen.
 	patch, verworfen, err := patchBilden(gitDir, arbeitsbaum, a.Pfade, u)
 	if verworfen > 0 {
-		fmt.Printf("%d Nebenänderungen außerhalb der erlaubten Pfade verworfen (z. B. Abhängigkeiten, Build- oder Importdateien); sie verlassen das Gerät nicht.\n", verworfen)
+		fmt.Printf("Discarded %d side changes outside the allowed paths (e.g. dependencies, build or import files); they never leave this machine.\n", verworfen)
 	}
 	if err != nil || strings.TrimSpace(patch) == "" {
-		abbrechen("kein verwertbares Ergebnis der Sandbox")
+		abbrechen("no usable result from the sandbox")
 	}
 	if fehler := patchVorpruefen(patch, a.Pfade, u); len(fehler) > 0 {
-		abbrechen("Patch verletzt die Aufgabe: " + strings.Join(fehler, "; "))
+		abbrechen("patch violates the task: " + strings.Join(fehler, "; "))
 	}
 
 	// 6. Einreichen (mit Beitragserklärung).
@@ -256,11 +256,11 @@ func arbeitenBefehl(args []string) {
 		m.token = neu
 	}
 	var ergebnis map[string]any
-	pruefen(m.werkzeug("ergebnis_einreichen", map[string]any{
-		"aufgabe_id": id, "patch": patch, "zusammenfassung": zusammenfassungAus(protokoll),
-		"eigene_tests": "siehe Sandbox-Protokoll des Agenten", "verbrauch": verbrauch, "rechte_versichert": true,
+	pruefen(m.werkzeug("submit_result", map[string]any{
+		"task_id": id, "patch": patch, "summary": zusammenfassungAus(protokoll),
+		"own_tests": "see the agent's sandbox log", "usage": verbrauch, "rights_confirmed": true,
 	}, &ergebnis))
-	fmt.Println("Eingereicht:", ergebnis)
+	fmt.Println("Submitted:", ergebnis)
 	// Arbeitsbaum (mit LFS-Kopien bis über 1 GB) aufräumen; Protokolle (agent.log, proxy.log) bleiben.
 	os.RemoveAll(arbeitsbaum)
 	os.RemoveAll(gitDir)
@@ -275,7 +275,7 @@ func datenOrdner() string {
 }
 
 func snapshotHolen(z *zugangsdaten, token string, id int64, ziel string) error {
-	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/aufgaben/%d/snapshot", z.Plattform, id), nil)
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/tasks/%d/snapshot", z.Plattform, id), nil)
 	req.Header.Set("authorization", "Bearer "+token)
 	c := httpClient(z.CAPfad)
 	c.Timeout = 10 * time.Minute
@@ -395,7 +395,7 @@ func patchVorpruefen(patch string, erlaubt []string, u umgebung.Umgebung) []stri
 		teile := strings.SplitN(strings.TrimPrefix(zeile, "diff --git a/"), " b/", 2)
 		for _, p := range teile {
 			if u.Gesperrt(p) {
-				fehler = append(fehler, "geschützte Datei (Umgebung, Projektregeln oder CI): "+p)
+				fehler = append(fehler, "protected file (environment, project rules or CI): "+p)
 				continue
 			}
 			ok := false
@@ -405,7 +405,7 @@ func patchVorpruefen(patch string, erlaubt []string, u umgebung.Umgebung) []stri
 				}
 			}
 			if !ok {
-				fehler = append(fehler, "außerhalb der erlaubten Pfade: "+p)
+				fehler = append(fehler, "outside the allowed paths: "+p)
 			}
 		}
 	}
@@ -431,7 +431,7 @@ func zusammenfassungAus(protokoll string) string {
 	if len(protokoll) > 4000 {
 		protokoll = protokoll[len(protokoll)-4000:]
 	}
-	return "Bearbeitet in der Sandbox. Letzte Ausgabe des Agenten:\n" + protokoll
+	return "Worked on in the sandbox. Last output of the agent:\n" + protokoll
 }
 
 // sandboxAusfuehren startet Proxy und Sandbox (rootless Podman) und gibt Verbrauch und Agenten-Ausgabe zurück.
@@ -444,7 +444,7 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	netz := "swarvex-intern"
 	if _, err := podman("network", "exists", netz); err != nil {
 		if aus, err := podman("network", "create", "--internal", netz); err != nil {
-			return nil, "", fmt.Errorf("Netz anlegen: %s", aus)
+			return nil, "", fmt.Errorf("creating the network: %s", aus)
 		}
 	}
 	tok := zufall(36)
@@ -452,13 +452,13 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	podman("rm", "-f", proxyName)
 	proxyArgs := []string{"run", "-d", "--name", proxyName, "--network", netz, "--network", "podman", "--timeout", "86400",
 		"--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges", "--memory", "256m", "--pids-limit", "64",
-		"-e", "SWARVEX_UPSTREAM=" + upstream, "-e", "SWARVEX_MODELL=" + modell, "-e", "SWARVEX_AUFGABEN_TOKEN=" + tok,
+		"-e", "SWARVEX_UPSTREAM=" + upstream, "-e", "SWARVEX_MODEL=" + modell, "-e", "SWARVEX_TASK_TOKEN=" + tok,
 		"-e", fmt.Sprintf("SWARVEX_BUDGET_TOKENS=%d", budget)}
 	if key != "" {
 		proxyArgs = append(proxyArgs, "-e", "SWARVEX_UPSTREAM_KEY="+key)
 	}
 	if aus, err := podman(append(proxyArgs, "swarvex-proxy")...); err != nil {
-		return nil, "", fmt.Errorf("Proxy starten: %s", aus)
+		return nil, "", fmt.Errorf("starting the proxy: %s", aus)
 	}
 	defer exec.Command("podman", "rm", "-f", proxyName).Run()
 
@@ -466,7 +466,7 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 		"$schema": "https://opencode.ai/config.json", "autoupdate": false, "share": "disabled",
 		"model": "swarvex/" + modell,
 		"provider": map[string]any{"swarvex": map[string]any{
-			"npm": "@ai-sdk/openai-compatible", "name": "Schwarm-Proxy",
+			"npm": "@ai-sdk/openai-compatible", "name": "swarvex proxy",
 			"options": map[string]any{"baseURL": fmt.Sprintf("http://%s:8080/v1", proxyName), "apiKey": "{env:SWARVEX_TOKEN}"},
 			"models":  map[string]any{modell: map[string]any{"name": modell, "tool_call": true}},
 		}},
@@ -506,24 +506,24 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	// Verbrauch aus dem Proxy-Protokoll.
 	proxyLog, _ := exec.Command("podman", "logs", proxyName).CombinedOutput()
 	os.WriteFile(filepath.Join(ordner, "proxy.log"), proxyLog, 0o644)
-	verbrauch := map[string]float64{"tokens": 0, "anfragen": 0, "sekunden": 0}
+	verbrauch := map[string]float64{"tokens": 0, "requests": 0, "seconds": 0}
 	for _, zeile := range strings.Split(string(proxyLog), "\n") {
 		var e struct {
-			Art    string  `json:"art"`
+			Art    string  `json:"type"`
 			Tokens float64 `json:"tokens"`
 			Ms     float64 `json:"ms"`
 		}
-		if json.Unmarshal([]byte(zeile), &e) == nil && e.Art == "anfrage" {
+		if json.Unmarshal([]byte(zeile), &e) == nil && e.Art == "request" {
 			verbrauch["tokens"] += e.Tokens
-			verbrauch["anfragen"]++
-			verbrauch["sekunden"] += e.Ms / 1000
+			verbrauch["requests"]++
+			verbrauch["seconds"] += e.Ms / 1000
 		}
 	}
 	if ctx.Err() != nil {
-		return verbrauch, string(aus), fmt.Errorf("Zeitlimit erreicht")
+		return verbrauch, string(aus), fmt.Errorf("time limit reached")
 	}
 	if err != nil {
-		return verbrauch, string(aus), fmt.Errorf("Agent beendet mit Fehler: %v", err)
+		return verbrauch, string(aus), fmt.Errorf("agent exited with an error: %v", err)
 	}
 	return verbrauch, string(aus), nil
 }
@@ -534,24 +534,24 @@ func auftragstext(a aufgabe, u umgebung.Umgebung) string {
 	if u.Ordner != "" {
 		wurzel += "/" + u.Ordner
 	}
-	fmt.Fprintf(&b, "Du arbeitest als Mitstreiter an einem Open-Source-Projekt. Das Projekt liegt in /work, du startest in %s.\n", wurzel)
+	fmt.Fprintf(&b, "You are working as a contributor on an open-source project. The project is in /work, you start in %s.\n", wurzel)
 	if u.Hinweis != "" {
-		fmt.Fprintf(&b, "Umgebung: %s\n", u.Hinweis)
+		fmt.Fprintf(&b, "Environment: %s\n", u.Hinweis)
 	}
-	b.WriteString("Lies zuerst AGENTS.md (falls vorhanden) und halte dich an die Regeln des Projekts.\n\n")
-	fmt.Fprintf(&b, "AUFGABE: %s\n\n%s\n\n", a.Titel, a.Beschreibung)
-	b.WriteString("AKZEPTANZKRITERIEN:\n")
+	b.WriteString("Read AGENTS.md first (if present) and follow the project's rules.\n\n")
+	fmt.Fprintf(&b, "TASK: %s\n\n%s\n\n", a.Titel, a.Beschreibung)
+	b.WriteString("ACCEPTANCE CRITERIA:\n")
 	for _, k := range a.Akzeptanz {
 		fmt.Fprintf(&b, "- %s\n", k)
 	}
-	b.WriteString("\nREGELN:\n- Ändere oder erstelle NUR diese Pfade: " + strings.Join(a.Pfade, ", ") + "\n")
-	b.WriteString("- Keine anderen Dateien anlegen oder ändern (auch keine Notizen, Logs oder Hilfsskripte im Projekt).\n")
+	b.WriteString("\nRULES:\n- Change or create ONLY these paths: " + strings.Join(a.Pfade, ", ") + "\n")
+	b.WriteString("- Do not create or change any other files (no notes, logs or helper scripts in the project either).\n")
 	if u.Testen != "" {
-		fmt.Fprintf(&b, "- Die Tests des Projekts laufen mit:\n%s\n  Führe sie aus und behebe Fehler, bis sie grün sind.\n", einruecken(u.Testen))
+		fmt.Fprintf(&b, "- The project's tests run with:\n%s\n  Run them and fix failures until they pass.\n", einruecken(u.Testen))
 	} else {
-		b.WriteString("- Führe die Prüfungen aus den Akzeptanzkriterien selbst aus und behebe Fehler.\n")
+		b.WriteString("- Run the checks from the acceptance criteria yourself and fix failures.\n")
 	}
-	b.WriteString("- Es gibt kein Internet; alle Abhängigkeiten sind bereits installiert. Beende die Arbeit mit einer kurzen Zusammenfassung, was du getan hast und wie die Tests ausgingen.\n")
+	b.WriteString("- There is no internet; all dependencies are already installed. Finish with a short summary of what you did and how the tests went.\n")
 	return b.String()
 }
 
@@ -564,7 +564,7 @@ func einruecken(text string) string {
 // Exit-Codes des Kindes: 0 erledigt, 3 keine passende Aufgabe, 4 außerhalb bzw. zu kurz vor Fensterende,
 // 5 gestoppt vor der Reservierung, 6 Tagesbudget verbraucht.
 func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
-	fmt.Println("Dauerbetrieb gestartet. Anhalten mit Strg+C oder `swarvex stop`.")
+	fmt.Println("Continuous mode started. Stop with Ctrl+C or `swarvex stop`.")
 	// Beim Anhalten bekommt die laufende Aufgabe das Signal ebenfalls, gibt sich zurück und endet; dann ist Schluss.
 	basis, aufhoeren := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer aufhoeren()
@@ -579,20 +579,20 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
 		if !fenster.offen(jetzt) {
 			n, ok := fenster.naechsterBeginn(jetzt)
 			if !ok {
-				fehlerAus("Die Zeitfenster öffnen nie.")
+				fehlerAus("The time windows never open.")
 			}
-			fmt.Printf("Außerhalb der Zeitfenster. Warte bis %s.\n", zeitpunkt(n))
+			fmt.Printf("Outside the time windows. Waiting until %s.\n", zeitpunkt(n))
 			// in Stücken schlafen, damit Uhrumstellung oder Ruhezustand nicht zu Fehlzeiten führen
 			for time.Now().Before(n) && basis.Err() == nil {
 				schlafen(min(time.Until(n), 10*time.Minute))
 			}
 			continue
 		}
-		kind := exec.Command(os.Args[0], append([]string{"arbeiten"}, args...)...)
+		kind := exec.Command(os.Args[0], append([]string{"work"}, args...)...)
 		kind.Stdout, kind.Stderr = os.Stdout, os.Stderr
 		code := 0
 		if err := kind.Start(); err != nil {
-			fehlerAus("Aufgabe starten: " + err.Error())
+			fehlerAus("starting the task: " + err.Error())
 		}
 		fertig := make(chan struct{})
 		go func() {
@@ -617,18 +617,18 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
 		case 0:
 			continue // gleich die nächste Aufgabe
 		case 3:
-			fmt.Printf("Keine passende Aufgabe. Nächster Versuch in %s.\n", pause)
+			fmt.Printf("No matching task. Next attempt in %s.\n", pause)
 		case 4:
 			// Fenster zu oder zu kurz: die Schleife wartet oben auf das nächste
 		case 6:
 			n := mitternacht(time.Now())
-			fmt.Printf("Tagesbudget verbraucht. Warte bis %s.\n", zeitpunkt(n))
+			fmt.Printf("Daily budget used up. Waiting until %s.\n", zeitpunkt(n))
 			for time.Now().Before(n) && basis.Err() == nil {
 				schlafen(min(time.Until(n), 10*time.Minute))
 			}
 			continue
 		default:
-			fmt.Printf("Aufgabe mit Fehler beendet (Code %d). Nächster Versuch in %s.\n", code, pause)
+			fmt.Printf("Task ended with an error (code %d). Next attempt in %s.\n", code, pause)
 		}
 		if code != 4 {
 			schlafen(pause)
@@ -636,7 +636,7 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
 			schlafen(time.Minute)
 		}
 	}
-	fmt.Println("Dauerbetrieb beendet.")
+	fmt.Println("Continuous mode ended.")
 }
 
 // ohneDauerbetrieb entfernt --dauerbetrieb aus den Argumenten für den Kindprozess.
@@ -644,7 +644,7 @@ func ohneDauerbetrieb(args []string) []string {
 	var r []string
 	for _, a := range args {
 		switch strings.TrimLeft(a, "-") {
-		case "dauerbetrieb", "dauerbetrieb=true", "dauerbetrieb=1":
+		case "continuous", "continuous=true", "continuous=1":
 			continue
 		}
 		r = append(r, a)

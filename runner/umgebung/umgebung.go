@@ -31,8 +31,8 @@ import (
 
 // Umgebung beschreibt, wie ein Projekt eingerichtet, gebaut und getestet wird.
 type Umgebung struct {
-	Vorlage    string   // z. B. "node", "godot-4.7", "eigenes-image"
-	Quelle     string   // "swarvex.yaml", "devcontainer", "erkannt", "standard"
+	Vorlage    string   // z. B. "node", "godot-4.7", "custom-image"
+	Quelle     string   // "swarvex.yaml", "devcontainer", "detected", "default"
 	Image      string   // fertiges Basis-Image (leer, wenn Containerfile gesetzt ist)
 	Dockerfile string   // Pfad im Projekt zu einem eigenen Dockerfile (Dev Container)
 	Kontext    string   // Build-Kontext dazu, relativ zum Projekt
@@ -142,10 +142,10 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 		return Umgebung{}, err
 	}
 	u := Umgebung{Quelle: "swarvex.yaml"}
-	if v, ok := werte["vorlage"]; ok {
+	if v, ok := werte["template"]; ok {
 		basis, gibt := vorlagen()[v]
 		if !gibt {
-			return u, fmt.Errorf("swarvex.yaml: unbekannte Vorlage %q (bekannt: %s)", v, strings.Join(vorlagenNamen(), ", "))
+			return u, fmt.Errorf("swarvex.yaml: unknown template %q (known: %s)", v, strings.Join(vorlagenNamen(), ", "))
 		}
 		u = basis(wurzel)
 		u.Quelle = "swarvex.yaml"
@@ -159,31 +159,31 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 	}
 	for k, v := range werte {
 		switch k {
-		case "vorlage":
+		case "template":
 		case "image":
-			u.Image, u.Basis, u.Vorlage = v, "", "eigenes-image"
-		case "ordner":
+			u.Image, u.Basis, u.Vorlage = v, "", "custom-image"
+		case "dir":
 			u.Ordner = strings.Trim(v, "/")
-		case "einrichten":
+		case "setup":
 			u.Einrichten = v
-		case "bauen":
+		case "build":
 			u.Bauen = v
-		case "testen":
+		case "test":
 			u.Testen = v
-		case "hinweis":
+		case "note":
 			u.Hinweis = v
-		case "geschuetzt":
+		case "protected":
 			for _, g := range strings.FieldsFunc(v, func(r rune) bool { return r == ',' || r == '\n' }) {
 				if g = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(g), "- ")); g != "" {
 					u.Geschuetzt = append(u.Geschuetzt, g)
 				}
 			}
 		default:
-			return u, fmt.Errorf("swarvex.yaml: unbekannter Schlüssel %q (erlaubt: vorlage, image, ordner, einrichten, bauen, testen, hinweis, geschuetzt)", k)
+			return u, fmt.Errorf("swarvex.yaml: unknown key %q (allowed: template, image, dir, setup, build, test, note, protected)", k)
 		}
 	}
 	if u.Image == "" && u.Basis == "" && u.Dockerfile == "" {
-		return u, fmt.Errorf("swarvex.yaml: weder vorlage noch image angegeben und keine Projektart erkannt")
+		return u, fmt.Errorf("swarvex.yaml: neither template nor image given and no project type detected")
 	}
 	return u, nil
 }
@@ -197,11 +197,11 @@ func yamlLesen(text string) (map[string]string, error) {
 			continue
 		}
 		if strings.HasPrefix(z, " ") || strings.HasPrefix(z, "\t") {
-			return nil, fmt.Errorf("swarvex.yaml Zeile %d: unerwartete Einrückung", i+1)
+			return nil, fmt.Errorf("swarvex.yaml line %d: unexpected indentation", i+1)
 		}
 		k, v, ok := strings.Cut(z, ":")
 		if !ok {
-			return nil, fmt.Errorf("swarvex.yaml Zeile %d: „schluessel: wert“ erwartet", i+1)
+			return nil, fmt.Errorf("swarvex.yaml line %d: expected \"key: value\"", i+1)
 		}
 		k, v = strings.TrimSpace(k), strings.TrimSpace(v)
 		if v == "|" || v == "|-" || v == ">" {
@@ -275,7 +275,7 @@ func ausDevcontainer(wurzel, pfad string, roh []byte) (Umgebung, error) {
 		u.Kontext = filepath.ToSlash(filepath.Join(ordner, firstNonEmpty(d.Build.Context, ".")))
 	}
 	if u.Image == "" && u.Dockerfile == "" {
-		return u, fmt.Errorf("%s: weder image noch build.dockerfile angegeben", pfad)
+		return u, fmt.Errorf("%s: neither image nor build.dockerfile given", pfad)
 	}
 	var befehle []string
 	for _, r := range []json.RawMessage{d.OnCreate, d.UpdateContent, d.PostCreate} {
@@ -342,7 +342,7 @@ func firstNonEmpty(w ...string) string {
 func vorlagen() map[string]func(string) Umgebung {
 	return map[string]func(string) Umgebung{
 		"godot": func(w string) Umgebung { return godot(w, "") }, "node": node, "python": python, "rust": rust,
-		"go": golang, "dotnet": dotnet, "java-maven": maven, "java-gradle": gradle, "standard": standard,
+		"go": golang, "dotnet": dotnet, "java-maven": maven, "java-gradle": gradle, "default": standard,
 	}
 }
 
@@ -426,14 +426,14 @@ func godot(w, ordner string) Umgebung {
 		"RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip git fontconfig libfontconfig1 && rm -rf /var/lib/apt/lists/*\n" +
 		fmt.Sprintf("RUN curl -fsSL -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/%s-stable/%s.zip && unzip -q /tmp/godot.zip -d /opt && rm /tmp/godot.zip && ln -s /opt/%s /usr/local/bin/godot", voll, datei, datei)
 	return Umgebung{
-		Vorlage: "godot-" + version, Quelle: "erkannt", Basis: basis, Ordner: ordner,
+		Vorlage: "godot-" + version, Quelle: "detected", Basis: basis, Ordner: ordner,
 		Einrichten: "godot --headless --import >/dev/null 2>&1 || true",
 		// Jede Testdatei tests/*_test.gd läuft als eigenes Skript; ein Fehler macht die Prüfung rot.
 		Testen: `ok=0; n=0; for t in $(find tests -name '*_test.gd' 2>/dev/null | sort); do n=$((n+1)); echo "=== $t"; ` +
 			`aus=$(timeout 300 godot --headless --path . -s "res://$t" 2>&1); code=$?; echo "$aus"; ` +
 			`if [ $code -ne 0 ] || echo "$aus" | grep -qE ' FAIL |SCRIPT ERROR|Parse Error'; then ok=1; fi; done; ` +
-			`[ $n -gt 0 ] || { echo "Keine Tests (tests/*_test.gd) gefunden."; exit 3; }; exit $ok`,
-		Hinweis: fmt.Sprintf("Godot-%s-Projekt, `godot` ist installiert; Tests liegen als tests/*_test.gd und laufen mit `godot --headless -s res://tests/…`.", version),
+			`[ $n -gt 0 ] || { echo "No tests (tests/*_test.gd) found."; exit 3; }; exit $ok`,
+		Hinweis: fmt.Sprintf("Godot %s project, `godot` is installed; tests are tests/*_test.gd and run with `godot --headless -s res://tests/…`.", version),
 	}
 }
 
@@ -447,8 +447,8 @@ func node(w string) Umgebung {
 	case gibt(w, "package-lock.json", "npm-shrinkwrap.json"):
 		einrichten = "npm ci --no-audit --no-fund"
 	}
-	u := Umgebung{Vorlage: "node", Quelle: "erkannt", Image: "docker.io/library/node:24-trixie-slim", Einrichten: einrichten,
-		Hinweis: "Node.js-Projekt (Node 24); Abhängigkeiten sind installiert."}
+	u := Umgebung{Vorlage: "node", Quelle: "detected", Image: "docker.io/library/node:24-trixie-slim", Einrichten: einrichten,
+		Hinweis: "Node.js project (Node 24); dependencies are installed."}
 	var p struct {
 		Scripts map[string]string `json:"scripts"`
 	}
@@ -475,37 +475,37 @@ func python(w string) Umgebung {
 		einrichten += " && (pip install -e '.[test]' || pip install -e '.[dev]' || pip install -e .)"
 	}
 	einrichten += " && (pip install pytest >/dev/null 2>&1 || true)"
-	return Umgebung{Vorlage: "python", Quelle: "erkannt", Image: "docker.io/library/python:3.13-slim-trixie", Einrichten: einrichten,
-		Testen: ". .venv/bin/activate && python -m pytest -q", Hinweis: "Python-Projekt (3.13), virtuelle Umgebung in .venv (`. .venv/bin/activate`)."}
+	return Umgebung{Vorlage: "python", Quelle: "detected", Image: "docker.io/library/python:3.13-slim-trixie", Einrichten: einrichten,
+		Testen: ". .venv/bin/activate && python -m pytest -q", Hinweis: "Python project (3.13), virtual environment in .venv (`. .venv/bin/activate`)."}
 }
 
 func rust(w string) Umgebung {
-	return Umgebung{Vorlage: "rust", Quelle: "erkannt", Image: "docker.io/library/rust:1-slim-trixie", Einrichten: "cargo fetch",
-		Bauen: "cargo build --offline", Testen: "cargo test --offline", Hinweis: "Rust-Projekt; ohne Netz `--offline` verwenden."}
+	return Umgebung{Vorlage: "rust", Quelle: "detected", Image: "docker.io/library/rust:1-slim-trixie", Einrichten: "cargo fetch",
+		Bauen: "cargo build --offline", Testen: "cargo test --offline", Hinweis: "Rust project; without network use `--offline`."}
 }
 
 func golang(w string) Umgebung {
-	return Umgebung{Vorlage: "go", Quelle: "erkannt", Image: "docker.io/library/golang:1-trixie", Einrichten: "go mod download",
-		Bauen: "go build ./...", Testen: "go test ./...", Hinweis: "Go-Projekt; Module sind geladen."}
+	return Umgebung{Vorlage: "go", Quelle: "detected", Image: "docker.io/library/golang:1-trixie", Einrichten: "go mod download",
+		Bauen: "go build ./...", Testen: "go test ./...", Hinweis: "Go project; modules are downloaded."}
 }
 
 func dotnet(w string) Umgebung {
-	return Umgebung{Vorlage: "dotnet", Quelle: "erkannt", Image: "mcr.microsoft.com/dotnet/sdk:9.0", Einrichten: "dotnet restore",
-		Bauen: "dotnet build --no-restore", Testen: "dotnet test --no-restore", Hinweis: ".NET-Projekt (SDK 9); Pakete sind wiederhergestellt."}
+	return Umgebung{Vorlage: "dotnet", Quelle: "detected", Image: "mcr.microsoft.com/dotnet/sdk:9.0", Einrichten: "dotnet restore",
+		Bauen: "dotnet build --no-restore", Testen: "dotnet test --no-restore", Hinweis: ".NET project (SDK 9); packages are restored."}
 }
 
 func maven(w string) Umgebung {
-	return Umgebung{Vorlage: "java-maven", Quelle: "erkannt", Image: "docker.io/library/maven:3-eclipse-temurin-21", Einrichten: "mvn -q -B dependency:go-offline",
-		Testen: "mvn -o -q -B test", Hinweis: "Java-Projekt (Maven, JDK 21); ohne Netz `-o` verwenden."}
+	return Umgebung{Vorlage: "java-maven", Quelle: "detected", Image: "docker.io/library/maven:3-eclipse-temurin-21", Einrichten: "mvn -q -B dependency:go-offline",
+		Testen: "mvn -o -q -B test", Hinweis: "Java project (Maven, JDK 21); without network use `-o`."}
 }
 
 func gradle(w string) Umgebung {
-	return Umgebung{Vorlage: "java-gradle", Quelle: "erkannt", Image: "docker.io/library/gradle:8-jdk21", Einrichten: "gradle --no-daemon dependencies -q",
-		Testen: "gradle --no-daemon --offline test", Hinweis: "Java-Projekt (Gradle, JDK 21); ohne Netz `--offline` verwenden."}
+	return Umgebung{Vorlage: "java-gradle", Quelle: "detected", Image: "docker.io/library/gradle:8-jdk21", Einrichten: "gradle --no-daemon dependencies -q",
+		Testen: "gradle --no-daemon --offline test", Hinweis: "Java project (Gradle, JDK 21); without network use `--offline`."}
 }
 
 func standard(w string) Umgebung {
-	return Umgebung{Vorlage: "standard", Quelle: "standard",
+	return Umgebung{Vorlage: "default", Quelle: "default",
 		Basis:   "FROM docker.io/library/debian:trixie-slim\nRUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git curl make python3 && rm -rf /var/lib/apt/lists/*",
-		Hinweis: "Allgemeine Linux-Umgebung (Debian 13); keine automatischen Tests hinterlegt."}
+		Hinweis: "General Linux environment (Debian 13); no automated tests configured."}
 }

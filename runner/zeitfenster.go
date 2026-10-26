@@ -39,7 +39,7 @@ func zeitfensterLesen(text string) (zeitfenster, error) {
 		}
 		felder := strings.Fields(teil)
 		if len(felder) != 2 {
-			return nil, fmt.Errorf("Zeitfenster %q: erwartet „Tage Von-Bis“, z. B. „mo-fr 18:00-23:00“", teil)
+			return nil, fmt.Errorf("schedule %q: expected \"days from-to\", e.g. \"mon-fri 18:00-23:00\"", teil)
 		}
 		tage, err := tageLesen(felder[0])
 		if err != nil {
@@ -47,7 +47,7 @@ func zeitfensterLesen(text string) (zeitfenster, error) {
 		}
 		zeiten := strings.Split(felder[1], "-")
 		if len(zeiten) != 2 {
-			return nil, fmt.Errorf("Zeitfenster %q: Uhrzeit als Von-Bis angeben, z. B. 18:00-23:00", teil)
+			return nil, fmt.Errorf("schedule %q: give the time as from-to, e.g. 18:00-23:00", teil)
 		}
 		von, err := uhrzeitLesen(zeiten[0])
 		if err != nil {
@@ -58,7 +58,7 @@ func zeitfensterLesen(text string) (zeitfenster, error) {
 			return nil, err
 		}
 		if von == bis && von != 0 {
-			return nil, fmt.Errorf("Zeitfenster %q: Beginn und Ende sind gleich", teil)
+			return nil, fmt.Errorf("schedule %q: start and end are the same", teil)
 		}
 		if von == 0 && bis == 0 {
 			bis = 24 * 60 // „00:00-00:00“ heißt ganzer Tag
@@ -81,15 +81,15 @@ func tageLesen(text string) ([7]bool, error) {
 		grenzen := strings.Split(stueck, "-")
 		a, ok := tagNamen[grenzen[0]]
 		if !ok {
-			return tage, fmt.Errorf("unbekannter Tag %q (mo di mi do fr sa so)", grenzen[0])
+			return tage, fmt.Errorf("unknown day %q (mon tue wed thu fri sat sun)", grenzen[0])
 		}
 		b := a
 		if len(grenzen) == 2 {
 			if b, ok = tagNamen[grenzen[1]]; !ok {
-				return tage, fmt.Errorf("unbekannter Tag %q (mo di mi do fr sa so)", grenzen[1])
+				return tage, fmt.Errorf("unknown day %q (mon tue wed thu fri sat sun)", grenzen[1])
 			}
 		} else if len(grenzen) > 2 {
-			return tage, fmt.Errorf("Tagesbereich %q: höchstens ein „-“", stueck)
+			return tage, fmt.Errorf("day range %q: at most one \"-\"", stueck)
 		}
 		// Bereich in Wochenrichtung, auch über das Wochenende hinweg (z. B. fr-mo)
 		for d := a; ; d = (d + 1) % 7 {
@@ -105,12 +105,12 @@ func tageLesen(text string) ([7]bool, error) {
 func uhrzeitLesen(text string) (int, error) {
 	t := strings.Split(text, ":")
 	if len(t) != 2 {
-		return 0, fmt.Errorf("Uhrzeit %q: als HH:MM angeben", text)
+		return 0, fmt.Errorf("time %q: use HH:MM", text)
 	}
 	h, err1 := strconv.Atoi(t[0])
 	m, err2 := strconv.Atoi(t[1])
 	if err1 != nil || err2 != nil || h < 0 || m < 0 || m > 59 || h > 24 || (h == 24 && m != 0) {
-		return 0, fmt.Errorf("Uhrzeit %q ist ungültig", text)
+		return 0, fmt.Errorf("time %q is invalid", text)
 	}
 	return h*60 + m, nil
 }
@@ -166,7 +166,7 @@ func (z zeitfenster) naechsterBeginn(t time.Time) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// zeitpunkt schreibt einen Zeitpunkt kurz und deutsch, z. B. „Sa 31.10. 03:00“.
+// zeitpunkt schreibt einen Zeitpunkt kurz, z. B. „Sat 31 Oct 03:00“.
 func zeitpunkt(t time.Time) string {
-	return [...]string{"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"}[t.Weekday()] + " " + t.Format("02.01. 15:04")
+	return t.Format("Mon 02 Jan 15:04")
 }

@@ -14,7 +14,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "Befehle: login | arbeiten | dienst | start | stop | status | uninstall | umgebung | angriffstest")
+		fmt.Fprintln(os.Stderr, "commands: login | work | service | start | stop | status | uninstall | env | attack-test")
 		os.Exit(2)
 	}
 	switch os.Args[1] {
@@ -22,9 +22,9 @@ func main() {
 		proxyStarten()
 	case "login":
 		loginBefehl(os.Args[2:])
-	case "arbeiten":
+	case "work":
 		arbeitenBefehl(os.Args[2:])
-	case "dienst":
+	case "service":
 		dienstBefehl(os.Args[2:])
 	case "start":
 		startBefehl()
@@ -34,12 +34,12 @@ func main() {
 		statusBefehl()
 	case "uninstall":
 		uninstallBefehl(os.Args[2:])
-	case "umgebung":
+	case "env":
 		umgebungBefehl(os.Args[2:])
-	case "angriffstest":
+	case "attack-test":
 		angriffstestBefehl(os.Args[2:])
 	default:
-		fmt.Fprintln(os.Stderr, "unbekannter Befehl:", os.Args[1])
+		fmt.Fprintln(os.Stderr, "unknown command:", os.Args[1])
 		os.Exit(2)
 	}
 }

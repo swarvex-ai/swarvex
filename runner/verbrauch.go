@@ -14,12 +14,12 @@ import (
 )
 
 type verbrauchsEintrag struct {
-	Zeit    time.Time `json:"zeit"`
-	Aufgabe int64     `json:"aufgabe"`
+	Zeit    time.Time `json:"time"`
+	Aufgabe int64     `json:"task"`
 	Tokens  int64     `json:"tokens"`
 }
 
-func verbrauchsDatei() string { return filepath.Join(datenOrdner(), "verbrauch.jsonl") }
+func verbrauchsDatei() string { return filepath.Join(datenOrdner(), "usage.jsonl") }
 
 func verbrauchMerken(datei string, aufgabe int64, tokens int64, t time.Time) error {
 	os.MkdirAll(filepath.Dir(datei), 0o755)

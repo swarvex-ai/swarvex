@@ -1,5 +1,5 @@
 [Unit]
-Description=swarvex-Prüfstraße: pruefen jede Minute
+Description=swarvex test pipeline: check every minute
 
 [Timer]
 OnBootSec=1min

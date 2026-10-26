@@ -86,7 +86,7 @@ func (m *mcpClient) werkzeug(name string, argumente map[string]any, aus any) err
 		return nil
 	}
 	if err := json.Unmarshal([]byte(text), aus); err != nil {
-		return fmt.Errorf("%s: unerwartete Antwort: %s", name, text)
+		return fmt.Errorf("%s: unexpected response: %s", name, text)
 	}
 	return nil
 }

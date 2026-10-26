@@ -64,10 +64,10 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
       const [uid, name, sig] = (url.searchParams.get("state") ?? "").split(".");
       const code = url.searchParams.get("code");
       const konto = konten.find((k) => k.name === name);
-      if (!uid || !konto || !sig || !code || !pruefen(geheimnis, `state:${uid}:${name}`, sig)) { res.writeHead(400).end("Ungültige Anmeldung"); return; }
+      if (!uid || !konto || !sig || !code || !pruefen(geheimnis, `state:${uid}:${name}`, sig)) { res.writeHead(400).end("invalid sign-in"); return; }
       let nutzer: KontoNutzer;
       try { nutzer = await konto.nutzer(code, CALLBACK()); }
-      catch (e) { console.error(e); res.writeHead(502).end(`${konto.titel}-Anmeldung fehlgeschlagen`); return; }
+      catch (e) { console.error(e); res.writeHead(502).end(`${konto.titel} sign-in failed`); return; }
       const en = englisch(req);
       const alterTage = nutzer.erstellt ? (Date.now() - nutzer.erstellt.getTime()) / 86_400_000 : Infinity;
       if (alterTage < konfig.kontoMindestalterTage) {
@@ -86,7 +86,7 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
       // und manche Browser senden dann das SameSite=Lax-Interaktions-Cookie nicht mit.
       // Eine eigene Seite, die selbst weiterleitet, macht den nächsten Schritt same-site.
       res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer" });
-      res.end(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${ziel}"><title>Anmeldung …</title><p>Anmeldung wird abgeschlossen … <a href="${ziel}">weiter</a></p>`);
+      res.end(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${ziel}"><title>Signing in …</title><p>Finishing sign-in … <a href="${ziel}">continue</a></p>`);
       return;
     }
 
@@ -94,9 +94,9 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
     const uid = teile[1];
     if (teile[2] === "login") {
       const cookies = (req.headers.cookie ?? "").split(";").map((c) => c.trim().split("=")[0]).filter(Boolean);
-      console.log(`interaktion ${uid}: login, Cookies: ${cookies.join(", ") || "keine"}`);
+      console.log(`interaction ${uid}: login, cookies: ${cookies.join(", ") || "none"}`);
       const m = url.searchParams.get("m") ?? "", t = url.searchParams.get("t") ?? "", s = url.searchParams.get("s") ?? "";
-      if (Number(t) < Date.now() || !pruefen(geheimnis, `login:${uid}:${m}:${t}`, s)) { res.writeHead(400).end("Anmeldung abgelaufen"); return; }
+      if (Number(t) < Date.now() || !pruefen(geheimnis, `login:${uid}:${m}:${t}`, s)) { res.writeHead(400).end("sign-in expired"); return; }
       await anbieter.interactionFinished(req, res, { login: { accountId: m } }, { mergeWithLastSubmission: false });
       return;
     }
@@ -118,7 +118,7 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
       const grant = prompt.details.grantId
         ? await anbieter.Grant.find(prompt.details.grantId)
         : new anbieter.Grant({ accountId: session.accountId, clientId: String(params.client_id) });
-      if (!grant) { res.writeHead(400).end("Grant unbekannt"); return; }
+      if (!grant) { res.writeHead(400).end("unknown grant"); return; }
       if (prompt.details.missingOIDCScope) grant.addOIDCScope(prompt.details.missingOIDCScope.join(" "));
       if (prompt.details.missingOIDCClaims) grant.addOIDCClaims(prompt.details.missingOIDCClaims);
       for (const [ressource, scopes] of Object.entries(prompt.details.missingResourceScopes ?? {})) grant.addResourceScope(ressource, (scopes as string[]).join(" "));
@@ -126,6 +126,6 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
       await anbieter.interactionFinished(req, res, { consent: { grantId } }, { mergeWithLastSubmission: true });
       return;
     }
-    res.writeHead(400).end(`Unbekannter Schritt: ${details.prompt.name}`);
+    res.writeHead(400).end(`unknown step: ${details.prompt.name}`);
   };
 }

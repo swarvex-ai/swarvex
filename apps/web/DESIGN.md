@@ -74,7 +74,7 @@ Text ist linksbündig, nur der Abschluss-Aufruf steht zentriert. Die Inhaltsbrei
 - **Startseite:** Gleich zu Beginn steht eine zitierfähige Definition („swarvex ist eine Open-Source-Plattform, auf der …“). Die Zwischenüberschriften sind Fragen, wie Menschen sie suchen. Dazu kommt ein FAQ-Abschnitt mit Antworten, die für sich allein verständlich sind.
 - **Titel und Beschreibung:** Titel 55 Zeichen, Beschreibung 160 Zeichen. Pro Seite gibt es Canonical, Open Graph und Twitter-Card mit eigenem Vorschaubild (`static/og.png`).
 - **Strukturierte Daten (JSON-LD):** Organization, WebSite, SoftwareApplication und VideoObject auf der Startseite; TechArticle und BreadcrumbList auf jeder Doku-Seite. Kein FAQPage-Markup, weil Google diese Rich Results seit Mai 2026 nicht mehr zeigt.
-- **Sitemap und robots.txt:** `sitemap.xml` wird beim Bauen vorgerendert. `robots.txt` hängt von der Konfiguration ab: Live mit `INDEXIEREN=ja` ist alles offen, auch für KI-Suchen. Im Labor ist alles gesperrt, zusätzlich über `X-Robots-Tag` in Caddy.
+- **Sitemap und robots.txt:** `sitemap.xml` wird beim Bauen vorgerendert. `robots.txt` hängt von der Konfiguration ab: Live mit `INDEXING=ja` ist alles offen, auch für KI-Suchen. Im Labor ist alles gesperrt, zusätzlich über `X-Robots-Tag` in Caddy.
 
 **Impeccable (Apache-2.0):**
 - **Grundregeln (craft floor) umgesetzt:** keine pulsierenden Punkte, keine farbigen Randstreifen über 1 px, keine Bounce-Easing. Textauswahl, Cursor und Scrollbalken haben die Farben der Seite. Überschriften sind ausgeglichen umbrochen, Fließtext mit `text-wrap: pretty`.

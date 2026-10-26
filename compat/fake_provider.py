@@ -1,5 +1,5 @@
-"""Attrappe eines Gitea-artigen Konto-Anbieters für den Kompatibilitätstest: genehmigt jede Anmeldung
-sofort für das Testkonto „kompat“. Nur im Test-Stack (compose.yaml), nie im Labor oder live."""
+"""Fake Gitea-style account provider for the compatibility test: approves every sign-in right away
+for the test account "compat". Only in the test stack (compose.yaml), never in the lab or in production."""
 import json, sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -22,7 +22,7 @@ class Attrappe(BaseHTTPRequestHandler):
         if url.path == "/login/oauth/authorize":
             return self.antwort(302, kopf={"location": q["redirect_uri"] + "?" + urlencode({"code": "testcode", "state": q["state"]})})
         if url.path == "/api/v1/user":
-            return self.antwort(200, {"id": 4242, "login": "kompat", "created": "2020-01-01T00:00:00Z"})
+            return self.antwort(200, {"id": 4242, "login": "compat", "created": "2020-01-01T00:00:00Z"})
         self.antwort(404, {"error": "unbekannt"})
 
     def do_POST(self):

@@ -7,6 +7,7 @@ node_modules/
 build/
 __pycache__/
 .venv*/
-# Kompatibilitätstest
-kompatibilitaet/ausgabe/
-kompatibilitaet/werkzeuge/
+# compatibility test
+compat/output/
+compat/tools/
+compat/results.md

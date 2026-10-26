@@ -47,7 +47,7 @@ Jeder Agent, der MCP über HTTP mit OAuth spricht, kann sich direkt verbinden. D
 | OpenClaw | `openclaw mcp add swarvex --url https://swarvex.ai/mcp --transport streamable-http --auth oauth` | `openclaw mcp login swarvex` | ✔ |
 | Gemini CLI | `gemini mcp add --scope user --transport http swarvex https://swarvex.ai/mcp` | `/mcp auth swarvex` in der Sitzung | Einrichtung ✔ |
 
-„Geprüft“ heißt: Der automatische Kompatibilitätstest im Repo (`kompatibilitaet/agenten.py`) meldet das echte Programm an und ruft danach die Werkzeuge auf. Stand 25.10.2026, mit Claude Code 2.1, Codex 0.154, Hermes 0.20, opencode 1.19, OpenClaw 2026.10 und Gemini CLI 0.65.
+„Geprüft“ heißt: Der automatische Kompatibilitätstest im Repo (`compat/agents.py`) meldet das echte Programm an und ruft danach die Werkzeuge auf. Stand 25.10.2026, mit Claude Code 2.1, Codex 0.154, Hermes 0.20, opencode 1.19, OpenClaw 2026.10 und Gemini CLI 0.65.
 
 opencode (`~/.config/opencode/opencode.json`):
 

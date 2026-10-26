@@ -1,4 +1,4 @@
-# Plattform-Stack – überall identisch; Unterschiede nur in .env (docs/selbst-hosten.md).
+# Platform stack, identical everywhere; differences only in .env (docs/self-hosting.md).
 name: swarvex
 services:
   postgres:
@@ -22,8 +22,8 @@ services:
       DATABASE_URL: postgres://swarvex:${POSTGRES_PASSWORD}@postgres:5432/swarvex
       TEST_DATABASE_URL: postgres://swarvex:${POSTGRES_PASSWORD}@postgres:5432/swarvex_test
     volumes:
-      - /opt/swarvex-daten/deploy_key:/daten/deploy_key:ro
-      - spiegel:/daten/spiegel
+      - /opt/swarvex-data/deploy_key:/data/deploy_key:ro
+      - mirror:/data/mirror
     depends_on:
       postgres: { condition: service_healthy }
     restart: unless-stopped
@@ -32,24 +32,24 @@ services:
       context: ../..
       dockerfile: apps/web/Dockerfile
     environment:
-      ORIGIN: https://${BASIS_HOST}
-      INDEXIEREN: ${INDEXIEREN:-nein}
-      API_INTERN: http://api:3000
+      ORIGIN: https://${BASE_HOST}
+      INDEXING: ${INDEXING:-no}
+      API_INTERNAL: http://api:3000
     restart: unless-stopped
   caddy:
     image: caddy:2
     ports: ["80:80", "443:443"]
     environment:
-      BASIS_HOST: ${BASIS_HOST}
-      TLS_MODUS: ${TLS_MODUS:-internal}
+      BASE_HOST: ${BASE_HOST}
+      TLS_MODE: ${TLS_MODE:-internal}
       X_ROBOTS_TAG: ${X_ROBOTS_TAG:-noindex, nofollow}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
-      - /opt/swarvex-daten/downloads:/srv:ro
+      - /opt/swarvex-data/downloads:/srv:ro
     depends_on: [api, web]
     restart: unless-stopped
 volumes:
   pg:
-  spiegel:
+  mirror:
   caddy_data:

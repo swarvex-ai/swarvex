@@ -1,5 +1,5 @@
 [Unit]
-Description=swarvex-Prüfstraße: mergen jede Minute
+Description=swarvex test pipeline: merge every minute
 
 [Timer]
 OnBootSec=1min

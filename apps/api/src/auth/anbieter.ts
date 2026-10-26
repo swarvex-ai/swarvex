@@ -12,7 +12,8 @@ import { pgAdapter } from "./adapter.ts";
 import type { Schluessel } from "./schluessel.ts";
 import { oeffentlicheAdresse } from "./netz.ts";
 
-const seite = (titel: string, inhalt: string) => `<!doctype html><html lang="de"><head><meta charset="utf-8">
+const englisch = (ctx: { get(name: string): string }) => !/^de\b/i.test(ctx.get("accept-language") ?? "");
+const seite = (titel: string, inhalt: string, en = true) => `<!doctype html><html lang="${en ? "en" : "de"}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>${titel}</title>
 <style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;color:#1d2328}
 input,button{font:inherit;padding:.5rem .75rem}code{background:#eef1f3;padding:.1rem .3rem}</style></head>
@@ -72,16 +73,30 @@ export function anbieterErstellen(db: Db, schluessel: Schluessel) {
       deviceFlow: {
         enabled: true,
         userCodeInputSource: async (ctx, form, _out, err) => {
-          ctx.body = seite("Gerät anmelden", `${err ? "<p><strong>Der Code ist ungültig oder abgelaufen.</strong></p>" : ""}
-            <p>Gib den Code ein, den dein Runner anzeigt.</p>${form}<button type="submit" form="op.deviceInputForm">Weiter</button>`);
+          const en = englisch(ctx);
+          ctx.body = en
+            ? seite("Sign in a device", `${err ? "<p><strong>The code is invalid or has expired.</strong></p>" : ""}
+              <p>Enter the code your runner shows.</p>${form}<button type="submit" form="op.deviceInputForm">Continue</button>`)
+            : seite("Gerät anmelden", `${err ? "<p><strong>Der Code ist ungültig oder abgelaufen.</strong></p>" : ""}
+              <p>Gib den Code ein, den dein Runner anzeigt.</p>${form}<button type="submit" form="op.deviceInputForm">Weiter</button>`, false);
         },
         userCodeConfirmSource: async (ctx, form, client, _info, userCode) => {
-          ctx.body = seite("Gerät bestätigen", `<p>Der Agent <strong>${client.clientName ?? client.clientId}</strong> möchte in deinem Namen Aufgaben bearbeiten.</p>
-            <p>Code: <code>${userCode}</code> – stimmt er mit der Anzeige des Runners überein?</p>${form}
-            <button type="submit" form="op.deviceConfirmForm">Ja, anmelden</button>
-            <button type="submit" form="op.deviceConfirmForm" value="yes" name="abort">Abbrechen</button>`);
+          const name = client.clientName ?? client.clientId;
+          ctx.body = englisch(ctx)
+            ? seite("Confirm the device", `<p>The agent <strong>${name}</strong> wants to work on tasks on your behalf.</p>
+              <p>Code: <code>${userCode}</code>. Does it match what the runner shows?</p>${form}
+              <button type="submit" form="op.deviceConfirmForm">Yes, sign in</button>
+              <button type="submit" form="op.deviceConfirmForm" value="yes" name="abort">Cancel</button>`)
+            : seite("Gerät bestätigen", `<p>Der Agent <strong>${name}</strong> möchte in deinem Namen Aufgaben bearbeiten.</p>
+              <p>Code: <code>${userCode}</code>. Stimmt er mit der Anzeige des Runners überein?</p>${form}
+              <button type="submit" form="op.deviceConfirmForm">Ja, anmelden</button>
+              <button type="submit" form="op.deviceConfirmForm" value="yes" name="abort">Abbrechen</button>`, false);
         },
-        successSource: async (ctx) => { ctx.body = seite("Angemeldet", "<p>Der Runner ist angemeldet. Du kannst dieses Fenster schließen.</p>"); },
+        successSource: async (ctx) => {
+          ctx.body = englisch(ctx)
+            ? seite("Signed in", "<p>The runner is signed in. You can close this window.</p>")
+            : seite("Angemeldet", "<p>Der Runner ist angemeldet. Du kannst dieses Fenster schließen.</p>", false);
+        },
       },
     },
     findAccount: async (_ctx, sub) => {
@@ -97,7 +112,8 @@ export function anbieterErstellen(db: Db, schluessel: Schluessel) {
     },
     renderError: async (ctx, out) => {
       ctx.type = "html";
-      ctx.body = seite("Anmeldung fehlgeschlagen", `<p>${Object.values(out).map((v) => String(v).replace(/[<>&]/g, "")).join("<br>")}</p>`);
+      const en = englisch(ctx);
+      ctx.body = seite(en ? "Sign-in failed" : "Anmeldung fehlgeschlagen", `<p>${Object.values(out).map((v) => String(v).replace(/[<>&]/g, "")).join("<br>")}</p>`, en);
     },
   });
   anbieter.proxy = true; // hinter Caddy: X-Forwarded-Proto/Host vertrauen

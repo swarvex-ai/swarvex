@@ -1,98 +1,96 @@
 #!/bin/sh
-# swarvex-Runner installieren – der Einzeiler:
+# Install the swarvex runner, the one-liner:
 #
-#   curl -fsSL @PLATTFORM@/install.sh | sh
+#   curl -fsSL @PLATFORM@/install.sh | sh
 #
-# Läuft als normaler Nutzer (kein root, kein stilles sudo). Prüft die Signatur jedes
-# Downloads und bricht ab, wenn etwas nicht stimmt. Danach: Anmeldung im Browser.
-# Nur im Labor mit interner CA: SWARVEX_CA=/pfad/ca.crt vor `sh` setzen.
+# Runs as a normal user (no root, no silent sudo). Verifies the signature of every
+# download and stops if anything is wrong. Then: sign in in the browser.
+# Lab only, with an internal CA: set SWARVEX_CA=/path/ca.crt before `sh`.
 set -eu
-
-PLATTFORM="@PLATTFORM@"
+PLATFORM="@PLATFORM@"
 VERSION="@VERSION@"
-SIGNATUR_SCHLUESSEL="@PUBKEY@"
-CA_QUELLE="${SWARVEX_CA:-}"
+SIGNING_KEY="@PUBKEY@"
+CA_SOURCE="${SWARVEX_CA:-}"
 
-fehler() { printf '\n✗ %s\n' "$1" >&2; exit 1; }
-schritt() { printf '\n== %s\n' "$1"; }
+fail() { printf '\n✗ %s\n' "$1" >&2; exit 1; }
+step() { printf '\n== %s\n' "$1"; }
 
-[ "$(id -u)" = "0" ] && fehler "Bitte als normaler Nutzer ausführen, nicht als root. Der Runner braucht keine Root-Rechte."
-[ "$(uname -s)" = "Linux" ] || fehler "Im Moment nur Linux (macOS/Windows folgen)."
+[ "$(id -u)" = "0" ] && fail "Please run as a normal user, not as root. The runner needs no root rights."
+[ "$(uname -s)" = "Linux" ] || fail "Linux only for now (macOS and Windows will follow)."
 case "$(uname -m)" in
   x86_64|amd64) ARCH=amd64 ;;
   aarch64|arm64) ARCH=arm64 ;;
-  *) fehler "Prozessor $(uname -m) wird noch nicht unterstützt." ;;
+  *) fail "Processor $(uname -m) is not supported yet." ;;
 esac
 
-schritt "Voraussetzungen prüfen"
-for werkzeug in curl tar sha256sum ssh-keygen; do
-  command -v "$werkzeug" >/dev/null 2>&1 || fehler "Es fehlt: $werkzeug"
+step "Checking requirements"
+for tool in curl tar sha256sum ssh-keygen; do
+  command -v "$tool" >/dev/null 2>&1 || fail "Missing: $tool"
 done
 if ! command -v podman >/dev/null 2>&1 || ! command -v newuidmap >/dev/null 2>&1; then
-  hinweis="sudo apt install podman uidmap slirp4netns passt"
-  command -v dnf >/dev/null 2>&1 && hinweis="sudo dnf install podman"
-  command -v pacman >/dev/null 2>&1 && hinweis="sudo pacman -S podman"
-  fehler "Der Runner braucht Podman ohne Root-Rechte (Sandbox für fremden Projektcode).
-  Bitte einmal installieren und den Einzeiler erneut ausführen:
-
-      $hinweis"
+  hint="sudo apt install podman uidmap slirp4netns passt"
+  command -v dnf >/dev/null 2>&1 && hint="sudo dnf install podman"
+  command -v pacman >/dev/null 2>&1 && hint="sudo pacman -S podman"
+  fail "The runner needs rootless Podman (a sandbox for third-party project code).
+  Please install it once and run the one-liner again:
+      $hint"
 fi
 [ "$(podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null)" = "true" ] \
-  || fehler "Podman läuft nicht im Rootless-Modus für diesen Nutzer (podman info prüfen)."
-echo "   ok: Linux/$ARCH, Podman rootless, curl, tar, ssh-keygen"
+  || fail "Podman is not running rootless for this user (check podman info)."
+echo "   ok: Linux/$ARCH, rootless Podman, curl, tar, ssh-keygen"
 
-KONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/swarvex"
-DATEN="${XDG_DATA_HOME:-$HOME/.local/share}/swarvex"
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/swarvex"
+DATA="${XDG_DATA_HOME:-$HOME/.local/share}/swarvex"
 BIN="$HOME/.local/bin"
-# Ältere Installationen hießen schwarm-runner: Anmeldung und Daten übernehmen statt neu anmelden
-for paar in "${XDG_CONFIG_HOME:-$HOME/.config}/schwarm-runner:$KONFIG" "${XDG_DATA_HOME:-$HOME/.local/share}/schwarm-runner:$DATEN"; do
-  alt="${paar%%:*}"; neu="${paar#*:}"
-  if [ -d "$alt" ] && [ ! -e "$neu" ]; then mv "$alt" "$neu"; fi
+# Older installations were called schwarm-runner: take over sign-in and data instead of signing in again
+for pair in "${XDG_CONFIG_HOME:-$HOME/.config}/schwarm-runner:$CONFIG" "${XDG_DATA_HOME:-$HOME/.local/share}/schwarm-runner:$DATA"; do
+  old="${pair%%:*}"; new="${pair#*:}"
+  if [ -d "$old" ] && [ ! -e "$new" ]; then mv "$old" "$new"; fi
 done
 rm -f "$BIN/schwarm-runner"
-mkdir -p "$KONFIG" "$DATEN" "$BIN"
+mkdir -p "$CONFIG" "$DATA" "$BIN"
 CURL="curl -fsSL"
-if [ -n "$CA_QUELLE" ]; then
-  cp "$CA_QUELLE" "$KONFIG/ca.crt"
-  CURL="curl -fsSL --cacert $KONFIG/ca.crt"
+if [ -n "$CA_SOURCE" ]; then
+  cp "$CA_SOURCE" "$CONFIG/ca.crt"
+  CURL="curl -fsSL --cacert $CONFIG/ca.crt"
 fi
 
-schritt "Runner $VERSION herunterladen und Signatur prüfen"
+step "Downloading runner $VERSION and verifying the signature"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-PAKET="swarvex-$VERSION-linux-$ARCH.tar.gz"
-for datei in "$PAKET" SHA256SUMS SHA256SUMS.sig; do
-  $CURL -o "$TMP/$datei" "$PLATTFORM/downloads/$VERSION/$datei" || fehler "Download fehlgeschlagen: $datei"
+PACKAGE="swarvex-$VERSION-linux-$ARCH.tar.gz"
+for file in "$PACKAGE" SHA256SUMS SHA256SUMS.sig; do
+  $CURL -o "$TMP/$file" "$PLATFORM/downloads/$VERSION/$file" || fail "Download failed: $file"
 done
-printf 'swarvex-release %s\n' "$SIGNATUR_SCHLUESSEL" > "$TMP/erlaubt"
-ssh-keygen -Y verify -f "$TMP/erlaubt" -I swarvex-release -n swarvex-release -s "$TMP/SHA256SUMS.sig" < "$TMP/SHA256SUMS" >/dev/null 2>&1 \
-  || fehler "Signatur der Prüfsummen ist UNGÜLTIG – nichts installiert."
-( cd "$TMP" && grep " $PAKET\$" SHA256SUMS | sha256sum -c --status ) \
-  || fehler "Prüfsumme des Pakets stimmt NICHT – nichts installiert."
-echo "   Signatur und Prüfsumme gültig"
+printf 'swarvex-release %s\n' "$SIGNING_KEY" > "$TMP/allowed"
+ssh-keygen -Y verify -f "$TMP/allowed" -I swarvex-release -n swarvex-release -s "$TMP/SHA256SUMS.sig" < "$TMP/SHA256SUMS" >/dev/null 2>&1 \
+  || fail "The signature of the checksums is INVALID; nothing was installed."
+( cd "$TMP" && grep " $PACKAGE\$" SHA256SUMS | sha256sum -c --status ) \
+  || fail "The package checksum does NOT match; nothing was installed."
+echo "   signature and checksum valid"
 
-schritt "Installieren"
-rm -rf "$DATEN/release" && mkdir -p "$DATEN/release"
-tar -xzf "$TMP/$PAKET" -C "$DATEN/release"
-install -m 755 "$DATEN/release/swarvex" "$BIN/swarvex"
+step "Installing"
+rm -rf "$DATA/release" && mkdir -p "$DATA/release"
+tar -xzf "$TMP/$PACKAGE" -C "$DATA/release"
+install -m 755 "$DATA/release/swarvex" "$BIN/swarvex"
 echo "   $BIN/swarvex"
 
-schritt "Agent und Schlüssel-Proxy vorbereiten (beim ersten Mal einige Minuten)"
-( cd "$DATEN/release" && podman build -q -f Containerfile.proxy -t swarvex-proxy . >/dev/null ) || fehler "Proxy-Image konnte nicht gebaut werden"
-( cd "$DATEN/release/sandbox" && podman build -q -t swarvex-agent . >/dev/null ) || fehler "Agent-Image konnte nicht gebaut werden"
-podman rmi -f swarvex-sandbox >/dev/null 2>&1 || true   # Vorgänger (Sandbox mit fester Engine)
+step "Preparing the agent and the key proxy (takes a few minutes the first time)"
+( cd "$DATA/release" && podman build -q -f Containerfile.proxy -t swarvex-proxy . >/dev/null ) || fail "Could not build the proxy image"
+( cd "$DATA/release/sandbox" && podman build -q -t swarvex-agent . >/dev/null ) || fail "Could not build the agent image"
+podman rmi -f swarvex-sandbox >/dev/null 2>&1 || true   # predecessor (sandbox with a fixed engine)
 podman network exists swarvex-intern 2>/dev/null || podman network create --internal swarvex-intern >/dev/null
-echo "   Images und abgeschottetes Netz bereit"
+echo "   images and isolated network ready"
 
-schritt "Anmelden"
+step "Signing in"
 CA_ARG=""
-[ -n "$CA_QUELLE" ] && CA_ARG="--ca $KONFIG/ca.crt"
-if [ -f "$KONFIG/zugang.json" ]; then
-  echo "   bereits angemeldet (neu anmelden: swarvex login --plattform $PLATTFORM)"
+[ -n "$CA_SOURCE" ] && CA_ARG="--ca $CONFIG/ca.crt"
+if [ -f "$CONFIG/access.json" ] || [ -f "$CONFIG/zugang.json" ]; then
+  echo "   already signed in (to sign in again: swarvex login --platform $PLATFORM)"
 else
   # shellcheck disable=SC2086
-  "$BIN/swarvex" login --plattform "$PLATTFORM" $CA_ARG
+  "$BIN/swarvex" login --platform "$PLATFORM" $CA_ARG
 fi
 
-case ":$PATH:" in *":$BIN:"*) ;; *) printf '\nHinweis: %s ist nicht im PATH – z. B. in ~/.profile ergänzen:\n  export PATH="$HOME/.local/bin:$PATH"\n' "$BIN" ;; esac
-printf '\n✓ Fertig. Nächster Schritt: eine Aufgabe ausprobieren und danach als Dienst einrichten:\n  swarvex arbeiten --projekt <projekt> --modell "<modell>" --modell-url <adresse>\n  swarvex dienst   --projekt <projekt> --modell "<modell>" --modell-url <adresse> --zeitfenster "mo-fr 18:00-23:00" --tagesbudget-tokens 2000000\n'
+case ":$PATH:" in *":$BIN:"*) ;; *) printf '\nNote: %s is not in your PATH; add it, e.g. in ~/.profile:\n  export PATH="$HOME/.local/bin:$PATH"\n' "$BIN" ;; esac
+printf '\n✓ Done. Next: try one task, then set it up as a service:\n  swarvex work    --project <project> --model "<model>" --model-url <address>\n  swarvex service --project <project> --model "<model>" --model-url <address> --schedule "mon-fri 18:00-23:00" --daily-budget-tokens 2000000\n'

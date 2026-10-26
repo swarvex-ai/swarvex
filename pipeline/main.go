@@ -1,8 +1,8 @@
-// swarvex-pruefstrasse: Prüfdienst und Merge-Bot beim Visionär. Die Umgebung des Projekts
+// swarvex-pipeline: Prüfdienst und Merge-Bot beim Visionär. Die Umgebung des Projekts
 // (swarvex.yaml, Dev Container oder erkannte Projektart) kommt aus dem Paket umgebung, wie beim Runner.
 //
-//	swarvex-pruefstrasse pruefen   offene Einreichungen prüfen (Patch auf Basis-Commit, Tests im Container ohne Netz)
-//	swarvex-pruefstrasse mergen    angenommene Einreichungen mit Herkunfts-Trailern in den Hauptzweig übernehmen
+//	swarvex-pipeline check   offene Einreichungen prüfen (Patch auf Basis-Commit, Tests im Container ohne Netz)
+//	swarvex-pipeline merge   angenommene Einreichungen mit Herkunfts-Trailern in den Hauptzweig übernehmen
 //
 // Getrennte Schlüssel: Der Prüfdienst liest nur (Deploy-Key read-only); allein der Merge-Bot
 // darf schreiben. Alle Meldungen an die Plattform sind HMAC-signiert.
@@ -30,23 +30,23 @@ import (
 )
 
 var (
-	plattform  = strings.TrimRight(os.Getenv("SWARVEX_PLATTFORM"), "/")
-	geheimnis  = os.Getenv("SWARVEX_PRUEFSTRASSE_GEHEIMNIS")
+	plattform  = strings.TrimRight(os.Getenv("SWARVEX_PLATFORM"), "/")
+	geheimnis  = os.Getenv("SWARVEX_PIPELINE_SECRET")
 	caPfad     = os.Getenv("SWARVEX_CA")
-	arbeit     = envOder("SWARVEX_ARBEIT", "/var/lib/swarvex-pruefstrasse")
-	leseKey    = os.Getenv("SWARVEX_DEPLOY_KEY_LESEN")
-	schreibKey = os.Getenv("SWARVEX_DEPLOY_KEY_SCHREIBEN")
+	arbeit     = envOder("SWARVEX_WORKDIR", "/var/lib/swarvex-pipeline")
+	leseKey    = os.Getenv("SWARVEX_DEPLOY_KEY_READ")
+	schreibKey = os.Getenv("SWARVEX_DEPLOY_KEY_WRITE")
 )
 
 func main() {
 	if len(os.Args) < 2 || plattform == "" || geheimnis == "" {
-		fmt.Fprintln(os.Stderr, "Aufruf: swarvex-pruefstrasse pruefen|mergen  (SWARVEX_PLATTFORM, SWARVEX_PRUEFSTRASSE_GEHEIMNIS nötig)")
+		fmt.Fprintln(os.Stderr, "usage: swarvex-pipeline check|merge  (requires SWARVEX_PLATFORM, SWARVEX_PIPELINE_SECRET)")
 		os.Exit(2)
 	}
 	switch os.Args[1] {
-	case "pruefen":
+	case "check":
 		pruefen()
-	case "mergen":
+	case "merge":
 		mergen()
 	default:
 		os.Exit(2)
@@ -82,8 +82,8 @@ func signiert(methode, pfad string, koerper any, aus any) error {
 	fmt.Fprintf(mac, "%s\n%s\n%s\n%s", zeit, methode, pfad, roh)
 	req, _ := http.NewRequest(methode, plattform+pfad, bytes.NewReader(roh))
 	req.Header.Set("content-type", "application/json")
-	req.Header.Set("x-zeit", zeit)
-	req.Header.Set("x-signatur", hex.EncodeToString(mac.Sum(nil)))
+	req.Header.Set("x-time", zeit)
+	req.Header.Set("x-signature", hex.EncodeToString(mac.Sum(nil)))
 	r, err := client().Do(req)
 	if err != nil {
 		return err
@@ -100,19 +100,19 @@ func signiert(methode, pfad string, koerper any, aus any) error {
 }
 
 type einreichung struct {
-	EinreichungID int64  `json:"einreichung_id"`
-	AufgabeID     int64  `json:"aufgabe_id"`
-	Titel         string `json:"titel"`
+	EinreichungID int64  `json:"submission_id"`
+	AufgabeID     int64  `json:"task_id"`
+	Titel         string `json:"title"`
 	Patch         string `json:"patch"`
 	PatchSHA      string `json:"patch_sha256"`
-	BasisCommit   string `json:"basis_commit"`
+	BasisCommit   string `json:"base_commit"`
 	Slug          string `json:"slug"`
 	RepoGit       string `json:"repo_git"`
-	Mensch        string `json:"mensch"`
+	Mensch        string `json:"person"`
 	Agent         string `json:"agent"`
-	Begruendung   string `json:"begruendung"`
+	Begruendung   string `json:"reason"`
 	LeadAgent     string `json:"lead_agent"`
-	Pruefung      string `json:"pruefung"`
+	Pruefung      string `json:"check"`
 }
 
 func befehl(dir string, env []string, name string, args ...string) (string, error) {
@@ -129,7 +129,7 @@ func gitEnv(key string) []string {
 
 // spiegel hält einen Bare-Klon aktuell (nur lesend).
 func spiegel(e einreichung) (string, error) {
-	ziel := filepath.Join(arbeit, "spiegel", e.Slug+".git")
+	ziel := filepath.Join(arbeit, "mirror", e.Slug+".git")
 	if _, err := os.Stat(ziel); err != nil {
 		os.MkdirAll(filepath.Dir(ziel), 0o755)
 		if aus, err := befehl("", gitEnv(leseKey), "git", "clone", "--quiet", "--bare", e.RepoGit, ziel); err != nil {
@@ -144,25 +144,25 @@ func spiegel(e einreichung) (string, error) {
 
 func pruefen() {
 	var offen []einreichung
-	if err := signiert("GET", "/pruefstrasse/offen", nil, &offen); err != nil {
+	if err := signiert("GET", "/pipeline/pending", nil, &offen); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	for _, e := range offen {
-		fmt.Printf("Prüfe Einreichung %d (Aufgabe %d)\n", e.EinreichungID, e.AufgabeID)
-		if err := signiert("POST", fmt.Sprintf("/pruefstrasse/%d/start", e.EinreichungID), map[string]any{}, nil); err != nil {
+		fmt.Printf("Checking submission %d (task %d)\n", e.EinreichungID, e.AufgabeID)
+		if err := signiert("POST", fmt.Sprintf("/pipeline/%d/start", e.EinreichungID), map[string]any{}, nil); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			continue
 		}
 		ok, bericht := einePruefung(e)
-		ergebnis := "fehler"
+		ergebnis := "fail"
 		if ok {
-			ergebnis = "ok"
+			ergebnis = "pass"
 		}
 		if len(bericht) > 20000 {
 			bericht = bericht[len(bericht)-20000:]
 		}
-		if err := signiert("POST", fmt.Sprintf("/pruefstrasse/%d/ergebnis", e.EinreichungID), map[string]any{"ergebnis": ergebnis, "bericht": bericht}, nil); err != nil {
+		if err := signiert("POST", fmt.Sprintf("/pipeline/%d/result", e.EinreichungID), map[string]any{"result": ergebnis, "report": bericht}, nil); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		fmt.Printf("  → %s\n", ergebnis)
@@ -173,27 +173,27 @@ func einePruefung(e einreichung) (bool, string) {
 	var b strings.Builder
 	summe := sha256.Sum256([]byte(e.Patch))
 	if hex.EncodeToString(summe[:]) != e.PatchSHA {
-		return false, "Patch-Prüfsumme stimmt nicht"
+		return false, "patch checksum does not match"
 	}
 	sp, err := spiegel(e)
 	if err != nil {
 		return false, err.Error()
 	}
-	dir, _ := os.MkdirTemp(filepath.Join(arbeit), "pruefung-")
+	dir, _ := os.MkdirTemp(filepath.Join(arbeit), "check-")
 	defer os.RemoveAll(dir)
-	baum := filepath.Join(dir, "baum")
+	baum := filepath.Join(dir, "tree")
 	// Basis-Commit mit echten Git-LFS-Dateien auschecken (Worktree am Spiegel).
 	if aus, err := befehl(sp, gitEnv(leseKey), "git", "lfs", "fetch", "origin", e.BasisCommit); err != nil {
 		return false, "LFS: " + aus
 	}
 	if aus, err := befehl(sp, gitEnv(leseKey), "git", "worktree", "add", "--detach", "--force", baum, e.BasisCommit); err != nil {
-		return false, "Basis-Commit: " + aus
+		return false, "base commit: " + aus
 	}
 	defer befehl(sp, nil, "git", "worktree", "remove", "--force", baum)
-	patchDatei := filepath.Join(dir, "beitrag.patch")
+	patchDatei := filepath.Join(dir, "contribution.patch")
 	os.WriteFile(patchDatei, []byte(e.Patch), 0o644)
 	if aus, err := befehl(baum, nil, "git", "apply", "--check", patchDatei); err != nil {
-		return false, "Patch passt nicht auf den Basis-Commit:\n" + aus
+		return false, "patch does not apply to the base commit:\n" + aus
 	}
 	befehl(baum, nil, "git", "apply", patchDatei)
 	exec.Command("chmod", "-R", "a+rwX", baum).Run()
@@ -202,14 +202,14 @@ func einePruefung(e einreichung) (bool, string) {
 	// Netz laden, dann Bauen und Testen ohne Netz. Geschützte Dateien darf ein Beitrag nicht ändern.
 	u, err := umgebung.Ermitteln(baum)
 	if err != nil {
-		return false, "Umgebung: " + err.Error()
+		return false, "environment: " + err.Error()
 	}
-	fmt.Fprintf(&b, "Umgebung: %s (%s)\n", u.Vorlage, u.Quelle)
+	fmt.Fprintf(&b, "Environment: %s (%s)\n", u.Vorlage, u.Quelle)
 	for _, zeile := range strings.Split(e.Patch, "\n") {
 		if teile := strings.Fields(strings.TrimPrefix(zeile, "diff --git ")); strings.HasPrefix(zeile, "diff --git ") && len(teile) == 2 {
 			for _, p := range teile {
 				if pfad := strings.TrimPrefix(strings.TrimPrefix(p, "a/"), "b/"); u.Gesperrt(pfad) {
-					return false, b.String() + "Beitrag ändert eine geschützte Datei: " + pfad
+					return false, b.String() + "contribution changes a protected file: " + pfad
 				}
 			}
 		}
@@ -224,44 +224,44 @@ func einePruefung(e einreichung) (bool, string) {
 	if strings.TrimSpace(u.Einrichten) != "" {
 		aus, err := imContainer(image, baum, cache, u, u.Einrichten, true, 1200)
 		if err != nil {
-			return false, b.String() + "Einrichten fehlgeschlagen:\n" + aus
+			return false, b.String() + "setup failed:\n" + aus
 		}
 	}
 	if u.Bauen != "" {
 		aus, err := imContainer(image, baum, cache, u, u.Bauen, false, 1800)
-		fmt.Fprintf(&b, "=== Bauen\n%s\n", aus)
+		fmt.Fprintf(&b, "=== Build\n%s\n", aus)
 		if err != nil {
-			return false, b.String() + "Bauen fehlgeschlagen"
+			return false, b.String() + "build failed"
 		}
 	}
 	if u.Testen == "" {
-		b.WriteString("Keine automatischen Tests hinterlegt (swarvex.yaml: testen). Der Lead prüft den Beitrag von Hand.\n")
+		b.WriteString("No automated tests configured (swarvex.yaml: test). The lead reviews the contribution by hand.\n")
 		return true, b.String()
 	}
 	aus, err := imContainer(image, baum, cache, u, u.Testen, false, 1800)
-	fmt.Fprintf(&b, "=== Testen\n%s\n", aus)
+	fmt.Fprintf(&b, "=== Test\n%s\n", aus)
 	return err == nil, b.String()
 }
 
 // pruefImage baut die Projekt-Umgebung ohne Agent-Schicht (einmal je Basis).
 func pruefImage(u umgebung.Umgebung, baum string) (string, error) {
-	name := "swarvex-pruefung-" + u.Kennung(baum)
+	name := "swarvex-check-" + u.Kennung(baum)
 	if _, err := befehl("", nil, "docker", "image", "inspect", name); err == nil {
 		return name, nil
 	}
 	basis := ""
 	if u.Dockerfile != "" {
-		basis = "swarvex-basis-" + u.Kennung(baum)
+		basis = "swarvex-base-" + u.Kennung(baum)
 		if aus, err := befehl("", nil, "docker", "build", "-q", "-t", basis, "-f", filepath.Join(baum, u.Dockerfile), filepath.Join(baum, u.Kontext)); err != nil {
-			return "", fmt.Errorf("Dockerfile des Projekts bauen: %s", aus)
+			return "", fmt.Errorf("building the project's Dockerfile: %s", aus)
 		}
 	}
-	leer, _ := os.MkdirTemp(arbeit, "bau-")
+	leer, _ := os.MkdirTemp(arbeit, "build-")
 	defer os.RemoveAll(leer)
 	cmd := exec.Command("docker", "build", "-q", "-t", name, "-f", "-", leer)
 	cmd.Stdin = strings.NewReader(u.Containerfile(basis, ""))
 	if aus, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("Umgebung bauen: %s", aus)
+		return "", fmt.Errorf("building the environment: %s", aus)
 	}
 	return name, nil
 }
@@ -284,24 +284,24 @@ func imContainer(image, baum, cache string, u umgebung.Umgebung, skript string, 
 
 func mergen() {
 	var liste []einreichung
-	if err := signiert("GET", "/pruefstrasse/angenommen", nil, &liste); err != nil {
+	if err := signiert("GET", "/pipeline/accepted", nil, &liste); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	for _, e := range liste {
-		if e.Pruefung != "ok" {
-			fmt.Fprintf(os.Stderr, "Einreichung %d ohne grüne Prüfung – übersprungen\n", e.EinreichungID)
+		if e.Pruefung != "pass" {
+			fmt.Fprintf(os.Stderr, "submission %d has no passing check, skipped\n", e.EinreichungID)
 			continue
 		}
 		commit, err := einMerge(e)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Merge %d: %v\n", e.EinreichungID, err)
+			fmt.Fprintf(os.Stderr, "merge %d: %v\n", e.EinreichungID, err)
 			continue
 		}
-		if err := signiert("POST", fmt.Sprintf("/pruefstrasse/%d/gemerged", e.EinreichungID), map[string]any{"commit": commit}, nil); err != nil {
+		if err := signiert("POST", fmt.Sprintf("/pipeline/%d/merged", e.EinreichungID), map[string]any{"commit": commit}, nil); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
-		fmt.Printf("Einreichung %d gemerged: %s\n", e.EinreichungID, commit)
+		fmt.Printf("submission %d merged: %s\n", e.EinreichungID, commit)
 	}
 }
 
@@ -312,15 +312,15 @@ func einMerge(e einreichung) (string, error) {
 	if aus, err := befehl("", env, "git", "clone", "--quiet", "--depth", "50", e.RepoGit, dir); err != nil {
 		return "", fmt.Errorf("clone: %s", aus)
 	}
-	patchDatei := filepath.Join(dir, ".git", "beitrag.patch")
+	patchDatei := filepath.Join(dir, ".git", "contribution.patch")
 	os.WriteFile(patchDatei, []byte(e.Patch), 0o644)
 	if aus, err := befehl(dir, env, "git", "apply", "--index", "--3way", patchDatei); err != nil {
 		return "", fmt.Errorf("apply: %s", aus)
 	}
-	nachricht := fmt.Sprintf("%s\n\nBeitrag über swarvex.ai.\n\nAufgabe: %s#%d\nBeitrag-von: %s (%s)\nPruefung: gruen (Einreichung %d)\nBewertet-von: %s — %s\nRechte-versichert-von: %s (Beitragserklärung bei Einreichung %d)\n",
+	nachricht := fmt.Sprintf("%s\n\nContributed through swarvex.ai.\n\nTask: %s#%d\nContributed-by: %s (%s)\nCheck: pass (submission %d)\nReviewed-by: %s — %s\nRights-confirmed-by: %s (contribution statement with submission %d)\n",
 		e.Titel, e.Slug, e.AufgabeID, e.Mensch, e.Agent, e.EinreichungID, e.LeadAgent, e.Begruendung, e.Mensch, e.EinreichungID)
 	if aus, err := befehl(dir, append(env, "GIT_AUTHOR_NAME="+e.Mensch, "GIT_AUTHOR_EMAIL="+e.Mensch+"@swarvex.invalid",
-		"GIT_COMMITTER_NAME=swarvex Merge-Bot", "GIT_COMMITTER_EMAIL=merge-bot@swarvex.invalid"),
+		"GIT_COMMITTER_NAME=swarvex merge bot", "GIT_COMMITTER_EMAIL=merge-bot@swarvex.invalid"),
 		"git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", nachricht); err != nil {
 		return "", fmt.Errorf("commit: %s", aus)
 	}

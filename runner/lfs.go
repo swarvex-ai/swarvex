@@ -118,7 +118,7 @@ func lfsAufloesen(z *zugangsdaten, token string, id int64, baum string) ([]strin
 		}
 		pfade = append(pfade, filepath.ToSlash(zg.pfad))
 	}
-	fmt.Printf("LFS: %d Dateien, %.1f MB neu geladen, Rest aus dem Cache\n", len(zeiger), float64(geladen)/1e6)
+	fmt.Printf("LFS: %d files, %.1f MB downloaded, the rest from the cache\n", len(zeiger), float64(geladen)/1e6)
 	return pfade, nil
 }
 
@@ -128,7 +128,7 @@ func lfsObjekt(c *http.Client, z *zugangsdaten, token string, id int64, cache st
 	if info, err := os.Stat(ziel); err == nil && info.Size() == zg.groesse {
 		return 0, nil
 	}
-	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/aufgaben/%d/lfs/%s", z.Plattform, id, zg.oid), nil)
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/tasks/%d/lfs/%s", z.Plattform, id, zg.oid), nil)
 	req.Header.Set("authorization", "Bearer "+token)
 	r, err := c.Do(req)
 	if err != nil {
@@ -139,7 +139,7 @@ func lfsObjekt(c *http.Client, z *zugangsdaten, token string, id int64, cache st
 		roh, _ := io.ReadAll(r.Body)
 		return 0, fmt.Errorf("LFS %s: HTTP %d %s", zg.pfad, r.StatusCode, roh)
 	}
-	tmp, err := os.CreateTemp(cache, "laden-*")
+	tmp, err := os.CreateTemp(cache, "download-*")
 	if err != nil {
 		return 0, err
 	}
@@ -151,7 +151,7 @@ func lfsObjekt(c *http.Client, z *zugangsdaten, token string, id int64, cache st
 		return 0, err
 	}
 	if n != zg.groesse || hex.EncodeToString(h.Sum(nil)) != zg.oid {
-		return 0, fmt.Errorf("LFS %s: Prüfsumme oder Größe stimmt nicht – verworfen", zg.pfad)
+		return 0, fmt.Errorf("LFS %s: checksum or size does not match, discarded", zg.pfad)
 	}
 	return n, os.Rename(tmp.Name(), ziel)
 }

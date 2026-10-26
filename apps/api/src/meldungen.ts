@@ -44,7 +44,7 @@ export async function meldungAbschliessen(db: Db, id: number, zustand: "in_pruef
   return transaktion(db, async (tx) => {
     const r = await tx.query(`update meldungen set zustand = $2, ergebnis = $3, erledigt = case when $2 in ('erledigt','abgelehnt') then now() else null end
                               where id = $1 returning projekt_id`, [id, zustand, ergebnis]);
-    if (!r.rowCount) throw new Error(`Meldung ${id} gibt es nicht`);
+    if (!r.rowCount) throw new Error(`report ${id} does not exist`);
     await protokollieren(tx, { projekt_id: r.rows[0].projekt_id ? Number(r.rows[0].projekt_id) : null, akteur: "system", art: "meldung_bearbeitet",
       bezug: `meldung:${id}`, daten: { zustand, ergebnis } });
   });

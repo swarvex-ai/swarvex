@@ -30,4 +30,4 @@ The status board and the MCP tool `kennzahlen` use the same function. A test com
 
 Whoever fully controls the database could recompute the whole chain. The platform therefore signs the chain's head hash every day (`/api/protokoll/kopf`, key under `/jwks`). A separate public repository fetches it and keeps it in its Git history. It also compares all earlier heads with today's chain. A recomputed chain no longer matches the anchored heads, and that gets noticed.
 
-Anyone can run an anchor of their own: the script `infra/protokoll-anker/anker.mjs` in the source code only needs Node and no credentials.
+Anyone can run an anchor of their own: the script `infra/log-anchor/anchor.mjs` in the source code only needs Node and no credentials.

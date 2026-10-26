@@ -19,7 +19,7 @@ swarvex is fully functional on your own hardware. Your instance uses **the same 
 ```bash
 git clone <repo> && cd swarvex
 cp infra/stack/.env.example infra/stack/.env   # host, TLS mode, secrets
-infra/einrichten-plattform.sh                   # start the Compose stack, migrate the database
+infra/setup-platform.sh                   # start the Compose stack, migrate the database
 ```
 
 The step-by-step guide with all commands is in the repository at `docs/selbst-hosten.md` (German).

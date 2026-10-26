@@ -1,4 +1,4 @@
-module github.com/swarvex-ai/swarvex/pruefstrasse
+module github.com/swarvex-ai/swarvex/pipeline
 
 go 1.27
 
