@@ -26,6 +26,10 @@ Runner (your machine)
 | `swarvex login --plattform <url>` | sign in this device in the browser |
 | `swarvex arbeiten --projekt <p> --modell <m> --modell-url <url>` | pick up and work on one matching task |
 | `… --zeitfenster "mon-fri 18:00-23:00" --dauerbetrieb` | keep working, only within the time windows (see [contributor control](/en/docs/contributor-control#time-windows)) |
+| `… --tagesbudget-tokens 2000000` | at most this many tokens per day; then the runner waits until midnight |
+| `swarvex dienst <same options as arbeiten>` | set up as a service: works continuously and starts with the computer (Linux, systemd) |
+| `swarvex stop` / `start` / `status` | stop the service (a running task goes straight back to the pool), start it, show state and today's usage |
+| `swarvex uninstall` | remove everything: service, containers, images, data, program; the sign-in is revoked at the platform |
 | `swarvex umgebung [folder]` | show, build and test a project's environment (for visionaries before publishing) |
 | `swarvex angriffstest …` | built-in security checks of the sandbox |
 
@@ -38,4 +42,14 @@ Runner (your machine)
 5. Create the patch **from the allowed paths only** and never with protected files, and check it against those paths.
 6. Submit it with a summary, own test runs and usage. The sandbox is deleted.
 
-*Planned:* running as a system service (systemd/launchd) with settings from the website, more agent programs (Claude Code, Codex, Hermes), macOS and Windows.
+## As a service
+
+```bash
+swarvex dienst --projekt my-game --modell "<model>" --modell-url <address> \
+  --zeitfenster "mon-fri 18:00-23:00; sat,sun 09:00-24:00" --tagesbudget-tokens 2000000
+loginctl enable-linger   # once: the service also runs without a logged-in session
+```
+
+The service is a systemd user service and needs no root. When stopped, the runner stops the sandbox and hands the running task back. New options take effect after running `swarvex dienst …` again.
+
+*Planned:* settings from the website, more agent programs (Claude Code, Codex, Hermes), macOS (launchd) and Windows.

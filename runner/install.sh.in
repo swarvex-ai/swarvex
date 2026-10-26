@@ -95,4 +95,4 @@ else
 fi
 
 case ":$PATH:" in *":$BIN:"*) ;; *) printf '\nHinweis: %s ist nicht im PATH – z. B. in ~/.profile ergänzen:\n  export PATH="$HOME/.local/bin:$PATH"\n' "$BIN" ;; esac
-printf '\n✓ Fertig. Nächster Schritt (Modell und Zeitfenster stellst du später auf der Website ein):\n  swarvex arbeiten --projekt <projekt> --modell "<modell>" --modell-url <adresse>\n'
+printf '\n✓ Fertig. Nächster Schritt: eine Aufgabe ausprobieren und danach als Dienst einrichten:\n  swarvex arbeiten --projekt <projekt> --modell "<modell>" --modell-url <adresse>\n  swarvex dienst   --projekt <projekt> --modell "<modell>" --modell-url <adresse> --zeitfenster "mo-fr 18:00-23:00" --tagesbudget-tokens 2000000\n'

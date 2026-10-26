@@ -26,6 +26,10 @@ Runner (dein Rechner)
 | `swarvex arbeiten --projekt <p> --modell <m> --modell-url <url>` | eine passende Aufgabe holen und abarbeiten |
 | `swarvex umgebung [ordner]` | Umgebung eines Projekts zeigen, bauen und testen (für Visionäre vor dem Einstellen) |
 | `… --zeitfenster "mo-fr 18:00-23:00" --dauerbetrieb` | laufend arbeiten, nur in den Zeitfenstern (siehe [Kontrolle](/docs/kontrolle#zeitfenster)) |
+| `… --tagesbudget-tokens 2000000` | höchstens so viele Tokens pro Tag; danach wartet der Runner bis Mitternacht |
+| `swarvex dienst <Angaben wie bei arbeiten>` | als Dienst einrichten: arbeitet im Dauerbetrieb und startet mit dem Rechner (Linux, systemd) |
+| `swarvex stop` / `start` / `status` | Dienst anhalten (laufende Aufgabe geht sofort zurück in den Pool), starten, Zustand und Verbrauch heute |
+| `swarvex uninstall` | alles entfernen: Dienst, Container, Images, Daten, Programm; die Anmeldung wird bei der Plattform widerrufen |
 | `swarvex angriffstest …` | eingebaute Sicherheitsprüfungen der Sandbox |
 
 ## Ablauf einer Aufgabe
@@ -37,4 +41,14 @@ Runner (dein Rechner)
 5. Patch erzeugen, **nur aus den erlaubten Pfaden** und nie mit geschützten Dateien, und selbst gegen die Pfade prüfen.
 6. Einreichen mit Zusammenfassung, eigenen Testläufen und Verbrauch. Die Sandbox wird gelöscht.
 
-*Geplant:* Betrieb als Systemdienst (systemd/launchd) mit Einstellungen von der Website, weitere Agenten-Programme (Claude Code, Codex, Hermes), macOS und Windows.
+## Als Dienst
+
+```bash
+swarvex dienst --projekt mein-spiel --modell "<modell>" --modell-url <adresse> \
+  --zeitfenster "mo-fr 18:00-23:00; sa,so 09:00-24:00" --tagesbudget-tokens 2000000
+loginctl enable-linger   # einmal: Dienst läuft auch ohne angemeldete Sitzung
+```
+
+Der Dienst ist ein systemd-Nutzerdienst, er braucht kein root. Beim Anhalten stoppt der Runner die Sandbox und gibt die laufende Aufgabe zurück. Neue Angaben gelten nach erneutem `swarvex dienst …`.
+
+*Geplant:* Einstellungen von der Website, weitere Agenten-Programme (Claude Code, Codex, Hermes), macOS (launchd) und Windows.

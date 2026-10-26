@@ -17,9 +17,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/swarvex-ai/swarvex/runner/umgebung"
@@ -49,6 +51,7 @@ func arbeitenBefehl(args []string) {
 	upstream := fs.String("modell-url", "", "OpenAI-kompatible Basis-URL des Modells (ohne /v1)")
 	keyDatei := fs.String("modell-key-datei", "", "Datei mit dem API-Schlüssel des Modells (optional)")
 	budget := fs.Int("budget-tokens", 400000, "Token-Budget für diese Aufgabe")
+	tagesbudget := fs.Int64("tagesbudget-tokens", 0, "höchstens so viele Tokens pro Kalendertag über alle Aufgaben (0 = keine Tagesgrenze)")
 	zeit := fs.Duration("zeitlimit", 90*time.Minute, "maximale Laufzeit der Sandbox")
 	faehigkeiten := fs.String("faehigkeiten", "", "kommagetrennt, z. B. gdscript,godot-4,headless-test")
 	fensterText := fs.String("zeitfenster", "", `wann gearbeitet werden darf, z. B. "mo-fr 18:00-23:00; sa,so 09:00-24:00" oder "täglich 22:00-07:00" (leer = immer)`)
@@ -56,6 +59,7 @@ func arbeitenBefehl(args []string) {
 	mindest := fs.Duration("mindestzeit", 15*time.Minute, "keine neue Aufgabe beginnen, wenn das Zeitfenster vorher endet (nur bei stopp)")
 	dauer := fs.Bool("dauerbetrieb", false, "laufend Aufgaben holen; außerhalb der Zeitfenster bis zum nächsten Fenster warten")
 	pause := fs.Duration("pause", 5*time.Minute, "Wartezeit im Dauerbetrieb, wenn keine passende Aufgabe offen ist")
+	nurPruefen := fs.Bool("nur-pruefen", false, "nur die Angaben prüfen, nichts reservieren (für `swarvex dienst`)")
 	fs.Parse(args)
 	if *projekt == "" || *modell == "" || *upstream == "" {
 		fehlerAus("--projekt, --modell und --modell-url sind nötig")
@@ -64,6 +68,14 @@ func arbeitenBefehl(args []string) {
 	pruefen(err)
 	if *amEnde != "stopp" && *amEnde != "fertig" {
 		fehlerAus("--am-fensterende kennt nur stopp oder fertig")
+	}
+	if *keyDatei != "" {
+		if _, err := os.Stat(*keyDatei); err != nil {
+			fehlerAus("--modell-key-datei: " + err.Error())
+		}
+	}
+	if *nurPruefen {
+		return
 	}
 	if *dauer {
 		dauerbetrieb(fenster, *pause, ohneDauerbetrieb(args))
@@ -78,6 +90,18 @@ func arbeitenBefehl(args []string) {
 		}
 		os.Exit(4)
 	}
+	// Tagesbudget: keine Aufgabe mehr, wenn es verbraucht ist (Exit-Code 6); sonst Aufgabenbudget auf den Rest kürzen.
+	if *tagesbudget > 0 {
+		rest := *tagesbudget - verbrauchAmTag(verbrauchsDatei(), time.Now())
+		if rest < min(int64(*budget), *tagesbudget)/10 {
+			fmt.Printf("Tagesbudget von %d Tokens ist verbraucht. Weiter ab %s.\n", *tagesbudget, zeitpunkt(mitternacht(time.Now())))
+			os.Exit(6)
+		}
+		if int64(*budget) > rest {
+			*budget = int(rest)
+			fmt.Printf("Aufgabenbudget auf den Rest des Tagesbudgets gekürzt: %d Tokens.\n", rest)
+		}
+	}
 	if *amEnde == "stopp" && len(fenster) > 0 {
 		rest := fenster.verbleibend(time.Now())
 		if rest < *mindest {
@@ -89,6 +113,10 @@ func arbeitenBefehl(args []string) {
 			fmt.Printf("Zeitlimit auf das Ende des Zeitfensters gekürzt: %s.\n", rest.Round(time.Minute))
 		}
 	}
+
+	// Strg+C bzw. `swarvex stop` (SIGTERM vom Dienst): laufende Arbeit beenden und die Aufgabe zurückgeben.
+	basis, aufhoeren := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer aufhoeren()
 
 	z, err := zugangLaden()
 	pruefen(err)
@@ -114,12 +142,21 @@ func arbeitenBefehl(args []string) {
 		}
 		id = liste[0].ID
 	}
+	if basis.Err() != nil {
+		fmt.Println("Gestoppt, keine Aufgabe reserviert.")
+		os.Exit(5)
+	}
 	var lease map[string]any
 	pruefen(m.werkzeug("aufgabe_reservieren", map[string]any{"aufgabe_id": id}, &lease))
 	// Ab hier gibt jeder Fehler die Aufgabe sofort zurück in den Pool.
 	abbrechen := func(grund string) {
 		m.werkzeug("abbruch_melden", map[string]any{"aufgabe_id": id, "grund": grund}, nil)
 		fehlerAus(grund)
+	}
+	gestoppt := func() {
+		if basis.Err() != nil {
+			abbrechen("Runner wurde gestoppt")
+		}
 	}
 	var a aufgabe
 	if err := m.werkzeug("aufgabe_details", map[string]any{"aufgabe_id": id}, &a); err != nil {
@@ -145,6 +182,7 @@ func arbeitenBefehl(args []string) {
 	if err := gitBasis(gitDir, arbeitsbaum, lfsPfade); err != nil {
 		abbrechen("Basis-Commit: " + err.Error())
 	}
+	gestoppt()
 
 	// 2b. Umgebung des Projekts: erkennen, Image bauen, Abhängigkeiten laden (mit Netz, ohne Agent und Schlüssel).
 	u, err := umgebung.Ermitteln(arbeitsbaum)
@@ -152,17 +190,20 @@ func arbeitenBefehl(args []string) {
 		abbrechen("Umgebung: " + err.Error())
 	}
 	fmt.Printf("Umgebung: %s (%s)\n", u.Vorlage, u.Quelle)
-	image, err := umgebungsImage(context.Background(), u, arbeitsbaum, true)
+	image, err := umgebungsImage(basis, u, arbeitsbaum, true)
+	gestoppt()
 	if err != nil {
 		abbrechen(err.Error())
 	}
 	cache := cacheOrdner(*projekt)
-	if err := einrichten(context.Background(), u, image, arbeitsbaum, cache, filepath.Join(ordner, "einrichten.log")); err != nil {
+	err = einrichten(basis, u, image, arbeitsbaum, cache, filepath.Join(ordner, "einrichten.log"))
+	gestoppt()
+	if err != nil {
 		abbrechen(err.Error())
 	}
 
 	// 3. Lebenszeichen, solange gearbeitet wird.
-	ctx, stopp := context.WithTimeout(context.Background(), *zeit)
+	ctx, stopp := context.WithTimeout(basis, *zeit)
 	defer stopp()
 	go func() {
 		t := time.NewTicker(5 * time.Minute)
@@ -190,6 +231,10 @@ func arbeitenBefehl(args []string) {
 	}
 	verbrauch, protokoll, err := sandboxAusfuehren(ctx, a, u, image, arbeitsbaum, cache, ordner, *upstream, key, *modell, *budget, nil)
 	stopp()
+	if err := verbrauchMerken(verbrauchsDatei(), id, tokensAus(verbrauch), time.Now()); err != nil {
+		fmt.Fprintln(os.Stderr, "Verbrauch merken:", err)
+	}
+	gestoppt()
 	if err != nil {
 		abbrechen("Sandbox: " + err.Error())
 	}
@@ -516,10 +561,20 @@ func einruecken(text string) string {
 
 // dauerbetrieb holt in den offenen Zeitfenstern laufend Aufgaben. Jede Aufgabe läuft als eigener
 // Kindprozess („arbeiten“ ohne --dauerbetrieb), damit ein Fehler nicht den ganzen Runner beendet.
-// Exit-Codes des Kindes: 0 erledigt, 3 keine passende Aufgabe, 4 außerhalb bzw. zu kurz vor Fensterende.
+// Exit-Codes des Kindes: 0 erledigt, 3 keine passende Aufgabe, 4 außerhalb bzw. zu kurz vor Fensterende,
+// 5 gestoppt vor der Reservierung, 6 Tagesbudget verbraucht.
 func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
-	fmt.Println("Dauerbetrieb gestartet. Anhalten mit Strg+C.")
-	for {
+	fmt.Println("Dauerbetrieb gestartet. Anhalten mit Strg+C oder `swarvex stop`.")
+	// Beim Anhalten bekommt die laufende Aufgabe das Signal ebenfalls, gibt sich zurück und endet; dann ist Schluss.
+	basis, aufhoeren := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer aufhoeren()
+	schlafen := func(d time.Duration) {
+		select {
+		case <-basis.Done():
+		case <-time.After(d):
+		}
+	}
+	for basis.Err() == nil {
 		jetzt := time.Now()
 		if !fenster.offen(jetzt) {
 			n, ok := fenster.naechsterBeginn(jetzt)
@@ -528,15 +583,31 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
 			}
 			fmt.Printf("Außerhalb der Zeitfenster. Warte bis %s.\n", zeitpunkt(n))
 			// in Stücken schlafen, damit Uhrumstellung oder Ruhezustand nicht zu Fehlzeiten führen
-			for time.Now().Before(n) {
-				time.Sleep(min(time.Until(n), 10*time.Minute))
+			for time.Now().Before(n) && basis.Err() == nil {
+				schlafen(min(time.Until(n), 10*time.Minute))
 			}
 			continue
 		}
 		kind := exec.Command(os.Args[0], append([]string{"arbeiten"}, args...)...)
 		kind.Stdout, kind.Stderr = os.Stdout, os.Stderr
 		code := 0
-		if err := kind.Run(); err != nil {
+		if err := kind.Start(); err != nil {
+			fehlerAus("Aufgabe starten: " + err.Error())
+		}
+		fertig := make(chan struct{})
+		go func() {
+			select {
+			case <-basis.Done(): // Signal weiterreichen, falls es nur den Dauerbetrieb erreicht hat
+				kind.Process.Signal(syscall.SIGTERM)
+			case <-fertig:
+			}
+		}()
+		err := kind.Wait()
+		close(fertig)
+		if basis.Err() != nil {
+			break
+		}
+		if err != nil {
 			code = 1
 			if ee, ok := err.(*exec.ExitError); ok {
 				code = ee.ExitCode()
@@ -549,15 +620,23 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
 			fmt.Printf("Keine passende Aufgabe. Nächster Versuch in %s.\n", pause)
 		case 4:
 			// Fenster zu oder zu kurz: die Schleife wartet oben auf das nächste
+		case 6:
+			n := mitternacht(time.Now())
+			fmt.Printf("Tagesbudget verbraucht. Warte bis %s.\n", zeitpunkt(n))
+			for time.Now().Before(n) && basis.Err() == nil {
+				schlafen(min(time.Until(n), 10*time.Minute))
+			}
+			continue
 		default:
 			fmt.Printf("Aufgabe mit Fehler beendet (Code %d). Nächster Versuch in %s.\n", code, pause)
 		}
 		if code != 4 {
-			time.Sleep(pause)
+			schlafen(pause)
 		} else {
-			time.Sleep(time.Minute)
+			schlafen(time.Minute)
 		}
 	}
+	fmt.Println("Dauerbetrieb beendet.")
 }
 
 // ohneDauerbetrieb entfernt --dauerbetrieb aus den Argumenten für den Kindprozess.

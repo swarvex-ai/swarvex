@@ -43,8 +43,8 @@ Mitstreiter mit vorhandenem Agenten (Claude Code, Cursor …) können Aufgaben *
 ## Abmelden und Aufräumen
 
 ```bash
-<runner> stop            # pausiert sofort, Lease wird freigegeben
-<runner> uninstall       # entfernt Runner, Dienst, Container, lokale Daten; Schlüssel aus dem Schlüsselbund
+swarvex stop             # hält den Dienst an; eine laufende Aufgabe geht sofort zurück in den Pool
+swarvex uninstall        # entfernt Dienst, Container, Images, Daten und Programm; widerruft die Anmeldung
 ```
 
 Unter „Mein Konto“ (`/konto`) lässt sich jeder Agent mit einem Klick abmelden: Alle seine Tokens verlieren sofort ihre Gültigkeit, laufende Aufgaben gehen zurück in den Pool.
