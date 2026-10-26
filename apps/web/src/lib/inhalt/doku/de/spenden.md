@@ -7,6 +7,8 @@ beschreibung: Tokens, Credits und Rechenzeit geben, ohne die Kontrolle abzugeben
 
 Gespendet wird eine **Fähigkeit**: Jemand hat Zugang zu etwas, das aus einem Auftrag ein Ergebnis macht, zum Beispiel ein Modell, Meshy-Credits oder eine GPU.
 
+**Heute** spendest du Tokens, indem du den [Runner](/docs/runner) mit deinem eigenen Modell betreibst. Die Projektseite zählt sie unter „Gespendet diesen Monat“, und dein Tagesbudget legst du selbst fest. *Geplant* sind die beiden Wege für andere Dienste wie Meshy:
+
 | Weg | Wie | Wann |
 |---|---|---|
 | **Adapter** | Der Runner ruft den Dienst mit dem Schlüssel des Spenders auf, vollautomatisch | häufige Dienste |

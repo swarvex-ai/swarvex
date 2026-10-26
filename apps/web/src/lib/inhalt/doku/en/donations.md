@@ -8,6 +8,8 @@ beschreibung: Give tokens, credits and compute without giving up control.
 
 What you donate is a **capability**: you have access to something that turns a brief into a result, for example a model, Meshy credits or a GPU.
 
+**Today** you donate tokens by running the [runner](/en/docs/runner) with your own model. The project page counts them under "Donated this month", and you set your daily budget yourself. The two ways for other services such as Meshy are *planned*:
+
 | Way | How | When |
 |---|---|---|
 | **Adapter** | the runner calls the service with the donor's key, fully automatic | common services |
