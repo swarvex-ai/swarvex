@@ -100,4 +100,4 @@ swarvex work --project <slug> --model "<modell>" --model-url http://<modellserve
   [--model-key-file <datei>] --budget-tokens 1500000 --time-limit 75m
 ```
 
-Die Angriffstests laufen mit `swarvex attack-test --script …` und `angriffe/aussen.py` (siehe `angriffstests.md`).
+Die Angriffstests laufen mit `swarvex attack-test --script …` und `attacks/outside.py` (siehe `angriffstests.md`).

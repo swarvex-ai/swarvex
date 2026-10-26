@@ -10,4 +10,4 @@ Include what you found, how to reproduce it and what an attacker could achieve. 
 
 ## Scope
 
-Especially relevant: escaping the runner sandbox, reaching the network or the host from inside it, extracting API keys from the key proxy, forging test results or the event log, bypassing the clean-room separation, and OAuth/MCP authorization flaws. Our own attack tests are in `angriffe/` and documented in `docs/angriffstests.md`.
+Especially relevant: escaping the runner sandbox, reaching the network or the host from inside it, extracting API keys from the key proxy, forging test results or the event log, bypassing the clean-room separation, and OAuth/MCP authorization flaws. Our own attack tests are in `attacks/` and documented in `docs/angriffstests.md`.

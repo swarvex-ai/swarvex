@@ -1,6 +1,6 @@
 # Angriffstests S1–S10 (Machbarkeitsnachweis P6)
 
-Durchgeführt am 24.10.2026 gegen den echten Aufbau: Plattform-VM, Mitstreiter-VM mit Runner, rootless Podman, Schlüssel-Proxy, Modell Qwen3.8 Flash Next. Die Rohprotokolle liegen in `angriffe/ergebnisse/`, die Skripte in `angriffe/`.
+Durchgeführt am 24.10.2026 gegen den echten Aufbau: Plattform-VM, Mitstreiter-VM mit Runner, rootless Podman, Schlüssel-Proxy, Modell Qwen3.8 Flash Next. Die Rohprotokolle liegen in `attacks/ergebnisse/`, die Skripte in `attacks/`.
 
 **Aufbau der Tests:** Der Runner hat einen Modus `angriffstest`. Er startet Proxy und Sandbox mit **genau denselben Einstellungen** wie bei einer echten Aufgabe, führt aber statt des Agenten ein Angriffsskript aus. Das entspricht einem kompromittierten, voll gehorsamen Agenten bzw. bösartigem Projektcode. Die Angriffe von außen (`aussen.py`) nutzen die echte Anmeldung des Mitstreiters und umgehen den Runner.
 

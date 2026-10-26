@@ -5,10 +5,10 @@ echte Anmeldung (Refresh-Token wird rotiert und zurückgeschrieben).
 Jede Zeile: "Sx BESTANDEN|GESCHEITERT …" – BESTANDEN heißt: der Angriff ist misslungen."""
 import base64, json, os, ssl, time, urllib.error, urllib.parse, urllib.request, hmac, hashlib
 
-ZUGANG = os.path.expanduser("~/.config/swarvex/zugang.json")
+ZUGANG = os.path.expanduser("~/.config/swarvex/access.json")
 z = json.load(open(ZUGANG))
-BASIS = z["plattform"]
-ctx = ssl.create_default_context(cafile=z["ca_pfad"])
+BASIS = z["platform"]
+ctx = ssl.create_default_context(cafile=z["ca_path"])
 
 def anfrage(methode, pfad, daten=None, kopf=None, form=False):
     kopf = dict(kopf or {})
@@ -46,36 +46,36 @@ def nein(nr, text): print(f"{nr} GESCHEITERT {text}  <<<<<<")
 
 t = tokens()
 tok = t["access_token"]
-s, _ = mcp(tok, "kennzahlen", {"projekt": "angriffstest"})
+s, _ = mcp(tok, "metrics", {"project": "angriffstest"})
 print(f"Kontrolle: echtes Token funktioniert → {s}")
 
 # ---------- S7: Tokens ----------
-s, _ = mcp("", "kennzahlen", {"projekt": "angriffstest"})
+s, _ = mcp("", "metrics", {"project": "angriffstest"})
 ok("S7", "ohne Token: 401") if s == 401 else nein("S7", f"ohne Token: {s}")
-s, _ = mcp("Unsinn.Unsinn.Unsinn", "kennzahlen", {"projekt": "angriffstest"})
+s, _ = mcp("Unsinn.Unsinn.Unsinn", "metrics", {"project": "angriffstest"})
 ok("S7", "Fantasie-Token: 401") if s == 401 else nein("S7", f"Fantasie-Token: {s}")
 kopf, nutz, sig = tok.split(".")
 claims = json.loads(base64.urlsafe_b64decode(nutz + "=="))
 claims["sub"] = "1"  # sich als molty (Lead von rend-and-run-test) ausgeben
 gefaelscht = kopf + "." + base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=") + "." + sig
-s, _ = mcp(gefaelscht, "kennzahlen", {"projekt": "rend-and-run-test"})
+s, _ = mcp(gefaelscht, "metrics", {"project": "rend-and-run-test"})
 ok("S7", "Token mit gefälschtem Nutzer (sub=molty): 401") if s == 401 else nein("S7", f"gefälschter Nutzer akzeptiert: {s}")
 kopf_none = base64.urlsafe_b64encode(json.dumps({"alg": "none", "typ": "JWT"}).encode()).decode().rstrip("=")
-s, _ = mcp(kopf_none + "." + nutz + ".", "kennzahlen", {"projekt": "angriffstest"})
+s, _ = mcp(kopf_none + "." + nutz + ".", "metrics", {"project": "angriffstest"})
 ok("S7", "Token mit alg=none: 401") if s == 401 else nein("S7", f"alg=none akzeptiert: {s}")
 if t.get("id_token"):
-    s, _ = mcp(t["id_token"], "kennzahlen", {"projekt": "angriffstest"})
+    s, _ = mcp(t["id_token"], "metrics", {"project": "angriffstest"})
     ok("S7", "ID-Token statt Access-Token (falsche Zielgruppe): 401") if s == 401 else nein("S7", f"ID-Token akzeptiert: {s}")
-s, roh = anfrage("GET", "/aufgaben/1/snapshot", kopf={"authorization": f"Bearer {tok}"})
+s, roh = anfrage("GET", "/tasks/1/snapshot", kopf={"authorization": f"Bearer {tok}"})
 ok("S7", f"Snapshot einer fremden/abgeschlossenen Aufgabe verweigert ({s})") if s in (401, 403) else nein("S7", f"Snapshot ohne Reservierung geliefert: {s}")
-s, roh = mcp(tok, "einreichung_bewerten", {"einreichung_id": 1, "urteil": "ablehnen", "begruendung": "Sabotage"})
+s, roh = mcp(tok, "review_submission", {"submission_id": 1, "verdict": "reject", "reason": "Sabotage"})
 ok("S7", "Lead-Werkzeug in fremdem Projekt abgewiesen") if s == "fehler" or (isinstance(s, int) and s >= 400) else nein("S7", f"fremde Einreichung bewertet: {roh[:120]}")
 
 # ---------- S5: verbotene Pfade direkt an der Plattform (Runner umgangen) ----------
-s, roh = mcp(tok, "aufgabe_anlegen", {"projekt": "angriffstest", "titel": "Pfadtest", "beschreibung": "Nur game/erlaubt/** darf geändert werden",
-                                       "stufe": "B", "faehigkeiten": ["test"], "pfade": ["game/erlaubt/**"], "akzeptanz": ["-"], "lease_minuten": 10})
+s, roh = mcp(tok, "create_task", {"project": "angriffstest", "title": "Pfadtest", "description": "Nur game/erlaubt/** darf geändert werden",
+                                       "level": "B", "capabilities": ["test"], "paths": ["game/erlaubt/**"], "acceptance": ["-"], "lease_minutes": 10})
 aid = json.loads(roh)["id"]
-mcp(tok, "aufgabe_reservieren", {"aufgabe_id": aid})
+mcp(tok, "reserve_task", {"task_id": aid})
 def patch(pfad):
     return f"diff --git a/{pfad} b/{pfad}\nnew file mode 100644\n--- /dev/null\n+++ b/{pfad}\n@@ -0,0 +1 @@\n+boese\n"
 faelle = {
@@ -86,17 +86,17 @@ faelle = {
     "zu groß (> 500 Zeilen)": f"diff --git a/game/erlaubt/gross.gd b/game/erlaubt/gross.gd\nnew file mode 100644\n--- /dev/null\n+++ b/game/erlaubt/gross.gd\n@@ -0,0 +1,600 @@\n" + "+x\n" * 600,
 }
 for name, p in faelle.items():
-    s, roh = mcp(tok, "ergebnis_einreichen", {"aufgabe_id": aid, "patch": p, "zusammenfassung": "Angriff", "rechte_versichert": True})
-    abgewiesen = s == "ok" and "abgewiesen" in roh
+    s, roh = mcp(tok, "submit_result", {"task_id": aid, "patch": p, "summary": "Angriff", "rights_confirmed": True})
+    abgewiesen = s == "ok" and "rejected" in roh
     ok("S5", f"abgewiesen: {name}") if abgewiesen else nein("S5", f"angenommen: {name} → {roh[:120]}")
-s, roh = mcp(tok, "ergebnis_einreichen", {"aufgabe_id": aid, "patch": patch("game/erlaubt/ok.gd"), "zusammenfassung": "Kontrolle", "rechte_versichert": True})
-print(f"Kontrolle: erlaubter Patch → {'angenommen' if 'einreichung_id' in roh else roh[:120]}")
+s, roh = mcp(tok, "submit_result", {"task_id": aid, "patch": patch("game/erlaubt/ok.gd"), "summary": "Kontrolle", "rights_confirmed": True})
+print(f"Kontrolle: erlaubter Patch → {'angenommen' if 'submission_id' in roh else roh[:120]}")
 
 # ---------- S8: Prüfergebnis fälschen ----------
 def pruef(pfad, sig, zeit):
-    return anfrage("POST", pfad, b'{"ergebnis":"ok","bericht":"alles gruen (gefaelscht)"}', {"x-zeit": zeit, "x-signatur": sig})
-eid = json.loads(roh).get("einreichung_id", 1)
-pfad = f"/pruefstrasse/{eid}/ergebnis"
+    return anfrage("POST", pfad, b'{"result":"pass","report":"alles gruen (gefaelscht)"}', {"x-time": zeit, "x-signature": sig})
+eid = json.loads(roh).get("submission_id", 1)
+pfad = f"/pipeline/{eid}/result"
 s, _ = pruef(pfad, "", str(int(time.time() * 1000)))
 ok("S8", "ohne Signatur: 401") if s == 401 else nein("S8", f"ohne Signatur: {s}")
 s, _ = pruef(pfad, "0" * 64, str(int(time.time() * 1000)))
@@ -106,5 +106,5 @@ s, _ = pruef(pfad, falsch, str(int(time.time() * 1000)))
 ok("S8", "mit geratenem Geheimnis signiert: 401") if s == 401 else nein("S8", f"geratenes Geheimnis: {s}")
 s, _ = pruef(pfad, "0" * 64, str(int(time.time() * 1000) - 3600_000))
 ok("S8", "veralteter Zeitstempel (Wiederholung): 401") if s == 401 else nein("S8", f"alter Zeitstempel: {s}")
-s, _ = anfrage("GET", "/pruefstrasse/offen", kopf={"authorization": f"Bearer {tok}"})
+s, _ = anfrage("GET", "/pipeline/pending", kopf={"authorization": f"Bearer {tok}"})
 ok("S8", "Prüfstraßen-Liste mit Mitstreiter-Token verweigert") if s == 401 else nein("S8", f"Prüfstraßen-Liste: {s}")

@@ -38,7 +38,7 @@ echo "   (Kontrolle: Proxy mit Token erreichbar → $(curl -s -o /dev/null -w "%
 
 # S3 – Home und Daten des Runner-Nutzers.
 [ -e /home/runner ] && nein S3 "/home/runner sichtbar" || ok S3 "/home/runner nicht vorhanden"
-gefunden=$(find / -xdev \( -name zugang.json -o -name "*.pem" -path "*swarvex*" -o -name id_ed25519 \) 2>/dev/null | head -3)
+gefunden=$(find / -xdev \( -name zugang.json -o -name access.json -o -name "*.pem" -path "*swarvex*" -o -name id_ed25519 \) 2>/dev/null | head -3)
 [ -z "$gefunden" ] && ok S3 "keine Zugangsdaten/Schlüsseldateien auffindbar" || nein S3 "gefunden: $gefunden"
 echo "   Einhängepunkte (ohne proc/sys/dev):"; grep -vE " /(proc|sys|dev)" /proc/mounts | awk '{print "     "$2" "$4}'
 

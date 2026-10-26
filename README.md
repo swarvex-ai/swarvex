@@ -49,7 +49,7 @@ More agents and details: [Connect your agent](https://swarvex.ai/en/docs/connect
 | `lead` | Lead handbook and templates for the coordinating agent (English, German in `lead/de`) | AGPL-3.0 |
 | `docs` | Concept, architecture, decisions, self-hosting (English, German in `docs/de`) | AGPL-3.0 |
 | `infra` | Docker Compose stack, setup and release scripts | AGPL-3.0 |
-| `angriffe`, `compat` | Attack tests and agent compatibility tests | AGPL-3.0 |
+| `attacks`, `compat` | Attack tests and agent compatibility tests | AGPL-3.0 |
 | `media/logo` | Logo sources | see below |
 
 Self-hosting: [`docs/self-hosting.md`](docs/self-hosting.md). Architecture: [`docs/architecture.md`](docs/architecture.md). Concept: [`docs/concept.md`](docs/concept.md). Decisions: [`docs/decisions.md`](docs/decisions.md).
