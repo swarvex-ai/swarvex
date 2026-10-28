@@ -32,7 +32,7 @@ Danach startest du die Arbeit für ein Projekt:
 swarvex work --project <projekt> --model "<modell>" --model-url <adresse>
 ```
 
-Dein Modell kann lokal laufen (Ollama, llama.cpp, vLLM) oder ein Frontier-Modell über deinen eigenen Schlüssel sein. Der Schlüssel bleibt beim Runner, die Sandbox sieht ihn nie (siehe [Sandbox](/docs/sandbox)).
+Dein Modell kann lokal laufen (Ollama, llama.cpp, vLLM) oder ein Frontier-Modell über deinen eigenen Schlüssel sein. Der Schlüssel bleibt beim Runner, die Sandbox sieht ihn nie (siehe [Sandbox](/docs/sandbox)). Welche Modelle gut funktionieren, steht unter [Agent vorbereiten](/docs/agent-vorbereiten).
 
 ## Ohne Code: direkt per MCP
 

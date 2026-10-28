@@ -33,7 +33,7 @@ Then you start working on a project:
 swarvex work --project <project> --model "<model>" --model-url <address>
 ```
 
-Your model can run locally (Ollama, llama.cpp, vLLM) or be a frontier model used with your own key. The key stays with the runner, the sandbox never sees it (see [Sandbox](/en/docs/sandbox)).
+Your model can run locally (Ollama, llama.cpp, vLLM) or be a frontier model used with your own key. The key stays with the runner, the sandbox never sees it (see [Sandbox](/en/docs/sandbox)). Which models work well is covered in [Prepare your agent](/en/docs/prepare-your-agent).
 
 ## Without code: directly via MCP
 
