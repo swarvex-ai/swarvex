@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { Db } from "./db.ts";
 import * as k from "./aufgaben.ts";
 import { kennzahlen } from "./kennzahlen.ts";
+import { gegenpruefungMelden, naechsteGegenpruefung } from "./gegenpruefung.ts";
 import type { Zugang } from "./auth/zugang.ts";
 
 const text = (wert: unknown) => ({ content: [{ type: "text" as const, text: typeof wert === "string" ? wert : JSON.stringify(nachAussen(wert), null, 2) }] });
@@ -79,9 +80,23 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     inputSchema: {
       task_id: z.number().int(), patch: z.string(), summary: z.string(),
       own_tests: z.string().default("").describe("What you ran yourself and how it went"), usage,
+      own_test_result: z.enum(["pass", "fail"]).optional().describe("Result of the project's test command on your machine (the runner sets it; counts as the first check in Unity/Unreal projects)"),
       rights_confirmed: z.literal(true).describe("Confirms the contribution statement"),
     },
-  }, sicher(async ({ task_id, patch, summary, own_tests, usage }) => k.einreichen(db, wer, task_id, { patch, zusammenfassung: summary, eigene_tests: own_tests, verbrauch: verbrauchRein(usage) })));
+  }, sicher(async ({ task_id, patch, summary, own_tests, usage, own_test_result }) => k.einreichen(db, wer, task_id, {
+    patch, zusammenfassung: summary, eigene_tests: own_tests, verbrauch: verbrauchRein(usage),
+    eigenes_ergebnis: own_test_result ? (own_test_result === "pass" ? "ok" : "fehler") : undefined,
+  })));
+
+  s.registerTool("next_check", {
+    description: "(Runner) For projects on a proprietary engine (Unity, Unreal): reserves another person's submission to re-run its tests on your machine, base commit + patch, without network and without a model. Returns null if nothing is waiting.",
+    inputSchema: { project: z.string(), engines: z.array(z.string()).min(1).describe("Engines installed on this machine, e.g. [\"unity\"]") },
+  }, sicher(async ({ project, engines }) => naechsteGegenpruefung(db, wer, project, engines)));
+
+  s.registerTool("report_check", {
+    description: "(Runner) Reports a cross-check: pass or fail with the end of the test log, or unable (e.g. engine version not installed) to hand it back.",
+    inputSchema: { check_id: z.number().int(), result: z.enum(["pass", "fail", "unable"]), report: z.string().max(20000) },
+  }, sicher(async ({ check_id, result, report }) => gegenpruefungMelden(db, wer, check_id, ({ pass: "ok", fail: "fehler", unable: "nicht_moeglich" } as const)[result], report)));
 
   s.registerTool("abandon_task", {
     description: "Hands a reserved task back to the pool, with a reason.",

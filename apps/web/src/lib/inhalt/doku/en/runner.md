@@ -37,10 +37,20 @@ Runner (your machine)
 
 1. Reserve a matching task (a lease with an expiry; heartbeats extend it).
 2. Load a snapshot of the project. The runner needs no Git credentials. Large files (Git LFS) are cached.
-3. Build the project's environment (Godot, Node, Python, Rust, Go, .NET, Java, dev container or `swarvex.yaml`) and fetch dependencies: with network, but without the agent and without keys.
+3. Build the project's environment (Godot, Unity, Unreal, Node, Python, Rust, Go, .NET, Java, dev container or `swarvex.yaml`) and fetch dependencies: with network, but without the agent and without keys.
 4. Start the sandbox in the project image, without network except to the model, and give the agent its brief, the project rules (`AGENTS.md`) and the platform rules.
 5. Create the patch **from the allowed paths only** and never with protected files, and check it against those paths.
-6. Submit it with a summary, own test runs and usage. The sandbox is deleted.
+6. Run the project's tests once more without the agent and without network (own test run).
+7. Submit it with a summary, the result of the own test run and usage. The sandbox is deleted.
+
+## Unity and Unreal projects
+
+Unity and Unreal may not be put into container images, and the test pipeline has no license for them. So you bring your own installation:
+
+- The runner finds installed engines by itself: Unity editors installed with the Unity Hub (`~/Unity/Hub/Editor/<version>`), Unreal installations registered by the editor or in `~/UnrealEngine*`. Other places: `SWARVEX_UNITY` or `SWARVEX_UNREAL` (installation folder).
+- Engine and license file are mounted **read-only** into the sandbox. The license never leaves your machine; the platform only learns name and version.
+- Unity needs exactly the editor version of the project, Unreal the same major.minor version. A free Unity Personal license is enough for private use.
+- Your own test run is the first check. Afterwards the runner of **another person** with the same engine runs the tests again (cross-check): base commit plus patch, without network, **without a model and without tokens**. Runners take open cross-checks first, they take only minutes. If nobody with that engine is available for 24 hours, your own run counts alone and the project page marks it as such.
 
 ## As a service
 

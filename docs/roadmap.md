@@ -63,7 +63,7 @@ Make the end-to-end run robust: complete tools, leases, spot checks, runners for
 - Runner: schedule, budget guard, service mode
 - Runner: more agent programs (Claude Code, Codex, Hermes)
 - Runner for macOS and Windows
-- Runner: proprietary engines from the contributor's machine (Unity, Unreal; E-31)
+- ~~Runner: proprietary engines from the contributor's machine (Unity, Unreal; E-31)~~ (built: own test run and cross-check; still to test with a real Unity and Unreal)
 - One-line installer and release pipeline
 - Spot checks on platform hardware
 - Operations: production compose, backups, monitoring

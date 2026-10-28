@@ -31,6 +31,18 @@ func umgebungBefehl(args []string) {
 	u, err := umgebung.Ermitteln(wurzel)
 	pruefen(err)
 	fmt.Printf("Environment: %s (source: %s)\n", u.Vorlage, u.Quelle)
+	if u.Engine != nil {
+		i, err := engineFuer(u, enginesFinden())
+		if err != nil {
+			fmt.Printf("Engine:      %s, %v\n", u.Engine, err)
+			if !*nurZeigen {
+				os.Exit(1)
+			}
+		} else {
+			fmt.Printf("Engine:      %s from this machine (read-only, license stays here)\n", i)
+			u.Einbinden = engineArgs(i)
+		}
+	}
 	if u.Image != "" {
 		fmt.Printf("Image:       %s\n", u.Image)
 	}

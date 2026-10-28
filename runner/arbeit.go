@@ -125,6 +125,12 @@ func arbeitenBefehl(args []string) {
 	m := &mcpClient{basis: z.Plattform, token: token, http: httpClient(z.CAPfad)}
 	pruefen(m.initialisieren())
 
+	// 0. Wartet eine Engine-Einreichung auf Gegenprüfung, kommt sie zuerst: schnell, ohne Modell, ohne Tokens.
+	// Danach endet dieser Aufruf; im Dauerbetrieb geht es mit der nächsten Runde weiter.
+	if *nur == 0 && gegenpruefenWennMoeglich(basis, m, z, *projekt) {
+		return
+	}
+
 	// 1. Aufgabe wählen und reservieren.
 	id := *nur
 	if id == 0 {
@@ -185,7 +191,7 @@ func arbeitenBefehl(args []string) {
 	gestoppt()
 
 	// 2b. Umgebung des Projekts: erkennen, Image bauen, Abhängigkeiten laden (mit Netz, ohne Agent und Schlüssel).
-	u, err := umgebung.Ermitteln(arbeitsbaum)
+	u, err := umgebungErmitteln(arbeitsbaum)
 	if err != nil {
 		abbrechen("environment: " + err.Error())
 	}
@@ -251,15 +257,27 @@ func arbeitenBefehl(args []string) {
 		abbrechen("patch violates the task: " + strings.Join(fehler, "; "))
 	}
 
+	// 5b. Eigener Testlauf (ohne Agent, ohne Netz). Bei Unity/Unreal ist das die erste Prüfung.
+	m.werkzeug("report_progress", map[string]any{"task_id": id, "note": "running the project's tests"}, nil)
+	testErgebnis, testBericht := eigenerTestlauf(basis, u, image, arbeitsbaum, cache)
+	gestoppt()
+	if testErgebnis != "" {
+		fmt.Printf("Own test run: %s\n", testErgebnis)
+	}
+
 	// 6. Einreichen (mit Beitragserklärung).
 	if neu, err := zugriffstoken(z); err == nil {
 		m.token = neu
 	}
-	var ergebnis map[string]any
-	pruefen(m.werkzeug("submit_result", map[string]any{
+	einreichung := map[string]any{
 		"task_id": id, "patch": patch, "summary": zusammenfassungAus(protokoll),
-		"own_tests": "see the agent's sandbox log", "usage": verbrauch, "rights_confirmed": true,
-	}, &ergebnis))
+		"own_tests": kuerzen(testBericht, 19000), "usage": verbrauch, "rights_confirmed": true,
+	}
+	if testErgebnis != "" {
+		einreichung["own_test_result"] = testErgebnis
+	}
+	var ergebnis map[string]any
+	pruefen(m.werkzeug("submit_result", einreichung, &ergebnis))
 	fmt.Println("Submitted:", ergebnis)
 	// Arbeitsbaum (mit LFS-Kopien bis über 1 GB) aufräumen; Protokolle (agent.log, proxy.log) bleiben.
 	os.RemoveAll(arbeitsbaum)
@@ -485,7 +503,7 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 		rest = max(int(time.Until(frist).Seconds()), 1)
 	}
 	// Agent im Projekt-Image: kein Netz außer dem Schlüssel-Proxy, Projekt unter /work, Caches unter /cache.
-	sandboxArgs := append(containerArgs(sandboxName, baum, cache, u.Ordner, rest), "--network", netz,
+	sandboxArgs := append(containerArgs(sandboxName, baum, cache, u, rest), "--network", netz,
 		"-v", konfigPfad+":/konfig/opencode.json:ro,Z",
 		"-e", "OPENCODE_CONFIG=/konfig/opencode.json", "-e", "SWARVEX_TOKEN="+tok,
 		"-e", "SWARVEX_PROXY=http://"+proxyName+":8080",

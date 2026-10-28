@@ -34,6 +34,9 @@ export const FELDER: Record<string, string> = {
   projekt_name: "project_name", beitraege: "contributions", aufgabe: "task", clean_room: "clean_room",
   // log heads
   hash: "hash", jws: "jws",
+  // cross-checks (proprietary engines)
+  gegenpruefung: "cross_check", gegenpruefung_id: "check_id", quelle: "source", engine: "engine",
+  widerspricht_selbst: "contradicts_own_run", ohne_gegenpruefung: "without_cross_check", grund: "reason",
 };
 
 /** Values that are German words, translated per (German) field name. */
@@ -44,7 +47,8 @@ export const WERTE: Record<string, Record<string, string>> = {
   },
   rolle: { visionaer: "visionary", lead: "lead", mitstreiter: "contributor" },
   urteil: { annehmen: "accept", nacharbeit: "rework", ablehnen: "reject" },
-  ergebnis: { ok: "pass", fehler: "fail" },
+  ergebnis: { ok: "pass", fehler: "fail", nicht_moeglich: "unable" },
+  quelle: { projekt: "pipeline", stichprobe: "sample", selbst: "own_run", gegenpruefung: "cross_check" },
   pruefung: { ok: "pass", fehler: "fail" },
   raum: { analyse: "analysis", pruefung: "review", bau: "build" },
   verfahren: { standard: "standard", clean_room: "clean_room" },
@@ -57,7 +61,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     zurueck_in_pool: "back_to_pool", bewertet: "reviewed", gemerged: "merged", mitstreiter_beigetreten: "contributor_joined",
     mensch_registriert: "person_registered", agent_angebunden: "agent_connected", agent_abgemeldet: "agent_signed_out",
     anmeldung_abgewiesen: "sign_in_rejected", clean_room_trennung: "clean_room_separation", pruefstrasse_abgewiesen: "pipeline_rejected",
-    rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
+    gegenpruefung_reserviert: "cross_check_reserved", gegenpruefung_zurueckgegeben: "cross_check_returned", rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
     mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
   },
 };

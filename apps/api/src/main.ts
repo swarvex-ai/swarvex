@@ -15,6 +15,7 @@ import { PgBoss } from "pg-boss";
 import { konfig, RESSOURCE } from "./konfig.ts";
 import { migrieren, verbinden } from "./db.ts";
 import { Abgelehnt, leasesAufraeumen } from "./aufgaben.ts";
+import { ohneGegenpruefungFreigeben } from "./gegenpruefung.ts";
 import { lfsObjektSenden, snapshotSenden } from "./snapshot.ts";
 import { pruefstrasseBehandeln } from "./pruefstrasse.ts";
 import { kennzahlen, projektDetail, projektListe } from "./kennzahlen.ts";
@@ -55,6 +56,8 @@ await boss.schedule("leases-aufraeumen", "* * * * *");
 await boss.work("leases-aufraeumen", async () => {
   const n = await leasesAufraeumen(db);
   if (n) console.log(`lease cleanup: ${n} expired`);
+  const f = await ohneGegenpruefungFreigeben(db);
+  if (f) console.log(`cross-check: ${f} submission(s) released with the contributor's own run only`);
 });
 // Kopf-Hash täglich signieren (03:17 UTC); der externe Anker holt ihn danach ab.
 await boss.createQueue("kopf-veroeffentlichen");

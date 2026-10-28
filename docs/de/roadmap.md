@@ -64,7 +64,7 @@ Den Durchstich belastbar machen: vollständige Werkzeuge, Leases, Stichproben, R
 - Runner: Zeitplan, Budgetwächter, Dienstbetrieb  `umsetzung runner`
 - Runner: weitere Engines (Claude Code, Codex, Hermes)  `umsetzung runner`
 - Runner für macOS und Windows  `umsetzung runner`
-- Runner: proprietäre Engines vom Rechner des Beitragenden (Unity, Unreal; E-31)  `umsetzung runner`
+- ~~Runner: proprietäre Engines vom Rechner des Beitragenden (Unity, Unreal; E-31)~~ (gebaut: eigener Testlauf und Gegenprüfung; Test mit echtem Unity und Unreal steht aus)  `umsetzung runner`
 - Installer-Einzeiler und Release-Pipeline  `umsetzung runner sicherheit`
 - Stichproben-Prüfung auf Plattform-Hardware  `umsetzung pruefstrasse sicherheit`
 - Betrieb: Compose-Produktion, Backups, Monitoring  `umsetzung kern`

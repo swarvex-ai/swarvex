@@ -5,7 +5,7 @@
 //  1. swarvex.yaml im Projekt (alles frei wählbar: Image, Einrichten, Bauen, Testen, Ordner)
 //  2. Dev Container (.devcontainer/devcontainer.json oder .devcontainer.json): Image bzw. Dockerfile
 //     und onCreate-/updateContent-/postCreateCommand
-//  3. Erkennung an typischen Dateien (Godot, Node, Python, Rust, Go, .NET, Java)
+//  3. Erkennung an typischen Dateien (Godot, Unity, Unreal, Node, Python, Rust, Go, .NET, Java)
 //  4. allgemeine Linux-Umgebung ohne automatische Tests
 //
 // Ablauf beim Arbeiten und Prüfen:
@@ -43,6 +43,8 @@ type Umgebung struct {
 	Testen     string   // Shell: Tests (ohne Netz); leer = keine automatischen Tests
 	Hinweis    string   // kurzer Satz für den Auftrag an den Agenten
 	Geschuetzt []string // zusätzliche, projekteigene geschützte Pfade (z. B. tests/vertraege/**)
+	Engine     *Engine  // proprietäre Engine vom Rechner des Mitstreiters (Unity, Unreal), sonst nil
+	Einbinden  []string // nur zur Laufzeit: zusätzliche Podman-Argumente (Runner: Engine und Lizenz, nur lesend)
 }
 
 // Geschuetzt: Pfade, die Beiträge nie ändern dürfen (nur Lead bzw. Visionär direkt im Repo).
@@ -343,6 +345,14 @@ func vorlagen() map[string]func(string) Umgebung {
 	return map[string]func(string) Umgebung{
 		"godot": func(w string) Umgebung { return godot(w, "") }, "node": node, "python": python, "rust": rust,
 		"go": golang, "dotnet": dotnet, "java-maven": maven, "java-gradle": gradle, "default": standard,
+		"unity": func(w string) Umgebung {
+			ordner, _ := unityProjekt(w)
+			return unity(w, ordner)
+		},
+		"unreal": func(w string) Umgebung {
+			uproject, _ := unrealProjekt(w)
+			return unreal(w, uproject)
+		},
 	}
 }
 
@@ -370,6 +380,12 @@ func erkennen(w string) Umgebung {
 		if gibt(w, kandidat) {
 			return godot(w, filepath.Dir(kandidat))
 		}
+	}
+	if ordner, ok := unityProjekt(w); ok {
+		return unity(w, ordner)
+	}
+	if uproject, ok := unrealProjekt(w); ok {
+		return unreal(w, uproject)
 	}
 	switch {
 	case gibt(w, "package.json"):

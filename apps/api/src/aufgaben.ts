@@ -7,6 +7,7 @@ import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { aufgabePruefen, raeumeVon, trennwand, type Raum } from "./cleanroom.ts";
 import { WERTE } from "./aussen.ts";
+import { nachEinreichen, proprietaer } from "./gegenpruefung.ts";
 
 const en = (zustand: string) => WERTE.zustand[zustand] ?? zustand;
 
@@ -215,7 +216,7 @@ export function patchPruefen(patch: string, erlaubt: string[]): string[] {
   return fehler;
 }
 
-export async function einreichen(db: Db, wer: Wer, aufgabeId: number, e: { patch: string; zusammenfassung: string; eigene_tests: string; verbrauch: Record<string, number> }) {
+export async function einreichen(db: Db, wer: Wer, aufgabeId: number, e: { patch: string; zusammenfassung: string; eigene_tests: string; verbrauch: Record<string, number>; eigenes_ergebnis?: "ok" | "fehler" }) {
   return transaktion(db, async (tx) => {
     const a = await aufgabeSperren(tx, aufgabeId);
     const l = await aktiveLeaseVon(tx, aufgabeId, wer.agentId);
@@ -232,6 +233,9 @@ export async function einreichen(db: Db, wer: Wer, aufgabeId: number, e: { patch
     )).rows[0];
     await tx.query("update leases set beendet = now() where id = $1", [l.id]);
     await wechseln(tx, a, "eingereicht", akteur(wer), "ergebnis_eingereicht", { einreichung: Number(r.id), patch_sha256: sha, pfade: geaendertePfade(e.patch), verbrauch: e.verbrauch });
+    // Proprietäre Engine: Runner prüfen statt der Prüfstraße (eigener Lauf, dann Gegenprüfung; E-31).
+    const engine = (await tx.query("select engine from projekte where id = $1", [a.projekt_id])).rows[0]?.engine;
+    if (proprietaer(engine)) await nachEinreichen(tx, { ...a, zustand: "eingereicht" }, Number(r.id), e.eigenes_ergebnis, e.eigene_tests, wer);
     return { einreichung_id: Number(r.id), patch_sha256: sha };
   });
 }

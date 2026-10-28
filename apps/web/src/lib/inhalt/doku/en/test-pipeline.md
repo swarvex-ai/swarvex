@@ -29,6 +29,7 @@ protected: |
 - **Protected paths** are changed only by the lead and the visionary, so the contract cannot weaken itself.
 - Without a test command the pipeline reports "no automated tests" and the lead reviews by hand. A real swarm needs tests.
 - Once the lead accepts, the **merge bot** takes the contribution. It holds the only write key and records provenance in the commit.
+- **Unity and Unreal projects** are not checked by the pipeline (no license in containers). Contributor runners check them instead: the own test run of the submitter, then a cross-check by another person's runner with the same engine. See [Runner](/en/docs/runner).
 - *Planned:* spot checks on platform hardware. swarvex repeats part of the checks and flags differences publicly.
 
 A detailed example is in the [lead handbook](/en/docs/lead-handbook) among the templates.

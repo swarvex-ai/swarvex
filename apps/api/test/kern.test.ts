@@ -4,6 +4,7 @@ import { migrieren, verbinden, type Db } from "../src/db.ts";
 import { ketteVerifizieren } from "../src/ereignisse.ts";
 import * as k from "../src/aufgaben.ts";
 import { kennzahlen } from "../src/kennzahlen.ts";
+import * as g from "../src/gegenpruefung.ts";
 
 let db: Db;
 const lead = { menschId: 0, agentId: 0 };
@@ -314,5 +315,77 @@ describe("Englische Schnittstelle", () => {
     sammeln(nachAussen(proben));
     expect([...fremd]).toEqual([]);
     expect(JSON.stringify(nachAussen(proben))).not.toMatch(/"(offen|reserviert|angenommen|annehmen|visionaer|mitstreiter|analyse|bau)"/);
+  });
+});
+
+describe("Gegenprüfung bei proprietären Engines (E-31)", () => {
+  const PATCH_UNITY = `diff --git a/Assets/Scripts/Neu.cs b/Assets/Scripts/Neu.cs
+new file mode 100644
+--- /dev/null
++++ b/Assets/Scripts/Neu.cs
+@@ -0,0 +1 @@
++public class Neu {}
+`;
+  const unityAufgabe = async (titel: string) => {
+    await db.query(`insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,lead_modell,ziel)
+      values ('unity-test','Unity','V','k','Unity 6000.0.32f1','MIT','CC BY 4.0','http://x','Claude','Demo') on conflict do nothing`);
+    await db.query("insert into projekt_rollen values ((select id from projekte where slug='unity-test'), $1, 'lead') on conflict do nothing", [lead.menschId]);
+    return k.aufgabeAnlegen(db, lead, "unity-test", { ...neueAufgabe(titel), faehigkeiten: ["code.csharp"], pfade: ["Assets/Scripts/**"] });
+  };
+  const zustand = async (id: number) => (await db.query("select zustand from aufgaben where id = $1", [id])).rows[0].zustand;
+
+  it("eigener Lauf grün, Gegenprüfung durch einen anderen Menschen, dann Review", async () => {
+    const a = await unityAufgabe("Gegenprüfung grün");
+    await k.reservieren(db, mit, a.id);
+    const e: any = await k.einreichen(db, mit, a.id, { patch: PATCH_UNITY, zusammenfassung: "z", eigene_tests: "EditMode 12/12", verbrauch: {}, eigenes_ergebnis: "ok" });
+    expect(await zustand(a.id)).toBe("pruefung");
+    // Die Prüfstraße bekommt Engine-Projekte nicht; der Autor prüft nicht gegen; ohne passende Engine nichts.
+    expect(await g.naechsteGegenpruefung(db, mit, "unity-test", ["unity"])).toBeNull();
+    expect(await g.naechsteGegenpruefung(db, fremd, "unity-test", ["unreal"])).toBeNull();
+    const job: any = await g.naechsteGegenpruefung(db, fremd, "unity-test", ["unity"]);
+    expect(job).toMatchObject({ aufgabe_id: Number(a.id), einreichung_id: e.einreichung_id, patch: PATCH_UNITY });
+    // Reserviert: ein zweiter Runner bekommt dieselbe Einreichung nicht gleichzeitig.
+    const dritter = { menschId: lead.menschId, agentId: lead.agentId };
+    expect(await g.naechsteGegenpruefung(db, dritter, "unity-test", ["unity"])).toBeNull();
+    expect(await g.gegenpruefungAktiv(db, fremd.agentId, Number(a.id))).toBe(true);
+    await expect(g.gegenpruefungMelden(db, mit, job.gegenpruefung_id, "ok", "x")).rejects.toThrow(/not reserved for you/);
+    await g.gegenpruefungMelden(db, fremd, job.gegenpruefung_id, "ok", "EditMode 12/12 passed");
+    expect(await zustand(a.id)).toBe("geprueft_ok");
+    expect(await g.gegenpruefungAktiv(db, fremd.agentId, Number(a.id))).toBe(false);
+    const quellen = (await db.query("select quelle, ergebnis from pruefungen where einreichung_id = $1 order by id", [e.einreichung_id])).rows;
+    expect(quellen).toEqual([{ quelle: "selbst", ergebnis: "ok" }, { quelle: "gegenpruefung", ergebnis: "ok" }]);
+    await k.bewerten(db, lead, e.einreichung_id, "annehmen", "passt");
+  });
+
+  it("Gegenprüfung rot widerspricht dem eigenen Lauf: zurück in den Pool, im Protokoll vermerkt", async () => {
+    const a = await unityAufgabe("Gegenprüfung rot");
+    await k.reservieren(db, mit, a.id);
+    await k.einreichen(db, mit, a.id, { patch: PATCH_UNITY, zusammenfassung: "z", eigene_tests: "grün", verbrauch: {}, eigenes_ergebnis: "ok" });
+    const job: any = await g.naechsteGegenpruefung(db, fremd, "unity-test", ["unity"]);
+    // Erst „nicht möglich“ (falsche Version): gibt nur frei, dieselbe Person bekommt sie nicht noch einmal.
+    await g.gegenpruefungMelden(db, fremd, job.gegenpruefung_id, "nicht_moeglich", "6000.0.32f1 not installed");
+    expect(await zustand(a.id)).toBe("pruefung");
+    expect(await g.naechsteGegenpruefung(db, fremd, "unity-test", ["unity"])).toBeNull();
+    const zweiter: any = await g.naechsteGegenpruefung(db, lead, "unity-test", ["unity"]);
+    await g.gegenpruefungMelden(db, lead, zweiter.gegenpruefung_id, "fehler", "2 tests failed");
+    expect(await zustand(a.id)).toBe("offen");
+    const ev = (await db.query("select daten from ereignisse where art = 'pruefung_beendet' and bezug = $1 order by seq desc limit 1", [`aufgabe:${a.id}`])).rows[0].daten;
+    expect(ev).toMatchObject({ quelle: "gegenpruefung", ergebnis: "fehler", widerspricht_selbst: true });
+  });
+
+  it("eigener Lauf rot geht sofort zurück; ohne zweiten Runner gibt die Frist frei", async () => {
+    const a = await unityAufgabe("Selbst rot");
+    await k.reservieren(db, mit, a.id);
+    await k.einreichen(db, mit, a.id, { patch: PATCH_UNITY, zusammenfassung: "z", eigene_tests: "1 failed", verbrauch: {}, eigenes_ergebnis: "fehler" });
+    expect(await zustand(a.id)).toBe("offen");
+
+    const b = await unityAufgabe("Ohne Gegenprüfung");
+    await k.reservieren(db, mit, b.id);
+    const e: any = await k.einreichen(db, mit, b.id, { patch: PATCH_UNITY, zusammenfassung: "z", eigene_tests: "grün", verbrauch: {}, eigenes_ergebnis: "ok" });
+    expect(await g.ohneGegenpruefungFreigeben(db)).toBe(0);
+    await db.query("update einreichungen set eingereicht = now() - interval '25 hours' where id = $1", [e.einreichung_id]);
+    expect(await g.ohneGegenpruefungFreigeben(db)).toBe(1);
+    expect(await zustand(b.id)).toBe("geprueft_ok");
+    expect(await ketteVerifizieren(db)).toMatchObject({ ok: true });
   });
 });

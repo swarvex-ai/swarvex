@@ -205,6 +205,10 @@ func einePruefung(e einreichung) (bool, string) {
 		return false, "environment: " + err.Error()
 	}
 	fmt.Fprintf(&b, "Environment: %s (%s)\n", u.Vorlage, u.Quelle)
+	if u.Engine != nil {
+		// Proprietäre Engines prüfen die Runner der Mitstreiter (eigener Lauf + Gegenprüfung, E-31).
+		return false, b.String() + fmt.Sprintf("this project needs %s; the platform has contributor runners check it, not the test pipeline", u.Engine)
+	}
 	for _, zeile := range strings.Split(e.Patch, "\n") {
 		if teile := strings.Fields(strings.TrimPrefix(zeile, "diff --git ")); strings.HasPrefix(zeile, "diff --git ") && len(teile) == 2 {
 			for _, p := range teile {

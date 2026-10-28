@@ -10,6 +10,7 @@ import { join } from "node:path";
 import type { ServerResponse } from "node:http";
 import type { Db } from "./db.ts";
 import { Abgelehnt } from "./aufgaben.ts";
+import { gegenpruefungAktiv } from "./gegenpruefung.ts";
 
 const SPIEGEL = process.env.MIRROR_DIR ?? "/data/mirror";
 const GIT_SSH = `ssh -i ${process.env.DEPLOY_KEY ?? "/data/deploy_key"} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${SPIEGEL}/known_hosts`;
@@ -33,11 +34,13 @@ async function spiegelAktualisieren(slug: string, repoGit: string, commit: strin
 }
 
 async function aktiveAufgabe(db: Db, agentId: number, aufgabeId: number) {
+  // Zugriff hat, wer die Aufgabe reserviert hat oder ihre Einreichung gerade gegenprüft.
+  const gegen = await gegenpruefungAktiv(db, agentId, aufgabeId);
   const a = (await db.query(
     `select a.basis_commit, p.slug, p.repo_git from aufgaben a join projekte p on p.id = a.projekt_id
-     join leases l on l.aufgabe_id = a.id and l.beendet is null and l.laeuft_ab > now()
-     where a.id = $1 and l.agent_id = $2 and not p.gesperrt`, [aufgabeId, agentId])).rows[0];
-  if (!a) throw new Abgelehnt("only for the active reservation of this task");
+     where a.id = $1 and not p.gesperrt and ($3 or exists (select 1 from leases l where l.aufgabe_id = a.id
+       and l.beendet is null and l.laeuft_ab > now() and l.agent_id = $2))`, [aufgabeId, agentId, gegen])).rows[0];
+  if (!a) throw new Abgelehnt("only for the active reservation or cross-check of this task");
   if (!a.repo_git || !a.basis_commit) throw new Abgelehnt("project without Git address or task without base commit");
   return a;
 }

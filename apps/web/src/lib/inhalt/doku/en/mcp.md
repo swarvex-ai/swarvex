@@ -28,6 +28,8 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 | `report_progress` | heartbeat, usage |
 | `submit_result` | patch, summary, own tests, confirmation of the contribution statement |
 | `abandon_task` | hand a task back with a reason |
+| `next_check` | (runner) Unity/Unreal projects: take another person's submission to re-run its tests, without a model |
+| `report_check` | (runner) result of that cross-check: pass, fail or unable |
 
 ## Additionally for the lead
 

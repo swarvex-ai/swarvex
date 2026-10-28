@@ -66,6 +66,21 @@ func umgebungsImage(ctx context.Context, u umgebung.Umgebung, baum string, mitAg
 	return name, nil
 }
 
+// umgebungErmitteln: Umgebung des Projekts; verlangt es eine proprietäre Engine, wird die passende
+// Installation dieses Rechners eingebunden (sonst ein Fehler mit Anleitung).
+func umgebungErmitteln(wurzel string) (umgebung.Umgebung, error) {
+	u, err := umgebung.Ermitteln(wurzel)
+	if err != nil || u.Engine == nil {
+		return u, err
+	}
+	i, err := engineFuer(u, enginesFinden())
+	if err != nil {
+		return u, err
+	}
+	u.Einbinden = engineArgs(i)
+	return u, nil
+}
+
 // cacheOrdner: Paket-Caches je Projekt; bleiben zwischen Aufgaben erhalten.
 func cacheOrdner(projekt string) string {
 	ordner := filepath.Join(datenOrdner(), "cache", projekt)
@@ -74,12 +89,13 @@ func cacheOrdner(projekt string) string {
 }
 
 // containerArgs: gemeinsame, abgeschottete Einstellungen für Einrichten, Befehle und Agent.
-func containerArgs(name, baum, cache, arbeitsordner string, sekunden int) []string {
+func containerArgs(name, baum, cache string, u umgebung.Umgebung, sekunden int) []string {
 	args := []string{"run", "--rm", "--name", name, "--timeout", fmt.Sprint(sekunden),
 		"--cap-drop=ALL", "--security-opt", "no-new-privileges", "--read-only",
 		"--tmpfs", "/tmp:rw,exec,size=2g,mode=1777", "--tmpfs", "/home/agent:rw,exec,size=1g,mode=1777",
 		"--userns=keep-id:uid=1000,gid=1000", "--user", "1000:1000", "--memory", "4g", "--cpus", "3", "--pids-limit", "1024",
-		"-v", baum + ":/work:Z", "-v", cache + ":/cache:Z", "-w", filepath.Join("/work", arbeitsordner)}
+		"-v", baum + ":/work:Z", "-v", cache + ":/cache:Z", "-w", filepath.Join("/work", u.Ordner)}
+	args = append(args, u.Einbinden...)
 	for _, v := range umgebung.CacheVariablen {
 		args = append(args, "-e", v)
 	}
@@ -94,7 +110,7 @@ func einrichten(ctx context.Context, u umgebung.Umgebung, image, baum, cache, pr
 	ctx, stopp := context.WithTimeout(ctx, 20*time.Minute)
 	defer stopp()
 	name := "swarvex-setup-" + zufall(6)
-	args := append(containerArgs(name, baum, cache, u.Ordner, 1200), image, "sh", "-ec", u.Einrichten)
+	args := append(containerArgs(name, baum, cache, u, 1200), image, "sh", "-ec", u.Einrichten)
 	cmd := exec.CommandContext(ctx, "podman", args...)
 	cmd.Cancel = func() error { exec.Command("podman", "kill", name).Run(); return cmd.Process.Kill() }
 	cmd.WaitDelay = 10 * time.Second
@@ -109,7 +125,7 @@ func einrichten(ctx context.Context, u umgebung.Umgebung, image, baum, cache, pr
 // ohneNetz führt einen Befehl der Umgebung ohne jedes Netz aus (Bauen, Testen).
 func ohneNetz(ctx context.Context, u umgebung.Umgebung, image, baum, cache, befehl string, sekunden int) (string, error) {
 	name := "swarvex-cmd-" + zufall(6)
-	args := append(containerArgs(name, baum, cache, u.Ordner, sekunden), "--network", "none")
+	args := append(containerArgs(name, baum, cache, u, sekunden), "--network", "none")
 	args = append(args, image, "sh", "-ec", befehl)
 	cmd := exec.CommandContext(ctx, "podman", args...)
 	cmd.Cancel = func() error { exec.Command("podman", "kill", name).Run(); return cmd.Process.Kill() }

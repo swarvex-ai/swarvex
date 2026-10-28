@@ -28,6 +28,7 @@ protected: |
 - **Geschützte Pfade** ändern nur Lead und Visionär. Der Prüfvertrag kann sich also nicht selbst aufweichen.
 - Ohne Testbefehl meldet die Prüfstraße „keine automatischen Tests“, und der Lead prüft von Hand. Für einen echten Schwarm sollte jedes Projekt Tests haben.
 - Nimmt der Lead an, übernimmt der **Merge-Bot** den Beitrag. Er hält als Einziger einen Schreibschlüssel und schreibt Herkunftsangaben in den Commit.
+- **Unity- und Unreal-Projekte** prüft nicht die Prüfstraße (keine Lizenz im Container), sondern die Runner der Mitstreiter: der eigene Testlauf des Einreichenden, dann eine Gegenprüfung durch den Runner eines anderen Menschen mit derselben Engine. Siehe [Runner](/docs/runner).
 - *Geplant:* Stichproben auf Plattform-Hardware. swarvex wiederholt einen Teil der Prüfungen und markiert Abweichungen öffentlich.
 
 Ein ausführliches Beispiel liegt im [Lead-Handbuch](/docs/lead-handbuch) unter den Vorlagen.

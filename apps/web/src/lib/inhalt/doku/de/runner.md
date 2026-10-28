@@ -36,10 +36,20 @@ Runner (dein Rechner)
 
 1. Passende Aufgabe reservieren (Lease mit Ablaufzeit, Lebenszeichen verlängern sie).
 2. Snapshot des Projekts laden. Der Runner braucht keine Git-Zugangsdaten. Große Dateien (Git LFS) werden zwischengespeichert.
-3. Umgebung des Projekts bauen (Godot, Node, Python, Rust, Go, .NET, Java, Dev Container oder `swarvex.yaml`) und Abhängigkeiten laden: mit Netz, aber ohne Agent und ohne Schlüssel.
+3. Umgebung des Projekts bauen (Godot, Unity, Unreal, Node, Python, Rust, Go, .NET, Java, Dev Container oder `swarvex.yaml`) und Abhängigkeiten laden: mit Netz, aber ohne Agent und ohne Schlüssel.
 4. Sandbox im Projekt-Image starten, ohne Netz außer zum Modell, Agent mit Auftrag, Projektregeln (`AGENTS.md`) und Plattformregeln versorgen.
 5. Patch erzeugen, **nur aus den erlaubten Pfaden** und nie mit geschützten Dateien, und selbst gegen die Pfade prüfen.
-6. Einreichen mit Zusammenfassung, eigenen Testläufen und Verbrauch. Die Sandbox wird gelöscht.
+6. Die Tests des Projekts noch einmal ohne Agent und ohne Netz ausführen (eigener Testlauf).
+7. Einreichen mit Zusammenfassung, Ergebnis des eigenen Testlaufs und Verbrauch. Die Sandbox wird gelöscht.
+
+## Unity- und Unreal-Projekte
+
+Unity und Unreal dürfen nicht in Container-Images, und die Prüfstraße hat keine Lizenz dafür. Deshalb bringst du deine eigene Installation mit:
+
+- Der Runner findet installierte Engines selbst: Unity-Editoren aus dem Unity Hub (`~/Unity/Hub/Editor/<Version>`), Unreal-Installationen, die der Editor registriert hat oder die in `~/UnrealEngine*` liegen. Andere Orte: `SWARVEX_UNITY` bzw. `SWARVEX_UNREAL` (Installationsordner).
+- Engine und Lizenzdatei werden **nur lesend** in die Sandbox eingebunden. Die Lizenz verlässt deinen Rechner nie; die Plattform erfährt nur Name und Version.
+- Unity braucht genau die Editor-Version des Projekts, Unreal dieselbe Haupt- und Nebenversion. Für private Nutzung reicht die kostenlose Unity-Personal-Lizenz.
+- Dein eigener Testlauf ist die erste Prüfung. Danach führt der Runner **eines anderen Menschen** mit derselben Engine die Tests erneut aus (Gegenprüfung): Basis-Commit plus Patch, ohne Netz, **ohne Modell und ohne Tokens**. Runner übernehmen offene Gegenprüfungen zuerst, sie dauern nur Minuten. Findet sich 24 Stunden lang niemand mit dieser Engine, zählt dein eigener Lauf allein, und die Projektseite weist das aus.
 
 ## Als Dienst
 

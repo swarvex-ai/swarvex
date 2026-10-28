@@ -119,3 +119,41 @@ func TestGeschuetzt(t *testing.T) {
 		t.Errorf("projekteigene Sperren: %+v %v", u.Geschuetzt, err)
 	}
 }
+
+func TestProprietaereEngines(t *testing.T) {
+	u, err := Ermitteln(projekt(t, map[string]string{"client/ProjectSettings/ProjectVersion.txt": "m_EditorVersion: 6000.0.32f1\nm_EditorVersionWithRevision: 6000.0.32f1 (abc)\n"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Vorlage != "unity" || u.Ordner != "client" || u.Engine == nil || u.Engine.Version != "6000.0.32f1" || u.Testen == "" {
+		t.Errorf("Unity: %+v", u)
+	}
+	if !u.Engine.Passt("unity", "6000.0.32f1") || u.Engine.Passt("unity", "6000.0.33f1") || u.Engine.Passt("unreal", "6000.0.32f1") {
+		t.Error("Unity: Versionen müssen exakt passen")
+	}
+
+	u, err = Ermitteln(projekt(t, map[string]string{"Robo.uproject": `{"FileVersion": 3, "EngineAssociation": "5.5"}`, "Source/Robo/Robo.Build.cs": "x"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Vorlage != "unreal" || u.Ordner != "" || u.Engine == nil || u.Engine.Version != "5.5" || u.Bauen == "" || !strings.Contains(u.Testen, "RunTests Robo.") {
+		t.Errorf("Unreal: %+v", u)
+	}
+	if !u.Engine.Passt("unreal", "5.5.4") || u.Engine.Passt("unreal", "5.4.4") {
+		t.Error("Unreal: major.minor muss passen")
+	}
+	// Eigene Engine-Builds tragen eine GUID statt einer Version: dann passt jede Unreal-Installation.
+	u, _ = Ermitteln(projekt(t, map[string]string{"g/Robo.uproject": `{"EngineAssociation": "{A1B2C3}"}`}))
+	if u.Ordner != "g" || u.Engine.Version != "" || u.Bauen != "" || !u.Engine.Passt("unreal", "5.6.0") {
+		t.Errorf("Unreal ohne Version: %+v", u)
+	}
+
+	// Vorlage über swarvex.yaml.
+	u, err = Ermitteln(projekt(t, map[string]string{"ProjectSettings/ProjectVersion.txt": "m_EditorVersion: 2022.3.50f1\n", "swarvex.yaml": "template: unity\n"}))
+	if err != nil || u.Engine == nil || u.Engine.Version != "2022.3.50f1" {
+		t.Errorf("Unity per Vorlage: %+v, %v", u, err)
+	}
+	if IstProprietaer("godot") || !IstProprietaer("Unity 6") || !IstProprietaer("unreal") {
+		t.Error("IstProprietaer")
+	}
+}
