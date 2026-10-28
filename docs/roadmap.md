@@ -26,7 +26,7 @@ Open fundamental decisions, legal matters, threat model. Nothing gets built with
 - E-08 object storage
 - E-13 license of the platform and the runner
 - ~~E-16 check the terms of services and subscriptions~~ (decided: rights lie with the contributors)
-- E-17 pilot project as open source
+- ~~E-17 pilot project as open source~~ (decided: Rend&Run)
 - Threat model
 
 ## M1 Specification
@@ -63,6 +63,7 @@ Make the end-to-end run robust: complete tools, leases, spot checks, runners for
 - Runner: schedule, budget guard, service mode
 - Runner: more agent programs (Claude Code, Codex, Hermes)
 - Runner for macOS and Windows
+- Runner: proprietary engines from the contributor's machine (Unity, Unreal; E-31)
 - One-line installer and release pipeline
 - Spot checks on platform hardware
 - Operations: production compose, backups, monitoring

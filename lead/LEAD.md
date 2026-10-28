@@ -187,6 +187,8 @@ Fundamental questions (engine, data model, license, platforms) also get a decisi
 
 A swarm needs rails, otherwise everyone builds in a different direction. **No foundation, no swarm.**
 
+0. **Existing work goes public cleanly:** if the project brings a repository, check it before anything else: secrets (whole history), internals (IP addresses, local paths, private notes), rights to every asset (source, plan, license). Publish with a **fresh history**; the full history stays private with the visionary. Write the result as a short audit report and get the visionary's approval before publishing.
+
 1. **Walking skeleton:** the project builds, starts and has a first end-to-end path. A game starts into an empty scene with a player character, a tool takes input and produces output, an app opens its home screen.
 2. **Module map:** which modules exist, who depends on whom, which data flows? Aim for **low coupling**: modules talk through interfaces, not internals.
 3. **Extension points instead of monoliths:** wherever many variants will appear later (enemies, weapons, commands, screens, exporters), build *one* interface plus *one* reference example. Every further variant then becomes a level B task.

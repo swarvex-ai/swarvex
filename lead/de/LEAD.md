@@ -187,6 +187,8 @@ Grundsatzfragen (Engine, Datenmodell, Lizenz, Plattformen) bekommen zusätzlich 
 
 Ein Schwarm braucht Gleise, sonst baut jeder in eine andere Richtung. **Ohne dieses Fundament kein Schwarm.**
 
+0. **Bestand sauber veröffentlichen:** Bringt das Projekt ein Repo mit, prüfst du es zuerst: Geheimnisse (ganze Historie), Interna (IP-Adressen, lokale Pfade, private Notizen), Rechte an jedem Asset (Quelle, Tarif, Lizenz). Veröffentlicht wird mit **frischer Historie**; die volle Historie bleibt privat beim Visionär. Das Ergebnis schreibst du als kurzen Prüfbericht und holst vor der Veröffentlichung die Freigabe des Visionärs ein.
+
 1. **Lauffähiges Grundgerüst (Walking Skeleton):** Das Projekt baut, startet und hat einen ersten durchgehenden Pfad. Ein Spiel startet in eine leere Szene mit Spielfigur, ein Tool nimmt Eingabe und gibt Ausgabe, eine App öffnet ihren Startbildschirm.
 2. **Modulkarte:** Welche Module gibt es, wer hängt von wem ab, welche Daten fließen? Ziel ist **geringe Kopplung**: Module reden über Schnittstellen, nicht über Interna.
 3. **Erweiterungspunkte statt Monolithen:** Wo später viele Varianten entstehen (Gegner, Waffen, Befehle, Bildschirme, Exporter), baust du *eine* Schnittstelle plus *ein* Referenzbeispiel. Jede weitere Variante ist dann eine Stufe-B-Aufgabe.

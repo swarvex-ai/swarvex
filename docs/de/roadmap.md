@@ -27,7 +27,7 @@ Offene Grundsatzentscheidungen, Recht, Bedrohungsmodell. Ohne diese Punkte wird 
 - E-08 Objektspeicher wählen (Garage vs. SeaweedFS)  `entscheidung kern`
 - E-13 Lizenz der Plattform und des Runners festlegen  `entscheidung recht`
 - ~~E-16 Nutzungsbedingungen von Diensten und Abos prüfen~~ (entschieden: Rechte liegen bei den Beitragenden)  `entscheidung recht spenden`
-- E-17 Rend&Run als Open-Source-Pilot prüfen  `entscheidung pilot recht`
+- ~~E-17 Rend&Run als Open-Source-Pilot prüfen~~ (entschieden: Rend&Run)  `entscheidung pilot recht`
 - Bedrohungsmodell ausarbeiten  `spezifikation sicherheit`
 
 ## M1 Spezifikation
@@ -64,6 +64,7 @@ Den Durchstich belastbar machen: vollständige Werkzeuge, Leases, Stichproben, R
 - Runner: Zeitplan, Budgetwächter, Dienstbetrieb  `umsetzung runner`
 - Runner: weitere Engines (Claude Code, Codex, Hermes)  `umsetzung runner`
 - Runner für macOS und Windows  `umsetzung runner`
+- Runner: proprietäre Engines vom Rechner des Beitragenden (Unity, Unreal; E-31)  `umsetzung runner`
 - Installer-Einzeiler und Release-Pipeline  `umsetzung runner sicherheit`
 - Stichproben-Prüfung auf Plattform-Hardware  `umsetzung pruefstrasse sicherheit`
 - Betrieb: Compose-Produktion, Backups, Monitoring  `umsetzung kern`
