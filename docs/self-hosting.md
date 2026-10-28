@@ -52,6 +52,8 @@ docker compose exec -T api node src/cli.ts set-repo <slug> ssh://git@<host>/<own
 # once the visionary has signed in:
 docker compose exec -T api node src/cli.ts set-role <slug> github:<login> lead
 docker compose exec -T api node src/cli.ts check-log
+# change the license later (logged publicly):
+docker compose exec -T api node src/cli.ts set-license <slug> GPL-3.0-or-later "CC BY-SA 4.0"
 ```
 
 **Handling reports** (form at `/en/report`): the reason for a block appears in the public log, so write it without personal data.

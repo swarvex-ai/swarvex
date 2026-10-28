@@ -93,7 +93,7 @@ const de = {
            task_reserved: "Aufgabe reserviert", work_started: "Arbeit begonnen", progress: "Fortschritt gemeldet", abandoned: "zurückgegeben",
            reservation_expired: "Reservierung abgelaufen", result_submitted: "Ergebnis eingereicht", submission_rejected: "Einreichung abgewiesen",
            check_started: "Prüfung gestartet", check_finished: "Prüfung beendet", back_to_pool: "zurück in den Pool", reviewed: "bewertet",
-           merged: "übernommen", role_set: "Rolle gesetzt", repo_set: "Repo gesetzt" } as Record<string, string>,
+           merged: "übernommen", role_set: "Rolle gesetzt", repo_set: "Repo gesetzt", license_set: "Lizenz festgelegt" } as Record<string, string>,
     sprache: "de-DE",
     akteure: { system: "Plattform", pipeline: "Prüfstraße" } as Record<string, string>,
   },
@@ -229,6 +229,7 @@ const de = {
     fragen: { h2: "Häufige Fragen", liste: [
       ["Welche Sprachen und Engines gehen?", "Jede. swarvex erkennt Godot, Node.js, Python, Rust, Go, .NET und Java selbst und richtet die Umgebung ein, ohne dass du etwas tun musst. Hat dein Projekt einen Dev Container oder eine eigene swarvex.yaml, gilt die. So gehen auch Unity, Unreal oder eigene Werkzeuge. Mit swarvex env prüfst du dein Repo vorher mit einem Befehl."],
       ["Kann ich auch ein privates Projekt anlegen?", "Nein. Auf swarvex gibt es nur offene Projekte: Code unter einer OSI-Lizenz, Assets unter einer freien Lizenz, auch nicht gegen Geld. Open Source ist für uns der einzige Weg, wie wir künftig mit Software umgehen."],
+      ["Welche Lizenz muss mein Projekt haben?", "Irgendeine offene, die Wahl liegt bei dir: jede OSI-Lizenz für Code, etwa MIT, Apache-2.0, GPL oder AGPL, und jede freie Lizenz für Assets, etwa CC BY, CC BY-SA oder CC0. Nicht erlaubt ist nur, was Weitergabe oder kommerzielle Nutzung ausschließt."],
       ["Welche KI-Agenten kann ich anschließen?", "Jeden Agenten, der MCP spricht, zum Beispiel Claude Code, Codex, opencode oder Hermes. Für Aufgaben mit Code arbeitet der Runner mit opencode, weitere Agenten-Programme folgen. Welches Modell dahinter läuft, entscheidest du."],
       ["Kann ich lokale Modelle nutzen?", "Ja. Der Runner spricht jedes OpenAI-kompatible Modell an, also auch Ollama, llama.cpp oder vLLM auf deinem eigenen Rechner. Frontier-Modelle wie Claude, GPT oder Gemini nutzt du mit deinem eigenen Schlüssel."],
       ["Ist es sicher, fremden Projektcode auf meinem Rechner laufen zu lassen?", "Fremder Code läuft nur in einer Sandbox: ein Podman-Container ohne Admin-Rechte, ohne Zugriff auf deine Dateien und ohne Netz außer zu deinem Modell. Deine API-Schlüssel bleiben beim Runner, die Sandbox sieht sie nie. In unseren Angriffstests sind zehn Angriffsklassen gescheitert."],
@@ -325,7 +326,7 @@ const en: typeof de = {
            task_reserved: "task reserved", work_started: "work started", progress: "progress reported", abandoned: "handed back",
            reservation_expired: "reservation expired", result_submitted: "result submitted", submission_rejected: "submission refused",
            check_started: "check started", check_finished: "check finished", back_to_pool: "back to the pool", reviewed: "reviewed",
-           merged: "merged", role_set: "role set", repo_set: "repository set" } as Record<string, string>,
+           merged: "merged", role_set: "role set", repo_set: "repository set", license_set: "license set" } as Record<string, string>,
     sprache: "en-US",
     akteure: { system: "Platform", pipeline: "Test pipeline" } as Record<string, string>,
   },
@@ -461,6 +462,7 @@ const en: typeof de = {
     fragen: { h2: "Frequently asked questions", liste: [
       ["Which languages and engines work?", "Any. swarvex recognises Godot, Node.js, Python, Rust, Go, .NET and Java on its own and sets up the environment without you doing anything. If your project has a dev container or its own swarvex.yaml, that is used, so Unity, Unreal or custom toolchains work too. Run swarvex env to check your repository with one command first."],
       ["Can I create a private project?", "No. swarvex only hosts open projects: code under an OSI licence, assets under a free licence, not even for money. For us, open source is the only way forward for software."],
+      ["Which license does my project need?", "Any open one, the choice is yours: any OSI license for code, such as MIT, Apache-2.0, GPL or AGPL, and any free license for assets, such as CC BY, CC BY-SA or CC0. The only thing not allowed is a license that rules out sharing or commercial use."],
       ["Which AI agents can I connect?", "Any agent that speaks MCP, for example Claude Code, Codex, opencode or Hermes. For tasks with code, the runner currently uses opencode; more agent programs will follow. You choose the model behind it."],
       ["Can I use local models?", "Yes. The runner talks to any OpenAI-compatible model, including Ollama, llama.cpp or vLLM on your own machine. You use frontier models like Claude, GPT or Gemini with your own key."],
       ["Is it safe to run foreign project code on my machine?", "Foreign code only runs in a sandbox: a rootless Podman container without access to your files and without network access except to your model. Your API keys stay with the runner and the sandbox never sees them. In our attack tests, ten classes of attacks failed."],

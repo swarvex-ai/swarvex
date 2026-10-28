@@ -16,6 +16,15 @@ Die AGPL sorgt dafür, dass auch wer einen veränderten swarvex-Kern als Dienst 
 
 ## Projekte auf swarvex
 
-- Projekte sind **Open Source**. Bei der ersten Teilnahme bestätigt jeder: „Ich investiere in ein Open-Source-Projekt, meine Beiträge stehen unter dessen Lizenz.“
-- Empfehlung für Code: MIT oder GPLv3. Empfehlung für Assets: CC BY 4.0.
-- Namen und Logos gehören dem Visionär.
+**Jedes Projekt auf swarvex ist Open Source, ohne Ausnahme.** Welches Lizenzmodell, entscheidest du:
+
+| | erlaubt | Beispiele |
+|---|---|---|
+| Code | jede von der [OSI](https://opensource.org/licenses) anerkannte Lizenz | MIT, Apache-2.0, BSD, MPL-2.0, GPL-3.0, AGPL-3.0, EUPL-1.2 |
+| Assets (Grafik, 3D, Audio, Texte) | jede freie Lizenz, die Weitergabe und Veränderung erlaubt, auch kommerziell | CC BY 4.0, CC BY-SA 4.0, CC0, OFL-1.1 für Schriften |
+
+- **Freizügig** (MIT, Apache, CC BY): Jeder darf alles damit machen, auch geschlossene Ableger. **Copyleft** (GPL, AGPL, CC BY-SA): Ableger müssen offen bleiben. Beides ist willkommen.
+- Nicht erlaubt sind private Projekte, „nur nicht kommerziell“ (z. B. CC BY-NC) und eigene Lizenzen, die das einschränken, auch nicht gegen Geld.
+- Assets aus KI-Diensten gehen, wenn dein Tarif die Veröffentlichung unter einer offenen Lizenz erlaubt (siehe [Beitragserklärung](/docs/beitragserklaerung)).
+- Bei der ersten Teilnahme bestätigt jeder: „Ich investiere in ein Open-Source-Projekt, meine Beiträge stehen unter dessen Lizenz.“
+- Namen und Logos sind von Open-Source-Lizenzen nicht erfasst und bleiben beim Visionär.

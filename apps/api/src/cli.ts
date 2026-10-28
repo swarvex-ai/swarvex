@@ -3,6 +3,7 @@
 //   create-project <slug> <file.json>         project + event "vision_published" (example: infra/stack/project-example.json)
 //   set-role <slug> [provider:]<login> <role>  role: visionary | lead | contributor; e.g. github:nevs84
 //   set-repo <slug> <git-address>             SSH address for snapshots (deploy key, read-only)
+//   set-license <slug> <code-license> <asset-license>  e.g. GPL-3.0-or-later "CC BY-SA 4.0" (logged publicly)
 //   check-log [heads.jsonl|url]               verify the hash chain and compare it with published heads
 //                                             (without argument: our own table; better: the file from the anchor repo)
 //   publish-head                              sign the head hash now (otherwise daily)
@@ -78,6 +79,18 @@ try {
       });
       break;
     }
+    case "set-license": {
+      const [slug, code, assets] = args;
+      if (!OSI_LIZENZEN.has(code)) throw new Error(`${code} is not an OSI license (e.g. MIT, Apache-2.0, GPL-3.0-or-later, AGPL-3.0-or-later, MPL-2.0)`);
+      if (!FREIE_ASSET_LIZENZEN.has(assets)) throw new Error(`${assets} is not a free license (e.g. CC BY 4.0, CC BY-SA 4.0, CC0 1.0)`);
+      await transaktion(db, async (tx) => {
+        const p = (await tx.query("update projekte set lizenz_code = $2, lizenz_assets = $3 where slug = $1 returning id", [slug, code, assets])).rows[0];
+        if (!p) throw new Error(`unknown project ${slug}`);
+        await protokollieren(tx, { projekt_id: Number(p.id), akteur: "system", art: "lizenz_gesetzt", bezug: `projekt:${p.id}`, daten: { lizenz_code: code, lizenz_assets: assets } });
+      });
+      console.log(`${slug}: ${code} / ${assets}`);
+      break;
+    }
     case "set-repo": {
       const [slug, adresse] = args;
       await transaktion(db, async (tx) => {
@@ -136,7 +149,7 @@ try {
       break;
     }
     default:
-      console.error("commands: migrate | create-project | set-role | set-repo | check-log [heads] | publish-head | reports | report | block | unblock");
+      console.error("commands: migrate | create-project | set-role | set-repo | set-license | check-log [heads] | publish-head | reports | report | block | unblock");
       process.exitCode = 2;
   }
 } finally {

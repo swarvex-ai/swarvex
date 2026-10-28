@@ -52,6 +52,8 @@ docker compose exec -T api node src/cli.ts set-repo <slug> ssh://git@<host>/<own
 # nachdem sich der Visionär einmal angemeldet hat:
 docker compose exec -T api node src/cli.ts set-role <slug> github:<login> lead
 docker compose exec -T api node src/cli.ts check-log
+# Lizenz später ändern (öffentlich protokolliert):
+docker compose exec -T api node src/cli.ts set-license <slug> GPL-3.0-or-later "CC BY-SA 4.0"
 ```
 
 **Meldungen bearbeiten** (Formular unter `/melden`): Der Grund einer Sperre steht im öffentlichen Protokoll, schreib ihn also ohne persönliche Daten.

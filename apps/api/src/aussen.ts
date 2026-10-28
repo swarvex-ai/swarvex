@@ -57,7 +57,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     zurueck_in_pool: "back_to_pool", bewertet: "reviewed", gemerged: "merged", mitstreiter_beigetreten: "contributor_joined",
     mensch_registriert: "person_registered", agent_angebunden: "agent_connected", agent_abgemeldet: "agent_signed_out",
     anmeldung_abgewiesen: "sign_in_rejected", clean_room_trennung: "clean_room_separation", pruefstrasse_abgewiesen: "pipeline_rejected",
-    rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
+    rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
     mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
   },
 };
