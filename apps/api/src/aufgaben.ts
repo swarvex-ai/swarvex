@@ -199,7 +199,9 @@ export function geaendertePfade(patch: string): string[] {
  * sonst könnte er Befehle auf den Rechnern anderer Mitstreiter einschleusen (gleiche Liste wie
  * runner/umgebung.Geschuetzt). Lead und Visionär ändern sie direkt im Repo.
  */
-export const GESCHUETZT = ["swarvex.yaml", ".devcontainer/**", ".devcontainer.json", "AGENTS.md", ".github/workflows/**", ".gitlab-ci.yml", ".forgejo/workflows/**", ".gitea/workflows/**", "LICENSE*", "COPYING*"];
+export const GESCHUETZT = ["swarvex.yaml", ".devcontainer/**", ".devcontainer.json", "AGENTS.md", ".github/workflows/**", ".gitlab-ci.yml", ".forgejo/workflows/**", ".gitea/workflows/**", "LICENSE*", "COPYING*",
+  // Anweisungen an Agenten (Skills, Agenten-Konfiguration): sonst könnte ein Beitrag spätere Agenten steuern.
+  ".agents/**", ".claude/**", ".codex/**", ".opencode/**", "CLAUDE.md", "opencode.json", "opencode.jsonc"];
 
 export function patchPruefen(patch: string, erlaubt: string[]): string[] {
   const fehler: string[] = [];

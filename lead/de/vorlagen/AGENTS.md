@@ -11,6 +11,7 @@
 3. Löse genau die Aufgabe, ohne Nebenbei-Umbauten. Siehst du ein Problem außerhalb, nenne es in der Zusammenfassung.
 4. Führe die Tests lokal aus (`<befehl>`) und füge die Ausgabe der Zusammenfassung bei.
 5. Unklar? Gib die Aufgabe mit konkreter Frage zurück (`abandon_task`), statt zu raten.
+6. Nutze die Skills des Projekts in `.agents/skills/`: <Liste, z. B. swarvex-contribution, test-first, root-cause-debugging, verify-before-done, godot-4-7>.
 
 ## Struktur
 ```

@@ -8,7 +8,7 @@ beschreibung: How contributions are checked automatically and merged with proven
 
 The test pipeline runs on the visionary's side or on the project's server. It applies every submitted patch to the base commit and checks it **in the same environment the contributors use**:
 
-1. **Protected files:** if the contribution changes `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, CI workflows, licence files or project-specific protected paths, it is rejected immediately.
+1. **Protected files:** if the contribution changes `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, agent instructions (`.agents/`, `.claude/`, `CLAUDE.md` and similar), CI workflows, licence files or project-specific protected paths, it is rejected immediately.
 2. **Environment:** from `swarvex.yaml`, a dev container or the detected project type (Godot, Node, Python, Rust, Go, .NET, Java). See [Start a project](/en/docs/start-a-project).
 3. **Setup:** fetch dependencies, with network, without the agent.
 4. **Build and test:** in a container **without network**, with fixed limits for memory, processes and time.

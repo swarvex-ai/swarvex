@@ -33,7 +33,7 @@ func dienstDatei() string {
 }
 
 // pfadFlags enthalten Dateien; im Dienst gilt ein anderes Arbeitsverzeichnis, deshalb absolut machen.
-var pfadFlags = map[string]bool{"model-key-file": true}
+var pfadFlags = map[string]bool{"model-key-file": true, "skills": true}
 
 // absolutePfade macht Dateiangaben absolut (--x wert und --x=wert).
 func absolutePfade(args []string) []string {
@@ -53,9 +53,13 @@ func absolutePfade(args []string) []string {
 			i++
 			wert = args[i]
 		}
-		if abs, err := filepath.Abs(wert); err == nil {
-			wert = abs
+		teile := strings.Split(wert, ":") // --skills: mehrere Ordner; "auto" bleibt
+		for j, t := range teile {
+			if abs, err := filepath.Abs(t); err == nil && t != "auto" {
+				teile[j] = abs
+			}
 		}
+		wert = strings.Join(teile, ":")
 		r = append(r, "--"+name+"="+wert)
 	}
 	return r

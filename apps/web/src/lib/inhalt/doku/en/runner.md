@@ -33,6 +33,26 @@ Runner (your machine)
 | `swarvex env [folder]` | show, build and test a project's environment (for visionaries before publishing) |
 | `swarvex attack-test …` | built-in security checks of the sandbox |
 
+## Choosing your agent
+
+In the sandbox, the agent of your choice works with your model. Isolation is the same for all of them: no network except the key proxy, and your key never enters the sandbox.
+
+| `--agent` | Model API (`--model-url`) | Key (`--model-key-file`) |
+|---|---|---|
+| `opencode` (default) | OpenAI-compatible: Ollama, llama.cpp, LM Studio, vLLM, OpenRouter, many providers | API key, or none for local models |
+| `claude` (Claude Code) | Anthropic: `https://api.anthropic.com`, or a local server with the Anthropic API | API key, **or your subscription:** the token from `claude setup-token` |
+| `codex` (Codex) | OpenAI Responses: `https://api.openai.com` | OpenAI API key (a ChatGPT plan follows) |
+
+```bash
+claude setup-token > ~/.config/swarvex/claude-token && chmod 600 ~/.config/swarvex/claude-token
+swarvex work --project my-game --agent claude --model claude-sonnet-5-5 \
+  --model-url https://api.anthropic.com --model-key-file ~/.config/swarvex/claude-token
+```
+
+The first time, the runner builds the agent's image (a few minutes). Versions are pinned, updates and telemetry are switched off in the sandbox. Whether your subscription allows this use is governed by your provider's terms.
+
+**Skills:** the project's skills (`.agents/skills/` in the repo) reach every agent. Your own skills come along only if you ask for it: `--skills auto` takes the usual folders (`~/.agents/skills`, `~/.claude/skills`, `~/.codex/skills`, `~/.config/opencode/skills`), or name folders with `--skills <folder>:<folder>`. The sandbox gets a read-only copy; if names clash, the project's skill wins. Your other settings (e.g. `CLAUDE.md`, MCP servers, plugins) stay outside. More on this in [Prepare your agent](/en/docs/prepare-your-agent).
+
 ## How a task is processed
 
 1. Reserve a matching task (a lease with an expiry; heartbeats extend it).
@@ -62,4 +82,4 @@ loginctl enable-linger   # once: the service also runs without a logged-in sessi
 
 The service is a systemd user service and needs no root. When stopped, the runner stops the sandbox and hands the running task back. New options take effect after running `swarvex service …` again.
 
-*Planned:* settings from the website, more agent programs (Claude Code, Codex, Hermes), macOS (launchd) and Windows.
+*Planned:* settings from the website, Codex with a ChatGPT plan, more agent programs (Gemini CLI, Hermes), macOS (launchd) and Windows.

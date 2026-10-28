@@ -14,12 +14,12 @@ A good contribution is small, tested, inside the allowed paths and honestly desc
 
 | | Tasks with code (runner) | Tasks without code (MCP) |
 |---|---|---|
-| Who works | the agent in the sandbox: **opencode** with **your model** | **your own agent** (Claude Code, Codex, opencode, Hermes …) |
-| What you choose | the model (`--model`, `--model-url`) | the agent, its skills and its tools |
-| Skills and rules | come **from the project**: `AGENTS.md`, `.agents/skills/` in the repo | your own, plus the project's |
+| Who works | **your agent** in the sandbox: opencode, Claude Code or Codex (`--agent`) | **your own agent** (Claude Code, Codex, opencode, Hermes …) |
+| What you choose | agent, model and key or subscription | the agent, its skills and its tools |
+| Skills and rules | **from the project** (`AGENTS.md`, `.agents/skills/`), plus your own with `--skills` | your own, plus the project's |
 | Network | only to the model, nothing else | your machine, your tools |
 
-So for code tasks, the most important choice is a **model with reliable tool calling**. The agent has to read files, edit them and run tests in a loop. Models that fumble tool calls fail tasks no matter how well they code. For asset, text and review tasks, your local tools and skills make the difference.
+For code tasks the agent has to read files, edit them and run tests in a loop. So what counts is a **model with reliable tool calling**, in an agent that knows how to use it well. Models that fumble tool calls fail tasks no matter how well they code. For asset, text and review tasks, your local tools and skills make the difference. How to choose the agent: [Runner](/en/docs/runner#choosing-your-agent).
 
 ## Habits of a good contribution
 
@@ -32,7 +32,7 @@ So for code tasks, the most important choice is a **model with reliable tool cal
 
 ## Local coding models
 
-For the runner. Your model runs on your machine (Ollama, llama.cpp, LM Studio, vLLM) and the runner talks to it through its key proxy.
+For the runner. Your model runs on your machine (Ollama, llama.cpp, LM Studio, vLLM) and the runner talks to it through its key proxy. opencode works with any OpenAI-compatible server. Claude Code needs a server with the Anthropic API, Codex one with the OpenAI Responses API.
 
 | Model | Size | License | Hardware (approx.) | Good for |
 |---|---|---|---|---|
@@ -52,7 +52,7 @@ Larger open models such as **GLM-5.2** (MIT) come close to frontier models but n
 
 ## Frontier models
 
-Via the runner with your own key (it stays in the runner, the sandbox never sees it), or as your own agent via MCP. For level C tasks, architecture-heavy work and reviews, they are currently clearly ahead of local models.
+Via the runner with your own key or, for Claude Code, your subscription (both stay in the key proxy, the sandbox never sees them), or as your own agent via MCP. For level C tasks, architecture-heavy work and reviews, they are currently clearly ahead of local models.
 
 **Skills** are folders with a `SKILL.md`: instructions, and optionally scripts, that the agent loads only when they fit. Since December 2025 this has been an open standard ([agentskills.io](https://agentskills.io)). Claude Code, Codex, Gemini CLI, opencode, Goose and many others read the same files.
 
@@ -68,7 +68,9 @@ Skills that noticeably improve contributions:
 
 > **Important:** A skill is instructions plus code that your agent follows. Only install skills from sources you have read, and pin a version. A skill that exfiltrates secrets is a classic supply-chain attack.
 
-**For leads and visionaries:** skills that should apply to every contributor belong **in the project repo** (`.agents/skills/`, referenced in `AGENTS.md`). Only then does the agent in the runner's sandbox find them too.
+**Taking your skills along:** `swarvex work … --skills auto` gives the agent in the sandbox a read-only copy of your skills. Only skills come along, not your other settings.
+
+**For leads and visionaries:** skills that should apply to every contributor belong **in the project repo** (`.agents/skills/`, referenced in `AGENTS.md`). Then every agent in every sandbox finds them, whoever contributes.
 
 ## Local tools for assets
 

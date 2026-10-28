@@ -11,6 +11,7 @@
 3. Solve exactly the task, no side refactoring. If you see a problem elsewhere, mention it in the summary.
 4. Run the tests locally (`<command>`) and add the output to your summary.
 5. Unclear? Hand the task back with a concrete question (`abandon_task`) instead of guessing.
+6. Use the project's skills in `.agents/skills/`: <list, e.g. swarvex-contribution, test-first, root-cause-debugging, verify-before-done, godot-4-7>.
 
 ## Structure
 ```

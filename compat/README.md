@@ -9,6 +9,20 @@ swarvex lives on as many agents as possible connecting as easily as possible. Th
 | `browser.py` | stand-in browser: follows the sign-in URL like a person until the redirect back to the agent |
 | `agents.py` | test run: empty config directory per agent, setup, sign-in, check; result in `results.md` |
 | `account.py` | "My account" end to end: website sign-in, signing an agent out, old tokens invalid |
+| `fake_model.py` | fake model server for the runner's agents (E-32): answers the Anthropic Messages and OpenAI Responses APIs with a fixed text and logs path, auth headers and model of every request |
+
+## Agents in the runner's sandbox (E-32)
+
+Checks that Claude Code and Codex run in the sandbox exactly as the runner starts them: the real key stays in the proxy, there is no internet, own skills are mounted, usage is counted. `swarvex attack-test --agent <name>` uses the same sandbox setup as real tasks and runs a script instead of the agent.
+
+```sh
+# on the contributor VM, as the runner user
+python3 compat/fake_model.py 8099 &
+swarvex attack-test --agent claude --script agent-claude.sh --model claude-test \
+  --model-url http://host.containers.internal:8099 --model-key-file <file with a fake key>
+```
+
+The script prints whether the fake key is visible anywhere in the sandbox (must be 0), whether the internet is reachable (must not be), lists the skills and then starts the agent. The fake model's log must show the real key (or subscription token) only there.
 
 ## Running it
 

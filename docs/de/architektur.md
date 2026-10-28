@@ -125,8 +125,8 @@ protected: |
 ```
 
 - **Zwei Phasen:** Einrichten (Abhängigkeiten) läuft mit Netz, aber ohne Agent, ohne Proxy und ohne Schlüssel. Agent, Bauen und Testen laufen ohne Netz; Abhängigkeiten liegen im Projektordner oder im Cache `/cache` je Projekt.
-- **Agent-Schicht:** Der Runner legt opencode und ripgrep (`/opt/swarvex-agent`, Image `swarvex-agent`) über das Projekt-Image. Voraussetzung ist glibc.
-- **Geschützt:** `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, CI-Workflows und Lizenzdateien ändern Beiträge nie (Plattform, Runner und Prüfstraße prüfen das), sonst könnte ein Beitrag Befehle auf andere Rechner schmuggeln.
+- **Agent-Schicht:** Der Runner legt den gewählten Agenten und ripgrep (`/opt/swarvex-agent`) über das Projekt-Image: opencode (Image `swarvex-agent`, Standard), Claude Code (`swarvex-agent-claude`) oder Codex (`swarvex-agent-codex`), je eine Baustufe in `runner/sandbox/Containerfile`, gebaut beim ersten Gebrauch. Der Schlüssel-Proxy lässt nur die Modell-Schnittstelle des gewählten Agenten durch (E-32). Voraussetzung ist glibc.
+- **Geschützt:** `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, Anweisungen an Agenten (`.agents/`, `.claude/`, `.codex/`, `.opencode/`, `CLAUDE.md`, `opencode.json`), CI-Workflows und Lizenzdateien ändern Beiträge nie (Plattform, Runner und Prüfstraße prüfen das), sonst könnte ein Beitrag Befehle auf andere Rechner schmuggeln.
 - Die Prüfstraße läuft beim Visionär und meldet ein signiertes Ergebnis an die Plattform. `swarvex env` führt dieselben Schritte lokal aus.
 - **Stichproben:** Die Plattform wiederholt einen Anteil der Prüfungen selbst (Container auf eigenem Server) und markiert Abweichungen öffentlich.
 - Wenn der Spender es erlaubt, laufen Asset-Prüfungen ebenfalls hier: Import, Polygonzahl, Skelett, Screenshot im Spiel-Licht.

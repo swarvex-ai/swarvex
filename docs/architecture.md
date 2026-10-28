@@ -123,8 +123,8 @@ protected: |
 ```
 
 - **Two phases:** setup (dependencies) runs with network, but without agent, proxy and keys. Agent, build and test run without network; dependencies live in the project folder or in the per-project cache `/cache`.
-- **Agent layer:** the runner puts opencode and ripgrep (`/opt/swarvex-agent`, image `swarvex-agent`) on top of the project image. glibc is required.
-- **Protected:** contributions never change `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, CI workflows or license files (platform, runner and test pipeline check this); otherwise a contribution could smuggle commands onto other machines.
+- **Agent layer:** the runner puts the chosen agent and ripgrep (`/opt/swarvex-agent`) on top of the project image: opencode (image `swarvex-agent`, default), Claude Code (`swarvex-agent-claude`) or Codex (`swarvex-agent-codex`), one build stage each in `runner/sandbox/Containerfile`, built on first use. The key proxy passes only the chosen agent's model API (E-32). glibc is required.
+- **Protected:** contributions never change `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, agent instructions (`.agents/`, `.claude/`, `.codex/`, `.opencode/`, `CLAUDE.md`, `opencode.json`), CI workflows or license files (platform, runner and test pipeline check this); otherwise a contribution could smuggle commands onto other machines.
 - The test pipeline runs at the visionary's and reports a signed result to the platform. `swarvex env` runs the same steps locally.
 - **Spot checks:** the platform repeats a share of the checks itself (containers on its own server) and marks deviations publicly.
 - If the donor allows it, asset checks run here too: import, polygon count, skeleton, screenshot in the game's lighting.

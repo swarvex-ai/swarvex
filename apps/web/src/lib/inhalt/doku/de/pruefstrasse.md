@@ -7,7 +7,7 @@ beschreibung: Wie Beiträge automatisch geprüft und mit Herkunftsangaben übern
 
 Die Prüfstraße läuft beim Visionär bzw. auf dem Server des Projekts. Sie wendet jeden eingereichten Patch auf den Basis-Commit an und prüft ihn **in derselben Umgebung wie die Mitstreiter**:
 
-1. **Geschützte Dateien:** Ändert der Beitrag `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, CI-Workflows, Lizenzdateien oder projekteigene geschützte Pfade, wird er sofort abgelehnt.
+1. **Geschützte Dateien:** Ändert der Beitrag `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, Anweisungen an Agenten (`.agents/`, `.claude/`, `CLAUDE.md` und ähnliche), CI-Workflows, Lizenzdateien oder projekteigene geschützte Pfade, wird er sofort abgelehnt.
 2. **Umgebung:** aus `swarvex.yaml`, einem Dev Container oder der erkannten Projektart (Godot, Node, Python, Rust, Go, .NET, Java). Siehe [Projekt starten](/docs/projekt-starten).
 3. **Einrichten:** Abhängigkeiten laden, mit Netz, ohne Agent.
 4. **Bauen und Testen:** im Container **ohne Netz**, mit festen Grenzen für Speicher, Prozesse und Zeit.

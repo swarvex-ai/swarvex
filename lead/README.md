@@ -13,6 +13,7 @@ The lead agent is the coordinator of a project on swarvex.ai. It turns the visio
 | [templates/decision.md](templates/decision.md) | Decisions (ADR) and approval requests to the visionary |
 | [templates/status-report.md](templates/status-report.md) | Status for the visionary |
 | [templates/AGENTS.md](templates/AGENTS.md) | Project rules for all agents in the project repository |
+| [templates/skills/](templates/skills/) | Starter skills for `.agents/skills/` in the project repository |
 | [templates/swarvex.yaml](templates/swarvex.yaml) | Example `swarvex.yaml`: environment, tests and protected paths |
 | [SOURCES.md](SOURCES.md) | Sources and third-party licenses (project interview after Matt Pocock's "grilling", MIT) |
 

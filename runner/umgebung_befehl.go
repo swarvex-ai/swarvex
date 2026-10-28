@@ -67,7 +67,7 @@ func umgebungBefehl(args []string) {
 
 	ctx := context.Background()
 	fmt.Println("\n== Building the environment")
-	image, err := umgebungsImage(ctx, u, wurzel, false)
+	image, err := umgebungsImage(ctx, u, wurzel, "")
 	pruefen(err)
 	cache := cacheOrdner("local-" + filepath.Base(wurzel))
 	fmt.Println("== Setup (with network, without agent)")

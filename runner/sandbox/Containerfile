@@ -1,18 +1,48 @@
-# Agent-Schicht: nur der Agent (opencode) und ripgrep unter /opt/swarvex-agent. Der Runner legt sie
-# über die Umgebung des jeweiligen Projekts (umgebung.Containerfile); die Projektwerkzeuge kommen
-# von dort. Voraussetzung im Projekt-Image: glibc (Debian, Ubuntu und die offiziellen Sprach-Images).
+# Agent-Schicht: nur der Agent und ripgrep unter /opt/swarvex-agent. Der Runner legt sie über die
+# Umgebung des jeweiligen Projekts (umgebung.Containerfile); die Projektwerkzeuge kommen von dort.
+# Voraussetzung im Projekt-Image: glibc (Debian, Ubuntu und die offiziellen Sprach-Images).
+#
+# Eine Stufe je Agent (E-32); gebaut wird nur, was ein Mitstreiter wählt:
+#   podman build --target opencode -t swarvex-agent .          (Standard, baut install.sh)
+#   podman build --target claude   -t swarvex-agent-claude .   (baut der Runner bei --agent claude)
+#   podman build --target codex    -t swarvex-agent-codex .
+# Versionen sind festgelegt und mindestens zwei Wochen alt; Updates im Container sind abgeschaltet.
 FROM docker.io/library/node:24-trixie-slim AS bau
-ARG OPENCODE=1.19.4
 ARG RIPGREP=14.1.1
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+RUN case "$(uname -m)" in x86_64) ziel=x86_64-unknown-linux-musl ;; aarch64) ziel=aarch64-unknown-linux-gnu ;; *) exit 1 ;; esac \
+    && curl -fsSL "https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP}/ripgrep-${RIPGREP}-${ziel}.tar.gz" | tar -xz -C /tmp \
+    && mkdir -p /opt/swarvex-agent/bin && cp /tmp/ripgrep-${RIPGREP}-${ziel}/rg /opt/swarvex-agent/bin/rg
+
+FROM bau AS bau-opencode
+ARG OPENCODE=1.19.4
 RUN npm install -g --no-audit --no-fund opencode-ai@${OPENCODE} >/dev/null \
-    && mkdir -p /opt/swarvex-agent/bin \
     && quelle=$(find /usr/local/lib/node_modules/opencode-ai/node_modules -path '*-baseline/bin/opencode' -type f | head -1) \
     && [ -n "$quelle" ] || quelle=$(find /usr/local/lib/node_modules/opencode-ai/node_modules -path '*/bin/opencode' -type f | head -1) \
     && cp "$quelle" /opt/swarvex-agent/bin/opencode && chmod 755 /opt/swarvex-agent/bin/opencode
-RUN case "$(uname -m)" in x86_64) ziel=x86_64-unknown-linux-musl ;; aarch64) ziel=aarch64-unknown-linux-gnu ;; *) exit 1 ;; esac \
-    && curl -fsSL "https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP}/ripgrep-${RIPGREP}-${ziel}.tar.gz" | tar -xz -C /tmp \
-    && cp /tmp/ripgrep-${RIPGREP}-${ziel}/rg /opt/swarvex-agent/bin/rg
 
-FROM scratch
-COPY --from=bau /opt/swarvex-agent /opt/swarvex-agent
+# Claude Code: das native Programm aus dem Plattform-Paket (glibc-Variante).
+FROM bau AS bau-claude
+ARG CLAUDE_CODE=2.1.296
+RUN case "$(uname -m)" in x86_64) p=linux-x64 ;; aarch64) p=linux-arm64 ;; *) exit 1 ;; esac \
+    && cd /tmp && npm pack -q "@anthropic-ai/claude-code-${p}@${CLAUDE_CODE}" >/dev/null \
+    && tar -xzf anthropic-ai-claude-code-${p}-${CLAUDE_CODE}.tgz \
+    && install -m 755 package/claude /opt/swarvex-agent/bin/claude && rm -rf /tmp/*
+
+# Codex: die statischen Programme aus dem Plattform-Paket (ohne Sprachausgabe).
+FROM bau AS bau-codex
+ARG CODEX=0.162.1
+RUN case "$(uname -m)" in x86_64) p=linux-x64 t=x86_64-unknown-linux-musl ;; aarch64) p=linux-arm64 t=aarch64-unknown-linux-musl ;; *) exit 1 ;; esac \
+    && cd /tmp && npm pack -q "@openai/codex@${CODEX}-${p}" >/dev/null \
+    && tar -xzf openai-codex-${CODEX}-${p}.tgz \
+    && install -m 755 package/vendor/$t/bin/* /opt/swarvex-agent/bin/ && rm -rf /tmp/*
+
+FROM scratch AS claude
+COPY --from=bau-claude /opt/swarvex-agent /opt/swarvex-agent
+
+FROM scratch AS codex
+COPY --from=bau-codex /opt/swarvex-agent /opt/swarvex-agent
+
+# Zuletzt: Standard ohne --target (frühere install.sh-Versionen).
+FROM scratch AS opencode
+COPY --from=bau-opencode /opt/swarvex-agent /opt/swarvex-agent

@@ -13,6 +13,7 @@ Der Lead-Agent ist der Koordinator eines Projekts auf swarvex.ai. Er übersetzt 
 | [vorlagen/entscheidung.md](vorlagen/entscheidung.md) | Entscheidungen (ADR) und Freigabe-Anfragen an den Visionär |
 | [vorlagen/statusbericht.md](vorlagen/statusbericht.md) | Status an den Visionär |
 | [vorlagen/AGENTS.md](vorlagen/AGENTS.md) | Projektregeln für alle Agenten im Projekt-Repo |
+| [../templates/skills/](../templates/skills/) | Start-Skills für `.agents/skills/` im Projekt-Repo (englisch) |
 | [vorlagen/swarvex.yaml](vorlagen/swarvex.yaml) | Beispiel `swarvex.yaml`: Umgebung, Tests und geschützte Pfade |
 | [QUELLEN.md](QUELLEN.md) | Quellen und Fremdlizenzen (Projekt-Interview nach Matt Pococks „grilling“, MIT) |
 

@@ -18,6 +18,7 @@ import (
 func angriffstestBefehl(args []string) {
 	fs := flag.NewFlagSet("attack-test", flag.ExitOnError)
 	skript := fs.String("script", "", "attack script (placed into the sandbox and run there)")
+	agentName := fs.String("agent", "opencode", "agent whose sandbox setup is attacked: "+agentNamen())
 	modell := fs.String("model", "Qwen3.8 Flash Next", "model name")
 	upstream := fs.String("model-url", "http://127.0.0.1:8080", "model URL (OpenAI-compatible)")
 	keyDatei := fs.String("model-key-file", "", "key file (for S1 a decoy key)")
@@ -27,6 +28,7 @@ func angriffstestBefehl(args []string) {
 	if *skript == "" {
 		fehlerAus("--script is missing")
 	}
+	agent := agentPruefen(*agentName)
 	ordner := filepath.Join(datenOrdner(), "attack", time.Now().Format("20060102-150405"))
 	baum := filepath.Join(ordner, "tree")
 	pruefen(os.MkdirAll(baum, 0o755))
@@ -45,9 +47,10 @@ func angriffstestBefehl(args []string) {
 	// Angriffe laufen in derselben Umgebung wie echte Aufgaben (hier: allgemeine Linux-Umgebung).
 	u, err := umgebung.Ermitteln(baum)
 	pruefen(err)
-	image, err := umgebungsImage(ctx, u, baum, true)
+	pruefen(agentImageBereit(ctx, agent))
+	image, err := umgebungsImage(ctx, u, baum, agent.Image)
 	pruefen(err)
-	verbrauch, aus, err := sandboxAusfuehren(ctx, a, u, image, baum, cacheOrdner("attack-test"), ordner, *upstream, key, *modell, *budget, []string{"sh", "/work/attack.sh"})
+	verbrauch, aus, err := sandboxAusfuehren(ctx, a, u, image, baum, cacheOrdner("attack-test"), ordner, agent, skillsLesen(os.Getenv("SWARVEX_ATTACK_SKILLS")), *upstream, key, *modell, *budget, []string{"sh", "/work/attack.sh"})
 	fmt.Println(aus)
 	fmt.Printf("--- usage according to the proxy: %v\n", verbrauch)
 	proxyLog, _ := os.ReadFile(filepath.Join(ordner, "proxy.log"))

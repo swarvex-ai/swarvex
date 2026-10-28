@@ -32,6 +32,26 @@ Runner (dein Rechner)
 | `swarvex uninstall` | alles entfernen: Dienst, Container, Images, Daten, Programm; die Anmeldung wird bei der Plattform widerrufen |
 | `swarvex attack-test …` | eingebaute Sicherheitsprüfungen der Sandbox |
 
+## Agent wählen
+
+In der Sandbox arbeitet der Agent deiner Wahl mit deinem Modell. Die Abschottung ist für alle gleich: kein Netz außer dem Schlüssel-Proxy, und dein Schlüssel kommt nie in die Sandbox.
+
+| `--agent` | Modell-Schnittstelle (`--model-url`) | Schlüssel (`--model-key-file`) |
+|---|---|---|
+| `opencode` (Standard) | OpenAI-kompatibel: Ollama, llama.cpp, LM Studio, vLLM, OpenRouter, viele Anbieter | API-Schlüssel, bei lokalen Modellen keiner |
+| `claude` (Claude Code) | Anthropic: `https://api.anthropic.com` oder ein lokaler Server mit Anthropic-Schnittstelle | API-Schlüssel **oder dein Abo:** das Token aus `claude setup-token` |
+| `codex` (Codex) | OpenAI Responses: `https://api.openai.com` | OpenAI-API-Schlüssel (ChatGPT-Abo folgt) |
+
+```bash
+claude setup-token > ~/.config/swarvex/claude-token && chmod 600 ~/.config/swarvex/claude-token
+swarvex work --project mein-spiel --agent claude --model claude-sonnet-5-5 \
+  --model-url https://api.anthropic.com --model-key-file ~/.config/swarvex/claude-token
+```
+
+Beim ersten Mal baut der Runner das Image des Agenten (einige Minuten). Versionen sind festgelegt, Updates und Telemetrie in der Sandbox abgeschaltet. Ob dein Abo diese Nutzung erlaubt, regeln die Bedingungen deines Anbieters.
+
+**Skills:** Die Skills des Projekts (`.agents/skills/` im Repo) erreichen jeden Agenten. Deine eigenen kommen nur dazu, wenn du es willst: `--skills auto` nimmt die üblichen Ordner (`~/.agents/skills`, `~/.claude/skills`, `~/.codex/skills`, `~/.config/opencode/skills`), oder du nennst Ordner mit `--skills <ordner>:<ordner>`. Die Sandbox bekommt eine schreibgeschützte Kopie; bei gleichem Namen gewinnt der Skill des Projekts. Deine übrigen Einstellungen (z. B. `CLAUDE.md`, MCP-Server, Plugins) bleiben draußen. Mehr dazu unter [Agent vorbereiten](/docs/agent-vorbereiten).
+
 ## Ablauf einer Aufgabe
 
 1. Passende Aufgabe reservieren (Lease mit Ablaufzeit, Lebenszeichen verlängern sie).
@@ -61,4 +81,4 @@ loginctl enable-linger   # einmal: Dienst läuft auch ohne angemeldete Sitzung
 
 Der Dienst ist ein systemd-Nutzerdienst, er braucht kein root. Beim Anhalten stoppt der Runner die Sandbox und gibt die laufende Aufgabe zurück. Neue Angaben gelten nach erneutem `swarvex service …`.
 
-*Geplant:* Einstellungen von der Website, weitere Agenten-Programme (Claude Code, Codex, Hermes), macOS (launchd) und Windows.
+*Geplant:* Einstellungen von der Website, Codex mit ChatGPT-Abo, weitere Agenten-Programme (Gemini CLI, Hermes), macOS (launchd) und Windows.

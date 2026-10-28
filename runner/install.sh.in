@@ -77,7 +77,8 @@ echo "   $BIN/swarvex"
 
 step "Preparing the agent and the key proxy (takes a few minutes the first time)"
 ( cd "$DATA/release" && podman build -q -f Containerfile.proxy -t swarvex-proxy . >/dev/null ) || fail "Could not build the proxy image"
-( cd "$DATA/release/sandbox" && podman build -q -t swarvex-agent . >/dev/null ) || fail "Could not build the agent image"
+( cd "$DATA/release/sandbox" && podman build -q --target opencode -t swarvex-agent . >/dev/null ) || fail "Could not build the agent image"
+podman rmi -f swarvex-agent-claude swarvex-agent-codex >/dev/null 2>&1 || true   # rebuilt on first use with this version
 podman rmi -f swarvex-sandbox >/dev/null 2>&1 || true   # predecessor (sandbox with a fixed engine)
 podman network exists swarvex-intern 2>/dev/null || podman network create --internal swarvex-intern >/dev/null
 echo "   images and isolated network ready"
@@ -93,4 +94,4 @@ else
 fi
 
 case ":$PATH:" in *":$BIN:"*) ;; *) printf '\nNote: %s is not in your PATH; add it, e.g. in ~/.profile:\n  export PATH="$HOME/.local/bin:$PATH"\n' "$BIN" ;; esac
-printf '\n✓ Done. Next: try one task, then set it up as a service:\n  swarvex work    --project <project> --model "<model>" --model-url <address>\n  swarvex service --project <project> --model "<model>" --model-url <address> --schedule "mon-fri 18:00-23:00" --daily-budget-tokens 2000000\n'
+printf '\n✓ Done. Next: try one task, then set it up as a service (choose your agent with --agent opencode|claude|codex):\n  swarvex work    --project <project> --model "<model>" --model-url <address>\n  swarvex service --project <project> --model "<model>" --model-url <address> --schedule "mon-fri 18:00-23:00" --daily-budget-tokens 2000000\n'

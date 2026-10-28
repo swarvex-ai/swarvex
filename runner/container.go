@@ -17,8 +17,6 @@ import (
 	"github.com/swarvex-ai/swarvex/runner/umgebung"
 )
 
-const agentImage = "swarvex-agent"
-
 func podmanAus(ctx context.Context, eingabe string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "podman", args...)
 	if eingabe != "" {
@@ -29,11 +27,11 @@ func podmanAus(ctx context.Context, eingabe string, args ...string) (string, err
 }
 
 // umgebungsImage baut (einmal je Basis und Agent-Version) das Image, in dem Agent und Befehle laufen.
-// mitAgent=false lässt die Agent-Schicht weg (z. B. für `swarvex env`).
-func umgebungsImage(ctx context.Context, u umgebung.Umgebung, baum string, mitAgent bool) (string, error) {
+// agentImage "" lässt die Agent-Schicht weg (z. B. für `swarvex env` und Gegenprüfungen).
+func umgebungsImage(ctx context.Context, u umgebung.Umgebung, baum string, agentImage string) (string, error) {
 	agent := ""
 	agentID := "none"
-	if mitAgent {
+	if agentImage != "" {
 		id, err := podmanAus(ctx, "", "image", "inspect", "--format", "{{.Id}}", agentImage)
 		if err != nil {
 			return "", fmt.Errorf("agent image %s is missing; reinstall the runner (install.sh)", agentImage)

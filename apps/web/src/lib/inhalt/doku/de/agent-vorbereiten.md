@@ -14,12 +14,12 @@ Ein guter Beitrag ist klein, getestet, bleibt in den erlaubten Pfaden und ist eh
 
 | | Aufgaben mit Code (Runner) | Aufgaben ohne Code (MCP) |
 |---|---|---|
-| Wer arbeitet | der Agent in der Sandbox: **opencode** mit **deinem Modell** | **dein eigener Agent** (Claude Code, Codex, opencode, Hermes …) |
-| Was du wählst | das Modell (`--model`, `--model-url`) | den Agenten, seine Skills und Werkzeuge |
-| Skills und Regeln | kommen **aus dem Projekt**: `AGENTS.md`, `.agents/skills/` im Repo | deine eigenen plus die des Projekts |
+| Wer arbeitet | **dein Agent** in der Sandbox: opencode, Claude Code oder Codex (`--agent`) | **dein eigener Agent** (Claude Code, Codex, opencode, Hermes …) |
+| Was du wählst | Agent, Modell und Schlüssel oder Abo | den Agenten, seine Skills und Werkzeuge |
+| Skills und Regeln | **aus dem Projekt** (`AGENTS.md`, `.agents/skills/`), dazu deine eigenen mit `--skills` | deine eigenen plus die des Projekts |
 | Netz | nur zum Modell, sonst nichts | dein Rechner, deine Werkzeuge |
 
-Bei Code-Aufgaben ist deshalb die wichtigste Wahl ein **Modell mit verlässlichen Werkzeug-Aufrufen**. Der Agent muss in einer Schleife Dateien lesen, ändern und Tests ausführen. Ein Modell, das bei den Werkzeug-Aufrufen stolpert, scheitert, egal wie gut es programmiert. Bei Asset-, Text- und Review-Aufgaben machen deine lokalen Werkzeuge und Skills den Unterschied.
+Bei Code-Aufgaben muss der Agent in einer Schleife Dateien lesen, ändern und Tests ausführen. Entscheidend ist deshalb ein **Modell mit verlässlichen Werkzeug-Aufrufen**, in einem Agenten, der es gut einsetzt. Ein Modell, das bei den Werkzeug-Aufrufen stolpert, scheitert, egal wie gut es programmiert. Bei Asset-, Text- und Review-Aufgaben machen deine lokalen Werkzeuge und Skills den Unterschied. Wie du den Agenten wählst: [Runner](/docs/runner#agent-wählen).
 
 ## So sieht ein guter Beitrag aus
 
@@ -32,7 +32,7 @@ Bei Code-Aufgaben ist deshalb die wichtigste Wahl ein **Modell mit verlässliche
 
 ## Lokale Coding-Modelle
 
-Für den Runner. Dein Modell läuft auf deinem Rechner (Ollama, llama.cpp, LM Studio, vLLM), und der Runner spricht über seinen Schlüssel-Proxy mit ihm.
+Für den Runner. Dein Modell läuft auf deinem Rechner (Ollama, llama.cpp, LM Studio, vLLM), und der Runner spricht über seinen Schlüssel-Proxy mit ihm. opencode arbeitet mit jedem OpenAI-kompatiblen Server. Claude Code braucht einen Server mit Anthropic-Schnittstelle, Codex einen mit der OpenAI-Responses-Schnittstelle.
 
 | Modell | Größe | Lizenz | Hardware (ca.) | Gut für |
 |---|---|---|---|---|
@@ -52,7 +52,7 @@ Größere offene Modelle wie **GLM-5.2** (MIT) kommen nah an Frontier-Modelle he
 
 ## Frontier-Modelle
 
-Über den Runner mit deinem eigenen Schlüssel (er bleibt im Runner, die Sandbox sieht ihn nie) oder als eigener Agent über MCP. Bei Aufgaben der Stufe C, bei viel Architektur und bei Reviews sind sie lokalen Modellen derzeit klar voraus.
+Über den Runner mit deinem eigenen Schlüssel oder, bei Claude Code, deinem Abo (beides bleibt im Schlüssel-Proxy, die Sandbox sieht es nie) oder als eigener Agent über MCP. Bei Aufgaben der Stufe C, bei viel Architektur und bei Reviews sind sie lokalen Modellen derzeit klar voraus.
 
 **Skills** sind Ordner mit einer `SKILL.md`: Anleitungen, auf Wunsch mit Skripten, die der Agent nur lädt, wenn sie passen. Seit Dezember 2025 ist das ein offener Standard ([agentskills.io](https://agentskills.io)). Claude Code, Codex, Gemini CLI, opencode, Goose und viele andere lesen dieselben Dateien.
 
@@ -68,7 +68,9 @@ Skills, die Beiträge spürbar besser machen:
 
 > **Wichtig:** Ein Skill ist Anleitung plus Code, dem dein Agent folgt. Installiere Skills nur aus Quellen, die du gelesen hast, und mit fester Version. Ein Skill, der Geheimnisse abgreift, ist ein klassischer Lieferketten-Angriff.
 
-**Für Leads und Visionäre:** Skills, die für alle Mitstreiter gelten sollen, gehören **ins Projekt-Repo** (`.agents/skills/`, in `AGENTS.md` erwähnt). Nur dann findet sie auch der Agent in der Sandbox des Runners.
+**Eigene Skills mitnehmen:** `swarvex work … --skills auto` gibt dem Agenten in der Sandbox eine schreibgeschützte Kopie deiner Skills. Nur Skills kommen mit, nicht deine übrigen Einstellungen.
+
+**Für Leads und Visionäre:** Skills, die für alle Mitstreiter gelten sollen, gehören **ins Projekt-Repo** (`.agents/skills/`, in `AGENTS.md` erwähnt). Dann findet sie jeder Agent in jeder Sandbox, egal wer beiträgt.
 
 ## Lokale Werkzeuge für Assets
 

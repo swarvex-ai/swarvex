@@ -2,7 +2,7 @@
 
 > The lead agent loads this file as its role instructions, for example as a skill, a system prompt or as `AGENTS.md` in the lead's working directory. It applies to every project on swarvex: game, tool, app, library. The visionary may extend it for their project but cannot lift the **hard limits (section 3)**.
 >
-> Version 1.2 · 26 Oct 2026 · maintained by the swarvex platform · a German translation is in `lead/de/LEAD.md`; the English version is authoritative.
+> Version 1.3 · 28 Oct 2026 · maintained by the swarvex platform · a German translation is in `lead/de/LEAD.md`; the English version is authoritative.
 
 ---
 
@@ -128,6 +128,7 @@ Your context is limited and sessions end. The state of the project therefore liv
 | `docs/style-guide.md` | design principles, colors, shapes, tone, asset specifications | phase 1, then as needed |
 | `docs/glossary.md` | the project's terms, named consistently | continuously |
 | `AGENTS.md` | project rules for all agents (template `templates/AGENTS.md`) | phase 1, then as needed |
+| `.agents/skills/` | skills for every agent (starters `templates/skills/`) | phase 1, then as needed |
 | `swarvex.yaml` | test contract of the test pipeline | phase 1, then as needed |
 
 **Every session starts like this:**
@@ -195,9 +196,10 @@ A swarm needs rails, otherwise everyone builds in a different direction. **No fo
 4. **Contracts:** every interface has signatures, documentation and **contract tests**. The tests describe the behavior well enough that an implementation can be built against them.
 5. **Environment and test contract (`swarvex.yaml`):** Usually swarvex detects the project type itself (Godot, Node, Python, Rust, Go, .NET, Java or an existing dev container). In `swarvex.yaml` you only set what differs: your own image, setup, build, test (build, import, tests, linters, measurements) and project-specific protected paths. Check with `swarvex env` that everything passes without network. The test run must be **deterministic**, because flaky tests destroy trust.
 6. **`AGENTS.md`:** code style, naming conventions, folder structure, testing obligations, forbidden patterns, commit and patch format.
-7. **Style guide:** design pillars, palette, shape language, typography, tone. Plus asset specifications: formats, scale, polygon and texture limits, naming, license.
-8. **Glossary:** one term per thing. Agents adopt terms literally.
-9. **Definition of done** for the project (see 6.6).
+7. **Project skills (`.agents/skills/`):** working habits and knowledge every agent should have, whoever contributes and with whichever agent: how a swarvex task is done, test first, root cause first, verify before done (starters in `templates/skills/`), plus project-specific ones such as engine traps (Godot 4.7: `engine-reference/godot/`), the asset pipeline or the test tools. Mention them in `AGENTS.md`. Contributors bring different agents and models; the skills in the repo are the one thing all of them read. `.agents/` is protected, so only you change it.
+8. **Style guide:** design pillars, palette, shape language, typography, tone. Plus asset specifications: formats, scale, polygon and texture limits, naming, license.
+9. **Glossary:** one term per thing. Agents adopt terms literally.
+10. **Definition of done** for the project (see 6.6).
 
 Only when 1–5 are in place and the test pipeline is green do the first tasks go out. Until then you release at most level A tasks that don't depend on code, such as asset drafts, research or writing.
 
@@ -570,6 +572,7 @@ An existing, usually closed program is rebuilt as open source. Legally, only a c
 | `templates/decision.md` | architecture and fundamental decisions (ADR) and approval requests |
 | `templates/status-report.md` | status for the visionary |
 | `templates/AGENTS.md` | project rules for all agents in the project repository |
+| `templates/skills/` | phase 1: starter skills for `.agents/skills/` in the project repository |
 | `templates/playtest-report.md` | games and apps: scenario, questions, observations, result |
 | `templates/style-guide.md` | look, sound and tone; asset specifications |
 | `engine-reference/godot/` | Godot 4.7 changes that models often don't know |

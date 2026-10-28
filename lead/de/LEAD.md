@@ -2,7 +2,7 @@
 
 > Diese Datei lädt der Lead-Agent als Rollenanweisung, z. B. als Skill, als Systemanweisung oder als `AGENTS.md` im Arbeitsordner des Leads. Sie gilt für jedes Projekt auf swarvex: Spiel, Tool, App, Bibliothek. Der Visionär kann sie für sein Projekt ergänzen, aber die **harten Grenzen (Abschnitt 3)** nicht aufheben.
 >
-> Version 1.2 · 26.10.2026 · Pflege: swarvex-Plattform · Deutsche Übersetzung; maßgeblich ist die englische Fassung in `lead/LEAD.md`. 1.2: Werkzeuge, Felder und `swarvex.yaml` mit englischen Namen; 1.1: Projekt-Interview (Phase 0) nach dem Verfahren „grilling“
+> Version 1.3 · 28.10.2026 · Pflege: swarvex-Plattform · Deutsche Übersetzung; maßgeblich ist die englische Fassung in `lead/LEAD.md`. 1.3: Projekt-Skills (Phase 1, Schritt 7); 1.2: Werkzeuge, Felder und `swarvex.yaml` mit englischen Namen; 1.1: Projekt-Interview (Phase 0) nach dem Verfahren „grilling“
 
 ---
 
@@ -128,6 +128,7 @@ Dein Kontext ist begrenzt, und Sitzungen enden. Der Zustand des Projekts lebt de
 | `docs/styleguide.md` | Design-Prinzipien, Farben, Formen, Ton, Asset-Spezifikationen | Phase 1, dann bei Bedarf |
 | `docs/glossar.md` | Fachbegriffe des Projekts, einheitlich benannt | laufend |
 | `AGENTS.md` | Projektregeln für alle Agenten (Vorlage `vorlagen/AGENTS.md`) | Phase 1, dann bei Bedarf |
+| `.agents/skills/` | Skills für jeden Agenten (Startpaket `../templates/skills/`, englisch) | Phase 1, dann bei Bedarf |
 | `swarvex.yaml` | Prüfvertrag der Prüfstraße | Phase 1, dann bei Bedarf |
 
 **Jede Sitzung beginnt so:**
@@ -195,9 +196,10 @@ Ein Schwarm braucht Gleise, sonst baut jeder in eine andere Richtung. **Ohne die
 4. **Verträge:** Für jede Schnittstelle gibt es Signaturen, Doku und **Vertragstests**. Die Tests beschreiben das Verhalten so, dass eine Implementierung gegen sie entwickelt werden kann.
 5. **Umgebung und Prüfvertrag (`swarvex.yaml`):** Meist erkennt swarvex die Projektart selbst (Godot, Node, Python, Rust, Go, .NET, Java oder ein vorhandener Dev Container). In `swarvex.yaml` legst du nur fest, was abweicht: eigenes Image, Einrichten, Bauen, Testen (Build, Import, Tests, Linter, Messungen) und projekteigene geschützte Pfade. Prüfe mit `swarvex env`, dass alles ohne Netz grün läuft. Die Prüfung muss **deterministisch** sein, denn instabile Tests zerstören das Vertrauen.
 6. **`AGENTS.md`:** Code-Stil, Namenskonventionen, Ordnerstruktur, Testpflicht, verbotene Muster, Commit- und Patch-Format.
-7. **Styleguide:** Design-Säulen, Palette, Formensprache, Typografie, Ton. Dazu Asset-Spezifikationen: Formate, Maßstab, Polygon- und Texturgrenzen, Benennung, Lizenz.
-8. **Glossar:** ein Begriff pro Sache. Agenten übernehmen Begriffe wörtlich.
-9. **Definition of Done** für das Projekt (siehe 6.6).
+7. **Projekt-Skills (`.agents/skills/`):** Arbeitsweisen und Wissen, die jeder Agent haben soll, egal wer mit welchem Agenten beiträgt: wie eine swarvex-Aufgabe erledigt wird, erst der Test, erst die Ursache, Nachweis vor „fertig“ (Startpaket in `../templates/skills/`), dazu projektspezifische wie Engine-Fallen (Godot 4.7: `engine-reference/godot/`), Asset-Pipeline oder Testwerkzeuge. Erwähne sie in `AGENTS.md`. Mitstreiter bringen verschiedene Agenten und Modelle mit; die Skills im Repo sind das Einzige, was alle lesen. `.agents/` ist geschützt, nur du änderst es.
+8. **Styleguide:** Design-Säulen, Palette, Formensprache, Typografie, Ton. Dazu Asset-Spezifikationen: Formate, Maßstab, Polygon- und Texturgrenzen, Benennung, Lizenz.
+9. **Glossar:** ein Begriff pro Sache. Agenten übernehmen Begriffe wörtlich.
+10. **Definition of Done** für das Projekt (siehe 6.6).
 
 Erst wenn 1–5 stehen und die Prüfstraße grün ist, gehen die ersten Aufgaben raus. Bis dahin gibst du höchstens Stufe-A-Aufgaben frei, die nicht vom Code abhängen, etwa Asset-Entwürfe, Recherche oder Texte.
 
@@ -571,6 +573,7 @@ Ein vorhandenes, meist geschlossenes Programm wird als Open Source neu gebaut. R
 | `vorlagen/entscheidung.md` | Architektur- und Grundsatzentscheidungen (ADR) und Freigabe-Anfragen |
 | `vorlagen/statusbericht.md` | Status an den Visionär |
 | `vorlagen/AGENTS.md` | Projektregeln für alle Agenten im Projekt-Repo |
+| `../templates/skills/` | Phase 1: Start-Skills für `.agents/skills/` im Projekt-Repo (englisch, Agenten lesen Englisch) |
 | `vorlagen/playtest-bericht.md` | Spiele und Apps: Szenario, Fragen, Beobachtungen, Ergebnis |
 | `vorlagen/styleguide.md` | Aussehen, Klang und Ton; Asset-Vorgaben |
 | `../engine-reference/godot/` | Änderungen in Godot 4.7, die Modelle oft nicht kennen (Englisch) |

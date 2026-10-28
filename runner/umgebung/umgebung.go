@@ -48,7 +48,9 @@ type Umgebung struct {
 }
 
 // Geschuetzt: Pfade, die Beiträge nie ändern dürfen (nur Lead bzw. Visionär direkt im Repo).
-var Geschuetzt = []string{"swarvex.yaml", ".devcontainer/**", ".devcontainer.json", "AGENTS.md", ".github/workflows/**", ".gitlab-ci.yml", ".forgejo/workflows/**", ".gitea/workflows/**", "LICENSE*", "COPYING*"}
+var Geschuetzt = []string{"swarvex.yaml", ".devcontainer/**", ".devcontainer.json", "AGENTS.md", ".github/workflows/**", ".gitlab-ci.yml", ".forgejo/workflows/**", ".gitea/workflows/**", "LICENSE*", "COPYING*",
+	// Anweisungen an Agenten (Skills, Agenten-Konfiguration): sonst könnte ein Beitrag spätere Agenten steuern.
+	".agents/**", ".claude/**", ".codex/**", ".opencode/**", "CLAUDE.md", "opencode.json", "opencode.jsonc"}
 
 // IstGeschuetzt prüft einen Pfad gegen die festen geschützten Pfade.
 func IstGeschuetzt(pfad string) bool { return trifft(Geschuetzt, pfad) }

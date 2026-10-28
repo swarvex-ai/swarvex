@@ -47,9 +47,11 @@ func arbeitenBefehl(args []string) {
 	fs := flag.NewFlagSet("work", flag.ExitOnError)
 	projekt := fs.String("project", "", "project slug")
 	nur := fs.Int64("task", 0, "a specific task (otherwise the first matching one)")
+	agentName := fs.String("agent", "opencode", "agent in the sandbox: "+agentNamen())
 	modell := fs.String("model", "", "model name at the provider")
-	upstream := fs.String("model-url", "", "OpenAI-compatible base URL of the model (without /v1)")
-	keyDatei := fs.String("model-key-file", "", "file containing the model's API key (optional)")
+	upstream := fs.String("model-url", "", "base URL of the model API without /v1: OpenAI-compatible (opencode), Anthropic (claude) or OpenAI Responses (codex)")
+	keyDatei := fs.String("model-key-file", "", "file containing the model's API key, for claude also a subscription token from `claude setup-token` (optional)")
+	skillsWert := fs.String("skills", "", `your own skills for the agent: "auto" (the usual folders) or folders separated by ":" (copied, read-only)`)
 	budget := fs.Int("budget-tokens", 400000, "token budget for this task")
 	tagesbudget := fs.Int64("daily-budget-tokens", 0, "at most this many tokens per calendar day across all tasks (0 = no daily limit)")
 	zeit := fs.Duration("time-limit", 90*time.Minute, "maximum run time of the sandbox")
@@ -64,14 +66,20 @@ func arbeitenBefehl(args []string) {
 	if *projekt == "" || *modell == "" || *upstream == "" {
 		fehlerAus("--project, --model and --model-url are required")
 	}
+	agent := agentPruefen(*agentName)
+	skills := skillsLesen(*skillsWert)
 	fenster, err := zeitfensterLesen(*fensterText)
 	pruefen(err)
 	if *amEnde != "stop" && *amEnde != "finish" {
 		fehlerAus("--at-window-end accepts only stop or finish")
 	}
 	if *keyDatei != "" {
-		if _, err := os.Stat(*keyDatei); err != nil {
+		roh, err := os.ReadFile(*keyDatei)
+		if err != nil {
 			fehlerAus("--model-key-file: " + err.Error())
+		}
+		if agent.Name == "codex" && strings.HasPrefix(strings.TrimSpace(string(roh)), "{") {
+			fehlerAus("--model-key-file: Codex with a ChatGPT plan (auth.json) is not supported yet; use an OpenAI API key")
 		}
 	}
 	if *nurPruefen {
@@ -196,7 +204,10 @@ func arbeitenBefehl(args []string) {
 		abbrechen("environment: " + err.Error())
 	}
 	fmt.Printf("Environment: %s (%s)\n", u.Vorlage, u.Quelle)
-	image, err := umgebungsImage(basis, u, arbeitsbaum, true)
+	if err := agentImageBereit(basis, agent); err != nil {
+		abbrechen(err.Error())
+	}
+	image, err := umgebungsImage(basis, u, arbeitsbaum, agent.Image)
 	gestoppt()
 	if err != nil {
 		abbrechen(err.Error())
@@ -235,7 +246,7 @@ func arbeitenBefehl(args []string) {
 		pruefen(err)
 		key = strings.TrimSpace(string(roh))
 	}
-	verbrauch, protokoll, err := sandboxAusfuehren(ctx, a, u, image, arbeitsbaum, cache, ordner, *upstream, key, *modell, *budget, nil)
+	verbrauch, protokoll, err := sandboxAusfuehren(ctx, a, u, image, arbeitsbaum, cache, ordner, agent, skills, *upstream, key, *modell, *budget, nil)
 	stopp()
 	if err := verbrauchMerken(verbrauchsDatei(), id, tokensAus(verbrauch), time.Now()); err != nil {
 		fmt.Fprintln(os.Stderr, "recording usage:", err)
@@ -453,8 +464,9 @@ func zusammenfassungAus(protokoll string) string {
 }
 
 // sandboxAusfuehren startet Proxy und Sandbox (rootless Podman) und gibt Verbrauch und Agenten-Ausgabe zurück.
-// befehl ersetzt den Agenten (nur für Angriffstests, siehe angriff.go); nil = opencode mit dem Auftrag.
-func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, image, baum, cache, ordner, upstream, key, modell string, budget int, befehl []string) (map[string]float64, string, error) {
+// befehl ersetzt den Agenten (nur für Angriffstests, siehe angriff.go); nil = der gewählte Agent mit dem Auftrag.
+func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, image, baum, cache, ordner string, agent agentArt, skills []string,
+	upstream, key, modell string, budget int, befehl []string) (map[string]float64, string, error) {
 	podman := func(args ...string) (string, error) {
 		aus, err := exec.CommandContext(ctx, "podman", args...).CombinedOutput()
 		return strings.TrimSpace(string(aus)), err
@@ -470,7 +482,7 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	podman("rm", "-f", proxyName)
 	proxyArgs := []string{"run", "-d", "--name", proxyName, "--network", netz, "--network", "podman", "--timeout", "86400",
 		"--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges", "--memory", "256m", "--pids-limit", "64",
-		"-e", "SWARVEX_UPSTREAM=" + upstream, "-e", "SWARVEX_MODEL=" + modell, "-e", "SWARVEX_TASK_TOKEN=" + tok,
+		"-e", "SWARVEX_UPSTREAM=" + upstream, "-e", "SWARVEX_API=" + agent.API, "-e", "SWARVEX_MODEL=" + modell, "-e", "SWARVEX_TASK_TOKEN=" + tok,
 		"-e", fmt.Sprintf("SWARVEX_BUDGET_TOKENS=%d", budget)}
 	if key != "" {
 		proxyArgs = append(proxyArgs, "-e", "SWARVEX_UPSTREAM_KEY="+key)
@@ -480,22 +492,11 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	}
 	defer exec.Command("podman", "rm", "-f", proxyName).Run()
 
-	konfig := map[string]any{
-		"$schema": "https://opencode.ai/config.json", "autoupdate": false, "share": "disabled",
-		"model": "swarvex/" + modell,
-		"provider": map[string]any{"swarvex": map[string]any{
-			"npm": "@ai-sdk/openai-compatible", "name": "swarvex proxy",
-			"options": map[string]any{"baseURL": fmt.Sprintf("http://%s:8080/v1", proxyName), "apiKey": "{env:SWARVEX_TOKEN}"},
-			"models":  map[string]any{modell: map[string]any{"name": modell, "tool_call": true}},
-		}},
-	}
-	konfigPfad := filepath.Join(ordner, "opencode.json")
-	roh, _ := json.MarshalIndent(konfig, "", "  ")
-	if err := os.WriteFile(konfigPfad, roh, 0o644); err != nil {
+	auftrag := auftragstext(a, u)
+	agentArgs, agentBefehl, err := agentStart(agent, ordner, "http://"+proxyName+":8080", tok, modell, auftrag, skills, baum, u.Ordner)
+	if err != nil {
 		return nil, "", err
 	}
-
-	auftrag := auftragstext(a, u)
 	sandboxName := fmt.Sprintf("swarvex-sandbox-%d", a.ID)
 	podman("rm", "-f", sandboxName)
 	rest := 3600
@@ -503,13 +504,10 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 		rest = max(int(time.Until(frist).Seconds()), 1)
 	}
 	// Agent im Projekt-Image: kein Netz außer dem Schlüssel-Proxy, Projekt unter /work, Caches unter /cache.
-	sandboxArgs := append(containerArgs(sandboxName, baum, cache, u, rest), "--network", netz,
-		"-v", konfigPfad+":/konfig/opencode.json:ro,Z",
-		"-e", "OPENCODE_CONFIG=/konfig/opencode.json", "-e", "SWARVEX_TOKEN="+tok,
-		"-e", "SWARVEX_PROXY=http://"+proxyName+":8080",
-		"-e", "OPENCODE_DISABLE_AUTOUPDATE=1", "-e", "OPENCODE_DISABLE_MODELS_FETCH=1", image)
+	sandboxArgs := append(append(containerArgs(sandboxName, baum, cache, u, rest), "--network", netz), agentArgs...)
+	sandboxArgs = append(sandboxArgs, image)
 	if befehl == nil {
-		befehl = []string{"opencode", "run", "--pure", "--auto", "-m", "swarvex/" + modell, auftrag}
+		befehl = agentBefehl
 	}
 	cmd := exec.CommandContext(ctx, "podman", append(sandboxArgs, befehl...)...)
 	cmd.Cancel = func() error {

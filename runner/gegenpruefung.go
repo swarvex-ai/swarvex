@@ -114,7 +114,7 @@ func gegenpruefen(ctx context.Context, m *mcpClient, z *zugangsdaten, projekt st
 	if u.Engine == nil {
 		return "unable", "the project does not use a proprietary engine; the test pipeline checks it"
 	}
-	image, err := umgebungsImage(ctx, u, baum, false)
+	image, err := umgebungsImage(ctx, u, baum, "")
 	if err != nil {
 		return "unable", err.Error()
 	}
