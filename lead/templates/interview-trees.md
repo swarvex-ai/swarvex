@@ -17,7 +17,7 @@
 | G6 | **Success criteria for version 1:** measurable or clearly observable | R | G4 | "done when …" |
 | G7 | **Platforms** | R | G1, G3 | few at first; every platform adds testing effort |
 | G8 | **Stack / engine / language** | R | G1, G7 | research which languages contributors' models handle well |
-| G9 | **License for code / assets** | R | – | recommend MIT or CC BY 4.0; projects on swarvex are open source |
+| G9 | **License for code / assets** | R | – | any OSI license / free asset license; recommend by type: web service or server AGPL-3.0, game/app/tool GPL-3.0-or-later, library MIT or Apache-2.0; assets CC BY-SA 4.0 |
 | G10 | **Project language** (tasks, docs) and languages of the product | R | G3 | code identifiers usually English |
 | G11 | **Quality level:** prototype / indie / polished | R | G6 | determines testing effort and asset ambition |
 | G12 | **References and style:** "like X, but Y", mood, palette | R | G4 | 2–3 references with "adopt / don't adopt" |

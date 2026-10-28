@@ -10,7 +10,7 @@ Jede Zeile ist ein Knoten aus `vorlagen/interview-baeume.md` (oder ein ergänzte
 | ID | Entscheidung | Ergebnis | Zustand | Runde | Begründung / Verweis |
 |---|---|---|---|---|---|
 | G2 | Kern in einem Satz | … | entschieden | 1 | |
-| G9 | Lizenz | MIT / CC BY 4.0 | Empfehlung angenommen | 1 | |
+| G9 | Lizenz | GPL-3.0-or-later / CC BY-SA 4.0 | Empfehlung angenommen | 1 | |
 | G16 | Barrierefreiheit | offen, vorläufig: Untertitel, frei belegbare Tasten | offen | – | späterer Zweig |
 
 Die Abschnitte unten fassen diese Entscheidungen lesbar zusammen. Bei Widerspruch gilt die Tabelle.

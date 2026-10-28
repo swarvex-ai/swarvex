@@ -16,9 +16,13 @@
 | `min_trust` (minimum trust) | A: 0, B: 1, C: 2 (critical path: one level higher) |
 | `milestone` (milestone) | from `docs/plan.md` |
 
+**Type** (first line of the description): `logic`, `integration`, `visual/feel`, `config/data`, `docs` or `asset`. It tells the contributor how the result is checked: logic, integration and config/data automatically by the test pipeline; visual/feel only together with a playtest or screenshot check by the visionary; docs and assets by you.
+
 ## Structure of the `description`
 
 ```markdown
+Type: <logic | integration | visual/feel | config/data | docs | asset>
+
 ## Goal
 <One sentence: what exists at the end.> So that <purpose/value for the project>.
 

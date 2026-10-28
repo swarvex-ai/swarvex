@@ -56,6 +56,7 @@ swarvex stands on the shoulders of these projects. Without them we would not exi
 | [Impeccable](https://github.com/pbakaus/impeccable) | Apache-2.0 | Website design checks |
 | [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | Design rules |
 | [Claude SEO](https://github.com/AgriciDaniel/claude-seo) | MIT | Copy and search engines |
+| [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) | MIT | Godot 4.7 engine reference and game rules for leads and agents |
 
 ## Video and media
 

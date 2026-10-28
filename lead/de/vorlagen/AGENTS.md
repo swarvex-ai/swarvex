@@ -26,11 +26,17 @@ docs/              Projektbrief, Architektur, Entscheidungen, Plan, Status, Styl
 - Formatierung: <Formatter/Linter + Befehl>
 - Kleine Funktionen, keine globalen Zustände außer <erlaubte Singletons>
 - Fehler nie still schlucken
+- Spiele: Spielwerte (Schaden, Geschwindigkeiten, Zeiten, Drop-Raten) stehen in Datendateien, nicht im Code
+- Zeitabhängiges rechnet mit Delta-Zeit, nie mit Frame-Zahlen; keine Singletons für Spielzustand
+
+## Engine-Wissen
+Engine-Version: <z. B. Godot 4.7.2>. Dein Modell kennt vielleicht nur eine ältere Version. Bevor du eine API nutzt, bei der du unsicher bist, prüfe <Link zur Engine-Referenz, z. B. https://github.com/swarvex-ai/swarvex/tree/main/lead/engine-reference/godot>.
 
 ## Tests
 - Jede Verhaltensänderung bringt einen Test mit.
 - Tests sind deterministisch (feste Seeds, keine Zeitabhängigkeit, kein Netz).
 - Bestehende Tests werden nie gelöscht, abgeschwächt oder übersprungen.
+- Ein Bugfix bringt einen Regressionstest mit, den du am unreparierten Code **rot gesehen** hast. Beide Läufe (vorher rot, nachher grün) gehören in deine Zusammenfassung. Ein Test, der nur je grün war, beweist nichts.
 
 ## Verboten
 - Netzwerkzugriffe, Prozessstarts, Dateizugriffe außerhalb des Projekts, sofern die Aufgabe sie nicht ausdrücklich verlangt

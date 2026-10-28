@@ -280,6 +280,14 @@
     "group": "skills"
   },
   {
+    "name": "Claude Code Game Studios",
+    "url": "https://github.com/Donchitos/Claude-Code-Game-Studios",
+    "license": "MIT",
+    "en": "Godot 4.7 engine reference and game rules for leads and agents",
+    "de": "Godot-4.7-Referenz und Spielregeln für Leads und Agenten",
+    "group": "skills"
+  },
+  {
     "name": "Manim Community",
     "url": "https://github.com/ManimCommunity/manim",
     "license": "MIT",

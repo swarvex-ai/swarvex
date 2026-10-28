@@ -142,7 +142,7 @@ Your context is limited and sessions end. The state of the project therefore liv
 
 ### Phase 0: The project interview
 
-The goal is a **project brief made of hard facts** that the visionary confirms. Without it there are no tasks. You get there with a structured interview. The method is based on Matt Pocock's "grilling" skill (MIT, see `QUELLEN.md`).
+The goal is a **project brief made of hard facts** that the visionary confirms. Without it there are no tasks. You get there with a structured interview. The method is based on Matt Pocock's "grilling" skill (MIT, see `SOURCES.md`).
 
 **1. The decision tree.** Every decision has follow-up decisions that depend on it. Example: asking about controls only makes sense once the platform is settled. Take the starting tree for the project type from `templates/interview-trees.md`. It contains **required branches** (no swarm starts without them) and **later branches**. Add anything else the idea raises.
 
@@ -305,10 +305,13 @@ In this order, from strong to weak:
 
 For behavior, use **Given / When / Then**: "Given a slime with 10 HP, when it takes 4 damage, then it has 6 HP and plays `hit`."
 
+**Bug fixes:** demand a regression test that fails on the old code: "the new test is red on `base_commit` and green with the patch; both runs are in the summary". A test that was only ever seen green may not test anything (for example because its fixture never triggers the bug).
+
 ### 6.6 Definition of ready, before creating a task
 
 - [ ] One goal, one sentence of purpose ("so that …")
 - [ ] Level, capabilities, paths and minimum trust set
+- [ ] Type set (`logic`, `integration`, `visual/feel`, `config/data`, `docs`, `asset`); for `visual/feel`: who checks it, and how
 - [ ] All dependencies done (or the task is level A without code dependency)
 - [ ] `base_commit` set if the task needs a specific state of the code
 - [ ] Context: files to read, interfaces, reference example, glossary terms
@@ -401,6 +404,16 @@ Every session, at least daily while agents are active:
 | Regressions after merge per milestone | 0–1 |
 | Wasted donated credits | as close to 0 as possible |
 
+### 7.1 Recurring checks (per milestone)
+
+| Check | Question | Consequence |
+|---|---|---|
+| Scope | Does everything built fit the brief and its non-goals? What grew without a decision? | cut it or take it to the visionary |
+| Consistency | Do glossary, docs and code use the same terms? Are docs still true? | docs task (level A) |
+| Flaky tests | Did any test change its result without a code change? | fix it yourself right away (level D) |
+| Balance (games) | Do measurement runs match the intended difficulty? | simulation task (level A), values as data |
+| Retrospective | Which task types failed most, and why? | improve the template, note it in `docs/status.md` |
+
 ---
 
 ## 8. Review
@@ -451,6 +464,7 @@ Tone: friendly, concrete, never condescending. Criticize the contribution, never
 - [ ] Reproducibly green, no randomness in tests without a fixed seed
 - [ ] New tests would turn red on broken code (think: what if the core line were missing?)
 - [ ] No regression in neighboring systems (screenshots, measurements)
+- [ ] Bug fix: the regression test was red on the old code (run in the summary, or reproduced by you)
 
 ### 8.4 Security checklist (always)
 
@@ -474,7 +488,9 @@ A hit means `reject` with a factual reason. Report intent to the platform and th
 - **Content as data:** build enemies, weapons and levels so that variants are data or B tasks.
 - **Balancing through simulations** (level A): measurement runs with metrics instead of gut feeling.
 - **Asset pipeline:** naming, import settings, scale and the lighting scene for screenshots are defined early.
-- **Playtests** as tasks: fixed scenario, questions, structured report.
+- **Playtests** as tasks: fixed scenario, questions, structured report (`templates/playtest-report.md`).
+- **Style guide** for look and sound before asset tasks go out (`templates/style-guide.md`).
+- **Engine knowledge:** models often only know older engine versions. Link the engine reference in `AGENTS.md` (`lead/engine-reference/godot/` for Godot 4.7) and name traps from it in tasks.
 
 ### Tool / CLI / library
 - **Interface first:** commands, options, input and output formats, error messages and exit codes are documented before building.
@@ -552,4 +568,7 @@ An existing, usually closed program is rebuilt as open source. Legally, only a c
 | `templates/decision.md` | architecture and fundamental decisions (ADR) and approval requests |
 | `templates/status-report.md` | status for the visionary |
 | `templates/AGENTS.md` | project rules for all agents in the project repository |
+| `templates/playtest-report.md` | games and apps: scenario, questions, observations, result |
+| `templates/style-guide.md` | look, sound and tone; asset specifications |
+| `engine-reference/godot/` | Godot 4.7 changes that models often don't know |
 | `templates/swarvex.yaml` | example test contract |

@@ -305,10 +305,13 @@ In dieser Reihenfolge, von stark zu schwach:
 
 Für Verhalten eignet sich die Form **Gegeben / Wenn / Dann**: „Gegeben Schleim mit 10 LP, wenn er 4 Schaden erhält, dann hat er 6 LP und spielt `hit`.“
 
+**Bugfixes:** Verlange einen Regressionstest, der am alten Code fehlschlägt: „der neue Test ist auf `base_commit` rot und mit dem Patch grün; beide Läufe stehen in der Zusammenfassung“. Ein Test, den nie jemand rot gesehen hat, prüft womöglich nichts (etwa weil seine Testdaten den Fehler nie auslösen).
+
 ### 6.6 Bereit-Checkliste (Definition of Ready) vor dem Anlegen
 
 - [ ] Ein Ziel, ein Satz Zweck („damit …“)
 - [ ] Stufe, Fähigkeiten, Pfade und Mindest-Vertrauen gesetzt
+- [ ] Typ gesetzt (`logic`, `integration`, `visual/feel`, `config/data`, `docs`, `asset`); bei `visual/feel`: wer prüft, und wie
 - [ ] Alle Abhängigkeiten erledigt (oder Aufgabe ist Stufe A ohne Codebezug)
 - [ ] `base_commit` gesetzt, wenn die Aufgabe einen bestimmten Code-Stand braucht
 - [ ] Kontext: zu lesende Dateien, Schnittstellen, Referenzbeispiel, Glossarbegriffe
@@ -401,6 +404,17 @@ Jede Sitzung, mindestens täglich, solange Agenten aktiv sind:
 | Regressionen nach Merge pro Meilenstein | 0–1 |
 | Verworfene Spenden-Credits | so nah an 0 wie möglich |
 
+
+### 7.1 Wiederkehrende Prüfungen (je Meilenstein)
+
+| Prüfung | Frage | Folge |
+|---|---|---|
+| Umfang | Passt alles Gebaute zum Brief und seinen Nicht-Zielen? Was ist ohne Entscheidung gewachsen? | streichen oder dem Visionär vorlegen |
+| Stimmigkeit | Nutzen Glossar, Doku und Code dieselben Begriffe? Stimmt die Doku noch? | Doku-Aufgabe (Stufe A) |
+| Instabile Tests | Hat ein Test sein Ergebnis ohne Codeänderung gewechselt? | sofort selbst reparieren (Stufe D) |
+| Balance (Spiele) | Passen Messläufe zur gewollten Schwierigkeit? | Simulations-Aufgabe (Stufe A), Werte als Daten |
+| Rückblick | Welche Aufgabentypen scheitern am häufigsten, und warum? | Vorlage verbessern, in `docs/status.md` festhalten |
+
 ---
 
 ## 8. Bewerten
@@ -451,6 +465,7 @@ Ton: freundlich, konkret, nie herablassend. Kritisiere den Beitrag, nie den Mens
 - [ ] Reproduzierbar grün, kein Zufall ohne festen Seed in Tests
 - [ ] Neue Tests würden bei kaputtem Code rot (prüfe gedanklich: Was, wenn die Kernzeile fehlt?)
 - [ ] Keine Regression in benachbarten Systemen (Screenshots, Messwerte)
+- [ ] Bugfix: Der Regressionstest war am alten Code rot (Lauf in der Zusammenfassung oder von dir nachgestellt)
 
 ### 8.4 Sicherheits-Checkliste (immer)
 
@@ -474,7 +489,9 @@ Ein Treffer heißt `reject` mit sachlicher Begründung. Absicht meldest du an Pl
 - **Inhalte als Daten:** Gegner, Waffen und Level so bauen, dass Varianten Daten- oder B-Aufgaben sind.
 - **Balancing über Simulationen** (Stufe A): Messläufe mit Kennzahlen statt Bauchgefühl.
 - **Asset-Pipeline:** Benennung, Import-Einstellungen, Maßstab und Beleuchtungsszene für Screenshots sind früh festgelegt.
-- **Playtests** als Aufgaben: festes Szenario, Fragen, strukturierter Bericht.
+- **Playtests** als Aufgaben: festes Szenario, Fragen, strukturierter Bericht (`vorlagen/playtest-bericht.md`).
+- **Styleguide** für Aussehen und Klang, bevor Asset-Aufgaben rausgehen (`vorlagen/styleguide.md`).
+- **Engine-Wissen:** Modelle kennen oft nur ältere Engine-Versionen. Verlinke die Engine-Referenz in `AGENTS.md` (`lead/engine-reference/godot/` für Godot 4.7) und nenne Fallen daraus in den Aufgaben.
 
 ### Tool / CLI / Bibliothek
 - **Schnittstelle zuerst:** Befehle, Optionen, Ein- und Ausgabeformate, Fehlermeldungen und Exit-Codes sind dokumentiert, bevor gebaut wird.
@@ -552,4 +569,7 @@ Ein vorhandenes, meist geschlossenes Programm wird als Open Source neu gebaut. R
 | `vorlagen/entscheidung.md` | Architektur- und Grundsatzentscheidungen (ADR) und Freigabe-Anfragen |
 | `vorlagen/statusbericht.md` | Status an den Visionär |
 | `vorlagen/AGENTS.md` | Projektregeln für alle Agenten im Projekt-Repo |
+| `vorlagen/playtest-bericht.md` | Spiele und Apps: Szenario, Fragen, Beobachtungen, Ergebnis |
+| `vorlagen/styleguide.md` | Aussehen, Klang und Ton; Asset-Vorgaben |
+| `../engine-reference/godot/` | Änderungen in Godot 4.7, die Modelle oft nicht kennen (Englisch) |
 | `vorlagen/swarvex.yaml` | Beispiel `swarvex.yaml`: Umgebung, Tests und geschützte Pfade |

@@ -10,7 +10,7 @@ Every row is a node from `templates/interview-trees.md` (or an added one). State
 | ID | Decision | Result | State | Round | Reason / reference |
 |---|---|---|---|---|---|
 | G2 | Core in one sentence | … | decided | 1 | |
-| G9 | License | MIT / CC BY 4.0 | recommendation accepted | 1 | |
+| G9 | License | GPL-3.0-or-later / CC BY-SA 4.0 | recommendation accepted | 1 | |
 | G16 | Accessibility | open, provisional: subtitles, remappable keys | open | – | later branch |
 
 The sections below summarize these decisions in readable form. In case of contradiction, the table wins.

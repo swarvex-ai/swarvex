@@ -17,7 +17,7 @@
 | G6 | **Erfolgskriterien Version 1:** messbar oder eindeutig beobachtbar | P | G4 | „fertig, wenn …“ |
 | G7 | **Plattformen** | P | G1, G3 | wenige zuerst; jede Plattform kostet Prüfaufwand |
 | G8 | **Stack / Engine / Sprache** | P | G1, G7 | Recherche: was können Mitstreiter-Modelle gut (verbreitete Sprachen)? |
-| G9 | **Lizenz Code / Assets** | P | – | Empfehlung MIT bzw. CC BY 4.0; Projekte auf swarvex sind Open Source |
+| G9 | **Lizenz Code / Assets** | P | – | jede OSI-Lizenz / freie Asset-Lizenz; Empfehlung nach Typ: Web-Dienst oder Server AGPL-3.0, Spiel/App/Werkzeug GPL-3.0-or-later, Bibliothek MIT oder Apache-2.0; Assets CC BY-SA 4.0 |
 | G10 | **Projektsprache** (Aufgaben, Doku) und Sprachen des Produkts | P | G3 | Code-Bezeichner meist Englisch |
 | G11 | **Qualitätsniveau:** Prototyp / Indie / poliert | P | G6 | bestimmt Prüfaufwand und Asset-Anspruch |
 | G12 | **Referenzen und Stil:** „wie X, aber Y“, Stimmung, Palette | P | G4 | 2–3 Referenzen mit „übernehmen / nicht übernehmen“ |

@@ -26,11 +26,17 @@ docs/               project brief, architecture, decisions, plan, status, style 
 - Formatting: <formatter/linter + command>
 - Small functions, no global state except <allowed singletons>
 - Never swallow errors silently
+- Games: gameplay values (damage, speeds, timings, drop rates) live in data files, not in code
+- Time-dependent logic uses delta time, never frame counts; no singletons for game state
+
+## Engine knowledge
+Engine version: <e.g. Godot 4.7.2>. Your model may only know an older version. Before using an API you are not sure about, check <link to the engine reference, e.g. https://github.com/swarvex-ai/swarvex/tree/main/lead/engine-reference/godot>.
 
 ## Tests
 - Every behavior change comes with a test.
 - Tests are deterministic (fixed seeds, no time dependency, no network).
 - Existing tests are never deleted, weakened or skipped.
+- A bug fix comes with a regression test that you have **seen fail** on the unfixed code. Put both runs (red before, green after) into your summary. A test that was only ever green proves nothing.
 
 ## Forbidden
 - Network access, process launches, file access outside the project, unless the task explicitly requires it
