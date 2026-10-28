@@ -41,7 +41,7 @@ func TestAgentStart(t *testing.T) {
 		ordner := t.TempDir()
 		baum := t.TempDir()
 		datei(t, filepath.Join(baum, ".agents", "skills", "projekt", "SKILL.md"), "p")
-		args, befehl, err := agentStart(agenten[name], ordner, "http://swarvex-proxy-1:8080", tok, "Mein Modell", "AUFTRAG", nil, baum, "")
+		args, befehl, err := agentStart(agenten[name], ordner, "http://swarvex-proxy-1:8080", tok, "Mein Modell", "AUFTRAG", nil, baum, "", modellZugang{})
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
@@ -78,13 +78,13 @@ func TestAgentStart(t *testing.T) {
 			}
 		}
 	}
-	if _, _, err := agentStart(agentArt{Name: "unbekannt"}, t.TempDir(), "", tok, "m", "a", nil, t.TempDir(), ""); err == nil {
+	if _, _, err := agentStart(agentArt{Name: "unbekannt"}, t.TempDir(), "", tok, "m", "a", nil, t.TempDir(), "", modellZugang{}); err == nil {
 		t.Error("unbekannter Agent ohne Fehler")
 	}
 	// Projekt im Unterordner: Projekt-Skills aus der Wurzel bekommt auch Codex als Kopie.
 	ordner, baum := t.TempDir(), t.TempDir()
 	datei(t, filepath.Join(baum, ".agents", "skills", "wurzel", "SKILL.md"), "w")
-	args, _, err := agentStart(agenten["codex"], ordner, "http://p:8080", tok, "m", "a", nil, baum, "game")
+	args, _, err := agentStart(agenten["codex"], ordner, "http://p:8080", tok, "m", "a", nil, baum, "game", modellZugang{})
 	if err != nil || !strings.Contains(strings.Join(args, " "), ":/home/agent/.agents/skills:ro") {
 		t.Errorf("Unterordner: %v %v", args, err)
 	}

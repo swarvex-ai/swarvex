@@ -11,7 +11,6 @@ import (
 	"github.com/swarvex-ai/swarvex/runner/umgebung"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -35,12 +34,8 @@ func angriffstestBefehl(args []string) {
 	inhalt, err := os.ReadFile(*skript)
 	pruefen(err)
 	pruefen(os.WriteFile(filepath.Join(baum, "attack.sh"), inhalt, 0o755))
-	key := ""
-	if *keyDatei != "" {
-		roh, err := os.ReadFile(*keyDatei)
-		pruefen(err)
-		key = strings.TrimSpace(string(roh))
-	}
+	zugang, err := zugangLesen(agent, *keyDatei, *upstream, *zeit)
+	pruefen(err)
 	ctx, stopp := context.WithTimeout(context.Background(), *zeit)
 	defer stopp()
 	a := aufgabe{ID: time.Now().Unix() % 100000, Titel: "attack test", Engine: "test"}
@@ -50,7 +45,7 @@ func angriffstestBefehl(args []string) {
 	pruefen(agentImageBereit(ctx, agent))
 	image, err := umgebungsImage(ctx, u, baum, agent.Image)
 	pruefen(err)
-	verbrauch, aus, err := sandboxAusfuehren(ctx, a, u, image, baum, cacheOrdner("attack-test"), ordner, agent, skillsLesen(os.Getenv("SWARVEX_ATTACK_SKILLS")), *upstream, key, *modell, *budget, []string{"sh", "/work/attack.sh"})
+	verbrauch, aus, err := sandboxAusfuehren(ctx, a, u, image, baum, cacheOrdner("attack-test"), ordner, agent, skillsLesen(os.Getenv("SWARVEX_ATTACK_SKILLS")), zugang, *modell, *budget, []string{"sh", "/work/attack.sh"})
 	fmt.Println(aus)
 	fmt.Printf("--- usage according to the proxy: %v\n", verbrauch)
 	proxyLog, _ := os.ReadFile(filepath.Join(ordner, "proxy.log"))

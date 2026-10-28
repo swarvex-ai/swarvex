@@ -50,7 +50,7 @@ func arbeitenBefehl(args []string) {
 	agentName := fs.String("agent", "opencode", "agent in the sandbox: "+agentNamen())
 	modell := fs.String("model", "", "model name at the provider")
 	upstream := fs.String("model-url", "", "base URL of the model API without /v1: OpenAI-compatible (opencode), Anthropic (claude) or OpenAI Responses (codex)")
-	keyDatei := fs.String("model-key-file", "", "file containing the model's API key, for claude also a subscription token from `claude setup-token` (optional)")
+	keyDatei := fs.String("model-key-file", "", "file containing the model's API key; claude: also a subscription token from `claude setup-token`; codex: also your ChatGPT sign-in ~/.codex/auth.json (optional)")
 	skillsWert := fs.String("skills", "", `your own skills for the agent: "auto" (the usual folders) or folders separated by ":" (copied, read-only)`)
 	budget := fs.Int("budget-tokens", 400000, "token budget for this task")
 	tagesbudget := fs.Int64("daily-budget-tokens", 0, "at most this many tokens per calendar day across all tasks (0 = no daily limit)")
@@ -63,8 +63,8 @@ func arbeitenBefehl(args []string) {
 	pause := fs.Duration("pause", 5*time.Minute, "wait time in continuous mode when no matching task is open")
 	nurPruefen := fs.Bool("check-only", false, "only check the options, reserve nothing (used by `swarvex service`)")
 	fs.Parse(args)
-	if *projekt == "" || *modell == "" || *upstream == "" {
-		fehlerAus("--project, --model and --model-url are required")
+	if *projekt == "" || *modell == "" || (*upstream == "" && !codexAboDatei(*agentName, *keyDatei)) {
+		fehlerAus("--project, --model and --model-url are required (--model-url not with Codex and a ChatGPT sign-in)")
 	}
 	agent := agentPruefen(*agentName)
 	skills := skillsLesen(*skillsWert)
@@ -78,8 +78,8 @@ func arbeitenBefehl(args []string) {
 		if err != nil {
 			fehlerAus("--model-key-file: " + err.Error())
 		}
-		if agent.Name == "codex" && strings.HasPrefix(strings.TrimSpace(string(roh)), "{") {
-			fehlerAus("--model-key-file: Codex with a ChatGPT plan (auth.json) is not supported yet; use an OpenAI API key")
+		if istCodexAnmeldung(roh) && agent.Name != "codex" {
+			fehlerAus("--model-key-file: a Codex sign-in (auth.json) only works with --agent codex")
 		}
 	}
 	if *nurPruefen {
@@ -240,13 +240,11 @@ func arbeitenBefehl(args []string) {
 	}()
 
 	// 4. Sandbox mit Schlüssel-Proxy.
-	key := ""
-	if *keyDatei != "" {
-		roh, err := os.ReadFile(*keyDatei)
-		pruefen(err)
-		key = strings.TrimSpace(string(roh))
+	zugang, err := zugangLesen(agent, *keyDatei, *upstream, *zeit)
+	if err != nil {
+		abbrechen(err.Error())
 	}
-	verbrauch, protokoll, err := sandboxAusfuehren(ctx, a, u, image, arbeitsbaum, cache, ordner, agent, skills, *upstream, key, *modell, *budget, nil)
+	verbrauch, protokoll, err := sandboxAusfuehren(ctx, a, u, image, arbeitsbaum, cache, ordner, agent, skills, zugang, *modell, *budget, nil)
 	stopp()
 	if err := verbrauchMerken(verbrauchsDatei(), id, tokensAus(verbrauch), time.Now()); err != nil {
 		fmt.Fprintln(os.Stderr, "recording usage:", err)
@@ -466,7 +464,7 @@ func zusammenfassungAus(protokoll string) string {
 // sandboxAusfuehren startet Proxy und Sandbox (rootless Podman) und gibt Verbrauch und Agenten-Ausgabe zurück.
 // befehl ersetzt den Agenten (nur für Angriffstests, siehe angriff.go); nil = der gewählte Agent mit dem Auftrag.
 func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, image, baum, cache, ordner string, agent agentArt, skills []string,
-	upstream, key, modell string, budget int, befehl []string) (map[string]float64, string, error) {
+	zugang modellZugang, modell string, budget int, befehl []string) (map[string]float64, string, error) {
 	podman := func(args ...string) (string, error) {
 		aus, err := exec.CommandContext(ctx, "podman", args...).CombinedOutput()
 		return strings.TrimSpace(string(aus)), err
@@ -478,14 +476,20 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 		}
 	}
 	tok := zufall(36)
+	if zugang.chatgpt() {
+		tok = codexSandboxToken(tok) // Codex prüft, dass sein Zugangstoken ein gültiges JWT ist
+	}
 	proxyName := fmt.Sprintf("swarvex-proxy-%d", a.ID)
 	podman("rm", "-f", proxyName)
 	proxyArgs := []string{"run", "-d", "--name", proxyName, "--network", netz, "--network", "podman", "--timeout", "86400",
 		"--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges", "--memory", "256m", "--pids-limit", "64",
-		"-e", "SWARVEX_UPSTREAM=" + upstream, "-e", "SWARVEX_API=" + agent.API, "-e", "SWARVEX_MODEL=" + modell, "-e", "SWARVEX_TASK_TOKEN=" + tok,
+		"-e", "SWARVEX_UPSTREAM=" + zugang.URL, "-e", "SWARVEX_API=" + agent.API, "-e", "SWARVEX_MODEL=" + modell, "-e", "SWARVEX_TASK_TOKEN=" + tok,
 		"-e", fmt.Sprintf("SWARVEX_BUDGET_TOKENS=%d", budget)}
-	if key != "" {
-		proxyArgs = append(proxyArgs, "-e", "SWARVEX_UPSTREAM_KEY="+key)
+	if zugang.Key != "" {
+		proxyArgs = append(proxyArgs, "-e", "SWARVEX_UPSTREAM_KEY="+zugang.Key)
+	}
+	if zugang.chatgpt() {
+		proxyArgs = append(proxyArgs, "-e", "SWARVEX_ACCOUNT_ID="+zugang.Konto)
 	}
 	if aus, err := podman(append(proxyArgs, "swarvex-proxy")...); err != nil {
 		return nil, "", fmt.Errorf("starting the proxy: %s", aus)
@@ -493,7 +497,7 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	defer exec.Command("podman", "rm", "-f", proxyName).Run()
 
 	auftrag := auftragstext(a, u)
-	agentArgs, agentBefehl, err := agentStart(agent, ordner, "http://"+proxyName+":8080", tok, modell, auftrag, skills, baum, u.Ordner)
+	agentArgs, agentBefehl, err := agentStart(agent, ordner, "http://"+proxyName+":8080", tok, modell, auftrag, skills, baum, u.Ordner, zugang)
 	if err != nil {
 		return nil, "", err
 	}
@@ -666,4 +670,41 @@ func ohneDauerbetrieb(args []string) []string {
 		r = append(r, a)
 	}
 	return r
+}
+
+// zugangLesen: Modell-Adresse und Anmeldung aus --model-url und --model-key-file. Bei Codex mit
+// ChatGPT-Anmeldung (auth.json) wird das Token bei Bedarf erneuert, damit es die ganze Aufgabe hält.
+func zugangLesen(agent agentArt, keyDatei, upstream string, dauer time.Duration) (modellZugang, error) {
+	z := modellZugang{URL: upstream}
+	if keyDatei == "" {
+		return z, nil
+	}
+	roh, err := os.ReadFile(keyDatei)
+	if err != nil {
+		return z, err
+	}
+	if !istCodexAnmeldung(roh) {
+		z.Key = strings.TrimSpace(string(roh))
+		return z, nil
+	}
+	if agent.Name != "codex" {
+		return z, fmt.Errorf("a Codex sign-in (auth.json) only works with --agent codex")
+	}
+	abo, err := codexAboLaden(keyDatei, dauer+15*time.Minute)
+	if err != nil {
+		return z, err
+	}
+	if upstream != "" {
+		abo.URL = upstream
+	}
+	return abo, nil
+}
+
+// codexAboDatei: --agent codex mit einer Codex-Anmeldung als Schlüsseldatei?
+func codexAboDatei(agent, keyDatei string) bool {
+	if agent != "codex" || keyDatei == "" {
+		return false
+	}
+	roh, err := os.ReadFile(keyDatei)
+	return err == nil && istCodexAnmeldung(roh)
 }

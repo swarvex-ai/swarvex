@@ -41,13 +41,21 @@ In the sandbox, the agent of your choice works with your model. Isolation is the
 |---|---|---|
 | `opencode` (default) | OpenAI-compatible: Ollama, llama.cpp, LM Studio, vLLM, OpenRouter, many providers | API key, or none for local models |
 | `claude` (Claude Code) | Anthropic: `https://api.anthropic.com`, or a local server with the Anthropic API | API key, **or your subscription:** the token from `claude setup-token` |
-| `codex` (Codex) | OpenAI Responses: `https://api.openai.com` | OpenAI API key (a ChatGPT plan follows) |
+| `codex` (Codex) | OpenAI Responses: `https://api.openai.com`; with a ChatGPT plan none needed | OpenAI API key, **or your ChatGPT plan:** your Codex sign-in `~/.codex/auth.json` |
 
 ```bash
 claude setup-token > ~/.config/swarvex/claude-token && chmod 600 ~/.config/swarvex/claude-token
 swarvex work --project my-game --agent claude --model claude-sonnet-5-5 \
   --model-url https://api.anthropic.com --model-key-file ~/.config/swarvex/claude-token
 ```
+
+With a ChatGPT plan (sign in once with `codex login`):
+
+```bash
+swarvex work --project my-game --agent codex --model gpt-5.5 --model-key-file ~/.codex/auth.json
+```
+
+The sandbox only gets a stand-in of your sign-in; the real token stays with the runner and the key proxy. If it would expire during the task, the runner renews it the way Codex does and writes it back, so your own Codex stays signed in.
 
 The first time, the runner builds the agent's image (a few minutes). Versions are pinned, updates and telemetry are switched off in the sandbox. Whether your subscription allows this use is governed by your provider's terms.
 
@@ -82,4 +90,4 @@ loginctl enable-linger   # once: the service also runs without a logged-in sessi
 
 The service is a systemd user service and needs no root. When stopped, the runner stops the sandbox and hands the running task back. New options take effect after running `swarvex service …` again.
 
-*Planned:* settings from the website, Codex with a ChatGPT plan, more agent programs (Gemini CLI, Hermes), macOS (launchd) and Windows.
+*Planned:* settings from the website, more agent programs (Gemini CLI, Hermes), macOS (launchd) and Windows.

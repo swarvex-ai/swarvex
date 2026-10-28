@@ -32,6 +32,8 @@ class Modell(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.protokoll({})
+        if self.path.split("?")[0] == "/v1/models" and self.headers.get("chatgpt-account-id"):
+            return self.json({"models": []})  # Codex-Backend (ChatGPT-Abo): eigenes Format
         self.json({"object": "list", "data": [{"id": "fake", "object": "model"}]})
 
     def do_POST(self):
@@ -55,7 +57,7 @@ class Modell(BaseHTTPRequestHandler):
                 ("message_delta", {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 5}}),
                 ("message_stop", {"type": "message_stop"}),
             ])
-        if pfad == "/v1/responses":
+        if pfad in ("/v1/responses", "/responses"):
             item = {"id": "msg_1", "type": "message", "role": "assistant", "status": "completed",
                     "content": [{"type": "output_text", "text": TEXT, "annotations": []}]}
             antwort = {"id": "resp_1", "object": "response", "status": "completed", "model": anfrage.get("model"),
@@ -77,6 +79,7 @@ class Modell(BaseHTTPRequestHandler):
     def protokoll(self, anfrage):
         print(json.dumps({"path": self.path, "authorization": self.headers.get("authorization"),
                           "x-api-key": self.headers.get("x-api-key"), "anthropic-beta": self.headers.get("anthropic-beta"),
+                          "chatgpt-account-id": self.headers.get("chatgpt-account-id"),
                           "model": anfrage.get("model"), "stream": anfrage.get("stream")}), flush=True)
 
     def log_message(self, *a):

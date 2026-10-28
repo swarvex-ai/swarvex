@@ -59,7 +59,8 @@ func agentImageBereit(ctx context.Context, a agentArt) error {
 // agentStart: zusätzliche Podman-Argumente (Umgebung, Mounts) und der Befehl des Agenten.
 // ordner ist der Aufgabenordner außerhalb der Sandbox; dort entstehen Konfiguration und Skill-Kopie.
 // projektOrdner ist der Unterordner, in dem der Agent startet ("" = Wurzel).
-func agentStart(a agentArt, ordner, proxyURL, token, modell, auftrag string, skills []string, baum, projektOrdner string) ([]string, []string, error) {
+// zugang zeigt nur an, ob Codex mit ChatGPT-Abo läuft (Schlüssel bleiben im Proxy).
+func agentStart(a agentArt, ordner, proxyURL, token, modell, auftrag string, skills []string, baum, projektOrdner string, zugang modellZugang) ([]string, []string, error) {
 	args := []string{"-e", "HOME=/home/agent", "-e", "SWARVEX_TOKEN=" + token, "-e", "SWARVEX_PROXY=" + proxyURL}
 	// Eigene Skills, dazu Projekt-Skills, die der Agent nicht selbst findet: Claude Code liest
 	// .agents/skills nicht, und ohne .git (die Sandbox hat keins) suchen opencode und Codex nur ab dem
@@ -117,8 +118,19 @@ func agentStart(a agentArt, ordner, proxyURL, token, modell, auftrag string, ski
 		// Einstellungen per -c statt config.toml: ~/.codex bleibt Codex' eigener, beschreibbarer Ordner.
 		// Codex' eigene Sandbox ist überflüssig (und im Container nicht verfügbar): Wir sind die Sandbox.
 		anbieter := fmt.Sprintf("{name=%s, base_url=%s, env_key=\"SWARVEX_TOKEN\", wire_api=\"responses\"}", tomlText("swarvex proxy"), tomlText(proxyURL+"/v1"))
+		if zugang.chatgpt() {
+			// ChatGPT-Abo: Codex meldet sich wie gewohnt mit auth.json an, die hier eine Attrappe ist
+			// (Zugangstoken = Wegwerf-Token). Den echten Zugang setzt der Proxy ein.
+			pfad := filepath.Join(ordner, "codex-auth.json")
+			if err := os.WriteFile(pfad, codexSandboxAnmeldung(token, zugang.Plan), 0o644); err != nil {
+				return nil, nil, err
+			}
+			args = append(args, "--tmpfs", "/home/agent/.codex:rw,exec,size=256m,mode=1777", "-v", pfad+":/home/agent/.codex/auth.json:ro,Z")
+			anbieter = fmt.Sprintf("{name=%s, base_url=%s, requires_openai_auth=true, wire_api=\"responses\"}", tomlText("swarvex proxy"), tomlText(proxyURL+"/v1"))
+		}
 		return args, []string{"codex", "exec", "--dangerously-bypass-approvals-and-sandbox", "--skip-git-repo-check", "--color", "never",
 			"-c", "model_providers.swarvex=" + anbieter, "-c", `model_provider="swarvex"`, "-c", "check_for_update_on_startup=false",
+			"-c", "features.apps=false", // ChatGPT-Apps (…/backend-api/ps/mcp) sind in der Sandbox ohnehin nicht erreichbar
 			"--model", modell, auftrag}, nil
 	}
 	return nil, nil, fmt.Errorf("unknown agent %q (available: %s)", a.Name, agentNamen())

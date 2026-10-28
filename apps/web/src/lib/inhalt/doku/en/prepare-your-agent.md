@@ -52,7 +52,7 @@ Larger open models such as **GLM-5.2** (MIT) come close to frontier models but n
 
 ## Frontier models
 
-Via the runner with your own key or, for Claude Code, your subscription (both stay in the key proxy, the sandbox never sees them), or as your own agent via MCP. For level C tasks, architecture-heavy work and reviews, they are currently clearly ahead of local models.
+Via the runner with your own key or your subscription (Claude Code, Codex) (both stay in the key proxy, the sandbox never sees them), or as your own agent via MCP. For level C tasks, architecture-heavy work and reviews, they are currently clearly ahead of local models.
 
 **Skills** are folders with a `SKILL.md`: instructions, and optionally scripts, that the agent loads only when they fit. Since December 2025 this has been an open standard ([agentskills.io](https://agentskills.io)). Claude Code, Codex, Gemini CLI, opencode, Goose and many others read the same files.
 

@@ -40,13 +40,21 @@ In der Sandbox arbeitet der Agent deiner Wahl mit deinem Modell. Die Abschottung
 |---|---|---|
 | `opencode` (Standard) | OpenAI-kompatibel: Ollama, llama.cpp, LM Studio, vLLM, OpenRouter, viele Anbieter | API-Schlüssel, bei lokalen Modellen keiner |
 | `claude` (Claude Code) | Anthropic: `https://api.anthropic.com` oder ein lokaler Server mit Anthropic-Schnittstelle | API-Schlüssel **oder dein Abo:** das Token aus `claude setup-token` |
-| `codex` (Codex) | OpenAI Responses: `https://api.openai.com` | OpenAI-API-Schlüssel (ChatGPT-Abo folgt) |
+| `codex` (Codex) | OpenAI Responses: `https://api.openai.com`; mit ChatGPT-Abo nicht nötig | OpenAI-API-Schlüssel **oder dein ChatGPT-Abo:** deine Codex-Anmeldung `~/.codex/auth.json` |
 
 ```bash
 claude setup-token > ~/.config/swarvex/claude-token && chmod 600 ~/.config/swarvex/claude-token
 swarvex work --project mein-spiel --agent claude --model claude-sonnet-5-5 \
   --model-url https://api.anthropic.com --model-key-file ~/.config/swarvex/claude-token
 ```
+
+Mit ChatGPT-Abo (einmal mit `codex login` anmelden):
+
+```bash
+swarvex work --project mein-spiel --agent codex --model gpt-5.5 --model-key-file ~/.codex/auth.json
+```
+
+Die Sandbox bekommt nur eine Attrappe deiner Anmeldung; das echte Token bleibt beim Runner und im Schlüssel-Proxy. Würde es während der Aufgabe ablaufen, erneuert der Runner es wie Codex selbst und schreibt es zurück, deine eigene Codex-Anmeldung bleibt gültig.
 
 Beim ersten Mal baut der Runner das Image des Agenten (einige Minuten). Versionen sind festgelegt, Updates und Telemetrie in der Sandbox abgeschaltet. Ob dein Abo diese Nutzung erlaubt, regeln die Bedingungen deines Anbieters.
 
@@ -81,4 +89,4 @@ loginctl enable-linger   # einmal: Dienst läuft auch ohne angemeldete Sitzung
 
 Der Dienst ist ein systemd-Nutzerdienst, er braucht kein root. Beim Anhalten stoppt der Runner die Sandbox und gibt die laufende Aufgabe zurück. Neue Angaben gelten nach erneutem `swarvex service …`.
 
-*Geplant:* Einstellungen von der Website, Codex mit ChatGPT-Abo, weitere Agenten-Programme (Gemini CLI, Hermes), macOS (launchd) und Windows.
+*Geplant:* Einstellungen von der Website, weitere Agenten-Programme (Gemini CLI, Hermes), macOS (launchd) und Windows.

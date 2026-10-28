@@ -9,6 +9,9 @@ package main
 //   chat       OpenAI Chat Completions (opencode)      POST /v1/chat/completions
 //   anthropic  Anthropic Messages (Claude Code)         POST /v1/messages, /v1/messages/count_tokens
 //   responses  OpenAI Responses (Codex)                 POST /v1/responses
+//
+// Codex mit ChatGPT-Abo (SWARVEX_ACCOUNT_ID gesetzt): Ziel ist das ChatGPT-Backend von Codex
+// (…/backend-api/codex/responses, ohne /v1), mit Zugangstoken und Kopfzeile ChatGPT-Account-ID.
 
 import (
 	"bufio"
@@ -29,6 +32,7 @@ import (
 type proxyKonfig struct {
 	upstream    string // z. B. http://127.0.0.1:8080 (ohne /v1)
 	upstreamKey string // echter Schlüssel (darf leer sein)
+	konto       string // nur ChatGPT-Abo: echte Konto-ID
 	api         string // chat, anthropic oder responses
 	modell      string // einzig erlaubtes Modell
 	aufgabenTok string // Wegwerf-Token der Sandbox
@@ -52,6 +56,7 @@ func proxyStarten() {
 	k := proxyKonfig{
 		upstream:    strings.TrimRight(os.Getenv("SWARVEX_UPSTREAM"), "/"),
 		upstreamKey: os.Getenv("SWARVEX_UPSTREAM_KEY"),
+		konto:       os.Getenv("SWARVEX_ACCOUNT_ID"),
 		api:         envOder("SWARVEX_API", "chat"),
 		modell:      os.Getenv("SWARVEX_MODEL"),
 		aufgabenTok: os.Getenv("SWARVEX_TASK_TOKEN"),
@@ -78,6 +83,9 @@ func proxyHandler(k proxyKonfig, verbraucht *atomic.Int64) http.HandlerFunc {
 		}
 		kostet, erlaubt := proxyPfade[k.api][r.URL.Path]
 		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/models" && k.konto != "":
+			// ChatGPT-Abo: Codex erwartet die Modellliste des Backends (eigenes Format).
+			modelleHolen(w, r, k)
 		case r.Method == http.MethodGet && r.URL.Path == "/v1/models":
 			w.Header().Set("content-type", "application/json")
 			json.NewEncoder(w).Encode(map[string]any{"object": "list", "data": []any{map[string]any{"id": k.modell, "object": "model", "type": "model", "display_name": k.modell}}})
@@ -95,6 +103,34 @@ func proxyHandler(k proxyKonfig, verbraucht *atomic.Int64) http.HandlerFunc {
 			http.Error(w, `{"error":{"message":"not allowed"}}`, http.StatusForbidden)
 		}
 	}
+}
+
+// modelleHolen: Modellliste des ChatGPT-Backends, ohne Verbrauch (nur lesend, nur dieser Pfad).
+func modelleHolen(w http.ResponseWriter, r *http.Request, k proxyKonfig) {
+	ziel := k.upstream + "/models"
+	if r.URL.RawQuery != "" {
+		ziel += "?" + r.URL.RawQuery
+	}
+	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, ziel, nil)
+	for name, werte := range r.Header {
+		if !proxyOhneKopf[strings.ToLower(name)] {
+			req.Header[name] = werte
+		}
+	}
+	anmelden(req, k.api, k.upstreamKey)
+	req.Header.Set("ChatGPT-Account-ID", k.konto)
+	antwort, err := http.DefaultClient.Do(req)
+	if err != nil {
+		http.Error(w, `{"error":{"message":"upstream unreachable"}}`, http.StatusBadGateway)
+		return
+	}
+	defer antwort.Body.Close()
+	if v := antwort.Header.Get("content-type"); v != "" {
+		w.Header().Set("content-type", v)
+	}
+	w.WriteHeader(antwort.StatusCode)
+	io.Copy(w, io.LimitReader(antwort.Body, 8<<20))
+	ereignis("models", map[string]any{"status": antwort.StatusCode})
 }
 
 // tokenPasst: Claude Code schickt das Token je nach Einstellung als Bearer oder als x-api-key.
@@ -136,6 +172,9 @@ func weiterleiten(w http.ResponseWriter, r *http.Request, k proxyKonfig, verbrau
 	}
 	koerper, _ := json.Marshal(anfrage)
 	ziel := k.upstream + r.URL.Path
+	if k.konto != "" {
+		ziel = k.upstream + strings.TrimPrefix(r.URL.Path, "/v1")
+	}
 	if r.URL.RawQuery != "" {
 		ziel += "?" + r.URL.RawQuery
 	}
@@ -147,6 +186,9 @@ func weiterleiten(w http.ResponseWriter, r *http.Request, k proxyKonfig, verbrau
 	}
 	req.Header.Set("content-type", "application/json")
 	anmelden(req, k.api, k.upstreamKey)
+	if k.konto != "" {
+		req.Header.Set("ChatGPT-Account-ID", k.konto) // statt der Attrappe aus der Sandbox
+	}
 	start := time.Now()
 	antwort, err := http.DefaultClient.Do(req)
 	if err != nil {
