@@ -70,7 +70,7 @@ The runner works on your computer. It only sends the result of a task and the us
 
 ## 7. Reports
 
-Through the [report form](/en/report) we receive the type of report, your description, the affected location, your email address and, if you provide it, your name. We use this information only to handle the report and to reply to you. The public log only records that a report came in, without its content and without names.
+Through the [report form](/en/report) we receive the type of report, your description, the affected location, your email address and, if you provide it, your name. We use this information only to handle the report and to reply to you. The public log only records that a report came in, without its content and without names. To keep bots out, your browser solves a small computing puzzle (proof of work) before sending. No cookies are set for this and no data goes to third parties.
 
 The legal basis is our legitimate interest in a legally sound service and in protecting the rights of others (Art. 6 (1) (f) GDPR). We delete reports three years after they are closed.
 

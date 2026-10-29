@@ -5,7 +5,7 @@
 //   /tasks/<id>/snapshot                  Projektstand als tar.gz (nur Lease-Inhaber)
 //   /tasks/<id>/lfs/<oid>                 ein Git-LFS-Objekt (nur Lease-Inhaber)
 //   /api/projects[/<slug>[/metrics]]      öffentliche Projektdaten (Website, Rangliste)
-//   /api/account/…, /api/reports, /api/log/…  Mein Konto, Meldeformular, veröffentlichte Kopf-Hashes
+//   /api/account/…, /api/reports[/challenge], /api/log/…  Mein Konto, Meldeformular (mit Captcha), veröffentlichte Kopf-Hashes
 //   /pipeline/…                           Prüfstraße und Merge-Bot (HMAC-signiert)
 //   /interaction/…                        Anmeldung über GitHub, Codeberg oder Gitea
 //   /healthz                              Lebenszeichen
@@ -27,7 +27,8 @@ import { kontoAnbieterLaden } from "./auth/konten.ts";
 import { NichtAngemeldet, zugangPruefer } from "./auth/zugang.ts";
 import { mcpBehandeln } from "./mcp.ts";
 import { aufruferIp, grenzenErstellen } from "./grenzen.ts";
-import { meldungAnlegen } from "./meldungen.ts";
+import { meldungAnlegen, MeldungSchema } from "./meldungen.ts";
+import { captchaAufgabe, captchaPruefen } from "./captcha.ts";
 import { kontoBehandeln } from "./konto.ts";
 import { hashesAn, koepfeListe, kopfVeroeffentlichen } from "./koepfe.ts";
 import { repoDaten } from "./repo.ts";
@@ -160,10 +161,17 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/account" || url.pathname.startsWith("/api/account/")) return await konto(req, res, url);
 
     // Meldeformular der Website (Rechtsverletzung, Missbrauch, Sicherheit)
+    if (url.pathname === "/api/reports/challenge" && req.method === "GET") {
+      return json(res, 200, captchaAufgabe(schluessel.cookies[0]), { "cache-control": "no-store" });
+    }
     if (url.pathname === "/api/reports" && req.method === "POST") {
       if (gebremst("meldung", ip)) return;
       try {
-        return json(res, 201, await meldungAnlegen(db, await koerper(req)));
+        const eingabe = await koerper(req);
+        const { altcha, ...meldung } = (eingabe ?? {}) as Record<string, unknown>;
+        MeldungSchema.parse(meldung); // Feldfehler zuerst, damit sie die Captcha-Lösung nicht verbrauchen
+        if (!captchaPruefen(schluessel.cookies[0], altcha)) return json(res, 400, { error: "captcha" });
+        return json(res, 201, await meldungAnlegen(db, meldung));
       } catch (e) {
         if (e instanceof ZodError) return json(res, 400, { error: "invalid", fields: e.issues.map((i) => ({ field: i.path.join("."), message: i.message })) });
         if (e instanceof SyntaxError) return json(res, 400, { error: "invalid" });

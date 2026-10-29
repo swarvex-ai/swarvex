@@ -2,6 +2,7 @@
   // Meldeformular (Notice and Takedown): schickt an POST /api/reports, Betreiber bearbeiten Meldungen über die CLI.
   import { tick, untrack } from "svelte";
   import Seo from "$lib/components/Seo.svelte";
+  import Captcha from "$lib/components/Captcha.svelte";
   import { pfad, sprache, tx } from "$lib/texte";
 
   let { data } = $props();
@@ -18,6 +19,8 @@
   let rechteinhaber = $state(false);
   let versichert = $state(false);
   let website = $state("");
+  let altcha = $state("");
+  let captchaRunde = $state(0); // neue Runde = neue Aufgabe (nach Ablauf oder Ablehnung)
 
   let sendet = $state(false);
   let fehler = $state<Record<string, string>>({});
@@ -44,11 +47,15 @@
       document.getElementById(`m-${Object.keys(fehler)[0]}`)?.focus();
       return;
     }
+    if (!altcha) {
+      meldung = t.fehler.captcha;
+      return;
+    }
     sendet = true;
     try {
       const r = await fetch("/api/reports", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ kind: art, project: projekt.trim(), location: bezug.trim(), description: beschreibung, name, email, rights_holder: rechteinhaber, confirmed: versichert, website }),
+        body: JSON.stringify({ kind: art, project: projekt.trim(), location: bezug.trim(), description: beschreibung, name, email, rights_holder: rechteinhaber, confirmed: versichert, website, altcha }),
       });
       if (r.status === 201) {
         nummer = (await r.json()).id;
@@ -56,6 +63,10 @@
         dankeEl?.focus();
       } else if (r.status === 429) {
         meldung = t.fehler.zuViele;
+      } else if (r.status === 400 && (await r.clone().json()).error === "captcha") {
+        meldung = t.fehler.captcha;
+        altcha = "";
+        captchaRunde++;
       } else if (r.status === 400) {
         // Felder der API (englisch) → Formularfelder und Texte
         const felder = ((await r.json()).fields ?? []) as { field: string }[];
@@ -146,6 +157,8 @@
           <span>{f.versichert}</span>
         </label>
         {#if fehler.versichert}<p class="fehler">{fehler.versichert}</p>{/if}
+
+        {#key captchaRunde}<Captcha texte={t.captcha} onloesung={(n) => (altcha = n)} />{/key}
 
         <div class="absenden">
           <button class="knopf primaer" type="submit" disabled={sendet}>{sendet ? t.sendet : t.senden}</button>

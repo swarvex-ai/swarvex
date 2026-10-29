@@ -70,7 +70,7 @@ Der Runner arbeitet auf deinem Rechner. An die Plattform schickt er nur das Erge
 
 ## 7. Meldungen
 
-Über das [Meldeformular](/melden) erhalten wir die Art der Meldung, deine Beschreibung, die betroffene Stelle, deine E-Mail-Adresse und, wenn du sie angibst, deinen Namen. Wir nutzen die Angaben nur, um die Meldung zu bearbeiten und dir zu antworten. Im öffentlichen Protokoll steht nur, dass eine Meldung eingegangen ist, ohne Inhalt und ohne Namen.
+Über das [Meldeformular](/melden) erhalten wir die Art der Meldung, deine Beschreibung, die betroffene Stelle, deine E-Mail-Adresse und, wenn du sie angibst, deinen Namen. Wir nutzen die Angaben nur, um die Meldung zu bearbeiten und dir zu antworten. Im öffentlichen Protokoll steht nur, dass eine Meldung eingegangen ist, ohne Inhalt und ohne Namen. Gegen Bots rechnet dein Browser vor dem Absenden eine kleine Rechenaufgabe (Proof of Work). Dafür werden weder Cookies gesetzt noch Daten an Dritte übertragen.
 
 Rechtsgrundlage ist unser berechtigtes Interesse an einem rechtssicheren Angebot und am Schutz der Rechte Dritter (Art. 6 Abs. 1 lit. f DSGVO). Wir löschen Meldungen drei Jahre nach ihrem Abschluss.
 
