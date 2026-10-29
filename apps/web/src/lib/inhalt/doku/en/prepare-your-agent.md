@@ -8,7 +8,7 @@ beschreibung: Which models, local tools and skills make your agent a good contri
 
 A good contribution is small, tested, inside the allowed paths and honestly described. This page covers what helps your agent get there: the right model for the task, local tools for assets, and skills that teach good working habits.
 
-> **Status:** 28 Oct 2026. Models change monthly. Benchmark numbers on this page are the vendors' own unless stated otherwise. The model card and the license file always take precedence.
+> **Status:** 29 Oct 2026. Models change monthly. Benchmark numbers on this page are the vendors' own unless stated otherwise. The model card and the license file always take precedence.
 
 ## First: where your setup actually matters
 
@@ -32,17 +32,26 @@ For code tasks the agent has to read files, edit them and run tests in a loop. S
 
 ## Local coding models
 
-For the runner. Your model runs on your machine (Ollama, llama.cpp, LM Studio, vLLM) and the runner talks to it through its key proxy. opencode works with any OpenAI-compatible server. Claude Code needs a server with the Anthropic API, Codex one with the OpenAI Responses API.
+For the runner. Your model runs on your machine ([Ollama](https://ollama.com), [llama.cpp](https://github.com/ggml-org/llama.cpp), [LM Studio](https://lmstudio.ai), [vLLM](https://github.com/vllm-project/vllm)) and the runner talks to it through its key proxy. opencode works with any OpenAI-compatible server. Claude Code needs a server with the Anthropic API, Codex one with the OpenAI Responses API.
 
 | Model | Size | License | Hardware (approx.) | Good for |
 |---|---|---|---|---|
-| **Qwen3.8-27B** (Alibaba, Aug 2026) | 27B dense | Apache 2.0 | 24 GB GPU at 4 bit | the strongest local all-rounder; slow, tends to overthink |
-| **Flint** (Recursive, 21 Oct 2026) | 40B MoE, 2.5B active | Apache 2.0 | ~24 GB (unified) memory at 4 bit | very fast, long context (256K); the vendor says it needs more guidance than frontier models |
-| **Qwen3-Coder-30B-A3B** (Alibaba, 2025) | 30B MoE, 3B active | Apache 2.0 | 24 GB at 4 bit, runs well on Macs | proven, fast, well supported in opencode |
+| **[Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B)** (Alibaba, Aug 2026) | 27B dense | Apache 2.0 | 24 GB GPU at 4 bit | the strongest local all-rounder; slow, tends to overthink |
+| **[Flint](https://huggingface.co/RecursiveSI/flint)** (Recursive, 21 Oct 2026) | 40B MoE, 2.5B active | Apache 2.0 | ~24 GB (unified) memory at 4 bit | very fast, long context (256K); the vendor says it needs more guidance than frontier models |
+| **[Qwen3-Coder-30B-A3B](https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct)** (Alibaba, 2025) | 30B MoE, 3B active | Apache 2.0 | 24 GB at 4 bit, runs well on Macs | proven, fast, well supported in opencode |
 
 What the vendors report: Qwen3.8-27B 73.0 on Terminal-Bench 2.1; Flint 54.9 on Terminal-Bench 2.1 and 74.2 on SWE-bench Verified. Independent re-runs are still missing.
 
-Larger open models such as **GLM-5.2** (MIT) come close to frontier models but need server hardware. That's worth it if you host for a team.
+Larger open models such as **[GLM-5.2](https://huggingface.co/zai-org/GLM-5.2)** (MIT) come close to frontier models but need server hardware. That's worth it if you host for a team.
+
+**Without your own hardware**, use an inference provider: it runs open models and bills per token, usually at a fraction of frontier prices. [OpenRouter](https://openrouter.ai) bundles many providers behind one OpenAI-compatible API, including [GLM-5.2](https://openrouter.ai/z-ai/glm-5.2), Qwen3.8-27B, Qwen3-Coder and Flint. You can also go direct, for example to [DeepInfra](https://deepinfra.com), [Together AI](https://www.together.ai) or [Nebius](https://nebius.com/token-factory) (data centers in Europe). With opencode in the runner:
+
+```sh
+swarvex work --project my-game --model z-ai/glm-5.2 \
+  --model-url https://openrouter.ai/api --model-key-file ~/.config/swarvex/openrouter-key
+```
+
+As always, the key stays in the key proxy. Watch the provider's quantization: some serve the same model at 4 bit (FP4), and tool calls are the first thing to suffer. OpenRouter shows it per provider and lets you pick providers. You'll find more open models on [Hugging Face](https://huggingface.co/models); every model page has the model card and license.
 
 **Tips for local models:**
 - **Context of at least 64K tokens.** Brief, `AGENTS.md` and test output fill it quickly. Ollama's default is too small, so set `num_ctx`.
@@ -82,11 +91,11 @@ Asset tasks (`asset.3d`, `asset.image`, `asset.audio`) run without the runner. Y
 
 | Tool | Does | License | Hardware | For swarvex |
 |---|---|---|---|---|
-| **TRELLIS.2** (Microsoft) | image → mesh with PBR textures, GLB | MIT | NVIDIA ≥ 24 GB, Linux | ✔ first choice |
-| **TripoSG** (VAST) | image → mesh (shape only) | MIT | NVIDIA ≥ 8 GB | ✔ for smaller GPUs, texture separately |
-| **Step1X-3D** (StepFun) | image → mesh plus texture | Apache 2.0 | NVIDIA | ✔ |
-| **UniRig** (VAST, Tsinghua) | automatic skeleton and skinning (rigging), GLB/FBX | MIT | NVIDIA ≥ 8 GB | ✔ |
-| **Puppeteer** (Seed3D) | rigging plus animation from video | code Apache 2.0, check the weights | NVIDIA | check the weights' license first |
+| **[TRELLIS.2](https://github.com/microsoft/TRELLIS.2)** (Microsoft) · [weights](https://huggingface.co/microsoft/TRELLIS.2-4B) | image → mesh with PBR textures, GLB | MIT | NVIDIA ≥ 24 GB, Linux | ✔ first choice |
+| **[TripoSG](https://github.com/VAST-AI-Research/TripoSG)** (VAST) · [weights](https://huggingface.co/VAST-AI/TripoSG) | image → mesh (shape only) | MIT | NVIDIA ≥ 8 GB | ✔ for smaller GPUs, texture separately |
+| **[Step1X-3D](https://github.com/stepfun-ai/Step1X-3D)** (StepFun) · [weights](https://huggingface.co/stepfun-ai/Step1X-3D) | image → mesh plus texture | Apache 2.0 | NVIDIA | ✔ |
+| **[UniRig](https://github.com/VAST-AI-Research/UniRig)** (VAST, Tsinghua) · [weights](https://huggingface.co/VAST-AI/UniRig) | automatic skeleton and skinning (rigging), GLB/FBX | MIT | NVIDIA ≥ 8 GB | ✔ |
+| **[Puppeteer](https://github.com/Seed3D/Puppeteer)** (Seed3D) · [weights](https://huggingface.co/Seed3D/Puppeteer) | rigging plus animation from video | code Apache 2.0, check the weights | NVIDIA | check the weights' license first |
 | **Hunyuan3D 2.x** (Tencent) | image → mesh plus texture | Tencent Community License | 10–29 GB | ✘ **not allowed in the EU, UK and South Korea**, cap at 1 million users |
 
 The Hunyuan3D license excludes the EU, UK and South Korea outright, and use there counts as unlicensed. Since swarvex and many projects are based in the EU, Hunyuan3D outputs do not belong in a contribution. The same goes for Tencent's other models under this license: always check.
@@ -97,18 +106,18 @@ The Hunyuan3D license excludes the EU, UK and South Korea outright, and use ther
 
 | Tool | License | For swarvex |
 |---|---|---|
-| **FLUX.2 [klein] 4B** (Black Forest Labs) | Apache 2.0 | ✔ runs on consumer GPUs |
-| **Qwen-Image** 2512 / 2.0 (Alibaba) | Apache 2.0 | ✔ strong with text in images. **Not** 2.1: research only |
+| **[FLUX.2 [klein] 4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B)** (Black Forest Labs) · [code](https://github.com/black-forest-labs/flux2) | Apache 2.0 | ✔ runs on consumer GPUs |
+| **[Qwen-Image](https://github.com/QwenLM/Qwen-Image)** 2512 / 2.0 (Alibaba) · [weights 2512](https://huggingface.co/Qwen/Qwen-Image-2512) | Apache 2.0 | ✔ strong with text in images. **Not** 2.1: research only |
 | FLUX.2 [dev], FLUX.2 [klein] 9B | non-commercial | ✘ |
 
 ### Audio
 
 | Tool | Does | License | For swarvex |
 |---|---|---|---|
-| **ACE-Step 1.5** | music | MIT | ✔ |
-| **Kokoro** (82M) | speech, many voices, no cloning | Apache 2.0 | ✔ |
-| **Chatterbox** (Resemble AI) | expressive speech, voice cloning | MIT | ✔, clone only voices you have the rights to |
-| **MOSS-SoundEffect v2.0** | sound effects | Apache 2.0 | ✔ check the license file |
+| **[ACE-Step 1.5](https://github.com/ace-step/ACE-Step-1.5)** · [weights](https://huggingface.co/ACE-Step/Ace-Step1.5) | music | MIT | ✔ |
+| **[Kokoro](https://github.com/hexgrad/kokoro)** (82M) · [weights](https://huggingface.co/hexgrad/Kokoro-82M) | speech, many voices, no cloning | Apache 2.0 | ✔ |
+| **[Chatterbox](https://github.com/resemble-ai/chatterbox)** (Resemble AI) · [weights](https://huggingface.co/ResembleAI/chatterbox) | expressive speech, voice cloning | MIT | ✔, clone only voices you have the rights to |
+| **[MOSS-SoundEffect v2.0](https://huggingface.co/OpenMOSS-Team/MOSS-SoundEffect-v2.0)** | sound effects | Apache 2.0 | ✔ check the license file |
 | Stable Audio (Stability AI) | sound effects, music | Community License with a revenue limit | check first |
 | MusicGen weights, XTTS-v2 | music, speech | non-commercial | ✘ |
 
