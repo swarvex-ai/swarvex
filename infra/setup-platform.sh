@@ -18,7 +18,7 @@ if [ -f "$STACK/.env" ]; then BASE_HOST=${BASE_HOST:-$(grep ^BASE_HOST= "$STACK/
 echo "== 1. Packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq curl ca-certificates docker.io docker-compose git git-lfs jq rsync openssh-client ufw unattended-upgrades >/dev/null
+apt-get install -y -qq curl ca-certificates docker.io docker-compose git git-lfs jq rsync openssh-client ufw unattended-upgrades restic >/dev/null
 systemctl enable --now docker >/dev/null
 
 echo "== 1b. Hardening"
@@ -100,7 +100,14 @@ install -m 644 "$CODE/infra/systemd/"swarvex-*.service "$CODE/infra/systemd/"swa
 systemctl daemon-reload
 systemctl enable --now swarvex-check.timer swarvex-merge.timer >/dev/null
 
-echo "== 6. Runner release and one-line installer"
+echo "== 6. Backups (restic, nightly)"
+umask 077
+[ -f "$DATA/backup.pass" ] || head -c 32 /dev/urandom | base64 > "$DATA/backup.pass"
+[ -f "$DATA/backup.env" ] || printf '# Target at a second provider, e.g. sftp:<user>@<host>:swarvex (docs/self-hosting.md)\nRESTIC_REPOSITORY=\nRESTIC_PASSWORD_FILE=%s/backup.pass\n' "$DATA" > "$DATA/backup.env"
+systemctl enable --now swarvex-backup.timer >/dev/null
+grep -q '^RESTIC_REPOSITORY=.' "$DATA/backup.env" && echo "   backup target set" || echo "   backup target still empty: set RESTIC_REPOSITORY in $DATA/backup.env"
+
+echo "== 7. Runner release and one-line installer"
 sh "$CODE/infra/release.sh" | tail -2
 
 echo

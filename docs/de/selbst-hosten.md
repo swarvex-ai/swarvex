@@ -73,6 +73,8 @@ Kontrolle: `curl https://<BASE_HOST>/healthz` und `curl https://<BASE_HOST>/.wel
 
 Updates vom Arbeitsrechner aus: `infra/deploy.sh <ssh-ziel>`. Das Skript kopiert das Repo ohne `--delete` (Dateien, die nur auf dem Server liegen, bleiben erhalten) und gleicht danach die reinen Quellcode-Ordner mit `--delete` ab.
 
+**Backups:** `infra/backup.sh` läuft jede Nacht (Timer `swarvex-backup`). Es sichert einen Dump von PostgreSQL, `/opt/swarvex-data` (Schlüssel, Seiten) und die `.env` des Stacks mit **restic**, verschlüsselt, bevor etwas den Server verlässt. Das Ziel steht in `/opt/swarvex-data/backup.env`, am besten bei einem zweiten Anbieter, z. B. `RESTIC_REPOSITORY=sftp:<nutzer>@<host>:swarvex`. **Bewahre eine Kopie von `/opt/swarvex-data/backup.pass` außerhalb des Servers auf**, ohne sie sind die Backups nicht lesbar. Die Wiederherstellung probst du regelmäßig mit `sh /opt/swarvex/infra/restore-test.sh`: Es lädt das neueste Backup in ein Wegwerf-PostgreSQL und fasst sonst nichts an.
+
 **Weitere Seiten auf demselben Server:** Der Caddy der Plattform belegt die Ports 80/443 und kann weitere Seiten ausliefern. Lege pro Seite eine Datei `<name>.caddy` mit dem Site-Block in `/opt/swarvex-data/sites/` und hänge den Container der Seite an das gemeinsame Docker-Netz `edge` (in seiner Compose-Datei: `networks: { edge: { external: true } }`). Caddy erreicht ihn dort über den Dienst- oder Containernamen, z. B. `reverse_proxy meineapp:3000`, und holt die Zertifikate für die Domain selbst. Danach `docker compose restart caddy`. Jede Seite behält ihren eigenen Stack, ihre Datenbank und ihre Geheimnisse.
 
 ## 5. Lead anbinden

@@ -42,7 +42,7 @@ Agenten laufen **nie** auf dem Plattform-Server. Die Plattform hält Zustand, Re
 | Prüfstraße | **eigener Prüfdienst** (Go) beim Visionär, Container ohne Netz, signierte Meldung; Engine-Images: Godot (z. B. `barichello/godot-ci`), Unity (GameCI), Unreal (später) | gebaut | Gleiche Rolle beim Visionär, unabhängig vom CI-System |
 | Releases und Signaturen | **GitHub Actions**, **GoReleaser**, Images in **GHCR**; **cosign** keyless, SBOM, SLSA-Provenienz; DCO-Sign-off für Beiträge; signierte Merge-Commits des Merge-Bots (E-23) | übernommen | Der Runner darf nicht selbst zum Angriffsweg werden |
 | Beobachtbarkeit | **OpenTelemetry** in der API, **Grafana Alloy** → Prometheus, Loki, Grafana; externer Erreichbarkeitstest (E-24) | übernommen | Betrieb |
-| Betrieb | **Docker Compose** auf einem Hetzner-Server (Debian 13), **Caddy** mit Let's Encrypt, Backups mit **pgBackRest** auf Hetzner Object Storage, Geheimnisse mit **sops + age** (E-18, E-24) | übernommen | Ein Server reicht lange, weil keine Agenten bei uns laufen |
+| Betrieb | **Docker Compose** auf einem Server (Debian 13), **Caddy** mit Let's Encrypt, nächtliche verschlüsselte Backups mit **restic** (PostgreSQL-Dump und Serverdateien) bei einem zweiten Anbieter, Geheimnisse mit **sops + age** (E-18, E-24) | übernommen | Ein Server reicht lange, weil keine Agenten bei uns laufen |
 
 ## MCP-Gateway: Werkzeuge pro Rolle
 

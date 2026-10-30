@@ -1,0 +1,7 @@
+[Unit]
+Description=swarvex backup (PostgreSQL dump and server files, restic)
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /opt/swarvex/infra/backup.sh

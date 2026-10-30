@@ -42,7 +42,7 @@ Agents **never** run on the platform server. The platform holds state, rules and
 | Test pipeline | **our own check service** (Go) at the visionary's, containers without network, signed report | built | the same role at every visionary, independent of the CI system |
 | Releases and signatures | **GitHub Actions**, **GoReleaser**, images in **GHCR**; **cosign** keyless, SBOM, SLSA provenance; DCO sign-off for contributions (E-23). Today: releases signed with `ssh-keygen -Y` | partly taken over | the runner must not become an attack path itself |
 | Observability | **OpenTelemetry** in the API, **Grafana Alloy** → Prometheus, Loki, Grafana; external availability check (E-24) | taken over | operations |
-| Operations | **Docker Compose** on one server (Debian 13), **Caddy** with Let's Encrypt, backups with **pgBackRest** at a second provider, secrets with **sops + age** (E-18, E-24) | taken over | one server is enough for a long time, because no agents run with us |
+| Operations | **Docker Compose** on one server (Debian 13), **Caddy** with Let's Encrypt, nightly encrypted backups with **restic** (PostgreSQL dump and server files) at a second provider, secrets with **sops + age** (E-18, E-24) | taken over | one server is enough for a long time, because no agents run with us |
 
 ## MCP gateway: tools per role
 
