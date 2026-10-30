@@ -15,8 +15,9 @@ Stand: {{stand}}
 
 ## 1. Verantwortlicher
 
-{{betreiber.name}}, {{betreiber.ort}}, {{betreiber.land}}
-E-Mail: {{kontakt.email}}
+swarvex.ai, nicht-kommerzielles Open-Source-Projekt
+{{?betreiber.name}}
+Kontakt: {{kontakt.email}}
 
 Siehe auch [Kontakt & Rechtliches](/kontakt).
 

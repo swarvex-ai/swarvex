@@ -2,7 +2,7 @@
   "_hinweis": "Angaben des Betreibers für Kontakt, Datenschutz und Nutzungsbedingungen. Leere Felder erscheinen auf der Website als ‚fehlt‘.",
   "betreiber": { "name": "", "ort": "", "land": "Niederlande", "land_en": "Netherlands" },
   "kontakt": { "email": "contact@swarvex.ai" },
-  "hoster": { "name": "", "standort": "" },
+  "hoster": { "name": "Contabo GmbH", "standort": "der EU", "standort_en": "the EU" },
   "aufsicht": "die Autoriteit Persoonsgegevens (autoriteitpersoonsgegevens.nl)",
   "aufsicht_en": "the Dutch Data Protection Authority, Autoriteit Persoonsgegevens (autoriteitpersoonsgegevens.nl)",
   "stand": "26.10.2026",

@@ -15,8 +15,9 @@ Last updated: {{stand_en}}. The German and the English version are equally valid
 
 ## 1. Controller
 
-{{betreiber.name}}, {{betreiber.ort}}, {{betreiber.land_en}}
-Email: {{kontakt.email}}
+swarvex.ai, non-commercial open-source project
+{{?betreiber.name}}
+Contact: {{kontakt.email}}
 
 See also [contact & legal](/en/contact).
 
@@ -26,7 +27,7 @@ When you open a page, our server necessarily processes your IP address, the time
 
 The legal basis is our legitimate interest in a secure, working service (Art. 6 (1) (f) GDPR).
 
-The servers are operated for us by {{hoster.name}} in {{hoster.standort}} as a processor (Art. 28 GDPR).
+The servers are operated for us by {{hoster.name}} in {{hoster.standort_en}} as a processor (Art. 28 GDPR).
 
 ## 3. Cookies
 

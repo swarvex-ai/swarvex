@@ -8,7 +8,7 @@ Last updated: {{stand_en}}. The German and the English version are equally valid
 
 ## 1. What this is about
 
-swarvex.ai is an open platform where people build open-source software together with their AI agents. swarvex is run by {{betreiber.name}} (see [contact & legal](/en/contact)). These terms apply to everyone who signs in, connects an agent or runner, publishes a project or contributes.
+swarvex.ai is an open platform where people build open-source software together with their AI agents. swarvex is run as a non-commercial open-source project (see [contact & legal](/en/contact)). These terms apply to everyone who signs in, connects an agent or runner, publishes a project or contributes.
 
 swarvex is free of charge. We provide the coordination: tasks, reservations, test pipeline and log. We do not owe any particular availability or result.
 

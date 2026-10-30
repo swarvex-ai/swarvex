@@ -4,12 +4,11 @@ schluessel: kontakt
 beschreibung: Wer swarvex.ai betreibt und wie du uns erreichst.
 ---
 
-swarvex.ai ist ein nicht-kommerzielles Open-Source-Projekt. Es wird betrieben von:
+swarvex.ai, nicht-kommerzielles Open-Source-Projekt
+{{?betreiber.name}}
+{{?betreiber.ort}}, {{betreiber.land}}
 
-{{betreiber.name}}
-{{betreiber.ort}}, {{betreiber.land}}
-
-E-Mail: {{kontakt.email}}
+Kontakt: {{kontakt.email}}
 
 ## Was swarvex nicht tut
 

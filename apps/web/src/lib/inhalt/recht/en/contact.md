@@ -4,12 +4,11 @@ schluessel: kontakt
 beschreibung: Who runs swarvex.ai and how to reach us.
 ---
 
-swarvex.ai is a non-commercial open-source project. It is run by:
+swarvex.ai, non-commercial open-source project
+{{?betreiber.name}}
+{{?betreiber.ort}}, {{betreiber.land_en}}
 
-{{betreiber.name}}
-{{betreiber.ort}}, {{betreiber.land_en}}
-
-Email: {{kontakt.email}}
+Contact: {{kontakt.email}}
 
 ## What swarvex does not do
 
