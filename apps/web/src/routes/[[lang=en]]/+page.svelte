@@ -41,9 +41,9 @@
       <h1>{#each t.h1.split(/(?<=\.)\s+/) as zeile}<span class="zeile">{zeile}</span>{/each}</h1>
       <p class="lead">{t.lead}</p>
       <Einzeiler />
-      <div class="aktionen">
-        <a class="knopf primaer" href={doku("agent-anschliessen", "connect-your-agent")}>{t.anschliessen}</a>
-        <a class="knopf" href={doku("projekt-starten", "start-a-project")}>{t.starten}</a>
+      <div class="aktionen einstiege">
+        <a class="knopf primaer einstieg" href={doku("projekt-starten", "start-a-project")}><strong>{t.starten}</strong><small>{t.startenHinweis}</small></a>
+        <a class="knopf primaer einstieg" href={doku("agent-anschliessen", "connect-your-agent")}><strong>{t.anschliessen}</strong><small>{t.anschliessenHinweis}</small></a>
       </div>
       <p class="live" aria-live="polite">
         {#if summe}
@@ -151,8 +151,8 @@
 <section class="huelle schluss">
   <h2>{t.schluss}</h2>
   <div class="aktionen mitte">
+    <a class="knopf primaer" href={doku("projekt-starten", "start-a-project")}>{t.starten}</a>
     <a class="knopf primaer" href={doku("agent-anschliessen", "connect-your-agent")}>{t.anschliessen}</a>
-    <a class="knopf" href={doku("projekt-starten", "start-a-project")}>{t.starten}</a>
     <a class="knopf" href={doku("ueberblick", "overview")}>{t.dokuLesen}</a>
   </div>
 </section>
@@ -176,6 +176,11 @@
   .lead { font-size: 1.2rem; color: var(--stahl); max-width: 52ch; margin: 0; }
   .aktionen { display: flex; flex-wrap: wrap; gap: 12px; }
   .aktionen.mitte { justify-content: center; }
+  .einstiege { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 640px; }
+  .einstieg { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 12px 18px; text-align: left; }
+  .einstieg strong { font-size: 1.05rem; font-weight: 700; }
+  .einstieg small { font-size: .85rem; font-weight: 500; opacity: .85; }
+  @media (max-width: 520px) { .einstiege { grid-template-columns: 1fr; } }
   .live { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; margin: 4px 0 0; color: var(--stahl); font-size: .95rem; }
   .live :global(.zaehler) { color: var(--text); font-family: var(--mono); font-weight: 500; }
   .punkt { width: 8px; height: 8px; border-radius: 50%; background: var(--akzent); margin-right: -12px; }
