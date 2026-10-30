@@ -18,4 +18,4 @@ done
 if [ -d "$REPO/apps/web/static/media" ]; then
   rsync -az "$REPO/apps/web/static/media/" "$TARGET:/opt/swarvex-data/downloads/media/"
 fi
-ssh "$TARGET" 'cd /opt/swarvex/infra/stack && docker compose build api web && docker compose up -d api web caddy && docker compose restart caddy'
+ssh "$TARGET" 'mkdir -p /opt/swarvex-data/sites && { docker network inspect edge >/dev/null 2>&1 || docker network create edge >/dev/null; } && cd /opt/swarvex/infra/stack && docker compose build api web && docker compose up -d api web caddy && docker compose restart caddy'

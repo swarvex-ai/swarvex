@@ -47,8 +47,15 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - /opt/swarvex-data/downloads:/srv:ro
+      - /opt/swarvex-data/sites:/etc/caddy/sites:ro
+    networks: [default, edge]
     depends_on: [api, web]
     restart: unless-stopped
+networks:
+  # Gemeinsames Netz für weitere Seiten auf demselben Server (siehe Caddyfile, docs/self-hosting.md)
+  edge:
+    name: edge
+    external: true
 volumes:
   pg:
   mirror:

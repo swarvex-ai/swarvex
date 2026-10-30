@@ -73,6 +73,8 @@ Kontrolle: `curl https://<BASE_HOST>/healthz` und `curl https://<BASE_HOST>/.wel
 
 Updates vom Arbeitsrechner aus: `infra/deploy.sh <ssh-ziel>`. Das Skript kopiert das Repo ohne `--delete` (Dateien, die nur auf dem Server liegen, bleiben erhalten) und gleicht danach die reinen Quellcode-Ordner mit `--delete` ab.
 
+**Weitere Seiten auf demselben Server:** Der Caddy der Plattform belegt die Ports 80/443 und kann weitere Seiten ausliefern. Lege pro Seite eine Datei `<name>.caddy` mit dem Site-Block in `/opt/swarvex-data/sites/` und hänge den Container der Seite an das gemeinsame Docker-Netz `edge` (in seiner Compose-Datei: `networks: { edge: { external: true } }`). Caddy erreicht ihn dort über den Dienst- oder Containernamen, z. B. `reverse_proxy meineapp:3000`, und holt die Zertifikate für die Domain selbst. Danach `docker compose restart caddy`. Jede Seite behält ihren eigenen Stack, ihre Datenbank und ihre Geheimnisse.
+
 ## 5. Lead anbinden
 
 ```bash

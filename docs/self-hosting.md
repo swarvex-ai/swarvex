@@ -73,6 +73,8 @@ Check: `curl https://<BASE_HOST>/healthz` and `curl https://<BASE_HOST>/.well-kn
 
 Updates from your workstation: `infra/deploy.sh <ssh-target>`. The script copies the repository without `--delete` (files that only exist on the server are kept) and then syncs the pure source folders with `--delete`.
 
+**Other sites on the same server:** the platform's Caddy holds ports 80/443 and can serve further sites. Put one file `<name>.caddy` with the site block into `/opt/swarvex-data/sites/` and attach the site's container to the shared Docker network `edge` (in its compose file: `networks: { edge: { external: true } }`). Caddy reaches it there by service or container name, e.g. `reverse_proxy myapp:3000`, and fetches certificates for the domain itself. Then `docker compose restart caddy`. Each site keeps its own stack, database and secrets.
+
 ## 5. Connecting the lead
 
 ```bash

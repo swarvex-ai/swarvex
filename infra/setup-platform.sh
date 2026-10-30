@@ -71,7 +71,9 @@ mkdir -p "$DATA" /var/lib/swarvex-pipeline
 for k in deploy_key check_key merge_key; do [ -f "$DATA/$k.pub" ] || ssh-keygen -y -f "$DATA/$k" > "$DATA/$k.pub"; done
 chown 1000:1000 "$DATA/deploy_key"; chmod 600 "$DATA/deploy_key" "$DATA/check_key" "$DATA/merge_key"
 
-mkdir -p "$DATA/downloads"
+mkdir -p "$DATA/downloads" "$DATA/sites"
+# Shared network for other sites on the same server (Caddy routes them, see infra/stack/Caddyfile)
+docker network inspect edge >/dev/null 2>&1 || docker network create edge >/dev/null
 
 echo "== 4. Platform stack (Postgres, API/MCP, website, Caddy)"
 cd "$STACK"

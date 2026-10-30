@@ -44,3 +44,7 @@
 		reverse_proxy api:3000
 	}
 }
+
+# Weitere Seiten auf demselben Server (z. B. andere Projekte): je eine Datei <name>.caddy in
+# /opt/swarvex-data/sites. Deren Container hängen im gemeinsamen Netz "edge". Im Labor leer.
+import /etc/caddy/sites/*.caddy
