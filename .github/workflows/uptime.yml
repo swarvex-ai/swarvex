@@ -2,9 +2,8 @@
 # account that last changed the schedule. Checks the website, the API and the certificate's lifetime.
 name: uptime
 on:
-  # Schedule switched on once the API runs in production (until then /healthz fails on purpose):
-  # schedule:
-  #   - cron: "*/15 * * * *"
+  schedule:
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 permissions: {}
 jobs:
