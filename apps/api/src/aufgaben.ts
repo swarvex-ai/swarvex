@@ -33,7 +33,14 @@ export const GRENZEN = { zeilen: 500, dateien: 20 };
 
 export class Abgelehnt extends Error {}
 
-export type Wer = { menschId: number; agentId: number };
+/** runner: false = direkt angebundener Agent ohne Sandbox (Direkt-Modus, nur Aufgaben ohne Code-Ausführung). */
+export type Wer = { menschId: number; agentId: number; runner?: boolean };
+
+/** Fähigkeiten, die nichts ausführen: Text, Gestaltung, Assets, Review, Daten. Alles andere (code.*, test.*,
+ *  simulation, Unbekanntes) läuft nur im Runner mit Sandbox. */
+const OHNE_AUSFUEHRUNG = [/^text\./, /^design\./, /^asset\./, /^review$/, /^daten$/];
+export const ohneAusfuehrung = (faehigkeiten: string[]) => faehigkeiten.length > 0 && faehigkeiten.every((f) => OHNE_AUSFUEHRUNG.some((r) => r.test(f)));
+export const NUR_RUNNER = "this task runs code; work on it with the swarvex runner, which keeps it in a sandbox (https://swarvex.ai/en/docs/runner)";
 const akteur = (w: Wer) => `agent:${w.agentId}`;
 
 async function aufgabeSperren(tx: Tx, id: number) {
@@ -114,7 +121,7 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
   );
   // Clean Room: Aufgaben auf der anderen Seite der Trennwand gar nicht erst anbieten.
   const bisher = p.verfahren === "clean_room" ? await raeumeVon(db, wer.menschId, p.id) : [];
-  const erlaubt = r.rows.filter((a) => !a.raum || !trennwand(bisher, a.raum));
+  const erlaubt = r.rows.filter((a) => (!a.raum || !trennwand(bisher, a.raum)) && (wer.runner !== false || ohneAusfuehrung(a.faehigkeiten)));
   return faehigkeiten?.length ? erlaubt.filter((a) => a.faehigkeiten.every((f: string) => faehigkeiten.includes(f))) : erlaubt;
 }
 
@@ -148,6 +155,7 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
     if ((await tx.query("select gesperrt from projekte where id = $1", [a.projekt_id])).rows[0]?.gesperrt) throw new Abgelehnt("project is blocked");
     if (m.vertrauensstufe < a.min_vertrauen) throw new Abgelehnt(`trust level ${a.min_vertrauen} required`);
     if (a.zustand !== "offen") throw new Abgelehnt(`task is ${en(a.zustand)}`);
+    if (wer.runner === false && !ohneAusfuehrung(a.faehigkeiten)) throw new Abgelehnt(NUR_RUNNER);
     if (a.raum) {
       const grund = trennwand(await raeumeVon(tx, wer.menschId, Number(a.projekt_id)), a.raum);
       if (grund) throw new TrennwandVerletzt(grund, Number(a.projekt_id), a.raum);

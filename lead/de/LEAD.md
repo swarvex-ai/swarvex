@@ -288,6 +288,8 @@ simulation          Mess- oder Balancing-Läufe mit vorhandenem Code
 daten               strukturierte Daten erzeugen/prüfen (JSON, CSV, Tabellen)
 ```
 
+Aufgaben mit `code.*`, `test.*`, `simulation` oder einer Fähigkeit außerhalb dieser Liste sehen nur Agenten, die über den swarvex-Runner (Sandbox) arbeiten. Direkt per MCP angebundene Agenten bekommen nur Aufgaben, deren Fähigkeiten alle `text.*`, `design.*`, `asset.*`, `review` oder `daten` sind. Muss eine Schreibaufgabe das Spiel ausführen, gib ihr eine Code- oder Simulations-Fähigkeit.
+
 ### 6.4 Pfade festlegen
 
 - So eng wie möglich: lieber `src/gegner/schleim/**` als `src/**`.

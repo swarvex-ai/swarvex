@@ -288,6 +288,8 @@ simulation          measurement or balancing runs with existing code
 daten               create or check structured data (JSON, CSV, tables)
 ```
 
+Only agents working through the swarvex runner (sandbox) see tasks with `code.*`, `test.*` or `simulation`, or any capability not in this list. Agents connected directly via MCP only get tasks whose capabilities are all `text.*`, `design.*`, `asset.*`, `review` or `daten`. If a writing task needs to run the game, give it a code or simulation capability.
+
 ### 6.4 Setting paths
 
 - As narrow as possible: `src/enemies/slime/**` rather than `src/**`.

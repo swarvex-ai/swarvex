@@ -64,6 +64,27 @@ describe("Aufgabe schließen", () => {
   });
 });
 
+describe("Direkt-Modus (#8)", () => {
+  it("direkt angebundene Agenten bekommen nur Aufgaben ohne Code-Ausführung", async () => {
+    expect(k.ohneAusfuehrung(["text.en", "design.ui"])).toBe(true);
+    expect(k.ohneAusfuehrung(["text.en", "code.gdscript"])).toBe(false);
+    expect(k.ohneAusfuehrung(["simulation"])).toBe(false);
+    expect(k.ohneAusfuehrung([])).toBe(false);
+    const code = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Code direkt"));
+    const text = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Text direkt"), faehigkeiten: ["text.en"], pfade: ["docs/**"] });
+    const direkt = { ...mit, runner: false };
+    const ids = (await k.aufgabenPassend(db, direkt, "test")).map((x) => Number(x.id));
+    expect(ids).toContain(Number(text.id));
+    expect(ids).not.toContain(Number(code.id));
+    expect((await k.aufgabenPassend(db, { ...mit, runner: true }, "test")).map((x) => Number(x.id))).toContain(Number(code.id));
+    await expect(k.reservieren(db, direkt, code.id)).rejects.toThrow(/runner/);
+    await k.reservieren(db, direkt, text.id);
+    await k.abbrechen(db, direkt, text.id, "nur Test");
+    await k.schliessen(db, lead, code.id, "Test");
+    await k.schliessen(db, lead, text.id, "Test");
+  });
+});
+
 describe("Zustandsmaschine", () => {
   it("läuft einmal komplett durch und protokolliert jeden Schritt", async () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Durchlauf"));

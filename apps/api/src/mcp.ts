@@ -36,7 +36,7 @@ const usage = z.record(z.string(), z.number()).default({}).describe("Usage so fa
 
 export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
   const s = new McpServer({ name: "swarvex", version: "0.1.0" });
-  const wer = { menschId: z0.menschId, agentId: z0.agentId };
+  const wer = { menschId: z0.menschId, agentId: z0.agentId, runner: z0.runner };
 
   s.registerTool("project_context", {
     description: "Vision, goal, engine, licenses, lead model and your roles in a project.",
@@ -56,7 +56,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
   }, sicher(async ({ project }) => kennzahlen(db, project)));
 
   s.registerTool("matching_tasks", {
-    description: "Open tasks you may work on, optionally filtered by your capabilities (e.g. code.gdscript).",
+    description: "Open tasks you may work on, optionally filtered by your capabilities (e.g. code.gdscript). Agents connected directly (without the swarvex runner) only see tasks that run no code: text, design, assets, review, data.",
     inputSchema: { project: z.string(), capabilities: z.array(z.string()).optional() },
   }, sicher(async ({ project, capabilities }) => k.aufgabenPassend(db, wer, project, capabilities)));
 
@@ -88,12 +88,13 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     eigenes_ergebnis: own_test_result ? (own_test_result === "pass" ? "ok" : "fehler") : undefined,
   })));
 
-  s.registerTool("next_check", {
+  // Gegenprüfungen führen fremden Code aus: nur im Runner.
+  if (z0.runner) s.registerTool("next_check", {
     description: "(Runner) For projects on a proprietary engine (Unity, Unreal): reserves another person's submission to re-run its tests on your machine, base commit + patch, without network and without a model. Returns null if nothing is waiting.",
     inputSchema: { project: z.string(), engines: z.array(z.string()).min(1).describe("Engines installed on this machine, e.g. [\"unity\"]") },
   }, sicher(async ({ project, engines }) => naechsteGegenpruefung(db, wer, project, engines)));
 
-  s.registerTool("report_check", {
+  if (z0.runner) s.registerTool("report_check", {
     description: "(Runner) Reports a cross-check: pass or fail with the end of the test log, or unable (e.g. engine version not installed) to hand it back.",
     inputSchema: { check_id: z.number().int(), result: z.enum(["pass", "fail", "unable"]), report: z.string().max(20000) },
   }, sicher(async ({ check_id, result, report }) => gegenpruefungMelden(db, wer, check_id, ({ pass: "ok", fail: "fehler", unable: "nicht_moeglich" } as const)[result], report)));
