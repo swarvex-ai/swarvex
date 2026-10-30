@@ -1,6 +1,7 @@
 // Operator command line (in the container: `node src/cli.ts <command> …`).
 //   migrate
 //   create-project <slug> <file.json>         project + event "vision_published" (example: infra/stack/project-example.json)
+//   set-vision <slug> <vision.md>             replace the vision text; event "vision_updated" with its SHA-256
 //   set-role <slug> [provider:]<login> <role>  role: visionary | lead | contributor; e.g. github:nevs84
 //   set-repo <slug> <git-address>             SSH address for snapshots (deploy key, read-only)
 //   set-license <slug> <code-license> <asset-license>  e.g. GPL-3.0-or-later "CC BY-SA 4.0" (logged publicly)
@@ -11,6 +12,7 @@
 //   report <id> <in_review|done|rejected> <outcome>
 //   block person <[provider:]login> <reason> | block project <slug> <reason>
 //   unblock person <[provider:]login> <reason> | unblock project <slug> <reason>
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { migrieren, transaktion, verbinden } from "./db.ts";
 import { ketteVerifizieren, protokollieren } from "./ereignisse.ts";
@@ -59,6 +61,18 @@ try {
           [slug, p.name, p.vision_md, p.vision_short, p.engine, p.license_code, p.license_assets, p.repo_url, p.lead_model, p.goal, verfahren, p.original ?? null])).rows[0].id);
         await protokollieren(tx, { projekt_id: id, akteur: "system", art: "vision_veroeffentlicht", bezug: `projekt:${id}`, daten: { slug, name: p.name, lead_modell: p.lead_model, verfahren, ...(p.original ? { vorbild: p.original } : {}) } });
         console.log(`project ${slug} created (id ${id})`);
+      });
+      break;
+    }
+    case "set-vision": {
+      const [slug, datei] = args;
+      const text = await readFile(datei, "utf8");
+      if (!text.trim()) throw new Error("the vision is empty");
+      await transaktion(db, async (tx) => {
+        const p = (await tx.query("update projekte set vision_md = $2 where slug = $1 returning id", [slug, text])).rows[0];
+        if (!p) throw new Error(`unknown project ${slug}`);
+        await protokollieren(tx, { projekt_id: Number(p.id), akteur: "system", art: "vision_aktualisiert", bezug: `projekt:${p.id}`, daten: { slug, sha256: createHash("sha256").update(text).digest("hex") } });
+        console.log(`vision of ${slug} updated`);
       });
       break;
     }

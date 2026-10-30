@@ -54,7 +54,7 @@ export const WERTE: Record<string, Record<string, string>> = {
   verfahren: { standard: "standard", clean_room: "clean_room" },
   art: {
     // event types
-    vision_veroeffentlicht: "vision_published", aufgabe_angelegt: "task_created", aufgabe_reserviert: "task_reserved",
+    vision_veroeffentlicht: "vision_published", vision_aktualisiert: "vision_updated", aufgabe_angelegt: "task_created", aufgabe_reserviert: "task_reserved",
     arbeit_begonnen: "work_started", fortschritt: "progress", ergebnis_eingereicht: "result_submitted", einreichung_abgewiesen: "submission_rejected",
     abgebrochen: "abandoned", reservierung_abgelaufen: "reservation_expired", reservierung_beendet_sperre: "reservation_ended_block",
     reservierung_beendet_abmeldung: "reservation_ended_sign_out", pruefung_gestartet: "check_started", pruefung_beendet: "check_finished",
