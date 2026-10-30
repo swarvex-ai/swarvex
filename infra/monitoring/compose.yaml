@@ -1,0 +1,63 @@
+# Monitoring stack (E-24), identical in the lab and in production; runs next to the platform stack.
+# Alloy collects host and container metrics and container logs (IP addresses removed) and sends
+# them to Prometheus and Loki; Grafana shows them. Nothing is reachable from outside: Grafana listens
+# on 127.0.0.1:3100 only, open it through an SSH tunnel (docs/self-hosting.md).
+name: swarvex-monitoring
+services:
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus:/prometheus
+    restart: unless-stopped
+  loki:
+    image: grafana/loki:3.5.3
+    command: -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./loki.yaml:/etc/loki/loki.yaml:ro
+      - loki:/loki
+    restart: unless-stopped
+  alloy:
+    image: grafana/alloy:v1.10.0
+    command: run --storage.path=/var/lib/alloy /etc/alloy/config.alloy
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/rootfs:ro
+      - /sys:/host/sys:ro
+      - /sys:/sys:ro   # cgroups for container metrics
+      - /proc:/host/proc:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - alloy:/var/lib/alloy
+    pid: host
+    privileged: true
+    depends_on: [prometheus, loki]
+    restart: unless-stopped
+  grafana:
+    image: grafana/grafana:12.1.0
+    ports: ["127.0.0.1:3100:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana:/var/lib/grafana
+      - /opt/swarvex-data/grafana_admin:/run/secrets/grafana_admin:ro
+    depends_on: [prometheus, loki]
+    restart: unless-stopped
+volumes:
+  prometheus:
+  loki:
+  alloy:
+  grafana:

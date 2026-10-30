@@ -20,6 +20,8 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq curl ca-certificates docker.io docker-compose git git-lfs jq rsync openssh-client ufw unattended-upgrades restic >/dev/null
 systemctl enable --now docker >/dev/null
+# Bounded container logs (takes effect for containers created after Docker's next restart)
+[ -f /etc/docker/daemon.json ] || printf '{ "log-driver": "json-file", "log-opts": { "max-size": "10m", "max-file": "3" } }\n' > /etc/docker/daemon.json
 
 echo "== 1b. Hardening"
 # Automatic security updates (Debian security archive only)
@@ -107,7 +109,12 @@ umask 077
 systemctl enable --now swarvex-backup.timer >/dev/null
 grep -q '^RESTIC_REPOSITORY=.' "$DATA/backup.env" && echo "   backup target set" || echo "   backup target still empty: set RESTIC_REPOSITORY in $DATA/backup.env"
 
-echo "== 7. Runner release and one-line installer"
+echo "== 7. Monitoring (Prometheus, Loki, Alloy, Grafana on 127.0.0.1:3100)"
+[ -f "$DATA/grafana_admin" ] || { head -c 24 /dev/urandom | base64 | tr -d '/+=' > "$DATA/grafana_admin"; }
+chmod 644 "$DATA/grafana_admin"   # read by the Grafana container user
+( cd "$CODE/infra/monitoring" && docker compose up -d )
+
+echo "== 8. Runner release and one-line installer"
 sh "$CODE/infra/release.sh" | tail -2
 
 echo

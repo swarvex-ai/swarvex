@@ -1,0 +1,7 @@
+# Metrics arrive from Alloy via remote write; Prometheus only scrapes itself.
+global:
+  scrape_interval: 30s
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
