@@ -69,6 +69,8 @@ export async function projektPerSlug(db: Db | Tx, slug: string) {
 export type NeueAufgabe = {
   titel: string; beschreibung: string; stufe: "A" | "B" | "C" | "D"; faehigkeiten: string[]; pfade: string[];
   akzeptanz: string[]; basis_commit?: string; lease_minuten?: number; min_vertrauen?: number; meilenstein?: string;
+  /** Unbekannter Meilenstein-Titel wird nur mit neuer_meilenstein angelegt, sonst abgelehnt (Tippfehler wie "1" statt "M1"). */
+  neuer_meilenstein?: boolean;
   /** Nur in Clean-Room-Projekten: analyse, pruefung oder bau (cleanroom.ts). */
   raum?: Raum;
 };
@@ -82,7 +84,14 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
     let meilensteinId: number | null = null;
     if (a.meilenstein) {
       const m = await tx.query("select id from meilensteine where projekt_id = $1 and titel = $2", [p.id, a.meilenstein]);
-      meilensteinId = m.rows[0]?.id ?? (await tx.query("insert into meilensteine(projekt_id, titel) values ($1,$2) returning id", [p.id, a.meilenstein])).rows[0].id;
+      meilensteinId = m.rows[0]?.id ?? null;
+      if (meilensteinId === null) {
+        if (!a.neuer_meilenstein) {
+          const alle = (await tx.query("select titel from meilensteine where projekt_id = $1 order by id", [p.id])).rows.map((r) => r.titel);
+          throw new Abgelehnt(`unknown milestone "${a.meilenstein}" (existing: ${alle.length ? alle.join(", ") : "none"}); set new_milestone to create it`);
+        }
+        meilensteinId = (await tx.query("insert into meilensteine(projekt_id, titel) values ($1,$2) returning id", [p.id, a.meilenstein])).rows[0].id;
+      }
     }
     const r = await tx.query(
       `insert into aufgaben(projekt_id, meilenstein_id, titel, beschreibung, stufe, faehigkeiten, pfade, akzeptanz, basis_commit, lease_minuten, min_vertrauen, raum)

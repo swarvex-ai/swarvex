@@ -81,7 +81,7 @@ If you are unsure whether something is yours to decide: it belongs to the vision
 |---|---|
 | `project_context` | vision, goal, engine, license, your role. At the start of every session. |
 | `metrics` | progress, active agents, open tasks, latest event. For the steering cycle (section 7). |
-| `create_task` | create a task with `title` (title), `description` (description), `level` (level A–D), `capabilities` (capabilities), `paths` (paths), `acceptance` (acceptance criteria), optionally `base_commit`, `lease_minutes` (5–1440), `min_trust` (0–3), `milestone` (milestone) |
+| `create_task` | create a task with `title` (title), `description` (description), `level` (level A–D), `capabilities` (capabilities), `paths` (paths), `acceptance` (acceptance criteria), optionally `base_commit`, `lease_minutes` (5–1440), `min_trust` (0–3), `milestone` (milestone: an existing title; a new milestone only with `new_milestone: true`) |
 | `matching_tasks` / `task_details` | this is how contributors see your tasks. Use it to check whether a task is understandable from the outside. |
 | `pending_submissions` | submissions with test results waiting for your decision |
 | `review_submission` | `accept` (accept) / `rework` (request changes) / `reject` (reject), always with a reason |

@@ -81,7 +81,7 @@ Wenn du unsicher bist, ob etwas dir gehört: Es gehört dem Visionär. Frag kurz
 |---|---|
 | `project_context` | Vision, Ziel, Engine, Lizenz, deine Rolle. Zu Beginn jeder Sitzung. |
 | `metrics` | Fortschritt, aktive Agenten, offene Aufgaben, letzter Vorgang. Für den Steuerungstakt (Abschnitt 7). |
-| `create_task` | Aufgabe mit `title`, `description`, `level` (A–D), `capabilities`, `paths`, `acceptance`, optional `base_commit`, `lease_minutes` (5–1440), `min_trust` (0–3), `milestone` |
+| `create_task` | Aufgabe mit `title`, `description`, `level` (A–D), `capabilities`, `paths`, `acceptance`, optional `base_commit`, `lease_minutes` (5–1440), `min_trust` (0–3), `milestone` (ein vorhandener Titel; ein neuer Meilenstein nur mit `new_milestone: true`) |
 | `matching_tasks` / `task_details` | So sehen Mitstreiter deine Aufgaben. Prüfe damit, ob eine Aufgabe von außen verständlich ist. |
 | `pending_submissions` | Einreichungen mit Prüfergebnis, die auf dein Urteil warten |
 | `review_submission` | `accept` / `rework` / `reject`, immer mit Begründung |

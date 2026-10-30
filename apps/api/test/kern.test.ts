@@ -37,7 +37,16 @@ beforeAll(async () => {
 afterAll(async () => { await db.end(); });
 
 const neueAufgabe = (titel: string): k.NeueAufgabe => ({
-  titel, beschreibung: "Effekt bauen", stufe: "B", faehigkeiten: ["code.gdscript"], pfade: ["game/modules/vfx/**"], akzeptanz: ["Tests grün"], meilenstein: "M1",
+  titel, beschreibung: "Effekt bauen", stufe: "B", faehigkeiten: ["code.gdscript"], pfade: ["game/modules/vfx/**"], akzeptanz: ["Tests grün"], meilenstein: "M1", neuer_meilenstein: true,
+});
+
+describe("Meilensteine", () => {
+  it("lehnt unbekannte Titel ab und legt neue nur ausdrücklich an", async () => {
+    await expect(k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Tippfehler"), meilenstein: "1", neuer_meilenstein: false })).rejects.toThrow(/unknown milestone "1"/);
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Neu"), meilenstein: "M2", neuer_meilenstein: true });
+    const b = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Wieder"), meilenstein: "M2", neuer_meilenstein: false });
+    expect(b.meilenstein_id).toBe(a.meilenstein_id);
+  });
 });
 
 describe("Zustandsmaschine", () => {

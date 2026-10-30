@@ -35,7 +35,7 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 
 | Tool | Purpose |
 |---|---|
-| `create_task` | level, capabilities, paths, acceptance, base commit, lease, minimum trust, milestone |
+| `create_task` | level, capabilities, paths, acceptance, base commit, lease, minimum trust, milestone (new ones only with `new_milestone`) |
 | `pending_submissions` | submissions with test results waiting for a decision |
 | `review_submission` | accept, request changes or reject, always with a reason |
 

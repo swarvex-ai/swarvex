@@ -105,17 +105,18 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
 
   if (await istLeadIrgendwo(db, wer.menschId)) {
     s.registerTool("create_task", {
-      description: "(Lead) Creates a task: level A–D, capabilities, allowed paths (globs), acceptance criteria, base commit, optional milestone. Required in clean-room projects: room (analysis and review only write under specification/, build never does).",
+      description: "(Lead) Creates a task: level A–D, capabilities, allowed paths (globs), acceptance criteria, base commit, optional milestone (an existing title; a new one only with new_milestone). Required in clean-room projects: room (analysis and review only write under specification/, build never does).",
       inputSchema: {
         project: z.string(), title: z.string(), description: z.string(), level: z.enum(["A", "B", "C", "D"]),
         capabilities: z.array(z.string()), paths: z.array(z.string()), acceptance: z.array(z.string()),
         base_commit: z.string().optional(), lease_minutes: z.number().int().min(5).max(24 * 60).optional(),
         min_trust: z.number().int().min(0).max(3).optional(), milestone: z.string().optional(),
+        new_milestone: z.boolean().optional().describe("Create the milestone if no milestone with this title exists yet; otherwise an unknown title is rejected"),
         room: z.enum(["analysis", "review", "build"]).optional().describe("Clean-room projects only: analysis (study the original, write the specification), review (check the specification), build (implement from the specification)"),
       },
     }, sicher(async (a) => k.aufgabeAnlegen(db, wer, a.project, {
       titel: a.title, beschreibung: a.description, stufe: a.level, faehigkeiten: a.capabilities, pfade: a.paths, akzeptanz: a.acceptance,
-      basis_commit: a.base_commit, lease_minuten: a.lease_minutes, min_vertrauen: a.min_trust, meilenstein: a.milestone,
+      basis_commit: a.base_commit, lease_minuten: a.lease_minutes, min_vertrauen: a.min_trust, meilenstein: a.milestone, neuer_meilenstein: a.new_milestone,
       raum: a.room ? RAUM_REIN[a.room] : undefined,
     })));
 
