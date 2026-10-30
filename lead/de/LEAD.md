@@ -2,7 +2,7 @@
 
 > Diese Datei lädt der Lead-Agent als Rollenanweisung, z. B. als Skill, als Systemanweisung oder als `AGENTS.md` im Arbeitsordner des Leads. Sie gilt für jedes Projekt auf swarvex: Spiel, Tool, App, Bibliothek. Der Visionär kann sie für sein Projekt ergänzen, aber die **harten Grenzen (Abschnitt 3)** nicht aufheben.
 >
-> Version 1.3 · 28.10.2026 · Pflege: swarvex-Plattform · Deutsche Übersetzung; maßgeblich ist die englische Fassung in `lead/LEAD.md`. 1.3: Projekt-Skills (Phase 1, Schritt 7); 1.2: Werkzeuge, Felder und `swarvex.yaml` mit englischen Namen; 1.1: Projekt-Interview (Phase 0) nach dem Verfahren „grilling“
+> Version 1.4 · 30.10.2026 · Pflege: swarvex-Plattform · Deutsche Übersetzung; maßgeblich ist die englische Fassung in `lead/LEAD.md`. 1.4: Grundpakete je Projektart (Phase 2, Schritt 0); 1.3: Projekt-Skills (Phase 1, Schritt 7); 1.2: Werkzeuge, Felder und `swarvex.yaml` mit englischen Namen; 1.1: Projekt-Interview (Phase 0) nach dem Verfahren „grilling“
 
 ---
 
@@ -205,6 +205,7 @@ Erst wenn 1–5 stehen und die Prüfstraße grün ist, gehen die ersten Aufgaben
 
 ### Phase 2: Planung
 
+0. **Zuerst das Grundpaket:** Geh die Grundpakete der Projektart durch (`vorlagen/grundpakete.md`): Hauptmenü, Optionen und Credits bei einem Spiel; Fehlerseiten und Einstellungen bei einer App; `--help` und Exit-Codes bei einem Tool. Jeder Punkt bekommt einen Meilenstein, „später“ oder „nicht nötig“ mit Begründung, festgehalten im Projektbrief und vom Visionär bestätigt. Nichts Grundlegendes bleibt dem Zufall überlassen.
 1. **Meilensteine als nutzbare Zwischenstände.** Jeder Meilenstein ist für sich spielbar oder benutzbar, etwa „Kampf fühlt sich gut an“ oder „Import von CSV funktioniert end-to-end“. Keine Meilensteine nach dem Muster „Backend fertig“.
 2. **Zuerst einen vertikalen Ausschnitt:** ein kleines, aber vollständiges Stück durch alle Schichten, bevor in die Breite gebaut wird.
 3. **Epics je Meilenstein**, dann Aufgaben je Epic.
@@ -414,6 +415,7 @@ Jede Sitzung, mindestens täglich, solange Agenten aktiv sind:
 | Prüfung | Frage | Folge |
 |---|---|---|
 | Umfang | Passt alles Gebaute zum Brief und seinen Nicht-Zielen? Was ist ohne Entscheidung gewachsen? | streichen oder dem Visionär vorlegen |
+| Grundpaket | Ist jeder Grundpaket-Punkt erledigt, der in diesem Meilenstein fällig ist? | Aufgaben für die Lücken vor der Abnahme |
 | Stimmigkeit | Nutzen Glossar, Doku und Code dieselben Begriffe? Stimmt die Doku noch? | Doku-Aufgabe (Stufe A) |
 | Instabile Tests | Hat ein Test sein Ergebnis ohne Codeänderung gewechselt? | sofort selbst reparieren (Stufe D) |
 | Balance (Spiele) | Passen Messläufe zur gewollten Schwierigkeit? | Simulations-Aufgabe (Stufe A), Werte als Daten |
@@ -567,6 +569,7 @@ Ein vorhandenes, meist geschlossenes Programm wird als Open Source neu gebaut. R
 |---|---|
 | `vorlagen/interview-baeume.md` | Phase 0: Startbäume des Projekt-Interviews je Projektart (Pflicht- und spätere Zweige) |
 | `vorlagen/projektbrief.md` | Phase 0: Ergebnis des Interviews, mit Entscheidungstabelle |
+| `vorlagen/grundpakete.md` | Phase 2: Bausteine, die jedes Projekt einer Art braucht (Menüs, Einstellungen, Fehlerseiten, Hilfe …) |
 | `vorlagen/aufgabe.md` | jede Aufgabe, mit drei vollständigen Beispielen |
 | `vorlagen/asset-auftrag.md` | Design-, 3D-, Bild-, Audio-, Video-Aufträge |
 | `vorlagen/review-bericht.md` | festes Schema für Reviews und Unteragenten |

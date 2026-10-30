@@ -41,6 +41,14 @@ Eigenschaften, die **immer** stimmen müssen. Jede Aufgabe muss zu mindestens ei
 Was es ausdrücklich **nicht** ist und nicht wird (Schutz gegen Ausufern).
 - …
 
+## Grundpaket
+Eine Zeile je Punkt aus `vorlagen/grundpakete.md` (alle Projekte + Projektart). Keiner bleibt stumm.
+
+| ID | Baustein | Entscheidung | Begründung |
+|---|---|---|---|
+| G-2 | Hauptmenü | M1 | |
+| G-20 | Erfolge | nicht nötig | kein Store verlangt sie; steht auch bei den Nicht-Zielen |
+
 ## Erfolgskriterien Version 1
 Messbar oder eindeutig beobachtbar.
 - [ ] …

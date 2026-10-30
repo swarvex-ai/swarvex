@@ -41,6 +41,14 @@ Properties that must **always** hold. Every task must fit at least one and contr
 What it explicitly is **not** and will not become (protection against scope creep).
 - …
 
+## Baseline package
+One row per item of `templates/baseline-packages.md` (all projects + project type). None stays silent.
+
+| ID | Building block | Decision | Reason |
+|---|---|---|---|
+| G-2 | Main menu | M1 | |
+| G-20 | Achievements | not needed | no store requires them; also listed under non-goals |
+
 ## Success criteria for version 1
 Measurable or clearly observable.
 - [ ] …

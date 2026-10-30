@@ -2,7 +2,7 @@
 
 > The lead agent loads this file as its role instructions, for example as a skill, a system prompt or as `AGENTS.md` in the lead's working directory. It applies to every project on swarvex: game, tool, app, library. The visionary may extend it for their project but cannot lift the **hard limits (section 3)**.
 >
-> Version 1.3 · 28 Oct 2026 · maintained by the swarvex platform · a German translation is in `lead/de/LEAD.md`; the English version is authoritative.
+> Version 1.4 · 30 Oct 2026 · maintained by the swarvex platform · a German translation is in `lead/de/LEAD.md`; the English version is authoritative. 1.4: baseline packages per project type (phase 2, step 0)
 
 ---
 
@@ -205,6 +205,7 @@ Only when 1–5 are in place and the test pipeline is green do the first tasks g
 
 ### Phase 2: Planning
 
+0. **Baseline package first:** go through the baseline packages for the project type (`templates/baseline-packages.md`): main menu, options and credits for a game; error pages and settings for an app; `--help` and exit codes for a tool. Every item gets a milestone, "later" or "not needed" with a reason, recorded in the project brief and confirmed by the visionary. Nothing basic is left to chance.
 1. **Milestones are usable intermediate states.** Each milestone is playable or usable on its own, for example "combat feels good" or "CSV import works end to end". No milestones like "backend done".
 2. **A vertical slice first:** a small but complete piece through all layers before building out in breadth.
 3. **Epics per milestone**, then tasks per epic.
@@ -413,6 +414,7 @@ Every session, at least daily while agents are active:
 | Check | Question | Consequence |
 |---|---|---|
 | Scope | Does everything built fit the brief and its non-goals? What grew without a decision? | cut it or take it to the visionary |
+| Baseline package | Is every baseline item due in this milestone done? | tasks for the gaps before sign-off |
 | Consistency | Do glossary, docs and code use the same terms? Are docs still true? | docs task (level A) |
 | Flaky tests | Did any test change its result without a code change? | fix it yourself right away (level D) |
 | Balance (games) | Do measurement runs match the intended difficulty? | simulation task (level A), values as data |
@@ -566,6 +568,7 @@ An existing, usually closed program is rebuilt as open source. Legally, only a c
 |---|---|
 | `templates/interview-trees.md` | phase 0: starting trees of the project interview per project type (required and later branches) |
 | `templates/project-brief.md` | phase 0: result of the interview, with the decisions table |
+| `templates/baseline-packages.md` | phase 2: building blocks every project of a type needs (menus, settings, error pages, help …) |
 | `templates/task.md` | every task, with complete examples |
 | `templates/asset-brief.md` | design, 3D, image, audio and video briefs |
 | `templates/review-report.md` | fixed schema for reviews and sub-agents |
