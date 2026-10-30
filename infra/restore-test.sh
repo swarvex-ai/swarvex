@@ -16,7 +16,8 @@ DUMP="$ZIEL/var/backups/swarvex/swarvex.dump"
 
 echo "== Load into a throwaway PostgreSQL"
 docker run -d --rm --name "$NAME" --network none -e POSTGRES_PASSWORD=probe -e POSTGRES_USER=swarvex -e POSTGRES_DB=swarvex postgres:18 >/dev/null
-for i in $(seq 1 30); do docker exec "$NAME" pg_isready -U swarvex -d swarvex >/dev/null 2>&1 && break; sleep 1; done
+# Over TCP: during initialisation the image runs a temporary server on the socket only, then restarts it
+for i in $(seq 1 60); do docker exec "$NAME" pg_isready -h 127.0.0.1 -U swarvex -d swarvex >/dev/null 2>&1 && break; sleep 1; done
 docker cp "$DUMP" "$NAME:/tmp/swarvex.dump"
 docker exec "$NAME" pg_restore -U swarvex -d swarvex --no-owner /tmp/swarvex.dump
 

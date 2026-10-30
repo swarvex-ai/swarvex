@@ -1,0 +1,23 @@
+# External availability check of swarvex.ai (E-24). A failed run is the alarm: GitHub emails the
+# account that last changed the schedule. Checks the website, the API and the certificate's lifetime.
+name: uptime
+on:
+  # Schedule switched on once the API runs in production (until then /healthz fails on purpose):
+  # schedule:
+  #   - cron: "*/15 * * * *"
+  workflow_dispatch:
+permissions: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Website
+        run: curl -fsS --retry 3 --retry-delay 10 --max-time 20 -o /dev/null https://swarvex.ai/
+      - name: API
+        run: curl -fsS --retry 3 --retry-delay 10 --max-time 20 https://swarvex.ai/healthz
+      - name: Certificate valid for at least 14 more days
+        run: |
+          ende=$(echo | openssl s_client -connect swarvex.ai:443 -servername swarvex.ai 2>/dev/null | openssl x509 -noout -enddate | cut -d= -f2)
+          echo "certificate valid until $ende"
+          test $(( $(date -d "$ende" +%s) - $(date +%s) )) -gt $(( 14 * 86400 ))
