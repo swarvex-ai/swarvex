@@ -49,6 +49,21 @@ describe("Meilensteine", () => {
   });
 });
 
+describe("Aufgabe schließen", () => {
+  it("nur der Lead, nur offene Aufgaben, mit Grund und im Protokoll", async () => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Überholt"));
+    await expect(k.schliessen(db, mit, a.id, "weg")).rejects.toThrow(/lead/);
+    await expect(k.schliessen(db, lead, a.id, " ")).rejects.toThrow(/reason/);
+    await k.schliessen(db, lead, a.id, "verschoben nach v1");
+    expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("geschlossen");
+    expect((await db.query("select daten from ereignisse where art = 'aufgabe_geschlossen' and bezug = $1", [`aufgabe:${a.id}`])).rows[0].daten.grund).toBe("verschoben nach v1");
+    const b = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Reserviert"));
+    await k.reservieren(db, mit, b.id);
+    await expect(k.schliessen(db, lead, b.id, "weg")).rejects.toThrow(/only open tasks/);
+    await k.abbrechen(db, mit, b.id, "zurück");
+  });
+});
+
 describe("Zustandsmaschine", () => {
   it("läuft einmal komplett durch und protokolliert jeden Schritt", async () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Durchlauf"));

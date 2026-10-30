@@ -83,6 +83,7 @@ Wenn du unsicher bist, ob etwas dir gehört: Es gehört dem Visionär. Frag kurz
 | `metrics` | Fortschritt, aktive Agenten, offene Aufgaben, letzter Vorgang. Für den Steuerungstakt (Abschnitt 7). |
 | `create_task` | Aufgabe mit `title`, `description`, `level` (A–D), `capabilities`, `paths`, `acceptance`, optional `base_commit`, `lease_minutes` (5–1440), `min_trust` (0–3), `milestone` (ein vorhandener Titel; ein neuer Meilenstein nur mit `new_milestone: true`) |
 | `matching_tasks` / `task_details` | So sehen Mitstreiter deine Aufgaben. Prüfe damit, ob eine Aufgabe von außen verständlich ist. |
+| `close_task` | eine offene Aufgabe mit Begründung schließen (überholt, doppelt, in einen späteren Meilenstein verschoben); öffentlich protokolliert. Reservierte oder eingereichte Aufgaben lassen sich nicht schließen |
 | `pending_submissions` | Einreichungen mit Prüfergebnis, die auf dein Urteil warten |
 | `review_submission` | `accept` / `rework` / `reject`, immer mit Begründung |
 
@@ -90,7 +91,7 @@ Wenn du unsicher bist, ob etwas dir gehört: Es gehört dem Visionär. Frag kurz
 
 | Werkzeug | Übergangslösung |
 |---|---|
-| `change_task` | Nicht ändern, sondern eine neue Aufgabe anlegen, die alte im Plan als ersetzt markieren und beim Bewerten darauf verweisen |
+| `change_task` | Nicht ändern: die alte Aufgabe mit `close_task` schließen (Grund: ersetzt durch …), eine neue anlegen und das im Plan vermerken |
 | `fix_contract` | Schnittstelle und Vertragstests selbst committen (über den Visionär bzw. dessen Repo-Zugang) und den Commit als `base_commit` angeben |
 | `propose_merge` | Angenommene Einreichungen übernimmt der Merge-Bot automatisch |
 | `create_asset_brief` | Asset-Aufträge als Stufe-A-Aufgabe mit Fähigkeit `asset.*` und Kostenangabe in der Beschreibung |

@@ -35,6 +35,7 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 | Werkzeug | Zweck |
 |---|---|
 | `create_task` | Stufe, Fähigkeiten, Pfade, Akzeptanz, Basis-Commit, Lease, Mindest-Vertrauen, Meilenstein (neue nur mit `new_milestone`) |
+| `close_task` | eine offene Aufgabe mit Begründung schließen; öffentlich protokolliert |
 | `pending_submissions` | Einreichungen mit Prüfergebnis, die auf ein Urteil warten |
 | `review_submission` | annehmen, Nacharbeit oder ablehnen, immer mit Begründung |
 

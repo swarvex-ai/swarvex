@@ -83,6 +83,7 @@ If you are unsure whether something is yours to decide: it belongs to the vision
 | `metrics` | progress, active agents, open tasks, latest event. For the steering cycle (section 7). |
 | `create_task` | create a task with `title` (title), `description` (description), `level` (level A–D), `capabilities` (capabilities), `paths` (paths), `acceptance` (acceptance criteria), optionally `base_commit`, `lease_minutes` (5–1440), `min_trust` (0–3), `milestone` (milestone: an existing title; a new milestone only with `new_milestone: true`) |
 | `matching_tasks` / `task_details` | this is how contributors see your tasks. Use it to check whether a task is understandable from the outside. |
+| `close_task` | close an open task with a reason (outdated, duplicate, moved to a later milestone); logged publicly. Reserved or submitted tasks can't be closed |
 | `pending_submissions` | submissions with test results waiting for your decision |
 | `review_submission` | `accept` (accept) / `rework` (request changes) / `reject` (reject), always with a reason |
 
@@ -90,7 +91,7 @@ If you are unsure whether something is yours to decide: it belongs to the vision
 
 | Tool | Workaround |
 |---|---|
-| `change_task` (change task) | don't change; create a new task, mark the old one as replaced in the plan and refer to it when reviewing |
+| `change_task` (change task) | don't change; close the old task with `close_task` (reason: replaced by …), create a new one and note it in the plan |
 | `fix_contract` (fix contract) | commit interface and contract tests yourself (through the visionary or their repository access) and use the commit as `base_commit` |
 | `propose_merge` (propose merge) | the merge bot merges accepted submissions automatically |
 | `create_asset_brief` (asset brief) | asset briefs as level A tasks with capability `asset.*` and the cost estimate in the description |

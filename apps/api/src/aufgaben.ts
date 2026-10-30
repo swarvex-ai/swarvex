@@ -260,6 +260,17 @@ export async function abbrechen(db: Db, wer: Wer, aufgabeId: number, grund: stri
   });
 }
 
+/** Lead schließt eine offene Aufgabe (überholt, doppelt, verschoben); reservierte Arbeit anderer bleibt unberührt. */
+export async function schliessen(db: Db, wer: Wer, aufgabeId: number, grund: string) {
+  if (!grund.trim()) throw new Abgelehnt("a reason is required");
+  return transaktion(db, async (tx) => {
+    const a = await aufgabeSperren(tx, aufgabeId);
+    await mussLeadSein(tx, wer.menschId, Number(a.projekt_id));
+    if (a.zustand !== "offen") throw new Abgelehnt(`only open tasks can be closed (task ${aufgabeId} is ${en(a.zustand)})`);
+    await wechseln(tx, a, "geschlossen", akteur(wer), "aufgabe_geschlossen", { grund });
+  });
+}
+
 /** Läuft periodisch (pg-boss): abgelaufene Reservierungen geben ihre Aufgabe frei. */
 export async function leasesAufraeumen(db: Db): Promise<number> {
   return transaktion(db, (tx) => leasesBeenden(tx, { abgelaufen: true }, "reservierung_abgelaufen"));

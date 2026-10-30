@@ -120,6 +120,11 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       raum: a.room ? RAUM_REIN[a.room] : undefined,
     })));
 
+    s.registerTool("close_task", {
+      description: "(Lead) Closes an open task of your project with a reason (outdated, duplicate, moved to a later milestone). Logged publicly. Reserved or submitted tasks cannot be closed.",
+      inputSchema: { task_id: z.number().int(), reason: z.string().min(1) },
+    }, sicher(async ({ task_id, reason }) => { await k.schliessen(db, wer, task_id, reason); return "closed"; }));
+
     s.registerTool("pending_submissions", {
       description: "(Lead) A project's submissions with their check results, waiting for your review.",
       inputSchema: { project: z.string() },

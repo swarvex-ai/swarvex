@@ -31,6 +31,8 @@
 | B8 | **Name, logo, icon** | name checked for conflicts, logo and icon in the sizes the platforms need | v1 |
 | B9 | **Project page material** | short description, 3–5 screenshots or a short clip for swarvex.ai and stores | release |
 
+B6 and B7 are already covered for repositories in the `swarvex-ai` organization: GitHub uses the defaults from `swarvex-ai/.github` as long as a repository has no files of its own. Only create a task when the project needs something specific, e.g. a game's bug form asking for version, system, input device and save file.
+
 ## Game
 
 | ID | Building block | Done when | Default |

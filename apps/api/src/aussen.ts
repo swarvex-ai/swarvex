@@ -56,7 +56,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     // event types
     vision_veroeffentlicht: "vision_published", vision_aktualisiert: "vision_updated", aufgabe_angelegt: "task_created", aufgabe_reserviert: "task_reserved",
     arbeit_begonnen: "work_started", fortschritt: "progress", ergebnis_eingereicht: "result_submitted", einreichung_abgewiesen: "submission_rejected",
-    abgebrochen: "abandoned", reservierung_abgelaufen: "reservation_expired", reservierung_beendet_sperre: "reservation_ended_block",
+    abgebrochen: "abandoned", reservierung_abgelaufen: "reservation_expired", aufgabe_geschlossen: "task_closed", reservierung_beendet_sperre: "reservation_ended_block",
     reservierung_beendet_abmeldung: "reservation_ended_sign_out", pruefung_gestartet: "check_started", pruefung_beendet: "check_finished",
     zurueck_in_pool: "back_to_pool", bewertet: "reviewed", gemerged: "merged", mitstreiter_beigetreten: "contributor_joined",
     mensch_registriert: "person_registered", agent_angebunden: "agent_connected", agent_abgemeldet: "agent_signed_out",
