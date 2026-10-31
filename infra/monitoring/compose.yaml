@@ -49,16 +49,26 @@ services:
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
       GF_NEWS_NEWS_FEED_ENABLED: "false"
+    # GitHub sign-in and public address, only when configured (infra/grafana-setup.sh)
+    env_file:
+      - path: /opt/swarvex-data/grafana.env
+        required: false
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana:/var/lib/grafana
       - /opt/swarvex-data/grafana_admin:/run/secrets/grafana_admin:ro
       - /opt/swarvex-data/analytics_db:/run/secrets/analytics_db:ro
-    networks: [default, analytics]
+      - /opt/swarvex-data/grafana_github_secret:/run/secrets/grafana_github_secret:ro
+      - ./grafana/analytik:/etc/grafana/analytik:ro
+    # edge: Caddy reaches Grafana for analytics.<domain>
+    networks: [default, analytics, edge]
     depends_on: [prometheus, loki]
     restart: unless-stopped
 networks:
+  edge:
+    name: edge
+    external: true
   # Lesezugriff auf die Auswertungssichten der Plattform-Datenbank (infra/analytics-setup.sh)
   analytics:
     name: analytics

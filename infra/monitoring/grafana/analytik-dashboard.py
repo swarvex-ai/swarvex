@@ -190,6 +190,7 @@ dashboard = {
     "panels": [{**p, "id": i + 1} for i, p in enumerate(panels)],
 }
 
-ziel = Path(__file__).with_name("dashboards") / "analytik.json"
+# Nicht im Datei-Provisioning (das landet im Bereich „Betrieb“); infra/grafana-setup.sh lädt es in den Bereich „Auswertung“
+ziel = Path(__file__).with_name("analytik") / "analytik.json"
 ziel.write_text(json.dumps(dashboard, ensure_ascii=False, indent=1) + "\n")
 print(f"{ziel}: {len(panels)} panels")

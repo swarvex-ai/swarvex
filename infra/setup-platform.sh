@@ -114,7 +114,9 @@ echo "== 7. Monitoring (Prometheus, Loki, Alloy, Grafana on 127.0.0.1:3100)"
 [ -f "$DATA/grafana_admin" ] || { head -c 24 /dev/urandom | base64 | tr -d '/+=' > "$DATA/grafana_admin"; }
 chmod 644 "$DATA/grafana_admin"   # read by the Grafana container user
 sh "$CODE/infra/analytics-setup.sh"
+sh "$CODE/infra/grafana-setup.sh" files
 ( cd "$CODE/infra/monitoring" && docker compose up -d )
+sh "$CODE/infra/grafana-setup.sh" areas
 
 echo "== 8. Runner release and one-line installer"
 sh "$CODE/infra/release.sh" | tail -2
