@@ -18,6 +18,8 @@ CODE=/opt/swarvex
 
 dateien() {
   umask 022
+  # Bis 31.10.2026 lag das Dashboard im Datei-Provisioning (Bereich „Main“); deploy.sh löscht unter infra nichts
+  rm -f "$CODE/infra/monitoring/grafana/dashboards/analytik.json"
   host=$(sed -n 's/^ANALYTICS_HOST=//p' "$CODE/infra/stack/.env" 2>/dev/null | tr -d '"' | tail -1)
   id=$(sed -n 's/^GRAFANA_GITHUB_CLIENT_ID=//p' "$DATA/grafana-oauth.env" 2>/dev/null | tr -d '"' | tail -1)
   geheim=$(sed -n 's/^GRAFANA_GITHUB_CLIENT_SECRET=//p' "$DATA/grafana-oauth.env" 2>/dev/null | tr -d '"' | tail -1)
