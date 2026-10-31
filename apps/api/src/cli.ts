@@ -1,6 +1,8 @@
 // Operator command line (in the container: `node src/cli.ts <command> …`).
 //   migrate
 //   create-project <slug> <file.json>         project + event "vision_published" (example: infra/stack/project-example.json)
+//   set-officer <slug> [provider:]<login> <area> <paths,…> <capabilities,…>   appoint an officer (the visionary decides; lead/roles/README.md)
+//   end-officer <slug> <area> <reason>        end an officer's term
 //   set-type <slug> <type>                    project type for the internal statistics: game | app | website | service | tool | library | plugin | other
 //   set-vision <slug> <vision.md>             replace the vision text; event "vision_updated" with its SHA-256
 //   set-role <slug> [provider:]<login> <role>  role: visionary | lead | contributor; e.g. github:nevs84
@@ -20,6 +22,7 @@ import { ketteVerifizieren, protokollieren } from "./ereignisse.ts";
 import { meldungAbschliessen, meldungenListe, sperren } from "./meldungen.ts";
 import { koepfeListe, kopfVeroeffentlichen, mitKoepfenVergleichen } from "./koepfe.ts";
 import { schluesselLaden } from "./auth/schluessel.ts";
+import { officerBeenden, officerErnennen } from "./aufgaben.ts";
 
 async function menschId(login: string): Promise<number> {
   const [anbieter, name] = login.includes(":") ? login.split(":", 2) : [null, login];
@@ -66,6 +69,20 @@ try {
         await protokollieren(tx, { projekt_id: id, akteur: "system", art: "vision_veroeffentlicht", bezug: `projekt:${id}`, daten: { slug, name: p.name, lead_modell: p.lead_model, verfahren, ...(p.original ? { vorbild: p.original } : {}) } });
         console.log(`project ${slug} created (id ${id})`);
       });
+      break;
+    }
+    case "set-officer": {
+      const [slug, login, bereich, pfade, faehigkeiten] = args;
+      if (!faehigkeiten) throw new Error("set-officer <slug> <login> <area> <paths,comma-separated> <capabilities,comma-separated>");
+      const liste = (x: string) => x.split(",").map((t) => t.trim()).filter(Boolean);
+      const r = await officerErnennen(db, "betrieb", slug, login, bereich, liste(pfade), liste(faehigkeiten));
+      console.log(`${login} is officer for ${r.bereich} in ${slug}`);
+      break;
+    }
+    case "end-officer": {
+      const [slug, bereich, ...grund] = args;
+      await officerBeenden(db, "betrieb", slug, bereich, grund.join(" "));
+      console.log(`officer for ${bereich} in ${slug} ended`);
       break;
     }
     case "set-type": {

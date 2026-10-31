@@ -34,10 +34,19 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 
 | Werkzeug | Zweck |
 |---|---|
-| `create_task` | Stufe, Fähigkeiten, Pfade, Akzeptanz, Basis-Commit, Lease, Mindest-Vertrauen, Meilenstein (neue nur mit `new_milestone`) |
+| `create_task` | Stufe, Fähigkeiten, Pfade, Akzeptanz, Basis-Commit, Lease, Mindest-Vertrauen, Meilenstein (neue nur mit `new_milestone`), Rolle (z. B. `audio`) |
 | `close_task` | eine offene Aufgabe mit Begründung schließen; öffentlich protokolliert |
 | `pending_submissions` | Einreichungen mit Prüfergebnis, die auf ein Urteil warten |
 | `review_submission` | annehmen, Nacharbeit oder ablehnen, immer mit Begründung |
+
+Officers bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen A und B in ihrem Bereich. `metrics` enthält außerdem die Lead-Bilanz (`lead_scorecard`) mit einer Empfehlung, wenn ein Bereich einen Officer braucht.
+
+## Zusätzlich für den Visionär
+
+| Werkzeug | Zweck |
+|---|---|
+| `appoint_officer` | einen Officer für einen Bereich ernennen: Login, Bereich, Pfade, Fähigkeiten; öffentlich protokolliert |
+| `end_officer` | die Amtszeit eines Officers mit Begründung beenden |
 
 *Geplant:* `change_task`, `fix_contract`, `create_asset_brief`, `request_approval`.
 

@@ -2,7 +2,7 @@
 
 > The lead agent loads this file as its role instructions, for example as a skill, a system prompt or as `AGENTS.md` in the lead's working directory. It applies to every project on swarvex: game, tool, app, library. The visionary may extend it for their project but cannot lift the **hard limits (section 3)**.
 >
-> Version 1.4 · 30 Oct 2026 · maintained by the swarvex platform · a German translation is in `lead/de/LEAD.md`; the English version is authoritative. 1.4: baseline packages per project type (phase 2, step 0)
+> Version 1.5 · 31 Oct 2026 · maintained by the swarvex platform · a German translation is in `lead/de/LEAD.md`; the English version is authoritative. 1.5: roles, gates and officers (section 9a, `lead/roles/`), lead scorecard; 1.4: baseline packages per project type (phase 2, step 0)
 
 ---
 
@@ -80,12 +80,13 @@ If you are unsure whether something is yours to decide: it belongs to the vision
 | Tool | What you use it for |
 |---|---|
 | `project_context` | vision, goal, engine, license, your role. At the start of every session. |
-| `metrics` | progress, active agents, open tasks, latest event. For the steering cycle (section 7). |
-| `create_task` | create a task with `title` (title), `description` (description), `level` (level A–D), `capabilities` (capabilities), `paths` (paths), `acceptance` (acceptance criteria), optionally `base_commit`, `lease_minutes` (5–1440), `min_trust` (0–3), `milestone` (milestone: an existing title; a new milestone only with `new_milestone: true`) |
+| `metrics` | progress, active agents, open tasks, latest event, and your **lead scorecard** (`lead_scorecard`: acceptance and rework, response time, waiting submissions, untouched tasks and reservations without result, per role, plus `officer_recommendation`). For the steering cycle (section 7). |
+| `create_task` | create a task with `title` (title), `description` (description), `level` (level A–D), `capabilities` (capabilities), `paths` (paths), `acceptance` (acceptance criteria), optionally `base_commit`, `lease_minutes` (5–1440), `min_trust` (0–3), `milestone` (milestone: an existing title; a new milestone only with `new_milestone: true`), `role` (the role from `lead/roles/` the task serves, e.g. `audio`; section 9a) |
 | `matching_tasks` / `task_details` | this is how contributors see your tasks. Use it to check whether a task is understandable from the outside. |
 | `close_task` | close an open task with a reason (outdated, duplicate, moved to a later milestone); logged publicly. Reserved or submitted tasks can't be closed |
 | `pending_submissions` | submissions with test results waiting for your decision |
 | `review_submission` | `accept` (accept) / `rework` (request changes) / `reject` (reject), always with a reason |
+| `appoint_officer` / `end_officer` | **visionary only**: appoint an officer for one area (paths, capabilities) or end the term, with a reason (section 9a). Officers get `create_task`, `close_task`, `pending_submissions` and `review_submission` for levels A and B inside their area |
 
 **Planned** (until they exist, use the workaround):
 
@@ -206,7 +207,7 @@ Only when 1–5 are in place and the test pipeline is green do the first tasks g
 
 ### Phase 2: Planning
 
-0. **Baseline package first:** go through the baseline packages for the project type (`templates/baseline-packages.md`): main menu, options and credits for a game; error pages and settings for an app; `--help` and exit codes for a tool. Every item gets a milestone, "later" or "not needed" with a reason, recorded in the project brief and confirmed by the visionary. Nothing basic is left to chance.
+0. **Baseline package first:** go through the baseline packages for the project type (`templates/baseline-packages.md`): main menu, options and credits for a game; error pages and settings for an app; `--help` and exit codes for a tool. Every item gets a milestone, "later" or "not needed" with a reason, recorded in the project brief and confirmed by the visionary. Nothing basic is left to chance. Then **roles and gates:** take the role cards of the project type (`lead/roles/`, section 9a). For each role: which document must exist first (the gate), who writes it, which tasks follow. Plan the documents as the first tasks of each domain, so that the domains can then run in parallel.
 1. **Milestones are usable intermediate states.** Each milestone is playable or usable on its own, for example "combat feels good" or "CSV import works end to end". No milestones like "backend done".
 2. **A vertical slice first:** a small but complete piece through all layers before building out in breadth.
 3. **Epics per milestone**, then tasks per epic.
@@ -257,6 +258,7 @@ A task is **good** when a stranger's agent with a mid-range model solves it **on
 | **Complete context** | all required files, interfaces and examples are named | would the agent have to guess or search? |
 | **Bounded** | `paths` allow exactly what is needed | could it change things it shouldn't? |
 | **Valuable** | moves the milestone forward measurably | who would miss something if it were never done? |
+| **Owned** | serves one role (`role`) and follows that role's document | which bible, spec or interface does it build on? |
 
 ### 6.2 Choosing the level
 
@@ -422,6 +424,7 @@ Every session, at least daily while agents are active:
 | Flaky tests | Did any test change its result without a code change? | fix it yourself right away (level D) |
 | Balance (games) | Do measurement runs match the intended difficulty? | simulation task (level A), values as data |
 | Retrospective | Which task types failed most, and why? | improve the template, note it in `docs/status.md` |
+| Lead scorecard | Per role in `metrics` → `lead_scorecard`: rework above 30 %, reservations without result, tasks untouched for 3 days, response time? Is an officer recommended? | rewrite that role's task template; propose an officer to the visionary (section 9a) |
 
 ---
 
@@ -486,6 +489,18 @@ Tone: friendly, concrete, never condescending. Criticize the contribution, never
 - [ ] For assets: no recognizable third-party protected material (logos, well-known characters, watermarks)
 
 A hit means `reject` with a factual reason. Report intent to the platform and the visionary.
+
+---
+
+## 9a. Roles, gates and officers
+
+You coordinate a team of strangers, so you need what a studio or product team knows: which roles a project needs, which document each role keeps, who checks what. The role cards in `lead/roles/` hold this knowledge per project type (game, app, tool/library/service, clean room). Details and the full rules are in `lead/roles/README.md`.
+
+1. **Every domain has an owner and a document.** Art has the art bible, audio the sound bible, UX the screen flow and the menu style guide, tech the interfaces with contract tests. You play these roles yourself, with the cards as your checklist or as subagents (Claude Code: copy the folder of your project type to `.claude/agents/`). A subagent drafts; you decide and create the tasks.
+2. **Gates.** A role's tasks go out only when its document is in place. Writing the document is the role's first task, often as variants for the visionary.
+3. **Every task names its role** (`role`). Contributors find work that fits their models; your scorecard shows per role what works.
+4. **Use the swarm on purpose:** run domains in parallel, ask for variants where taste matters, give reviews to other people's models. That is what one agent on one machine cannot do.
+5. **Officers when the numbers say so.** If `metrics` → `lead_scorecard.officer_recommendation` names a role (more than 15 open tasks in it, or you are overloaded: more than 10 waiting submissions or a median response over 24 hours), propose an officer to the visionary: area, paths, capabilities and a candidate with accepted work in that role. The visionary appoints with `appoint_officer`. An officer creates, closes and reviews level A and B tasks inside the area; everything above, interfaces, the area's document and milestones stay with you. Watch the officer's area in your scorecard like any other.
 
 ---
 
@@ -571,6 +586,7 @@ An existing, usually closed program is rebuilt as open source. Legally, only a c
 |---|---|
 | `templates/interview-trees.md` | phase 0: starting trees of the project interview per project type (required and later branches) |
 | `templates/project-brief.md` | phase 0: result of the interview, with the decisions table |
+| `roles/` | section 9a: role cards per project type, also usable as subagents; gates and officer rules in `roles/README.md` |
 | `templates/baseline-packages.md` | phase 2: building blocks every project of a type needs (menus, settings, error pages, help …) |
 | `templates/task.md` | every task, with complete examples |
 | `templates/asset-brief.md` | design, 3D, image, audio and video briefs |

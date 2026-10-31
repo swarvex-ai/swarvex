@@ -89,7 +89,7 @@ describe("Analytik (intern)", () => {
   it("Sichten liefern Summen ohne Personenbezug, der Leser sieht nur sie", async () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Analytik"), faehigkeiten: ["text.en"], pfade: ["docs/**"] });
     await k.reservieren(db, mit, a.id);
-    await k.einreichen(db, mit, a.id, { patch: "diff --git a/docs/x.md b/docs/x.md\nnew file mode 100644\n--- /dev/null\n+++ b/docs/x.md\n@@ -0,0 +1,2 @@\n+a\n+b\n", zusammenfassung: "x", eigene_tests: "", verbrauch: { tokens: 1500, seconds: 60 }, agent_programm: "opencode", modell: "qwen3-coder" });
+    await k.einreichen(db, mit, a.id, { patch: "diff --git a/docs/x.md b/docs/x.md\nnew file mode 100644\n--- /dev/null\n+++ b/docs/x.md\n@@ -0,0 +1,2 @@\n+a\n+b\n", zusammenfassung: "x", eigene_tests: "", verbrauch: { tokens: 1500, sekunden: 60 }, agent_programm: "opencode", modell: "qwen3-coder" });
     const e = (await db.query("select * from analytik.einreichungen where aufgabe = $1", [a.id])).rows[0];
     expect(e).toMatchObject({ agent_programm: "opencode", modell: "qwen3-coder", familie: "text" });
     expect(Number(e.zeilen)).toBe(2);
@@ -117,6 +117,46 @@ describe("Analytik (intern)", () => {
       await db.query("set local role analytik_leser");
       await expect(db.query("select * from public.analytik_salz")).rejects.toThrow(/permission denied/);
     } finally { await db.query("rollback"); }
+  });
+});
+
+describe("Officers (lead/roles)", () => {
+  it("führen nur ihren Bereich: Stufen A und B, Pfade und Fähigkeiten im Bereich; nur der Visionär ernennt", async () => {
+    const vis = { menschId: Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea','vis','vis') returning id")).rows[0].id), agentId: 0 };
+    vis.agentId = Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'vis-agent','vis-agent') returning id", [vis.menschId])).rows[0].id);
+    await db.query("insert into projekt_rollen select id, $1, 'visionaer' from projekte where slug = 'test'", [vis.menschId]);
+    const o = { menschId: fremd.menschId, agentId: fremd.agentId };
+    await expect(k.officerErnennen(db, lead, "test", "fremd", "audio", ["game/audio/**"], ["asset.audio"])).rejects.toThrow(/visionary/);
+    await expect(k.officerErnennen(db, vis, "test", "fremd", "audio", ["**"], ["asset.audio"])).rejects.toThrow(/whole repository/);
+    await k.officerErnennen(db, vis, "test", "fremd", "audio", ["game/audio/**"], ["asset.audio", "text.*"]);
+    const basis = { beschreibung: "Klang", akzeptanz: ["ok"], meilenstein: "M1" } as const;
+    const t = await k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "UI-Klänge", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/audio/ui/**"] });
+    expect(t.rolle).toBe("audio");
+    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Fremder Pfad", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/player/**"] })).rejects.toThrow(/officer for this area/);
+    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Zu groß", stufe: "C", faehigkeiten: ["asset.audio"], pfade: ["game/audio/**"] })).rejects.toThrow(/officer for this area/);
+    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Code", stufe: "B", faehigkeiten: ["code.gdscript"], pfade: ["game/audio/x.gd"] })).rejects.toThrow(/officer for this area/);
+    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Trick", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/audio/../player/**"] })).rejects.toThrow(/officer for this area/);
+    // Bewerten im Bereich; eine Lead-Aufgabe außerhalb sieht und bewertet er nicht
+    const PATCH_AUDIO = "diff --git a/game/audio/ui/klick.txt b/game/audio/ui/klick.txt\nnew file mode 100644\n--- /dev/null\n+++ b/game/audio/ui/klick.txt\n@@ -0,0 +1 @@\n+klick\n";
+    await k.reservieren(db, mit, t.id);
+    const e = (await k.einreichen(db, mit, t.id, { patch: PATCH_AUDIO, zusammenfassung: "x", eigene_tests: "", verbrauch: {} })) as any;
+    await k.pruefungStarten(db, e.einreichung_id);
+    await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
+    const fremdeAufgabe = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Lead-Aufgabe"));
+    expect((await k.wartendeEinreichungen(db, o, "test")).map((x) => Number(x.aufgabe_id))).toEqual([Number(t.id)]);
+    await expect(k.schliessen(db, o, fremdeAufgabe.id, "nicht meins")).rejects.toThrow(/officer for this area/);
+    await k.bewerten(db, o, e.einreichung_id, "annehmen", "passt zur Sound Bible");
+    // Bilanz und Kennzahlen zeigen den Officer
+    const kz = await kennzahlen(db, "test");
+    expect(kz.lead_bilanz.officers.map((x: any) => x.bereich)).toEqual(["audio"]);
+    expect(kz.lead_bilanz.je_rolle.some((x: any) => x.rolle === "audio")).toBe(true);
+    // Amtszeit beendet: keine Rechte mehr
+    await k.officerBeenden(db, vis, "test", "audio", "Test vorbei");
+    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Nachher", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/audio/ui/**"] })).rejects.toThrow(/lead/);
+    const arten = (await db.query("select art from ereignisse where art like 'officer_%' order by seq")).rows.map((r) => r.art);
+    expect(arten).toEqual(["officer_ernannt", "officer_beendet"]);
+    await k.schliessen(db, lead, fremdeAufgabe.id, "Test");
+    await db.query("delete from projekt_rollen where mensch_id = $1", [vis.menschId]);
   });
 });
 

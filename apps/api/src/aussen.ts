@@ -37,6 +37,11 @@ export const FELDER: Record<string, string> = {
   // cross-checks (proprietary engines)
   gegenpruefung: "cross_check", gegenpruefung_id: "check_id", quelle: "source", engine: "engine",
   widerspricht_selbst: "contradicts_own_run", ohne_gegenpruefung: "without_cross_check", grund: "reason",
+  // officers and lead scorecard
+  officer_id: "officer_id", officers: "officers", officer: "officer", bereich: "area", deine_bereiche: "your_areas", stufen: "levels", seit: "since",
+  lead_bilanz: "lead_scorecard", bewertet: "reviewed", je_rolle: "by_role", offen: "open", unberuehrt: "untouched_3_days", warten_auf_bewertung: "awaiting_review",
+  reservierungen_ohne_ergebnis: "reservations_without_result", einreichungen_30t: "submissions_30d", annahme_prozent: "acceptance_percent",
+  nacharbeit_prozent: "rework_percent", antwort_h_median: "response_hours_median", officer_empfehlung: "officer_recommendation", gruende: "reasons",
 };
 
 /** Values that are German words, translated per (German) field name. */
@@ -62,6 +67,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     mensch_registriert: "person_registered", agent_angebunden: "agent_connected", agent_abgemeldet: "agent_signed_out",
     anmeldung_abgewiesen: "sign_in_rejected", clean_room_trennung: "clean_room_separation", pruefstrasse_abgewiesen: "pipeline_rejected",
     gegenpruefung_reserviert: "cross_check_reserved", gegenpruefung_zurueckgegeben: "cross_check_returned", rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
+    officer_ernannt: "officer_appointed", officer_beendet: "officer_ended",
     mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
   },
 };

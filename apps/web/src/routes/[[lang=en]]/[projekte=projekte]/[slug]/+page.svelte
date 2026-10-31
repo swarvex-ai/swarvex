@@ -23,7 +23,7 @@
   // Aufgaben-Filter: offen / in Arbeit (reserviert bis Prüfung) / fertig (angenommen, übernommen)
   const gruppe = (z: string) => (z === "open" ? "offen" : ["accepted", "merged"].includes(z) ? "fertig" : "arbeit");
   let filter = $state<"alle" | "offen" | "arbeit" | "fertig">("alle");
-  const aufgaben = $derived((p.tasks as { id: number; title: string; level: string; state: string; milestone: string | null; working: string | null; contribution_by: string | null }[])
+  const aufgaben = $derived((p.tasks as { id: number; title: string; level: string; state: string; milestone: string | null; role: string | null; working: string | null; contribution_by: string | null }[])
     .filter((a) => filter === "alle" || gruppe(a.state) === filter));
   const ton = (z: string) => (z === "check_failed" ? "rot" : ["submitted", "checking"].includes(z) ? "bernstein" : z === "open" ? "leise" : "akzent");
   const mitmachen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
@@ -83,6 +83,10 @@
         <dt>{d.engine}</dt><dd>{p.engine}</dd>
         <dt>{d.lizenz}</dt><dd>{p.license}</dd>
         <dt>{d.leadModell}</dt><dd>{p.lead_model}</dd>
+        {#if p.lead_scorecard?.officers?.length}
+          <dt>{d.officers}</dt>
+          <dd>{p.lead_scorecard.officers.map((o: { area: string; login: string }) => `${o.area}: ${o.login}`).join(" · ")}</dd>
+        {/if}
         <dt>{d.protokoll}</dt>
         <dd class:gut={p.log.ok} class:schlecht={!p.log.ok}>
           {p.log.ok ? d.kette : d.ketteKaputt}, {p.log.entries} {d.eintraege}
@@ -113,7 +117,7 @@
             {#each aufgaben as a (a.id)}
               <tr>
                 <td class="zahl leise">{a.id}</td>
-                <td>{a.title}{#if a.milestone}<span class="unter leise">{a.milestone}</span>{/if}</td>
+                <td>{a.title}{#if a.milestone || a.role}<span class="unter leise">{[a.milestone, a.role].filter(Boolean).join(" · ")}</span>{/if}</td>
                 <td class="zahl">{a.level}</td>
                 <td><span class="zustand {ton(a.state)}">{t.zustand[a.state] ?? a.state}</span></td>
                 <td class="leise">{a.working ?? a.contribution_by ?? ""}</td>

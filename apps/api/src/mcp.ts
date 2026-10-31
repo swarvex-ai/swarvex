@@ -30,6 +30,11 @@ async function istLeadIrgendwo(db: Db, menschId: number) {
   return r.rowCount! > 0;
 }
 
+async function istVisionaerIrgendwo(db: Db, menschId: number) {
+  const r = await db.query("select 1 from projekt_rollen where mensch_id = $1 and rolle = 'visionaer' limit 1", [menschId]);
+  return r.rowCount! > 0;
+}
+
 const RAUM_REIN = umkehren(WERTE.raum) as Record<string, Raum>;
 const URTEIL_REIN = umkehren(WERTE.urteil) as Record<string, "annehmen" | "nacharbeit" | "ablehnen">;
 const usage = z.record(z.string(), z.number()).default({}).describe("Usage so far, e.g. {\"tokens\": 12000, \"requests\": 8, \"seconds\": 340}");
@@ -46,6 +51,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     return { projekt: p.slug, name: p.name, vision: p.vision_md, ziel: p.ziel, engine: p.engine, repo: p.repo_url,
       lizenz_code: p.lizenz_code, lizenz_assets: p.lizenz_assets, lead_modell: p.lead_modell,
       deine_rollen: await k.rollenVon(db, wer.menschId, p.id),
+      deine_bereiche: (await k.officersVon(db, wer.menschId, Number(p.id))).map((o) => ({ bereich: o.bereich, pfade: o.pfade, faehigkeiten: o.faehigkeiten, stufen: k.OFFICER_STUFEN })),
       regeln: "Contribute only as a patch within the allowed paths; by submitting you confirm you hold the rights to it (contribution statement).",
       verfahren: p.verfahren, ...(p.verfahren === "clean_room" ? { vorbild: p.vorbild, clean_room_regeln: REGELN_TEXT } : {}) };
   }));
@@ -106,9 +112,9 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     inputSchema: { task_id: z.number().int(), reason: z.string() },
   }, sicher(async ({ task_id, reason }) => { await k.abbrechen(db, wer, task_id, reason); return "handed back"; }));
 
-  if (await istLeadIrgendwo(db, wer.menschId)) {
+  if (await istLeadIrgendwo(db, wer.menschId) || (await k.officersVon(db, wer.menschId)).length) {
     s.registerTool("create_task", {
-      description: "(Lead) Creates a task: level A–D, capabilities, allowed paths (globs), acceptance criteria, base commit, optional milestone (an existing title; a new one only with new_milestone). Required in clean-room projects: room (analysis and review only write under specification/, build never does).",
+      description: "(Lead, officer) Creates a task: level A–D, capabilities, allowed paths (globs), acceptance criteria, base commit, optional milestone (an existing title; a new one only with new_milestone) and role from the role catalog. Officers: levels A and B inside their area only, the role is their area. Required in clean-room projects: room (analysis and review only write under specification/, build never does).",
       inputSchema: {
         project: z.string(), title: z.string(), description: z.string(), level: z.enum(["A", "B", "C", "D"]),
         capabilities: z.array(z.string()), paths: z.array(z.string()), acceptance: z.array(z.string()),
@@ -116,35 +122,45 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
         min_trust: z.number().int().min(0).max(3).optional(), milestone: z.string().optional(),
         new_milestone: z.boolean().optional().describe("Create the milestone if no milestone with this title exists yet; otherwise an unknown title is rejected"),
         room: z.enum(["analysis", "review", "build"]).optional().describe("Clean-room projects only: analysis (study the original, write the specification), review (check the specification), build (implement from the specification)"),
+        role: z.string().optional().describe("Role from the role catalog this task serves, e.g. audio, art, ux, game-design (lead/roles); shown to contributors and used in the lead scorecard"),
       },
     }, sicher(async (a) => k.aufgabeAnlegen(db, wer, a.project, {
       titel: a.title, beschreibung: a.description, stufe: a.level, faehigkeiten: a.capabilities, pfade: a.paths, akzeptanz: a.acceptance,
       basis_commit: a.base_commit, lease_minuten: a.lease_minutes, min_vertrauen: a.min_trust, meilenstein: a.milestone, neuer_meilenstein: a.new_milestone,
-      raum: a.room ? RAUM_REIN[a.room] : undefined,
+      raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role,
     })));
 
     s.registerTool("close_task", {
-      description: "(Lead) Closes an open task of your project with a reason (outdated, duplicate, moved to a later milestone). Logged publicly. Reserved or submitted tasks cannot be closed.",
+      description: "(Lead, officer) Closes an open task of your project with a reason (outdated, duplicate, moved to a later milestone). Logged publicly. Reserved or submitted tasks cannot be closed. Officers: tasks in their area only.",
       inputSchema: { task_id: z.number().int(), reason: z.string().min(1) },
     }, sicher(async ({ task_id, reason }) => { await k.schliessen(db, wer, task_id, reason); return "closed"; }));
 
     s.registerTool("pending_submissions", {
-      description: "(Lead) A project's submissions with their check results, waiting for your review.",
+      description: "(Lead, officer) A project's submissions with their check results, waiting for your review. Officers see their area only.",
       inputSchema: { project: z.string() },
-    }, sicher(async ({ project }) => {
-      const p = await k.projektPerSlug(db, project);
-      const r = await db.query(
-        `select e.id as einreichung_id, a.id as aufgabe_id, a.titel, a.zustand, e.zusammenfassung, e.patch, p.ergebnis as pruefung, p.bericht
-         from einreichungen e join aufgaben a on a.id = e.aufgabe_id
-         left join lateral (select ergebnis, bericht from pruefungen where einreichung_id = e.id order by id desc limit 1) p on true
-         where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok') order by e.id`, [p.id]);
-      return r.rows;
-    }));
+    }, sicher(async ({ project }) => k.wartendeEinreichungen(db, wer, project)));
 
     s.registerTool("review_submission", {
-      description: "(Lead) Reviews a checked submission: accept, rework (back to the pool) or reject, always with a reason.",
+      description: "(Lead, officer) Reviews a checked submission: accept, rework (back to the pool) or reject, always with a reason. Officers: levels A and B in their area only.",
       inputSchema: { submission_id: z.number().int(), verdict: z.enum(["accept", "rework", "reject"]), reason: z.string().min(3) },
     }, sicher(async ({ submission_id, verdict, reason }) => { await k.bewerten(db, wer, submission_id, URTEIL_REIN[verdict], reason); return "reviewed"; }));
+  }
+
+  if (await istVisionaerIrgendwo(db, wer.menschId)) {
+    s.registerTool("appoint_officer", {
+      description: "(Visionary) Appoints an officer who runs one area of your project for the lead: creates, closes and reviews level A and B tasks whose paths and capabilities lie inside the area. The person must have signed in to swarvex once. Logged publicly. Replaces the current officer of that area.",
+      inputSchema: {
+        project: z.string(), login: z.string().describe("GitHub login, or provider:login"),
+        area: z.string().describe("Role from the role catalog, e.g. audio, art, ux"),
+        paths: z.array(z.string()).min(1).describe("Globs of the area, e.g. [\"game/audio/**\", \"docs/design/audio/**\"]"),
+        capabilities: z.array(z.string()).min(1).describe("Capabilities of the area; a family with .*, e.g. [\"asset.audio\", \"text.*\"]"),
+      },
+    }, sicher(async ({ project, login, area, paths, capabilities }) => k.officerErnennen(db, wer, project, login, area, paths, capabilities)));
+
+    s.registerTool("end_officer", {
+      description: "(Visionary) Ends the term of an area's officer, with a reason. Logged publicly; their open tasks stay.",
+      inputSchema: { project: z.string(), area: z.string(), reason: z.string().min(3) },
+    }, sicher(async ({ project, area, reason }) => { await k.officerBeenden(db, wer, project, area, reason); return "ended"; }));
   }
   return s;
 }

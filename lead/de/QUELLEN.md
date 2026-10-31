@@ -47,6 +47,7 @@ Aus [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Stu
 
 - `lead/engine-reference/godot/`: fast unverändert übernommen aus `docs/engine-reference/godot/` (Änderungen im README dort), Englisch
 - Ideen, in eigenen Worten neu geschrieben: Inhalte als Daten, Delta-Zeit und keine Singletons für Spielzustand (`vorlagen/AGENTS.md`); ein Regressionstest muss einmal rot gesehen werden (LEAD.md 6.5); das Feld Aufgabentyp (`vorlagen/aufgabe.md`); die Vorlagen Playtest-Bericht und Styleguide; die wiederkehrenden Prüfungen in LEAD.md 7.1
+- Rollenkarten (`lead/roles/game/`, Commit `05ad7c8`): die Idee einer Studio-Hierarchie mit einer Rolle und einem Dokument je Bereich (Art Bible, Sound Bible, UX-Spezifikation), Prüf-Gates vor der Asset-Produktion, Abgabe und Eskalation je Rolle sowie die Namenskonvention für Audio; neu geschrieben für einen Schwarm unabhängiger Mitstreiter (eine Karte je Bereich statt 49 Unteragenten, Aufgaben für Fremde statt Arbeit in einer Sitzung)
 
 ```
 MIT License

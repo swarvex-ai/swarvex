@@ -116,6 +116,21 @@ panel("table", "Schwarm je Projekt",
           from analytik.schwarm where projektart in ($projektart) and projekt in ($projekt) order by agenten_stunden desc""", 8, 16, 10)
 weiter(10)
 
+# ---------- Lead ----------
+zeile("Lead-Bilanz und Officers (letzte 30 Tage)")
+text("Wann ein Officer?", """Ein **Officer** führt einen Bereich (z. B. Audio) für den Lead: Aufgaben der Stufen A und B anlegen und bewerten.
+Die Projektseite und `metrics` empfehlen einen Officer für eine Rolle, wenn dort **mehr als 15 Aufgaben offen** sind, oder wenn der Lead
+insgesamt überlastet ist (**mehr als 10 Einreichungen warten** oder **Antwortzeit im Median über 24 h**) und die Rolle dazu beiträgt.
+Ernennen darf nur der Visionär (`appoint_officer`).
+
+**Reservierungen ohne Ergebnis** und **unberührte Aufgaben** sind die ehrlichsten Signale für unklar geschnittene Aufgaben.""", 0, 8, 9)
+panel("table", "Lead-Bilanz je Projekt und Rolle",
+      """select projekt as "Projekt", rolle as "Rolle", offen as "offen", unberuehrt as "unberührt > 3 T", warten_auf_bewertung as "wartet auf Bewertung",
+         reservierungen_ohne_ergebnis as "Reservierungen ohne Ergebnis", einreichungen_30t as "Einreichungen", annahme_prozent as "Annahme %",
+         nacharbeit_prozent as "Nacharbeit %", antwort_h_median as "Antwort (h, Median)"
+         from analytik.lead_bilanz where projektart in ($projektart) and projekt in ($projekt) order by offen desc""", 8, 16, 9)
+weiter(9)
+
 # ---------- Ablauf ----------
 zeile("Ablauf und Qualität")
 panel("table", "Durchlauf je Stufe und Fähigkeit",

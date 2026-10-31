@@ -692,7 +692,7 @@
   },
   {
    "type": "row",
-   "title": "Ablauf und Qualität",
+   "title": "Lead-Bilanz und Officers (letzte 30 Tage)",
    "collapsed": false,
    "gridPos": {
     "x": 0,
@@ -704,6 +704,66 @@
    "id": 19
   },
   {
+   "type": "text",
+   "title": "Wann ein Officer?",
+   "gridPos": {
+    "x": 0,
+    "y": 44,
+    "w": 8,
+    "h": 9
+   },
+   "options": {
+    "mode": "markdown",
+    "content": "Ein **Officer** führt einen Bereich (z. B. Audio) für den Lead: Aufgaben der Stufen A und B anlegen und bewerten.\nDie Projektseite und `metrics` empfehlen einen Officer für eine Rolle, wenn dort **mehr als 15 Aufgaben offen** sind, oder wenn der Lead\ninsgesamt überlastet ist (**mehr als 10 Einreichungen warten** oder **Antwortzeit im Median über 24 h**) und die Rolle dazu beiträgt.\nErnennen darf nur der Visionär (`appoint_officer`).\n\n**Reservierungen ohne Ergebnis** und **unberührte Aufgaben** sind die ehrlichsten Signale für unklar geschnittene Aufgaben."
+   },
+   "id": 20
+  },
+  {
+   "type": "table",
+   "title": "Lead-Bilanz je Projekt und Rolle",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 44,
+    "w": 16,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select projekt as \"Projekt\", rolle as \"Rolle\", offen as \"offen\", unberuehrt as \"unberührt > 3 T\", warten_auf_bewertung as \"wartet auf Bewertung\", reservierungen_ohne_ergebnis as \"Reservierungen ohne Ergebnis\", einreichungen_30t as \"Einreichungen\", annahme_prozent as \"Annahme %\", nacharbeit_prozent as \"Nacharbeit %\", antwort_h_median as \"Antwort (h, Median)\" from analytik.lead_bilanz where projektart in ($projektart) and projekt in ($projekt) order by offen desc"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "id": 21
+  },
+  {
+   "type": "row",
+   "title": "Ablauf und Qualität",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 53,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [],
+   "id": 22
+  },
+  {
    "type": "table",
    "title": "Durchlauf je Stufe und Fähigkeit",
    "datasource": {
@@ -712,7 +772,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 44,
+    "y": 54,
     "w": 14,
     "h": 9
    },
@@ -734,7 +794,7 @@
     "overrides": []
    },
    "description": "Reservierungen ohne Ergebnis: abgebrochen oder abgelaufen. Viele davon sprechen für unklare Aufgabentexte.",
-   "id": 20
+   "id": 23
   },
   {
    "type": "table",
@@ -745,7 +805,7 @@
    },
    "gridPos": {
     "x": 14,
-    "y": 44,
+    "y": 54,
     "w": 10,
     "h": 9
    },
@@ -767,7 +827,7 @@
     "overrides": []
    },
    "description": "Prüfung: von der Einreichung bis zum Ergebnis, inklusive Wartezeit in der Warteschlange. Lead-Antwort: vom Prüfergebnis bis zur Bewertung.",
-   "id": 21
+   "id": 24
   },
   {
    "type": "table",
@@ -778,7 +838,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 53,
+    "y": 63,
     "w": 12,
     "h": 7
    },
@@ -800,7 +860,7 @@
     "overrides": []
    },
    "description": "Unberührte Aufgaben: zu schwer, zu unklar oder keine passenden Agenten. Unabhängig vom Zeitraum.",
-   "id": 22
+   "id": 25
   },
   {
    "type": "table",
@@ -811,7 +871,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 53,
+    "y": 63,
     "w": 12,
     "h": 7
    },
@@ -833,7 +893,7 @@
     "overrides": []
    },
    "description": "Seit Beginn, unabhängig vom Zeitraum und den Filtern.",
-   "id": 23
+   "id": 26
   },
   {
    "type": "row",
@@ -841,12 +901,12 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 60,
+    "y": 70,
     "w": 24,
     "h": 1
    },
    "panels": [],
-   "id": 24
+   "id": 27
   },
   {
    "type": "timeseries",
@@ -857,7 +917,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 61,
+    "y": 71,
     "w": 14,
     "h": 8
    },
@@ -878,7 +938,7 @@
     "defaults": {},
     "overrides": []
    },
-   "id": 25
+   "id": 28
   },
   {
    "type": "barchart",
@@ -889,7 +949,7 @@
    },
    "gridPos": {
     "x": 14,
-    "y": 61,
+    "y": 71,
     "w": 10,
     "h": 8
    },
@@ -914,7 +974,7 @@
    "options": {
     "xField": "stunde"
    },
-   "id": 26
+   "id": 29
   },
   {
    "type": "timeseries",
@@ -925,7 +985,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 69,
+    "y": 79,
     "w": 24,
     "h": 7
    },
@@ -955,7 +1015,7 @@
     "overrides": []
    },
    "description": "einreichung_abgewiesen: Patch außerhalb der erlaubten Pfade; pruefstrasse_abgewiesen: ungültiges Prüfergebnis; clean_room_trennung: Versuch, die Trennwand zu überspringen",
-   "id": 27
+   "id": 30
   }
  ]
 }

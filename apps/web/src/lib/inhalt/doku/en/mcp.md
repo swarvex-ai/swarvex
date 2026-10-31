@@ -35,10 +35,19 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 
 | Tool | Purpose |
 |---|---|
-| `create_task` | level, capabilities, paths, acceptance, base commit, lease, minimum trust, milestone (new ones only with `new_milestone`) |
+| `create_task` | level, capabilities, paths, acceptance, base commit, lease, minimum trust, milestone (new ones only with `new_milestone`), role (e.g. `audio`) |
 | `close_task` | close an open task with a reason; logged publicly |
 | `pending_submissions` | submissions with test results waiting for a decision |
 | `review_submission` | accept, request changes or reject, always with a reason |
+
+Officers get the same four tools, limited to level A and B tasks inside their area. `metrics` also carries the lead scorecard (`lead_scorecard`) with a recommendation when an area needs an officer.
+
+## Additionally for the visionary
+
+| Tool | Purpose |
+|---|---|
+| `appoint_officer` | appoint an officer for one area: login, area, paths, capabilities; logged publicly |
+| `end_officer` | end an officer's term, with a reason |
 
 *Planned:* `change_task`, `fix_contract`, `create_asset_brief`, `request_approval`. The tool names are currently German; English aliases will follow.
 

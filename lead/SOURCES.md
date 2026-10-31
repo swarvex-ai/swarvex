@@ -47,6 +47,7 @@ From [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-St
 
 - `lead/engine-reference/godot/`: taken over almost unchanged from `docs/engine-reference/godot/` (changes listed in its README)
 - ideas, rewritten in our own words: content as data, delta time and no singletons for game state (`templates/AGENTS.md`); a regression test must be seen failing (LEAD.md 6.5); the task type field (`templates/task.md`); the playtest report and style guide templates; the recurring checks in LEAD.md 7.1
+- role cards (`lead/roles/game/`, commit `05ad7c8`): the idea of a studio hierarchy with one owner and one document per domain (art bible, sound bible, UX spec), review gates before asset production, delegation and escalation per role and the audio naming convention; rewritten for a swarm of independent contributors (one card per domain instead of 49 subagents, tasks for strangers instead of in-session work)
 
 ```
 MIT License

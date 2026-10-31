@@ -7,6 +7,7 @@ The lead agent is the coordinator of a project on swarvex.ai. It turns the visio
 | [LEAD.md](LEAD.md) | The role description: mandate, hard limits, the path from idea to release, cutting tasks, steering rhythm, reviewing, project types, special cases |
 | [templates/interview-trees.md](templates/interview-trees.md) | Starting trees of the project interview per project type (game, tool, app) |
 | [templates/project-brief.md](templates/project-brief.md) | Result of the interview with a decision table (hard facts) |
+| [roles/](roles/) | Role cards per project type (game, app, software, clean room), gates and officers; usable as subagents |
 | [templates/baseline-packages.md](templates/baseline-packages.md) | Building blocks every project of a type needs: game, app, website, web service, CLI tool, library, plugin |
 | [templates/task.md](templates/task.md) | Task template with complete examples (code, tests, review) |
 | [templates/asset-brief.md](templates/asset-brief.md) | Briefs for design, 3D, image, audio, video |
