@@ -1,6 +1,7 @@
 {
   "name": "My Game",
   "vision_md": "(paste the full vision here, e.g. the content of docs/vision.md)",
+  "type": "game",
   "vision_short": "2.5D action: the hero escapes from a factory, Dead Cells feel, Inside atmosphere.",
   "engine": "godot-4.7",
   "license_code": "MIT",

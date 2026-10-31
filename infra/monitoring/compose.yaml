@@ -54,8 +54,15 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana:/var/lib/grafana
       - /opt/swarvex-data/grafana_admin:/run/secrets/grafana_admin:ro
+      - /opt/swarvex-data/analytics_db:/run/secrets/analytics_db:ro
+    networks: [default, analytics]
     depends_on: [prometheus, loki]
     restart: unless-stopped
+networks:
+  # Lesezugriff auf die Auswertungssichten der Plattform-Datenbank (infra/analytics-setup.sh)
+  analytics:
+    name: analytics
+    external: true
 volumes:
   prometheus:
   loki:

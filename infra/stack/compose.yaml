@@ -10,6 +10,8 @@ services:
     volumes:
       - pg:/var/lib/postgresql
       - ./init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+    # analytics: only Grafana (infra/monitoring) reads from here, as role analytik_leser on the analytik views
+    networks: [default, analytics]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U swarvex -d swarvex"]
       interval: 3s
@@ -55,6 +57,10 @@ networks:
   # Gemeinsames Netz für weitere Seiten auf demselben Server (siehe Caddyfile, docs/self-hosting.md)
   edge:
     name: edge
+    external: true
+  # Internes Netz Grafana ↔ PostgreSQL für die Auswertung (infra/analytics-setup.sh)
+  analytics:
+    name: analytics
     external: true
 volumes:
   pg:

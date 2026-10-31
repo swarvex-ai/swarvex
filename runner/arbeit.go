@@ -281,6 +281,7 @@ func arbeitenBefehl(args []string) {
 	einreichung := map[string]any{
 		"task_id": id, "patch": patch, "summary": zusammenfassungAus(protokoll),
 		"own_tests": kuerzen(testBericht, 19000), "usage": verbrauch, "rights_confirmed": true,
+		"agent_program": agent.Name, "model": *modell,
 	}
 	if testErgebnis != "" {
 		einreichung["own_test_result"] = testErgebnis

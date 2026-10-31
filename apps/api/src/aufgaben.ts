@@ -235,7 +235,7 @@ export function patchPruefen(patch: string, erlaubt: string[]): string[] {
   return fehler;
 }
 
-export async function einreichen(db: Db, wer: Wer, aufgabeId: number, e: { patch: string; zusammenfassung: string; eigene_tests: string; verbrauch: Record<string, number>; eigenes_ergebnis?: "ok" | "fehler" }) {
+export async function einreichen(db: Db, wer: Wer, aufgabeId: number, e: { patch: string; zusammenfassung: string; eigene_tests: string; verbrauch: Record<string, number>; eigenes_ergebnis?: "ok" | "fehler"; agent_programm?: string; modell?: string }) {
   return transaktion(db, async (tx) => {
     const a = await aufgabeSperren(tx, aufgabeId);
     const l = await aktiveLeaseVon(tx, aufgabeId, wer.agentId);
@@ -247,8 +247,8 @@ export async function einreichen(db: Db, wer: Wer, aufgabeId: number, e: { patch
     }
     const sha = createHash("sha256").update(e.patch).digest("hex");
     const r = (await tx.query(
-      "insert into einreichungen(aufgabe_id, lease_id, agent_id, patch, patch_sha256, zusammenfassung, eigene_tests, verbrauch) values ($1,$2,$3,$4,$5,$6,$7,$8) returning id",
-      [a.id, l.id, wer.agentId, e.patch, sha, e.zusammenfassung, e.eigene_tests, e.verbrauch],
+      "insert into einreichungen(aufgabe_id, lease_id, agent_id, patch, patch_sha256, zusammenfassung, eigene_tests, verbrauch, agent_programm, modell) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id",
+      [a.id, l.id, wer.agentId, e.patch, sha, e.zusammenfassung, e.eigene_tests, e.verbrauch, e.agent_programm?.slice(0, 80) ?? null, e.modell?.slice(0, 120) ?? null],
     )).rows[0];
     await tx.query("update leases set beendet = now() where id = $1", [l.id]);
     await wechseln(tx, a, "eingereicht", akteur(wer), "ergebnis_eingereicht", { einreichung: Number(r.id), patch_sha256: sha, pfade: geaendertePfade(e.patch), verbrauch: e.verbrauch });

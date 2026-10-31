@@ -1,0 +1,961 @@
+{
+ "uid": "swarvex-analytik",
+ "title": "swarvex Auswertung",
+ "tags": [
+  "swarvex",
+  "intern"
+ ],
+ "timezone": "Europe/Berlin",
+ "schemaVersion": 41,
+ "version": 1,
+ "editable": false,
+ "refresh": "15m",
+ "time": {
+  "from": "now-30d",
+  "to": "now"
+ },
+ "description": "Interne Auswertung ohne personenbezogene Daten (Schema analytik). Nicht öffentlich.",
+ "templating": {
+  "list": [
+   {
+    "name": "projektart",
+    "label": "Projektart",
+    "type": "query",
+    "datasource": {
+     "type": "grafana-postgresql-datasource",
+     "uid": "analytik"
+    },
+    "query": "select distinct projektart from analytik.projekte order by 1",
+    "definition": "select distinct projektart from analytik.projekte order by 1",
+    "refresh": 1,
+    "multi": true,
+    "includeAll": true,
+    "current": {
+     "selected": true,
+     "text": [
+      "All"
+     ],
+     "value": [
+      "$__all"
+     ]
+    },
+    "sort": 1
+   },
+   {
+    "name": "engine",
+    "label": "Engine",
+    "type": "query",
+    "datasource": {
+     "type": "grafana-postgresql-datasource",
+     "uid": "analytik"
+    },
+    "query": "select distinct engine from analytik.projekte where projektart in ($projektart) order by 1",
+    "definition": "select distinct engine from analytik.projekte where projektart in ($projektart) order by 1",
+    "refresh": 1,
+    "multi": true,
+    "includeAll": true,
+    "current": {
+     "selected": true,
+     "text": [
+      "All"
+     ],
+     "value": [
+      "$__all"
+     ]
+    },
+    "sort": 1
+   },
+   {
+    "name": "projekt",
+    "label": "Projekt",
+    "type": "query",
+    "datasource": {
+     "type": "grafana-postgresql-datasource",
+     "uid": "analytik"
+    },
+    "query": "select projekt from analytik.projekte where projektart in ($projektart) and engine in ($engine) order by 1",
+    "definition": "select projekt from analytik.projekte where projektart in ($projektart) and engine in ($engine) order by 1",
+    "refresh": 1,
+    "multi": true,
+    "includeAll": true,
+    "current": {
+     "selected": true,
+     "text": [
+      "All"
+     ],
+     "value": [
+      "$__all"
+     ]
+    },
+    "sort": 1
+   },
+   {
+    "name": "weg",
+    "label": "Weg",
+    "type": "custom",
+    "query": "Runner : true, direkt : false",
+    "multi": true,
+    "includeAll": true,
+    "current": {
+     "selected": true,
+     "text": [
+      "All"
+     ],
+     "value": [
+      "$__all"
+     ]
+    },
+    "options": [
+     {
+      "text": "Runner",
+      "value": "true",
+      "selected": false
+     },
+     {
+      "text": "direkt",
+      "value": "false",
+      "selected": false
+     }
+    ]
+   }
+  ]
+ },
+ "panels": [
+  {
+   "type": "row",
+   "title": "Überblick (Zeitraum oben rechts)",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [],
+   "id": 1
+  },
+  {
+   "type": "stat",
+   "title": "Projekte",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select count(*) from analytik.projekte where projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and not gesperrt"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 2
+  },
+  {
+   "type": "stat",
+   "title": "Aktive Agenten",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 4,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select count(distinct agent) from analytik.aktivitaet where $__timeFilter(zeit) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and runner::text in ($weg)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Agenten mit mindestens einer Reservierung oder Einreichung im Zeitraum",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 3
+  },
+  {
+   "type": "stat",
+   "title": "Aktive Mitstreiter",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select count(distinct mitstreiter) from analytik.aktivitaet where $__timeFilter(zeit) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and runner::text in ($weg)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Menschen hinter den aktiven Agenten (Pseudonym, nur gezählt)",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 4
+  },
+  {
+   "type": "stat",
+   "title": "Tokens",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select coalesce(sum(tokens), 0) from analytik.einreichungen where $__timeFilter(zeit) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and runner::text in ($weg)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "description": "Vom Schlüssel-Proxy des Runners gemessen, nicht vom Agenten gemeldet",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 5
+  },
+  {
+   "type": "stat",
+   "title": "Annahmequote",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select 100.0 * count(*) filter (where urteil = 'annehmen') / nullif(count(*) filter (where urteil is not null), 0) from analytik.einreichungen where $__timeFilter(zeit) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and runner::text in ($weg)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent"
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 6
+  },
+  {
+   "type": "stat",
+   "title": "Offene Aufgaben",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 20,
+    "y": 1,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select coalesce(sum(offen), 0) from analytik.projekte where projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and not gesperrt"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 7
+  },
+  {
+   "type": "row",
+   "title": "Wo ist was los?",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 5,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [],
+   "id": 8
+  },
+  {
+   "type": "bargauge",
+   "title": "Aktive Agenten je Projekt",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 6,
+    "w": 8,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select projekt, count(distinct agent) as agenten from analytik.aktivitaet where $__timeFilter(zeit) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and runner::text in ($weg) group by 1 order by 2 desc limit 15"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "basic",
+    "reduceOptions": {
+     "values": true,
+     "calcs": []
+    }
+   },
+   "id": 9
+  },
+  {
+   "type": "table",
+   "title": "Rangliste der Projektarten",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 6,
+    "w": 8,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select p.projektart as \"Projektart\", count(distinct p.projekt) as \"Projekte\", count(distinct a.agent) as \"Agenten\", count(distinct a.mitstreiter) as \"Mitstreiter\", count(*) filter (where a.art = 'einreichung') as \"Einreichungen\", coalesce(sum(a.tokens), 0) as \"Tokens\" from analytik.projekte p left join analytik.aktivitaet a on a.projekt = p.projekt and $__timeFilter(a.zeit) and a.runner::text in ($weg) where p.projektart in ($projektart) and p.engine in ($engine) and p.projekt in ($projekt) group by 1 order by 3 desc, 2 desc"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "id": 10
+  },
+  {
+   "type": "table",
+   "title": "Was ist gerade angesagt? (7 Tage gegen die 7 davor)",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 6,
+    "w": 8,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select projekt as \"Projekt\", projektart as \"Art\", agenten_7t as \"Agenten 7 T\", agenten_vorher as \"davor\", mitstreiter_7t as \"Mitstreiter 7 T\", aktionen_7t as \"Aktionen 7 T\", wachstum_prozent as \"Wachstum %\", tokens_7t as \"Tokens 7 T\" from analytik.trend where projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) order by agenten_7t desc, wachstum_prozent desc nulls last limit 15"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Aktionen = Reservierungen und Einreichungen. Unabhängig vom Zeitraum oben.",
+   "id": 11
+  },
+  {
+   "type": "row",
+   "title": "Tokens und Werkzeuge",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 15,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [],
+   "id": 12
+  },
+  {
+   "type": "timeseries",
+   "title": "Tokens je Tag und Projektart",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 16,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "time_series",
+     "rawSql": "select $__timeGroupAlias(zeit, 1d), projektart as metric, sum(tokens) as tokens from analytik.einreichungen where $__timeFilter(zeit) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and runner::text in ($weg) group by 1, 2 order by 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "drawStyle": "bars",
+      "stacking": {
+       "mode": "normal"
+      },
+      "fillOpacity": 80
+     }
+    },
+    "overrides": []
+   },
+   "id": 13
+  },
+  {
+   "type": "barchart",
+   "title": "Tokens nach Fähigkeit",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 16,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select familie, sum(tokens) as tokens from analytik.einreichungen where $__timeFilter(zeit) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and runner::text in ($weg) group by 1 order by 2 desc"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "xField": "familie"
+   },
+   "id": 14
+  },
+  {
+   "type": "table",
+   "title": "Agentenprogramme und Modelle",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 24,
+    "w": 24,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select agent_programm as \"Programm\", modell as \"Modell\", case when runner then 'Runner' else 'direkt' end as \"Weg\", count(*) as \"Einreichungen\", count(*) filter (where urteil = 'annehmen') as \"angenommen\", round(100.0 * count(*) filter (where urteil = 'annehmen') / nullif(count(*) filter (where urteil is not null), 0)) as \"Annahme %\", round(100.0 * count(*) filter (where pruefung = 'ok') / nullif(count(*) filter (where pruefung is not null), 0)) as \"Tests grün %\", sum(tokens) as \"Tokens\", round(sum(tokens) / nullif(count(*) filter (where urteil = 'annehmen'), 0)) as \"Tokens je Annahme\", round(1000.0 * sum(zeilen) / nullif(sum(tokens), 0), 1) as \"Zeilen je 1k Tokens\", round(percentile_cont(0.5) within group (order by sekunden) / 60) as \"Minuten (Median)\" from analytik.einreichungen where $__timeFilter(zeit) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and runner::text in ($weg) group by 1, 2, 3 order by 4 desc"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Welche Werkzeuge die Community nutzt und wie gut sie abschneiden. Vorsicht beim Vergleich: Aufgaben sind unterschiedlich schwer.",
+   "id": 15
+  },
+  {
+   "type": "row",
+   "title": "Schwarm gegenüber einem einzelnen Agenten",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 32,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [],
+   "id": 16
+  },
+  {
+   "type": "text",
+   "title": "So rechnen wir",
+   "gridPos": {
+    "x": 0,
+    "y": 33,
+    "w": 8,
+    "h": 10
+   },
+   "options": {
+    "mode": "markdown",
+    "content": "**Agenten-Stunden**: Arbeitszeit aller Einreichungen (vom Runner gemessen).\n**Ein Agent allein**: Arbeitszeit nur der angenommenen Beiträge, nacheinander gerechnet. Untergrenze: Ein einzelner Agent müsste zusätzlich planen und sich selbst prüfen.\n**Kalender-Stunden**: erste Reservierung bis letzte Bewertung.\n**Schwarm-Faktor**: Agenten-Stunden geteilt durch Kalender-Stunden, also wie viele Agenten im Mittel gleichzeitig gearbeitet haben.\n**Token-Effizienz**: Anteil der Tokens, die in angenommenen Beiträgen stecken. Der Rest ist der Preis des Schwarms (Nacharbeit, Ablehnungen, Varianten).\n\nVergleichswert Rend&Run: Bis zum 30.10.2026 hat ein einzelner Agent (Claude) das Spiel in 24 Kalendertagen gebaut. Vergleiche mit Menschen-Teams sind Schätzungen und gehören nicht in diese Tabelle."
+   },
+   "id": 17
+  },
+  {
+   "type": "table",
+   "title": "Schwarm je Projekt",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 33,
+    "w": 16,
+    "h": 10
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select projekt as \"Projekt\", projektart as \"Art\", agenten as \"Agenten\", mitstreiter as \"Mitstreiter\", agenten_stunden as \"Agenten-Stunden\", einzel_agent_stunden as \"Ein Agent allein (h)\", kalender_stunden as \"Kalender-Stunden\", schwarm_faktor as \"Schwarm-Faktor\", max_parallel as \"max. gleichzeitig\", tokens as \"Tokens\", token_effizienz_prozent as \"Token-Effizienz %\" from analytik.schwarm where projektart in ($projektart) and projekt in ($projekt) order by agenten_stunden desc"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "id": 18
+  },
+  {
+   "type": "row",
+   "title": "Ablauf und Qualität",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 43,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [],
+   "id": 19
+  },
+  {
+   "type": "table",
+   "title": "Durchlauf je Stufe und Fähigkeit",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 44,
+    "w": 14,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select stufe as \"Stufe\", familie as \"Fähigkeit\", count(*) as \"Aufgaben\", round(extract(epoch from percentile_cont(0.5) within group (order by erste_reservierung - erstellt)) / 3600, 1) as \"bis Reservierung (h, Median)\", round(extract(epoch from percentile_cont(0.5) within group (order by erste_einreichung - erste_reservierung)) / 3600, 1) as \"Bearbeitung (h, Median)\", round(extract(epoch from percentile_cont(0.5) within group (order by coalesce(gemerged, angenommen) - erstellt)) / 3600, 1) as \"bis erledigt (h, Median)\", sum(reservierungen_ohne_ergebnis) as \"Reservierungen ohne Ergebnis\", round(avg(einreichungen) filter (where einreichungen > 0), 1) as \"Einreichungen je Aufgabe\" from analytik.aufgaben where $__timeFilter(erstellt) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) group by 1, 2 order by 1, 2"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Reservierungen ohne Ergebnis: abgebrochen oder abgelaufen. Viele davon sprechen für unklare Aufgabentexte.",
+   "id": 20
+  },
+  {
+   "type": "table",
+   "title": "Prüfstraße und Lead je Woche",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 14,
+    "y": 44,
+    "w": 10,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select to_char(date_trunc('week', zeit), 'YYYY-MM-DD') as \"Woche\", count(*) as \"Einreichungen\", round(percentile_cont(0.5) within group (order by pruefung_s) / 60) as \"Prüfung (min, Median)\", round(100.0 * count(*) filter (where pruefung = 'fehler') / nullif(count(*) filter (where pruefung is not null), 0)) as \"Tests rot %\", round((percentile_cont(0.5) within group (order by lead_reaktion_s) / 3600)::numeric, 1) as \"Lead-Antwort (h, Median)\", round(100.0 * count(*) filter (where urteil = 'nacharbeit') / nullif(count(*) filter (where urteil is not null), 0)) as \"Nacharbeit %\", round(100.0 * count(*) filter (where urteil = 'ablehnen') / nullif(count(*) filter (where urteil is not null), 0)) as \"Abgelehnt %\" from analytik.einreichungen where $__timeFilter(zeit) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and runner::text in ($weg) group by 1 order by 1 desc"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Prüfung: von der Einreichung bis zum Ergebnis, inklusive Wartezeit in der Warteschlange. Lead-Antwort: vom Prüfergebnis bis zur Bewertung.",
+   "id": 21
+  },
+  {
+   "type": "table",
+   "title": "Angebot: offene Aufgaben",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 53,
+    "w": 12,
+    "h": 7
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select projekt as \"Projekt\", count(*) as \"offen\", count(*) filter (where ohne_runner) as \"ohne Runner möglich\", count(*) filter (where not ohne_runner) as \"nur Runner\", count(*) filter (where erste_reservierung is null and erstellt < now() - interval '3 days') as \"liegt > 3 Tage unberührt\" from analytik.aufgaben where zustand = 'offen' and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) group by 1 order by 2 desc"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Unberührte Aufgaben: zu schwer, zu unklar oder keine passenden Agenten. Unabhängig vom Zeitraum.",
+   "id": 22
+  },
+  {
+   "type": "table",
+   "title": "Einstieg und Bindung (ohne Leads und Visionäre)",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 53,
+    "w": 12,
+    "h": 7
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select case when runner then 'Runner' else 'direkt' end as \"Weg\", angebunden as \"angebunden\", reserviert as \"reserviert\", eingereicht as \"eingereicht\", angenommen as \"angenommen\", wiederkehrend as \"2+ Aufgaben\", minuten_bis_erste_reservierung_median as \"Minuten bis zur ersten Aufgabe (Median)\" from analytik.trichter order by 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Seit Beginn, unabhängig vom Zeitraum und den Filtern.",
+   "id": 23
+  },
+  {
+   "type": "row",
+   "title": "Aktivität",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 60,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [],
+   "id": 24
+  },
+  {
+   "type": "timeseries",
+   "title": "Reservierungen und Einreichungen",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 61,
+    "w": 14,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "time_series",
+     "rawSql": "select $__timeGroupAlias(zeit, $__interval), art as metric, count(*) from analytik.aktivitaet where $__timeFilter(zeit) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and runner::text in ($weg) group by 1, 2 order by 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "id": 25
+  },
+  {
+   "type": "barchart",
+   "title": "Nach Tageszeit (Europe/Berlin)",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 14,
+    "y": 61,
+    "w": 10,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select lpad(extract(hour from zeit at time zone 'Europe/Berlin')::text, 2, '0') as stunde, count(*) as aktionen from analytik.aktivitaet where $__timeFilter(zeit) and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) and runner::text in ($weg) group by 1 order by 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Wann die Community arbeitet: hilft bei Lead-Sitzungen und Wartungsfenstern",
+   "options": {
+    "xField": "stunde"
+   },
+   "id": 26
+  },
+  {
+   "type": "timeseries",
+   "title": "Signale: Abweisungen, Abbrüche, Meldungen, Sperren",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 69,
+    "w": 24,
+    "h": 7
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "time_series",
+     "rawSql": "select $__timeGroupAlias(tag, 1d), art as metric, sum(anzahl) from analytik.signale where $__timeFilter(tag) and art <> 'pruefung_beendet' group by 1, 2 order by 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "bars",
+      "stacking": {
+       "mode": "normal"
+      },
+      "fillOpacity": 80
+     }
+    },
+    "overrides": []
+   },
+   "description": "einreichung_abgewiesen: Patch außerhalb der erlaubten Pfade; pruefstrasse_abgewiesen: ungültiges Prüfergebnis; clean_room_trennung: Versuch, die Trennwand zu überspringen",
+   "id": 27
+  }
+ ]
+}

@@ -76,6 +76,7 @@ chown 1000:1000 "$DATA/deploy_key"; chmod 600 "$DATA/deploy_key" "$DATA/check_ke
 mkdir -p "$DATA/downloads" "$DATA/sites"
 # Shared network for other sites on the same server (Caddy routes them, see infra/stack/Caddyfile)
 docker network inspect edge >/dev/null 2>&1 || docker network create edge >/dev/null
+docker network inspect analytics >/dev/null 2>&1 || docker network create --internal analytics >/dev/null
 
 echo "== 4. Platform stack (Postgres, API/MCP, website, Caddy)"
 cd "$STACK"
@@ -112,6 +113,7 @@ grep -q '^RESTIC_REPOSITORY=.' "$DATA/backup.env" && echo "   backup target set"
 echo "== 7. Monitoring (Prometheus, Loki, Alloy, Grafana on 127.0.0.1:3100)"
 [ -f "$DATA/grafana_admin" ] || { head -c 24 /dev/urandom | base64 | tr -d '/+=' > "$DATA/grafana_admin"; }
 chmod 644 "$DATA/grafana_admin"   # read by the Grafana container user
+sh "$CODE/infra/analytics-setup.sh"
 ( cd "$CODE/infra/monitoring" && docker compose up -d )
 
 echo "== 8. Runner release and one-line installer"

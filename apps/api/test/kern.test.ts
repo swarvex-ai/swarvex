@@ -22,7 +22,7 @@ new file mode 100644
 
 beforeAll(async () => {
   db = verbinden(process.env.TEST_DATABASE_URL!);
-  await db.query("drop schema public cascade; create schema public;");
+  await db.query("drop schema if exists analytik cascade; drop schema public cascade; create schema public;");
   await migrieren(db);
   const mensch = async (login: string) => Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea',$1,$1) returning id", [login])).rows[0].id);
   const agent = async (m: number, c: string) => Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,$2,$2) returning id", [m, c])).rows[0].id);
@@ -82,6 +82,35 @@ describe("Direkt-Modus (#8)", () => {
     await k.abbrechen(db, direkt, text.id, "nur Test");
     await k.schliessen(db, lead, code.id, "Test");
     await k.schliessen(db, lead, text.id, "Test");
+  });
+});
+
+describe("Analytik (intern)", () => {
+  it("Sichten liefern Summen ohne Personenbezug, der Leser sieht nur sie", async () => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Analytik"), faehigkeiten: ["text.en"], pfade: ["docs/**"] });
+    await k.reservieren(db, mit, a.id);
+    await k.einreichen(db, mit, a.id, { patch: "diff --git a/docs/x.md b/docs/x.md\nnew file mode 100644\n--- /dev/null\n+++ b/docs/x.md\n@@ -0,0 +1,2 @@\n+a\n+b\n", zusammenfassung: "x", eigene_tests: "", verbrauch: { tokens: 1500, seconds: 60 }, agent_programm: "opencode", modell: "qwen3-coder" });
+    const e = (await db.query("select * from analytik.einreichungen where aufgabe = $1", [a.id])).rows[0];
+    expect(e).toMatchObject({ agent_programm: "opencode", modell: "qwen3-coder", familie: "text" });
+    expect(Number(e.zeilen)).toBe(2);
+    expect(Number(e.tokens)).toBe(1500);
+    expect(e.mitstreiter).toMatch(/^[0-9a-f]{12}$/);
+    // keine Spalte mit Login, Mensch-ID oder freiem Text
+    const spalten = (await db.query("select column_name from information_schema.columns where table_schema = 'analytik'")).rows.map((r) => r.column_name);
+    for (const verboten of ["login", "mensch_id", "patch", "zusammenfassung", "begruendung", "beschreibung"]) expect(spalten).not.toContain(verboten);
+    for (const sicht of ["projekte", "aufgaben", "aktivitaet", "trend", "schwarm", "trichter", "signale"]) await db.query(`select * from analytik.${sicht} limit 1`);
+    // Der Leser darf die Sichten lesen, aber keine Tabelle dahinter
+    await db.query("begin");
+    try {
+      await db.query("set local role analytik_leser");
+      expect(Number((await db.query("select count(*) from analytik.einreichungen")).rows[0].count)).toBeGreaterThan(0);
+      await expect(db.query("select count(*) from public.menschen")).rejects.toThrow(/permission denied/);
+    } finally { await db.query("rollback"); }
+    await db.query("begin");
+    try {
+      await db.query("set local role analytik_leser");
+      await expect(db.query("select * from public.analytik_salz")).rejects.toThrow(/permission denied/);
+    } finally { await db.query("rollback"); }
   });
 });
 

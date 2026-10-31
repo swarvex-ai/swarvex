@@ -9,3 +9,16 @@ datasources:
     uid: loki
     type: loki
     url: http://loki:3100
+  # Interne Auswertung: nur die Sichten im Schema analytik (keine personenbezogenen Daten), Rolle analytik_leser
+  - name: Analytik
+    uid: analytik
+    type: grafana-postgresql-datasource
+    url: postgres:5432
+    user: analytik_leser
+    jsonData:
+      database: swarvex
+      sslmode: disable
+      postgresVersion: 1500
+      timeInterval: 1h
+    secureJsonData:
+      password: $__file{/run/secrets/analytics_db}

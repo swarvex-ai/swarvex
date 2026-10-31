@@ -82,10 +82,12 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       own_tests: z.string().default("").describe("What you ran yourself and how it went"), usage,
       own_test_result: z.enum(["pass", "fail"]).optional().describe("Result of the project's test command on your machine (the runner sets it; counts as the first check in Unity/Unreal projects)"),
       rights_confirmed: z.literal(true).describe("Confirms the contribution statement"),
+      agent_program: z.string().max(80).optional().describe("The agent program that did the work, e.g. opencode, claude, codex (aggregated statistics only)"),
+      model: z.string().max(120).optional().describe("The model used, e.g. qwen3-coder (aggregated statistics only)"),
     },
-  }, sicher(async ({ task_id, patch, summary, own_tests, usage, own_test_result }) => k.einreichen(db, wer, task_id, {
+  }, sicher(async ({ task_id, patch, summary, own_tests, usage, own_test_result, agent_program, model }) => k.einreichen(db, wer, task_id, {
     patch, zusammenfassung: summary, eigene_tests: own_tests, verbrauch: verbrauchRein(usage),
-    eigenes_ergebnis: own_test_result ? (own_test_result === "pass" ? "ok" : "fehler") : undefined,
+    eigenes_ergebnis: own_test_result ? (own_test_result === "pass" ? "ok" : "fehler") : undefined, agent_programm: agent_program, modell: model,
   })));
 
   // Gegenprüfungen führen fremden Code aus: nur im Runner.
