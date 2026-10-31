@@ -150,6 +150,13 @@ describe("Officers (lead/roles)", () => {
     const kz = await kennzahlen(db, "test");
     expect(kz.lead_bilanz.officers.map((x: any) => x.bereich)).toEqual(["audio"]);
     expect(kz.lead_bilanz.je_rolle.some((x: any) => x.rolle === "audio")).toBe(true);
+    // Viele offene Aufgaben ohne Bewegung: kein Officer, der Engpass sind Mitstreiter
+    const ruhig = [];
+    for (let i = 0; i < 16; i++) ruhig.push(await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe(`QA ${i}`), rolle: "qa" }));
+    const still = await kennzahlen(db, "test");
+    expect(still.lead_bilanz.officer_empfehlung).toEqual([]);
+    expect(still.lead_bilanz.engpass).toBe("mitstreiter");
+    for (const r of ruhig) await k.schliessen(db, lead, r.id, "Test");
     // Amtszeit beendet: keine Rechte mehr
     await k.officerBeenden(db, vis, "test", "audio", "Test vorbei");
     await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Nachher", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/audio/ui/**"] })).rejects.toThrow(/lead/);

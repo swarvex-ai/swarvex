@@ -58,10 +58,12 @@ Alles über Stufe B, jede Änderung an Schnittstellen oder am Dokument des Berei
 
 **Einen echten Officer vorschlagen, wenn die Zahlen es sagen.** `metrics` → `lead_scorecard.officer_recommendation` nennt eine Rolle, wenn
 
-- mehr als **15 Aufgaben** dieser Rolle offen sind, oder
+- mehr als **15 Aufgaben** dieser Rolle offen sind **und** in der Rolle gearbeitet wird (mindestens **10 Einreichungen** in den letzten 30 Tagen), oder
 - der Lead insgesamt überlastet ist (**mehr als 10 Einreichungen** warten auf Bewertung, oder die Antwortzeit liegt im Median **über 24 Stunden**) und die Rolle dazu beiträgt.
 
-Dann schlägt der Lead dem Visionär vor: welcher Bereich, welche Pfade und Fähigkeiten, wer (am besten ein Mitstreiter mit angenommener Arbeit in dieser Rolle). Die Amtszeit endet, wenn der Bereich wieder ruhig ist oder die Qualität sinkt (`end_officer`, mit Begründung).
+Viele offene Aufgaben ohne Einreichungen heißen: zu wenige Mitstreiter, kein überlasteter Lead. `lead_scorecard.bottleneck` sagt dann `contributors`, und die Antwort ist Werben (Projektseite, kleinere oder klarere Aufgaben), kein Officer.
+
+Wird ein Officer empfohlen, schlägt der Lead dem Visionär vor: welcher Bereich, welche Pfade und Fähigkeiten, wer (am besten ein Mitstreiter mit angenommener Arbeit in dieser Rolle). Die Amtszeit endet, wenn der Bereich wieder ruhig ist oder die Qualität sinkt (`end_officer`, mit Begründung).
 
 ## Das Kartenformat
 

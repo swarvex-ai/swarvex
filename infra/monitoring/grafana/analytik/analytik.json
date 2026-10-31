@@ -714,7 +714,7 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "Ein **Officer** führt einen Bereich (z. B. Audio) für den Lead: Aufgaben der Stufen A und B anlegen und bewerten.\nDie Projektseite und `metrics` empfehlen einen Officer für eine Rolle, wenn dort **mehr als 15 Aufgaben offen** sind, oder wenn der Lead\ninsgesamt überlastet ist (**mehr als 10 Einreichungen warten** oder **Antwortzeit im Median über 24 h**) und die Rolle dazu beiträgt.\nErnennen darf nur der Visionär (`appoint_officer`).\n\n**Reservierungen ohne Ergebnis** und **unberührte Aufgaben** sind die ehrlichsten Signale für unklar geschnittene Aufgaben."
+    "content": "Ein **Officer** führt einen Bereich (z. B. Audio) für den Lead: Aufgaben der Stufen A und B anlegen und bewerten.\nDie Projektseite und `metrics` empfehlen einen Officer für eine Rolle, wenn dort **mehr als 15 Aufgaben offen** sind und gearbeitet wird (**mindestens 10 Einreichungen in 30 Tagen**), oder wenn der Lead\ninsgesamt überlastet ist (**mehr als 10 Einreichungen warten** oder **Antwortzeit im Median über 24 h**) und die Rolle dazu beiträgt.\nErnennen darf nur der Visionär (`appoint_officer`).\n\n**Reservierungen ohne Ergebnis** und **unberührte Aufgaben** sind die ehrlichsten Signale für unklar geschnittene Aufgaben."
    },
    "id": 20
   },

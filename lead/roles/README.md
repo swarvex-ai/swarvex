@@ -58,10 +58,12 @@ Everything above level B, every change of interfaces or of the area's document, 
 
 **Ask for a real officer when the numbers say so.** `metrics` → `lead_scorecard.officer_recommendation` names a role when
 
-- more than **15 tasks** of that role are open, or
+- more than **15 tasks** of that role are open **and** the role is busy (at least **10 submissions** in the last 30 days), or
 - the lead is overloaded overall (**more than 10 submissions** await review, or the median response is **over 24 hours**) and the role contributes to it.
 
-Then propose to the visionary: which area, which paths and capabilities, who (a contributor with accepted work in that role is the best candidate). End a term when the area is quiet again or the quality drops (`end_officer`, with a reason).
+Many open tasks without submissions mean too few contributors, not an overloaded lead: `lead_scorecard.bottleneck` then says `contributors`, and the answer is recruiting (project page, smaller or clearer tasks), not an officer.
+
+When an officer is recommended, propose to the visionary: which area, which paths and capabilities, who (a contributor with accepted work in that role is the best candidate). End a term when the area is quiet again or the quality drops (`end_officer`, with a reason).
 
 ## The card format
 

@@ -41,7 +41,7 @@ export const FELDER: Record<string, string> = {
   officer_id: "officer_id", officers: "officers", officer: "officer", bereich: "area", deine_bereiche: "your_areas", stufen: "levels", seit: "since",
   lead_bilanz: "lead_scorecard", bewertet: "reviewed", je_rolle: "by_role", offen: "open", unberuehrt: "untouched_3_days", warten_auf_bewertung: "awaiting_review",
   reservierungen_ohne_ergebnis: "reservations_without_result", einreichungen_30t: "submissions_30d", annahme_prozent: "acceptance_percent",
-  nacharbeit_prozent: "rework_percent", antwort_h_median: "response_hours_median", officer_empfehlung: "officer_recommendation", gruende: "reasons",
+  nacharbeit_prozent: "rework_percent", antwort_h_median: "response_hours_median", officer_empfehlung: "officer_recommendation", gruende: "reasons", engpass: "bottleneck",
 };
 
 /** Values that are German words, translated per (German) field name. */
@@ -57,6 +57,7 @@ export const WERTE: Record<string, Record<string, string>> = {
   pruefung: { ok: "pass", fehler: "fail" },
   raum: { analyse: "analysis", pruefung: "review", bau: "build" },
   verfahren: { standard: "standard", clean_room: "clean_room" },
+  engpass: { lead: "lead", mitstreiter: "contributors" },
   art: {
     // event types
     vision_veroeffentlicht: "vision_published", vision_aktualisiert: "vision_updated", aufgabe_angelegt: "task_created", aufgabe_reserviert: "task_reserved",

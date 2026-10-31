@@ -8,7 +8,7 @@ import { ketteVerifizieren } from "./ereignisse.ts";
 const ERLEDIGT = new Set(["angenommen", "gemerged"]);
 
 /** Schwellen, ab denen ein Officer für einen Bereich sinnvoll ist (lead/roles/README.md, „Officers“). */
-export const OFFICER_SCHWELLEN = { offen_je_rolle: 15, warten_auf_bewertung: 10, antwort_h_median: 24 };
+export const OFFICER_SCHWELLEN = { offen_je_rolle: 15, einreichungen_je_rolle_30t: 10, warten_auf_bewertung: 10, antwort_h_median: 24 };
 
 /** Lead-Bilanz der letzten 30 Tage, gesamt und je Rolle, mit Empfehlung für Officers. Lead und Website sehen dasselbe. */
 export async function leadBilanz(db: Db, slug: string) {
@@ -28,12 +28,19 @@ export async function leadBilanz(db: Db, slug: string) {
   for (const z of zeilen) {
     if (z.rolle === "ohne" || besetzt.has(z.rolle)) continue;
     const gruende = [];
-    if (Number(z.offen) > OFFICER_SCHWELLEN.offen_je_rolle) gruende.push(`${z.offen} open tasks in this role (threshold ${OFFICER_SCHWELLEN.offen_je_rolle})`);
+    // Viele offene Aufgaben zählen nur, wenn in der Rolle auch gearbeitet wird; ohne Bewegung fehlen Mitstreiter, kein Officer
+    const inBewegung = Number(z.einreichungen_30t) >= OFFICER_SCHWELLEN.einreichungen_je_rolle_30t;
+    if (Number(z.offen) > OFFICER_SCHWELLEN.offen_je_rolle && inBewegung) gruende.push(`${z.offen} open tasks and ${z.einreichungen_30t} submissions in 30 days in this role (thresholds ${OFFICER_SCHWELLEN.offen_je_rolle} and ${OFFICER_SCHWELLEN.einreichungen_je_rolle_30t})`);
     if (Number(z.warten_auf_bewertung) > OFFICER_SCHWELLEN.warten_auf_bewertung / 2) gruende.push(`${z.warten_auf_bewertung} submissions in this role await review`);
     if (n(z.antwort_h_median) !== null && n(z.antwort_h_median)! > OFFICER_SCHWELLEN.antwort_h_median) gruende.push(`median response ${z.antwort_h_median} h in this role (threshold ${OFFICER_SCHWELLEN.antwort_h_median} h)`);
     const gesamtLast = warten > OFFICER_SCHWELLEN.warten_auf_bewertung || (n(g.antwort_h_median) ?? 0) > OFFICER_SCHWELLEN.antwort_h_median;
-    if (gruende.length && (gesamtLast || Number(z.offen) > OFFICER_SCHWELLEN.offen_je_rolle)) empfehlung.push({ rolle: z.rolle, gruende });
+    if (gruende.length && (gesamtLast || (Number(z.offen) > OFFICER_SCHWELLEN.offen_je_rolle && inBewegung))) empfehlung.push({ rolle: z.rolle, gruende });
   }
+  // Der eigentliche Engpass, ehrlich benannt: Lead (Bewertungen stauen sich) oder Mitstreiter (Aufgaben liegen, niemand arbeitet)
+  const offenGesamt = zeilen.reduce((s, z) => s + Number(z.offen), 0);
+  const einreichungen30 = zeilen.reduce((s, z) => s + Number(z.einreichungen_30t), 0);
+  const leadLast = warten > OFFICER_SCHWELLEN.warten_auf_bewertung || (n(g.antwort_h_median) ?? 0) > OFFICER_SCHWELLEN.antwort_h_median;
+  const engpass = leadLast ? "lead" : offenGesamt > OFFICER_SCHWELLEN.offen_je_rolle && einreichungen30 < OFFICER_SCHWELLEN.einreichungen_je_rolle_30t ? "mitstreiter" : null;
   return {
     bewertet: n(g.bewertet), annahme_prozent: n(g.annahme_prozent), nacharbeit_prozent: n(g.nacharbeit_prozent), antwort_h_median: n(g.antwort_h_median),
     warten_auf_bewertung: warten,
@@ -44,6 +51,7 @@ export async function leadBilanz(db: Db, slug: string) {
       annahme_prozent: n(z.annahme_prozent), nacharbeit_prozent: n(z.nacharbeit_prozent), antwort_h_median: n(z.antwort_h_median) })),
     officers: officers.map((o) => ({ bereich: o.bereich, login: o.login, seit: o.seit })),
     officer_empfehlung: empfehlung,
+    engpass,
   };
 }
 

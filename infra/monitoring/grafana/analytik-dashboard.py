@@ -119,7 +119,7 @@ weiter(10)
 # ---------- Lead ----------
 zeile("Lead-Bilanz und Officers (letzte 30 Tage)")
 text("Wann ein Officer?", """Ein **Officer** führt einen Bereich (z. B. Audio) für den Lead: Aufgaben der Stufen A und B anlegen und bewerten.
-Die Projektseite und `metrics` empfehlen einen Officer für eine Rolle, wenn dort **mehr als 15 Aufgaben offen** sind, oder wenn der Lead
+Die Projektseite und `metrics` empfehlen einen Officer für eine Rolle, wenn dort **mehr als 15 Aufgaben offen** sind und gearbeitet wird (**mindestens 10 Einreichungen in 30 Tagen**), oder wenn der Lead
 insgesamt überlastet ist (**mehr als 10 Einreichungen warten** oder **Antwortzeit im Median über 24 h**) und die Rolle dazu beiträgt.
 Ernennen darf nur der Visionär (`appoint_officer`).
 
