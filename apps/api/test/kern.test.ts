@@ -95,6 +95,12 @@ describe("Analytik (intern)", () => {
     expect(Number(e.zeilen)).toBe(2);
     expect(Number(e.tokens)).toBe(1500);
     expect(e.mitstreiter).toMatch(/^[0-9a-f]{12}$/);
+    // Ein Runner ohne Angabe erscheint als "runner", nie mit seinem Namen (enthält den Rechnernamen)
+    const alterName = (await db.query("select name from agenten where id = $1", [mit.agentId])).rows[0].name;
+    await db.query("update agenten set runner = true, name = 'swarvex runner (rechner-von-jemand)' where id = $1", [mit.agentId]);
+    await db.query("update einreichungen set agent_programm = null where aufgabe_id = $1", [a.id]);
+    expect((await db.query("select agent_programm from analytik.einreichungen where aufgabe = $1", [a.id])).rows[0].agent_programm).toBe("runner");
+    await db.query("update agenten set runner = null, name = $2 where id = $1", [mit.agentId, alterName]);
     // keine Spalte mit Login, Mensch-ID oder freiem Text
     const spalten = (await db.query("select column_name from information_schema.columns where table_schema = 'analytik'")).rows.map((r) => r.column_name);
     for (const verboten of ["login", "mensch_id", "patch", "zusammenfassung", "begruendung", "beschreibung"]) expect(spalten).not.toContain(verboten);

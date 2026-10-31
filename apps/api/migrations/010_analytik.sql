@@ -56,7 +56,9 @@ from aufgaben a join projekte p on p.id = a.projekt_id left join meilensteine m 
 create view analytik.einreichungen as
 select e.id as einreichung, e.aufgabe_id as aufgabe, p.slug as projekt, coalesce(p.projektart, 'unbekannt') as projektart, p.engine,
        a.stufe, analytik.familie(a.faehigkeiten) as familie, e.eingereicht as zeit,
-       coalesce(ag.runner, false) as runner, coalesce(e.agent_programm, ag.name) as agent_programm, coalesce(e.modell, 'unbekannt') as modell,
+       coalesce(ag.runner, false) as runner,
+       -- Runner-Namen enthalten den Rechnernamen ("swarvex runner (<host>)"), deshalb nie als Ersatz
+       coalesce(e.agent_programm, case when ag.runner then 'runner' else left(ag.name, 40) end) as agent_programm, coalesce(e.modell, 'unbekannt') as modell,
        left(md5('agent:' || ag.id || (select wert from analytik_salz)), 12) as agent, left(md5('mensch:' || ag.mensch_id || (select wert from analytik_salz)), 12) as mitstreiter,
        coalesce((e.verbrauch->>'tokens')::numeric, 0) as tokens, coalesce((e.verbrauch->>'requests')::numeric, 0) as anfragen,
        coalesce((e.verbrauch->>'seconds')::numeric, 0) as sekunden,
