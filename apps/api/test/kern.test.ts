@@ -129,7 +129,7 @@ describe("Officers (lead/roles)", () => {
     await expect(k.officerErnennen(db, lead, "test", "fremd", "audio", ["game/audio/**"], ["asset.audio"])).rejects.toThrow(/visionary/);
     await expect(k.officerErnennen(db, vis, "test", "fremd", "audio", ["**"], ["asset.audio"])).rejects.toThrow(/whole repository/);
     await k.officerErnennen(db, vis, "test", "fremd", "audio", ["game/audio/**"], ["asset.audio", "text.*"]);
-    const basis = { beschreibung: "Klang", akzeptanz: ["ok"], meilenstein: "M1" } as const;
+    const basis = { beschreibung: "Klang", akzeptanz: ["ok"], meilenstein: "M1" };
     const t = await k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "UI-Klänge", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/audio/ui/**"] });
     expect(t.rolle).toBe("audio");
     await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Fremder Pfad", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/player/**"] })).rejects.toThrow(/officer for this area/);
