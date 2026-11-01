@@ -41,6 +41,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Planning, review and contributor skills
+
+From [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent (commit `2ce8aa1`, MIT): ideas from "writing-plans" (plan for someone who has not seen the code, interfaces per task, review focus, task right-sizing, plan self-review), "subagent-driven-development" and "requesting-code-review" (fresh context per task, spec compliance before quality, do not trust the implementer's report, rulings recorded instead of stalls, a final whole-milestone review), "dispatching-parallel-agents" (independence before parallelism), "writing-skills" (test a skill with and without it) and "receiving-code-review" (the starter skill `receiving-review`). Rewritten for a swarm of strangers (LEAD.md 6.12, 7, 8.1, 7.1; `templates/skills/`); no text taken over.
+
 ## Clean-room method
 
 - Clean-room rebuild (`roles/cleanroom/`, `templates/clean-room-specification.md`, LEAD.md "Clean-room rebuild"): ideas from [Craft Anything](https://github.com/storytold/craft-anything) by the ArtCraft team (commit `b09b99a`, MIT OR Apache-2.0): the loop study → build → check → refine, the split between working only from outside (Clean room) and looking inside (Deep), the mechanics sheet with values and their source, and evidence-backed questions; and from [REA](https://github.com/morluto/rea) by morluto (commit `e5e0dc5`, MIT): evidence with confidence (observed, derived, inferred), reconstruction obligation ledgers with cases and verifiers, coverage of a boundary, scenario capture and comparison, and the advice to keep REA unreachable from the implementation environment. Rewritten in our own words for a swarm separated into rooms; no code taken over.

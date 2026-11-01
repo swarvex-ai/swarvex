@@ -187,8 +187,8 @@
     "name": "REA – Reverse Engineer Anything",
     "url": "https://github.com/morluto/rea",
     "license": "MIT",
-    "en": "Analysis in the clean-room process",
-    "de": "Analyse im Clean-Room-Verfahren",
+    "en": "Analysis in the clean-room process; model for obligation ledgers, evidence and coverage",
+    "de": "Analyse im Clean-Room-Verfahren; Vorbild für Pflichtenlisten, Belege und Abdeckung",
     "group": "agents"
   },
   {
@@ -283,8 +283,8 @@
     "name": "Claude Code Game Studios",
     "url": "https://github.com/Donchitos/Claude-Code-Game-Studios",
     "license": "MIT",
-    "en": "Godot 4.7 engine reference and game rules for leads and agents",
-    "de": "Godot-4.7-Referenz und Spielregeln für Leads und Agenten",
+    "en": "Godot 4.7 reference, game rules and the studio roles behind the role cards for leads and officers",
+    "de": "Godot-4.7-Referenz, Spielregeln und die Studio-Rollen hinter den Rollenkarten für Leads und Officers",
     "group": "skills"
   },
   {
@@ -350,5 +350,21 @@
     "en": "Video typeface",
     "de": "Schrift im Video",
     "group": "media"
+  },
+  {
+    "name": "Superpowers (Jesse Vincent)",
+    "url": "https://github.com/obra/superpowers",
+    "license": "MIT",
+    "en": "Ideas for the lead handbook: planning for strangers, interfaces per task, spec compliance before quality, the receiving-review skill",
+    "de": "Ideen fürs Lead-Handbuch: für Fremde planen, Schnittstellen je Aufgabe, Auftragstreue vor Qualität, der Skill receiving-review",
+    "group": "skills"
+  },
+  {
+    "name": "Craft Anything (ArtCraft)",
+    "url": "https://github.com/storytold/craft-anything",
+    "license": "MIT OR Apache-2.0",
+    "en": "The clean-room loop study, build, check, refine, and the split between observing and looking inside",
+    "de": "Die Clean-Room-Schleife studieren, bauen, prüfen, nachbessern und die Trennung zwischen Beobachten und Hineinsehen",
+    "group": "agents"
   }
 ]

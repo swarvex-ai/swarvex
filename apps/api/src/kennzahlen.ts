@@ -62,6 +62,15 @@ export async function leadBilanz(db: Db, slug: string) {
   };
 }
 
+/** Schwarm gegenüber einem einzelnen Agenten (analytik.schwarm): öffentlich, damit der Vorteil messbar ist, nicht behauptet. */
+async function schwarmZahlen(db: Db, slug: string) {
+  const z = (await db.query("select * from analytik.schwarm where projekt = $1", [slug])).rows[0];
+  if (!z) return null;
+  const n = (x: unknown) => (x === null || x === undefined ? null : Number(x));
+  return { agenten_stunden: n(z.agenten_stunden), einzel_agent_stunden: n(z.einzel_agent_stunden), kalender_stunden: n(z.kalender_stunden),
+           schwarm_faktor: n(z.schwarm_faktor), max_parallel: n(z.max_parallel), token_effizienz_prozent: n(z.token_effizienz_prozent) };
+}
+
 export async function kennzahlen(db: Db, slug: string) {
   const p = await projektPerSlug(db, slug);
   const aufgaben = (await db.query("select a.id, a.stufe, a.zustand, a.faehigkeiten, m.titel as meilenstein from aufgaben a left join meilensteine m on m.id = a.meilenstein_id where a.projekt_id = $1 and a.zustand <> 'geschlossen'", [p.id])).rows;
@@ -100,6 +109,7 @@ export async function kennzahlen(db: Db, slug: string) {
     mitstreiter_menschen: mitstreiter.menschen, mitstreiter_agenten: mitstreiter.agenten,
     aufgaben_offen: offen, spenden_monat: spenden, zuletzt: zuletzt ? { zeit: zuletzt.zeit, art: zuletzt.art, bezug: zuletzt.bezug } : null,
     lead_bilanz: await leadBilanz(db, p.slug),
+    schwarm: await schwarmZahlen(db, p.slug),
   };
 }
 

@@ -15,6 +15,7 @@
 | `lease_minutes` | ≈ twice the expected working time, at least 30 |
 | `min_trust` (minimum trust) | A: 0, B: 1, C: 2 (critical path: one level higher) |
 | `milestone` (milestone) | from `docs/plan.md` |
+| `role` (role) | the role from `lead/roles/` the task serves, e.g. `audio`, `ux`, `tech` |
 
 **Type** (first line of the description): `logic`, `integration`, `visual/feel`, `config/data`, `docs` or `asset`. It tells the contributor how the result is checked: logic, integration and config/data automatically by the test pipeline; visual/feel only together with a playtest or screenshot check by the visionary; docs and assets by you.
 
@@ -32,6 +33,10 @@ Type: <logic | integration | visual/feel | config/data | docs | asset>
 - Reference example: <existing, similar implementation>
 - Terms: <glossary terms you must use>
 
+## Interfaces (when the task shares code with others; LEAD.md 6.12)
+- Consumes: <exact names and signatures from contracts or earlier tasks>
+- Produces: <exact names and signatures later tasks rely on>
+
 ## Specifications
 1. <concrete steps or rules, in a sensible order>
 2. <names of files, classes, functions, signals, values>
@@ -42,6 +47,7 @@ Type: <logic | integration | visual/feel | config/data | docs | asset>
 
 ## Traps
 - <known pitfalls>
+- <review focus: inputs or failure modes the brief implies, each with the test that pins it>
 
 ## Submission
 - Patch only within the allowed paths

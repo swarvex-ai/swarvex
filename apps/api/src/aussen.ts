@@ -44,7 +44,9 @@ export const FELDER: Record<string, string> = {
   nacharbeit_prozent: "rework_percent",
   nachricht_id: "message_id", nachricht_art: "kind", an: "to", von: "from", betreff: "subject", inhalt: "text", antwort: "answer",
   entscheidung: "decision", beantwortet_von: "answered_by", beantwortet_am: "answered_at", an_mich: "to_me", von_mir: "from_me",
-  projektart: "project_type", deine_nachrichten: "your_messages", aelteste_h: "oldest_hours", freigaben: "approvals",
+  projektart: "project_type", deine_nachrichten: "your_messages",
+  schwarm: "swarm", agenten_stunden: "agent_hours", einzel_agent_stunden: "single_agent_hours", kalender_stunden: "calendar_hours",
+  schwarm_faktor: "swarm_factor", max_parallel: "max_parallel", token_effizienz_prozent: "token_efficiency_percent", aelteste_h: "oldest_hours", freigaben: "approvals",
   nachrichten_offen: "messages_open", nachrichten_antwort_h_median: "messages_response_hours_median", antwort_h_median: "response_hours_median", officer_empfehlung: "officer_recommendation", gruende: "reasons", engpass: "bottleneck",
 };
 

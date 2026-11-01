@@ -83,6 +83,11 @@
         <dt>{d.engine}</dt><dd>{p.engine}</dd>
         <dt>{d.lizenz}</dt><dd>{p.license}</dd>
         <dt>{d.leadModell}</dt><dd>{p.lead_model}</dd>
+        {#if p.swarm?.agent_hours > 0}
+          <dt>{d.schwarm}</dt>
+          <dd>{d.schwarmText(p.swarm.swarm_factor, p.swarm.max_parallel, p.swarm.single_agent_hours, p.swarm.calendar_hours)}
+            <a class="leise" href={pfad(s, s === "de" ? "/docs/warum-swarvex" : "/docs/why-swarvex")}>{d.schwarmWie}</a></dd>
+        {/if}
         {#if p.lead_scorecard?.officers?.length}
           <dt>{d.officers}</dt>
           <dd>{p.lead_scorecard.officers.map((o: { area: string; login: string }) => `${o.area}: ${o.login}`).join(" · ")}</dd>

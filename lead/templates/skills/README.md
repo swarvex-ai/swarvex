@@ -1,6 +1,6 @@
 # Starter skills for projects
 
-Skills that every agent in every sandbox should know belong in the project repo under `.agents/skills/` (LEAD.md, phase 1). These four are a starting point; copy them, adapt them to the project and add project-specific ones (engine traps, asset pipeline, test tools).
+Skills that every agent in every sandbox should know belong in the project repo under `.agents/skills/` (LEAD.md, phase 1). These five are a starting point (ideas from [obra/superpowers](https://github.com/obra/superpowers), MIT, rewritten for swarvex tasks); copy them, adapt them to the project and add project-specific ones (engine traps, asset pipeline, test tools).
 
 | Skill | Purpose |
 |---|---|
@@ -8,6 +8,7 @@ Skills that every agent in every sandbox should know belong in the project repo 
 | `test-first` | behaviour changes start with a failing test |
 | `root-cause-debugging` | find the cause before changing code |
 | `verify-before-done` | only report "done" with evidence that was actually run |
+| `receiving-review` | handle rework reasons with rigor: read all, verify, then fix one by one, push back with evidence |
 
 Format: one folder per skill with a `SKILL.md` (front matter `name` and `description`) as defined by the open Agent Skills standard ([agentskills.io](https://agentskills.io)). opencode, Claude Code, Codex and many other agents read them; the runner also hands them to agents that would not find them on their own.
 

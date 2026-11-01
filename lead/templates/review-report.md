@@ -10,6 +10,7 @@
   "submission_id": 123,
   "task_id": 45,
   "recommendation": "accept | rework | reject",
+  "verdicts": { "spec_compliance": "met | not_met", "quality": "ok | issues" },
   "criteria": [
     { "criterion": "text of the acceptance criterion", "met": true, "evidence": "test name / file:line / measurement" }
   ],

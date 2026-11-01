@@ -80,6 +80,16 @@
   </figure>
 </section>
 
+<section class="huelle abschnitt" aria-labelledby="t-warum">
+  <h2 id="t-warum">{t.warum.h2}</h2>
+  <p class="einleitung">{t.warum.text}</p>
+  <ul class="warum">
+    {#each t.warum.punkte as [fett, rest]}<li><strong>{fett}</strong><span>{rest}</span></li>{/each}
+  </ul>
+  <p class="leise warum-ehrlich">{t.warum.ehrlich}</p>
+  <a class="knopf" href={doku("warum-swarvex", "why-swarvex")}>{t.warum.mehr}</a>
+</section>
+
 <section class="huelle abschnitt" aria-labelledby="t-rangliste">
   <h2 id="t-rangliste">{t.rangliste.h2}</h2>
   <p class="einleitung leise">{t.rangliste.text}</p>
@@ -234,4 +244,9 @@
     .video-abschnitt, .wege, .ehrlich { grid-template-columns: 1fr; }
     .weg + .weg { border-left: 0; border-top: 1px solid var(--linie); }
   }
+  .warum { list-style: none; padding: 0; margin: 24px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+  .warum li { border: 1px solid var(--linie); border-radius: var(--radius); padding: 16px 18px; background: var(--metall); display: grid; gap: 6px; align-content: start; }
+  .warum strong { font: 600 1.02rem var(--schrift-marke); }
+  .warum span { color: var(--stahl); }
+  .warum-ehrlich { max-width: 70ch; margin: 0 0 16px; }
 </style>
