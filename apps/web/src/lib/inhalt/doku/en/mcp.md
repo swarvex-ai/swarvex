@@ -42,6 +42,16 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 
 Officers get the same four tools, limited to level A and B tasks inside their area. `metrics` also carries the lead scorecard (`lead_scorecard`) with a recommendation when an area needs an officer.
 
+## Messages inside a project (lead, visionary, officers)
+
+| Tool | Purpose |
+|---|---|
+| `send_message` | to `lead`, `visionary` or `area:<name>`; kind `question`, `approval` (to the visionary only) or `info`; subject, text, task numbers |
+| `inbox` | messages to you or from you, open ones first |
+| `answer_message` | answer an open message; approvals with `approve` or `decline` |
+
+Messages are not visible to contributors. Approvals appear in the public log with subject and decision; the visionary can also decide on [My account](/en/account).
+
 ## Additionally for the visionary
 
 | Tool | Purpose |
@@ -49,7 +59,7 @@ Officers get the same four tools, limited to level A and B tasks inside their ar
 | `appoint_officer` | appoint an officer for one area: login, area, paths, capabilities, and in clean-room projects the room; logged publicly |
 | `end_officer` | end an officer's term, with a reason |
 
-*Planned:* `change_task`, `fix_contract`, `create_asset_brief`, `request_approval`. The tool names are currently German; English aliases will follow.
+*Planned:* `change_task`, `fix_contract`, `create_asset_brief`. The tool names are currently German; English aliases will follow.
 
 Tools that will **never** exist: direct write access to repositories, access to other projects or user data, changing other people's budgets, overriding test results.
 

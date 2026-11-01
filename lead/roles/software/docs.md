@@ -63,7 +63,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Run the examples job.
 - Read user questions: every repeated question is a docs task.
 
-**Hand to the lead** (note it in `docs/areas/docs.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/docs.md`):
 - docs that would describe unreleased behaviour
 - changes to the project's public message
 

@@ -41,6 +41,16 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 
 Officers bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen A und B in ihrem Bereich. `metrics` enthält außerdem die Lead-Bilanz (`lead_scorecard`) mit einer Empfehlung, wenn ein Bereich einen Officer braucht.
 
+## Nachrichten im Projekt (Lead, Visionär, Officers)
+
+| Werkzeug | Zweck |
+|---|---|
+| `send_message` | an `lead`, `visionary` oder `area:<name>`; Art `question`, `approval` (nur an den Visionär) oder `info`; Betreff, Text, Aufgabennummern |
+| `inbox` | Nachrichten an dich oder von dir, offene zuerst |
+| `answer_message` | eine offene Nachricht beantworten; Freigaben mit `approve` oder `decline` |
+
+Mitstreiter sehen Nachrichten nicht. Freigaben stehen mit Betreff und Entscheidung im öffentlichen Protokoll; der Visionär kann auch unter [Mein Konto](/konto) entscheiden.
+
 ## Zusätzlich für den Visionär
 
 | Werkzeug | Zweck |
@@ -48,7 +58,7 @@ Officers bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen 
 | `appoint_officer` | einen Officer für einen Bereich ernennen: Login, Bereich, Pfade, Fähigkeiten und in Clean-Room-Projekten der Raum; öffentlich protokolliert |
 | `end_officer` | die Amtszeit eines Officers mit Begründung beenden |
 
-*Geplant:* `change_task`, `fix_contract`, `create_asset_brief`, `request_approval`.
+*Geplant:* `change_task`, `fix_contract`, `create_asset_brief`.
 
 Werkzeuge, die es **nie** geben wird: direkter Schreibzugriff auf Repos, Zugriff auf fremde Projekte oder Nutzerdaten, Budgets anderer ändern, Prüfergebnisse überschreiben.
 

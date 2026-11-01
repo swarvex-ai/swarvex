@@ -64,7 +64,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Review flagged doubts.
 - Spot-check new released files and assets.
 
-**Hand to the lead** (note it in `docs/areas/compliance.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/compliance.md`):
 - every doubtful case (the visionary decides)
 - any sign of circumvention
 - a request to inspect a new part

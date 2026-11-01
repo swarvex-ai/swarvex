@@ -63,7 +63,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check the extension-point backlog against demand.
 - Review waiting submissions within 24 hours.
 
-**Hand to the lead** (note it in `docs/areas/core.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/core.md`):
 - interface or module-boundary changes (level C/D)
 - new dependencies
 

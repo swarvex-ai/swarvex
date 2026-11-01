@@ -63,7 +63,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check flaky tests.
 - Review security-relevant submissions first.
 
-**Hand to the lead** (note it in `docs/areas/quality.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/quality.md`):
 - vulnerabilities (privately)
 - budget changes
 - fixes in production code

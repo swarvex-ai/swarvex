@@ -68,7 +68,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check that the export still builds.
 - List open release blockers for the lead.
 
-**Hand to the lead** (note it in `docs/areas/release.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/release.md`):
 - the release date and the release itself (the visionary approves)
 - export changes that need code (tech)
 - license questions

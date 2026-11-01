@@ -71,7 +71,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Compare the event list with the code's events: unvoiced events become tasks.
 - Review waiting audio submissions within 24 hours.
 
-**Hand to the lead** (note it in `docs/areas/audio.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/audio.md`):
 - sound-bible changes that touch the vision (approved by the visionary)
 - wiring that needs new code (tech)
 - middleware or audio engine changes

@@ -64,7 +64,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Read user issues for confusing behaviour.
 - Keep golden files current.
 
-**Hand to the lead** (note it in `docs/areas/interface.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/interface.md`):
 - breaking changes
 - new public commands or modules (level C)
 

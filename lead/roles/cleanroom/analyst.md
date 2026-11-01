@@ -74,7 +74,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check new drafts for expression and for evidence that slipped into the repository.
 - Hand complete drafts to the review room (through the lead).
 
-**Hand to the lead** (note it in `docs/areas/analyst.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/analyst.md`):
 - `inspect` tasks (level B with `min_trust`, created by the lead)
 - anything that looks like circumvention (compliance, the visionary)
 - doubts about function versus expression

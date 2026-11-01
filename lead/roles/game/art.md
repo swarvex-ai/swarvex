@@ -71,7 +71,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Look at the latest screenshots from the build: does anything break visual hierarchy or readability?
 - Keep the asset backlog ordered by what the next milestone shows on screen.
 
-**Hand to the lead** (note it in `docs/areas/art.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/art.md`):
 - style changes that touch the vision
 - assets that need code or shader work (tech)
 - spending of donated credits above the brief's budget

@@ -64,7 +64,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check secret scanning and dependency alerts.
 - Update the inventory.
 
-**Hand to the lead** (note it in `docs/areas/privacy-security.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/privacy-security.md`):
 - vulnerabilities (privately, never in public tasks)
 - legal questions
 - data the inventory does not justify

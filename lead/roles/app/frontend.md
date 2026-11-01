@@ -65,7 +65,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check that the mock still matches the contract.
 - Review waiting submissions within 24 hours.
 
-**Hand to the lead** (note it in `docs/areas/frontend.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/frontend.md`):
 - contract changes (backend, with the lead)
 - framework or state-handling changes (level C/D)
 

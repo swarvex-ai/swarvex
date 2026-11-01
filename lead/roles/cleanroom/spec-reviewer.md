@@ -67,7 +67,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check released obligations without cases.
 - Read check rounds (through the lead) for differences waiting for release.
 
-**Hand to the lead** (note it in `docs/areas/spec-reviewer.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/spec-reviewer.md`):
 - doubtful cases (when in doubt, leave it out)
 - patterns of expression in an analyst's drafts
 - boundary changes

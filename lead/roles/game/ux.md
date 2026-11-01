@@ -71,7 +71,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check accessibility options are still present and tested.
 - Review waiting UI submissions within 24 hours.
 
-**Hand to the lead** (note it in `docs/areas/ux.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/ux.md`):
 - changes to the reference screen or UI framework (tech, level C/D)
 - mechanics that are hard to read (game design)
 - baseline package items that slip from their milestone

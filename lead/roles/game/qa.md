@@ -68,7 +68,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check which success criteria of the milestone are still unchecked.
 - Hand findings to the owning role's backlog.
 
-**Hand to the lead** (note it in `docs/areas/qa.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/qa.md`):
 - release blockers
 - a success criterion that cannot be met (the lead and visionary decide)
 - fixes in production code (they belong to tech or the owning role)

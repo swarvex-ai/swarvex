@@ -68,7 +68,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Replay scenarios on both sides.
 - Update the coverage numbers.
 
-**Hand to the lead** (note it in `docs/areas/verifier.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/verifier.md`):
 - the milestone's coverage and what blocks it
 - intended differences that the visionary should confirm
 

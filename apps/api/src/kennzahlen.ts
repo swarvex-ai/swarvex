@@ -8,7 +8,7 @@ import { ketteVerifizieren } from "./ereignisse.ts";
 const ERLEDIGT = new Set(["angenommen", "gemerged"]);
 
 /** Schwellen, ab denen ein Officer für einen Bereich sinnvoll ist (lead/roles/README.md, „Officers“). */
-export const OFFICER_SCHWELLEN = { offen_je_rolle: 15, einreichungen_je_rolle_30t: 10, warten_auf_bewertung: 10, antwort_h_median: 24 };
+export const OFFICER_SCHWELLEN = { offen_je_rolle: 15, einreichungen_je_rolle_30t: 10, warten_auf_bewertung: 10, antwort_h_median: 24, nachrichten_offen: 5 };
 
 /** Lead-Bilanz der letzten 30 Tage, gesamt und je Rolle, mit Empfehlung für Officers. Lead und Website sehen dasselbe. */
 export async function leadBilanz(db: Db, slug: string) {
@@ -39,7 +39,13 @@ export async function leadBilanz(db: Db, slug: string) {
   // Der eigentliche Engpass, ehrlich benannt: Lead (Bewertungen stauen sich) oder Mitstreiter (Aufgaben liegen, niemand arbeitet)
   const offenGesamt = zeilen.reduce((s, z) => s + Number(z.offen), 0);
   const einreichungen30 = zeilen.reduce((s, z) => s + Number(z.einreichungen_30t), 0);
-  const leadLast = warten > OFFICER_SCHWELLEN.warten_auf_bewertung || (n(g.antwort_h_median) ?? 0) > OFFICER_SCHWELLEN.antwort_h_median;
+  // Nachrichten an den Lead (ohne Inhalte): offen, und Antwortzeit der letzten 30 Tage
+  const nachr = (await db.query(
+    `select count(*) filter (where zustand = 'offen')::int as offen,
+            round((percentile_cont(0.5) within group (order by antwort_s) filter (where erstellt > now() - interval '30 days') / 3600)::numeric, 1) as antwort_h
+     from analytik.nachrichten where projekt = $1 and an = 'lead' and art <> 'info'`, [slug])).rows[0];
+  const leadLast = warten > OFFICER_SCHWELLEN.warten_auf_bewertung || (n(g.antwort_h_median) ?? 0) > OFFICER_SCHWELLEN.antwort_h_median
+    || nachr.offen > OFFICER_SCHWELLEN.nachrichten_offen || (n(nachr.antwort_h) ?? 0) > OFFICER_SCHWELLEN.antwort_h_median;
   const engpass = leadLast ? "lead" : offenGesamt > OFFICER_SCHWELLEN.offen_je_rolle && einreichungen30 < OFFICER_SCHWELLEN.einreichungen_je_rolle_30t ? "mitstreiter" : null;
   return {
     bewertet: n(g.bewertet), annahme_prozent: n(g.annahme_prozent), nacharbeit_prozent: n(g.nacharbeit_prozent), antwort_h_median: n(g.antwort_h_median),
@@ -51,6 +57,7 @@ export async function leadBilanz(db: Db, slug: string) {
       annahme_prozent: n(z.annahme_prozent), nacharbeit_prozent: n(z.nacharbeit_prozent), antwort_h_median: n(z.antwort_h_median) })),
     officers: officers.map((o) => ({ bereich: o.bereich, login: o.login, seit: o.seit })),
     officer_empfehlung: empfehlung,
+    nachrichten_offen: nachr.offen, nachrichten_antwort_h_median: n(nachr.antwort_h),
     engpass,
   };
 }

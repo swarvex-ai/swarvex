@@ -167,6 +167,42 @@ describe("Officers (lead/roles)", () => {
   });
 });
 
+describe("Nachrichten (Lead, Visionär, Officers)", () => {
+  it("Fragen und Freigaben laufen projektintern; Freigaben entscheidet nur der Visionär, öffentlich protokolliert", async () => {
+    const n = await import("../src/nachrichten.ts");
+    const neuer = async (login: string) => {
+      const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea',$1,$1) returning id", [login])).rows[0].id);
+      const a = Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,$2,$2) returning id", [m, login + "-agent"])).rows[0].id);
+      return { menschId: m, agentId: a };
+    };
+    const vis = await neuer("msgvis"), off = await neuer("msgoff");
+    await db.query("insert into projekt_rollen select id, $1, 'visionaer' from projekte where slug = 'test'", [vis.menschId]);
+    await k.officerErnennen(db, vis, "test", "msgoff", "ux", ["game/ui/**"], ["design.ui"]);
+    // Mitstreiter ohne Rolle schreiben nicht
+    await expect(n.nachrichtSenden(db, mit, "test", { an: "lead", art: "frage", betreff: "Hallo", inhalt: "x" })).rejects.toThrow(/only the project's lead/);
+    // Officer fragt den Lead
+    const f = await n.nachrichtSenden(db, off, "test", { an: "lead", art: "frage", betreff: "Fokus im Menü", inhalt: "Soll Zurück immer B sein?" });
+    await expect(n.nachrichtSenden(db, off, "test", { an: "bereich:audio", art: "frage", betreff: "Klang", inhalt: "x" })).rejects.toThrow(/no active officer/);
+    await expect(n.nachrichtSenden(db, off, "test", { an: "lead", art: "freigabe", betreff: "Release", inhalt: "x" })).rejects.toThrow(/approvals go to the visionary/);
+    expect((await n.offeneFuerMich(db, lead.menschId, (await k.projektPerSlug(db, "test")).id))?.offen).toBe(1);
+    expect((await kennzahlen(db, "test")).lead_bilanz.nachrichten_offen).toBe(1);
+    await expect(n.nachrichtBeantworten(db, off.menschId, off.agentId, f.nachricht_id, "selbst")).rejects.toThrow(/only the recipient/);
+    await n.nachrichtBeantworten(db, lead.menschId, lead.agentId, f.nachricht_id, "Ja, B ist immer Zurück.");
+    expect((await n.posteingang(db, off, "test"))[0]).toMatchObject({ zustand: "beantwortet", antwort: "Ja, B ist immer Zurück." });
+    // Freigabe an den Visionär
+    const g = await n.nachrichtSenden(db, off, "test", { an: "visionaer", art: "freigabe", betreff: "Menü-Styleguide Variante 2", inhalt: "Empfehlung: Variante 2" });
+    await expect(n.nachrichtBeantworten(db, lead.menschId, lead.agentId, g.nachricht_id, "ok", "freigegeben")).rejects.toThrow(/only the recipient/);
+    await expect(n.nachrichtBeantworten(db, vis.menschId, vis.agentId, g.nachricht_id, "ok")).rejects.toThrow(/needs a decision/);
+    expect((await n.offeneFreigaben(db, vis.menschId)).map((x) => x.nachricht_id)).toContain(g.nachricht_id);
+    await n.nachrichtBeantworten(db, vis.menschId, null, g.nachricht_id, "Variante 2, passt zur Vision", "freigegeben");
+    const e = (await db.query("select art, daten from ereignisse where bezug = $1 order by seq", [`nachricht:${g.nachricht_id}`])).rows;
+    expect(e.map((x) => x.art)).toEqual(["freigabe_angefragt", "freigabe_entschieden"]);
+    expect(e[1].daten).toEqual({ betreff: "Menü-Styleguide Variante 2", entscheidung: "freigegeben" });
+    await k.officerBeenden(db, vis, "test", "ux", "Test");
+    await db.query("delete from projekt_rollen where mensch_id = $1", [vis.menschId]);
+  });
+});
+
 describe("Zustandsmaschine", () => {
   it("läuft einmal komplett durch und protokolliert jeden Schritt", async () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Durchlauf"));

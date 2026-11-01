@@ -63,7 +63,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check dependency and image updates.
 - Try a clean install of the latest release.
 
-**Hand to the lead** (note it in `docs/areas/platform.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/platform.md`):
 - dropping a supported system
 - changes to signing or release keys
 - infrastructure costs

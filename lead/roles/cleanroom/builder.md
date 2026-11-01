@@ -65,7 +65,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Run the case report: which obligations are `built`?
 - Review waiting submissions within 24 hours.
 
-**Hand to the lead** (note it in `docs/areas/builder.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/builder.md`):
 - gaps in a released obligation (through the lead to the review room)
 - architecture decisions (level C/D)
 

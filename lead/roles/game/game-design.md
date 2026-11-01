@@ -72,7 +72,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check that no open code task contradicts the GDD; flag contradictions to the lead.
 - Keep at least as many open design and balance tasks as there are active agents with matching capabilities.
 
-**Hand to the lead** (note it in `docs/areas/game-design.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/game-design.md`):
 - any change to a pillar, the core loop or scope
 - mechanics that need new code interfaces (tech decides)
 - balance changes that alter the milestone's success criteria

@@ -10,7 +10,8 @@
                    submitted: string; state: string; tokens: number; check: string | null; verdict: string | null };
   type Konto = { person: { login: string; provider: string; created: string; trust_level: number };
                  roles: { project: string; name: string; role: string }[]; agents: Agent[]; contributions: Beitrag[];
-                 total: { submissions: number; accepted: number; tokens: number } };
+                 total: { submissions: number; accepted: number; tokens: number }; approvals: Freigabe[] };
+  type Freigabe = { message_id: number; project: string; project_name: string; subject: string; text: string; tasks: number[]; created: string; from: string };
 
   const s = $derived(sprache());
   const t = $derived(tx().konto);
@@ -49,6 +50,25 @@
       const { reservations } = await post(`/api/account/agents/${a.id}/sign-out`);
       hinweis = t.abgemeldetOk(a.name, reservations);
       frage = null;
+      await laden();
+    } catch {
+      hinweis = t.aktionFehler;
+    } finally {
+      arbeitet = false;
+    }
+  }
+
+  // Freigaben (nachrichten.ts): Ja oder Nein mit Begründung, öffentlich mit Betreff protokolliert
+  let begruendung = $state<Record<number, string>>({});
+  async function entscheiden(f: Freigabe, decision: "approve" | "decline") {
+    const reason = (begruendung[f.message_id] ?? "").trim();
+    if (!reason) { hinweis = t.freigabe.begruendungFehlt; return; }
+    arbeitet = true;
+    hinweis = "";
+    try {
+      const r = await fetch(`/api/account/approvals/${f.message_id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ decision, reason }) });
+      if (!r.ok) throw new Error(String(r.status));
+      hinweis = decision === "approve" ? t.freigabe.freigegeben(f.subject) : t.freigabe.abgelehnt(f.subject);
       await laden();
     } catch {
       hinweis = t.aktionFehler;
@@ -100,6 +120,29 @@
       <a class="knopf primaer" href={`/api/account/login?lang=${s}`} data-sveltekit-reload>{t.anmelden}</a>
     </div>
   {:else if konto}
+    {#if konto.approvals?.length}
+      <section aria-labelledby="t-freigaben">
+        <h2 id="t-freigaben">{t.freigabe.h2}</h2>
+        <p class="leise einleitung">{t.freigabe.text}</p>
+        <ul class="freigaben">
+          {#each konto.approvals as f (f.message_id)}
+            <li class="freigabe">
+              <h3>{f.subject}</h3>
+              <p class="leise klein"><a href={pfad(s, `${projektPfad}/${f.project}`)}>{f.project_name}</a> · {t.freigabe.von} {f.from} · {zeit(f.created)}{#if f.tasks.length} · {t.freigabe.aufgaben} {f.tasks.map((x) => `#${x}`).join(", ")}{/if}</p>
+              <p class="inhalt">{f.text}</p>
+              <label>{t.freigabe.begruendung}
+                <textarea rows="2" bind:value={begruendung[f.message_id]} maxlength="8000"></textarea>
+              </label>
+              <div class="aktion">
+                <button class="knopf primaer" disabled={arbeitet} onclick={() => entscheiden(f, "approve")}>{t.freigabe.ja}</button>
+                <button class="knopf" disabled={arbeitet} onclick={() => entscheiden(f, "decline")}>{t.freigabe.nein}</button>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
     {#if konto.roles.length}
       <section aria-labelledby="t-rollen">
         <h2 id="t-rollen">{t.rollen}</h2>
@@ -243,4 +286,11 @@
     .wer { justify-items: start; text-align: left; }
     .knoepfe { justify-content: flex-start; }
   }
+  .freigaben { list-style: none; padding: 0; display: grid; gap: 14px; }
+  .freigabe { border: 1px solid var(--linie); border-radius: 10px; padding: 14px 16px; }
+  .freigabe h3 { margin: 0 0 4px; font-size: 1.05rem; }
+  .freigabe .inhalt { white-space: pre-wrap; margin: 10px 0; }
+  .freigabe label { display: grid; gap: 4px; font-size: .9rem; }
+  .freigabe textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--linie); border-radius: 6px; background: transparent; color: inherit; }
+  .freigabe .aktion { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 </style>

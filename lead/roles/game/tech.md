@@ -71,7 +71,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Read every rejected or reworked code submission: is the task text the cause? Rewrite the template.
 - Check the frame-time and memory numbers of the latest build against the budget.
 
-**Hand to the lead** (note it in `docs/areas/tech.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/tech.md`):
 - every interface or contract-test change (level C/D stays with the lead)
 - new dependencies and their licenses
 - architecture changes, which need an ADR

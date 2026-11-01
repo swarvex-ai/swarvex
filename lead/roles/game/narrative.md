@@ -69,7 +69,7 @@ Changes to the area's document are level C tasks: you draft them, the lead creat
 - Check new level briefs for story placement.
 - Keep the text table free of missing keys.
 
-**Hand to the lead** (note it in `docs/areas/narrative.md` under "For the lead"):
+**Hand to the lead** (as a message: `send_message` to `lead`, or an `approval` to the visionary where the vision is touched; record the outcome in `docs/areas/narrative.md`):
 - any change to the vision's story beats (the visionary decides)
 - story needs that require new mechanics
 - cutscenes or comics that need code

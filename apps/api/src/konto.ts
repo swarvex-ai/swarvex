@@ -11,6 +11,7 @@ import { konfig } from "./konfig.ts";
 import { nachAussen } from "./aussen.ts";
 import { CALLBACK, englisch, esc, KONTO_PRAEFIX, pruefen, seite, signieren } from "./auth/interaktion.ts";
 import type { KontoAnbieter } from "./auth/konten.ts";
+import { nachrichtBeantworten, offeneFreigaben } from "./nachrichten.ts";
 
 const SITZUNG = "swarvex_account";
 const ANMELDUNG = "swarvex_login";
@@ -71,7 +72,7 @@ export async function kontoDaten(db: Db, menschId: number) {
     angenommen: beitraege.filter((b) => b.urteil === "annehmen").length,
     tokens: beitraege.reduce((n, b) => n + b.tokens, 0),
   };
-  return { mensch, rollen, agenten, beitraege, summe };
+  return { mensch, rollen, agenten, beitraege, summe, freigaben: await offeneFreigaben(db, menschId) };
 }
 
 /**
@@ -168,6 +169,33 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
       }
     }
 
+    // Freigaben im Browser: der Visionär entscheidet ohne eigene Agenten-Sitzung (nachrichten.ts)
+    const freigabe = /^\/api\/account\/approvals\/(\d+)$/.exec(pfad);
+    if (freigabe && req.method === "POST") {
+      if (!eigeneHerkunft(req)) return json(res, 403, { error: "foreign_origin" });
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
+      let eingabe: { decision?: string; reason?: string } = {};
+      try { eingabe = JSON.parse(await textLesen(req, 16_000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
+      const entscheidung = ({ approve: "freigegeben", decline: "abgelehnt" } as const)[eingabe.decision as "approve"];
+      if (!entscheidung || !eingabe.reason?.trim()) return json(res, 400, { error: "decision (approve or decline) and reason are required" });
+      try {
+        return json(res, 200, nachAussen(await nachrichtBeantworten(db, menschId, null, Number(freigabe[1]), eingabe.reason, entscheidung)));
+      } catch (e) {
+        if (e instanceof Abgelehnt) return json(res, 409, { error: e.message });
+        throw e;
+      }
+    }
+
     return json(res, 404, { error: "not_found" });
   };
+}
+
+/** Kleiner Request-Body als Text, mit Obergrenze. */
+async function textLesen(req: IncomingMessage, max: number): Promise<string> {
+  let roh = "";
+  for await (const teil of req) {
+    roh += teil;
+    if (roh.length > max) throw new Error("too large");
+  }
+  return roh;
 }
