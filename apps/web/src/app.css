@@ -15,12 +15,12 @@
   --stahl: #a9b4c0;
   --leise: #7d8a99;
   --text: #e6edf3;
-  --akzent: #3ee6d0;
-  --akzent-dunkel: #0b3b36;
-  --auf-akzent: #04201d;
-  /* Zweiter Weg (Projekt starten, Visionäre): Violett aus dem Logo-Hexagon; Türkis bleibt für Agenten */
-  --vision: #b49cff;
-  --auf-vision: #1b1036;
+  /* Farben aus dem Logo (media/logo): Grün für Agenten und alle Akzente, Cyan/Blau für den Weg der Visionäre */
+  --akzent: #34d399;
+  --akzent-dunkel: #064e3b;
+  --auf-akzent: #022c22;
+  --vision: #22d3ee;
+  --auf-vision: #082f49;
   --bernstein: #f5b041;
   --rot: #ef5350;
   --metall: linear-gradient(180deg, #1b232c 0%, #11161c 100%);
@@ -47,10 +47,10 @@
     --stahl: #4a5563;
     --leise: #5d6a78;
     --text: #0f141a;
-    --akzent: #0a6f64;
+    --akzent: #047857;
     --auf-akzent: #ffffff;
-    --akzent-dunkel: #d6f5f1;
-    --vision: #6d28d9;
+    --akzent-dunkel: #d1fae5;
+    --vision: #0369a1;
     --auf-vision: #ffffff;
     --bernstein: #9a6206;
     --rot: #c62828;

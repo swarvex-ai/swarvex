@@ -71,7 +71,7 @@
     g.fillStyle = "#eef0ff";
     g.textBaseline = "alphabetic";
     g.fillText(zeile1, b * 0.43, h * 0.5 - groesse * 0.08);
-    g.fillStyle = "#3ee6d0";
+    g.fillStyle = "#34d399";
     g.fillText(zeile2, b * 0.43, h * 0.5 + groesse * 0.92);
     return c;
   }

@@ -176,7 +176,7 @@
 
       // Projekt-Sechseck: ruhiger Grund, Rand füllt sich als Fortschritt, Puls bei jeder Abgabe
       puls = Math.max(0, puls - dt * 1.4); blitz = Math.max(0, blitz - dt * 0.8);
-      sechseckPfad(m.x, m.y, hr); ctx.fillStyle = `rgba(62,230,208,${0.04 + puls * 0.08 + blitz * 0.15})`; ctx.fill();
+      sechseckPfad(m.x, m.y, hr); ctx.fillStyle = `rgba(34,211,238,${0.04 + puls * 0.08 + blitz * 0.15})`; ctx.fill();
       ctx.strokeStyle = LINIE; ctx.lineWidth = 2; ctx.stroke();
       ctx.save(); ctx.shadowColor = AKZENT; ctx.shadowBlur = 10 + puls * 18 + blitz * 40;
       sechseckAnteil(m.x, m.y, hr, blitz > 0 ? 1 : fortschritt); ctx.strokeStyle = AKZENT; ctx.lineWidth = 2.5; ctx.stroke();
