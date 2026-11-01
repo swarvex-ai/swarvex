@@ -45,6 +45,10 @@ export const FELDER: Record<string, string> = {
   nachricht_id: "message_id", nachricht_art: "kind", an: "to", von: "from", betreff: "subject", inhalt: "text", antwort: "answer",
   entscheidung: "decision", beantwortet_von: "answered_by", beantwortet_am: "answered_at", an_mich: "to_me", von_mir: "from_me",
   projektart: "project_type", deine_nachrichten: "your_messages",
+  zusage_id: "pledge_id", zusagen: "pledges", dienst: "service", verfaellt: "expires", notiz: "note", spender: "donor", verplant: "planned", frei: "available",
+  auftrag_id: "brief_id", auftraege: "briefs", anleitung: "instructions", zielpfad: "target_path", dateitypen: "file_types", max_mb: "max_mb",
+  dateiname: "file_name", sha256: "sha256", bytes: "bytes", hochgeladen: "uploaded", datei_url: "file_url",
+  credit_spenden: "credit_donations", zugesagt: "pledged", credits_angenommen: "credits_accepted", credits: "credits",
   schwarm: "swarm", agenten_stunden: "agent_hours", einzel_agent_stunden: "single_agent_hours", kalender_stunden: "calendar_hours",
   schwarm_faktor: "swarm_factor", max_parallel: "max_parallel", token_effizienz_prozent: "token_efficiency_percent", aelteste_h: "oldest_hours", freigaben: "approvals",
   nachrichten_offen: "messages_open", nachrichten_antwort_h_median: "messages_response_hours_median", antwort_h_median: "response_hours_median", officer_empfehlung: "officer_recommendation", gruende: "reasons", engpass: "bottleneck",
@@ -55,7 +59,7 @@ export const WERTE: Record<string, Record<string, string>> = {
   zustand: {
     offen: "open", reserviert: "reserved", in_arbeit: "in_progress", eingereicht: "submitted", pruefung: "checking",
     geprueft_ok: "checked_ok", geprueft_fehler: "check_failed", angenommen: "accepted", gemerged: "merged", geschlossen: "closed",
-    beantwortet: "answered", erledigt: "done",
+    beantwortet: "answered", erledigt: "done", hochgeladen: "uploaded", nacharbeit: "rework", abgelehnt: "rejected", zurueckgezogen: "withdrawn", beendet: "ended",
   },
   rolle: { visionaer: "visionary", lead: "lead", mitstreiter: "contributor" },
   urteil: { annehmen: "accept", nacharbeit: "rework", ablehnen: "reject" },
@@ -65,6 +69,7 @@ export const WERTE: Record<string, Record<string, string>> = {
   raum: { analyse: "analysis", pruefung: "review", bau: "build" },
   verfahren: { standard: "standard", clean_room: "clean_room" },
   engpass: { lead: "lead", mitstreiter: "contributors" },
+  dienst: { andere: "other" },
   projektart: { spiel: "game", app: "app", website: "website", dienst: "service", tool: "tool", bibliothek: "library", plugin: "plugin", sonstiges: "other" },
   nachricht_art: { frage: "question", freigabe: "approval", info: "info" },
   entscheidung: { freigegeben: "approved", abgelehnt: "declined" },
@@ -79,6 +84,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     anmeldung_abgewiesen: "sign_in_rejected", clean_room_trennung: "clean_room_separation", pruefstrasse_abgewiesen: "pipeline_rejected",
     gegenpruefung_reserviert: "cross_check_reserved", gegenpruefung_zurueckgegeben: "cross_check_returned", rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
     officer_ernannt: "officer_appointed", officer_beendet: "officer_ended", freigabe_angefragt: "approval_requested", freigabe_entschieden: "approval_decided",
+    zusage_eingegangen: "pledge_received", zusage_beendet: "pledge_ended", spendenauftrag_angelegt: "donation_brief_created", spende_hochgeladen: "donation_uploaded", spende_bewertet: "donation_reviewed",
     mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
   },
 };
@@ -89,7 +95,7 @@ WERTE.deine_rollen = WERTE.rolle;
 export const umkehren = (karte: Record<string, string>) => Object.fromEntries(Object.entries(karte).map(([de, en]) => [en, de]));
 
 /** References like "aufgabe:12" or "mensch:3" (event subject and actor). */
-const BEZUG: Record<string, string> = { aufgabe: "task", mensch: "person", projekt: "project", meldung: "report", einreichung: "submission", nachricht: "message",
+const BEZUG: Record<string, string> = { aufgabe: "task", mensch: "person", projekt: "project", meldung: "report", einreichung: "submission", nachricht: "message", zusage: "pledge", spendenauftrag: "donation_brief",
   agent: "agent", konto: "account", system: "system", pruefstrasse: "pipeline", unbekannt: "unknown" };
 const bezugUebersetzen = (v: string) => v.replace(/^([a-z]+)(?=:|$)/, (p) => BEZUG[p] ?? p);
 

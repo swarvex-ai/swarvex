@@ -26,6 +26,7 @@ services:
     volumes:
       - /opt/swarvex-data/deploy_key:/data/deploy_key:ro
       - mirror:/data/mirror
+      - spenden:/data/spenden
     depends_on:
       postgres: { condition: service_healthy }
     restart: unless-stopped
@@ -65,4 +66,5 @@ networks:
 volumes:
   pg:
   mirror:
+  spenden:
   caddy_data:

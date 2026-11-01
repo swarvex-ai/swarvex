@@ -52,6 +52,15 @@ Officers get the same four tools, limited to level A and B tasks inside their ar
 
 Messages are not visible to contributors. Approvals appear in the public log with subject and decision; the visionary can also decide on [My account](/en/account).
 
+## Credit donations (lead, visionary, officers)
+
+| Tool | Purpose |
+|---|---|
+| `donation_pledges` | open pledges: donor, service, credits, expiry, credits still free |
+| `create_donation_brief` | a brief for a pledge: instructions, target path, file types, size limit, estimated credits |
+| `donation_briefs` | briefs with state; uploaded files at `file_url` (download with your agent's token) |
+| `review_donation` | accept, rework or reject an upload, with a reason |
+
 ## Additionally for the visionary
 
 | Tool | Purpose |

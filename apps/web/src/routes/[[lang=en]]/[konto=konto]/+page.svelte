@@ -10,7 +10,10 @@
                    submitted: string; state: string; tokens: number; check: string | null; verdict: string | null };
   type Konto = { person: { login: string; provider: string; created: string; trust_level: number };
                  roles: { project: string; name: string; role: string }[]; agents: Agent[]; contributions: Beitrag[];
-                 total: { submissions: number; accepted: number; tokens: number }; approvals: Freigabe[] };
+                 total: { submissions: number; accepted: number; tokens: number }; approvals: Freigabe[]; pledges: Zusage[] };
+  type Auftrag = { brief_id: number; title: string; instructions: string; target_path: string; file_types: string[]; max_mb: number; credits: number;
+                   state: string; file_name: string | null; uploaded: string | null; reason: string | null };
+  type Zusage = { pledge_id: number; project: string; project_name: string; service: string; credits: number; expires: string; note: string; state: string; briefs: Auftrag[] };
   type Freigabe = { message_id: number; project: string; project_name: string; subject: string; text: string; tasks: number[]; created: string; from: string };
 
   const s = $derived(sprache());
@@ -75,6 +78,42 @@
     } finally {
       arbeitet = false;
     }
+  }
+
+  // Credit-Spenden (spenden.ts): Zusage, Aufträge des Leads, Upload
+  const DIENSTE = ["meshy", "higgsfield", "elevenlabs", "suno", "runway", "midjourney", "leonardo", "kling", "other"];
+  let projektListe = $state<{ project: string; name: string }[]>([]);
+  let zusage = $state({ project: "", service: "meshy", credits: 100, expires: "", note: "" });
+  let rechte = $state<Record<number, boolean>>({});
+  async function projekteLaden() {
+    try { const r = await fetch("/api/projects"); if (r.ok) projektListe = (await r.json()).projects.map((p: { project: string; name: string }) => ({ project: p.project, name: p.name })); } catch { /* Liste bleibt leer */ }
+  }
+  onMount(projekteLaden);
+  async function zusagen() {
+    arbeitet = true; hinweis = "";
+    try {
+      const r = await fetch("/api/account/pledges", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(zusage) });
+      const j = await r.json();
+      hinweis = r.ok ? t.spende.zugesagt : (j.error ?? t.aktionFehler);
+      if (r.ok) { zusage = { ...zusage, note: "" }; await laden(); }
+    } catch { hinweis = t.aktionFehler; } finally { arbeitet = false; }
+  }
+  async function zusageBeenden(z: Zusage) {
+    arbeitet = true; hinweis = "";
+    try { await post(`/api/account/pledges/${z.pledge_id}/end`); await laden(); } catch { hinweis = t.aktionFehler; } finally { arbeitet = false; }
+  }
+  async function hochladen(a: Auftrag, ereignis: Event) {
+    const datei = (ereignis.target as HTMLInputElement).files?.[0];
+    if (!datei) return;
+    if (!rechte[a.brief_id]) { hinweis = t.spende.rechteFehlen; return; }
+    arbeitet = true; hinweis = t.spende.laedt;
+    try {
+      const r = await fetch(`/api/account/donation-briefs/${a.brief_id}/upload`, { method: "POST", body: datei,
+        headers: { "content-type": "application/octet-stream", "x-filename": encodeURIComponent(datei.name), "x-rights-confirmed": "yes" } });
+      const j = await r.json();
+      hinweis = r.ok ? t.spende.hochgeladen(a.title) : (j.error ?? t.aktionFehler);
+      if (r.ok) await laden();
+    } catch { hinweis = t.aktionFehler; } finally { arbeitet = false; }
   }
 
   async function abmelden() {
@@ -142,6 +181,55 @@
         </ul>
       </section>
     {/if}
+
+    <section aria-labelledby="t-spenden">
+      <h2 id="t-spenden">{t.spende.h2}</h2>
+      <p class="leise einleitung">{t.spende.text}</p>
+      <form class="zusage" onsubmit={(e) => { e.preventDefault(); zusagen(); }}>
+        <label>{t.spende.projekt}
+          <select bind:value={zusage.project} required>
+            <option value="" disabled>{t.spende.projektWaehlen}</option>
+            {#each projektListe as p}<option value={p.project}>{p.name}</option>{/each}
+          </select></label>
+        <label>{t.spende.dienst}
+          <select bind:value={zusage.service}>{#each DIENSTE as d}<option value={d}>{t.spende.dienste[d] ?? d}</option>{/each}</select></label>
+        <label>{t.spende.credits}<input type="number" min="1" max="1000000" bind:value={zusage.credits} required /></label>
+        <label>{t.spende.verfaellt}<input type="date" bind:value={zusage.expires} required /></label>
+        <label class="breit">{t.spende.notiz}<input type="text" maxlength="500" bind:value={zusage.note} placeholder={t.spende.notizHilfe} /></label>
+        <button class="knopf primaer" disabled={arbeitet}>{t.spende.zusagen}</button>
+      </form>
+      {#if konto.pledges?.length}
+        <ul class="zusagen">
+          {#each konto.pledges as z (z.pledge_id)}
+            <li class="zusage-eintrag" class:aus={z.state !== "open"}>
+              <div class="zusage-kopf">
+                <strong>{z.credits} {t.spende.dienste[z.service] ?? z.service}-Credits</strong>
+                <span class="leise">{t.spende.fuer} <a href={pfad(s, `${projektPfad}/${z.project}`)}>{z.project_name}</a> · {t.spende.bis} {datum(z.expires)}</span>
+                {#if z.state === "open"}<button class="knopf" disabled={arbeitet} onclick={() => zusageBeenden(z)}>{t.spende.beenden}</button>{:else}<span class="leise">{t.spende.beendet}</span>{/if}
+              </div>
+              {#if z.briefs.length === 0}
+                <p class="leise klein">{t.spende.keineAuftraege}</p>
+              {:else}
+                {#each z.briefs as a (a.brief_id)}
+                  <div class="auftrag">
+                    <p><strong>{a.title}</strong> <span class="marke">{t.spende.zustand[a.state] ?? a.state}</span> <span class="leise klein">≈ {a.credits} Credits · {a.file_types.map((x) => "." + x).join(" ")} · max. {a.max_mb} MB</span></p>
+                    <p class="inhalt">{a.instructions}</p>
+                    {#if a.reason}<p class="klein"><span class="leise">{t.spende.begruendung}</span> {a.reason}</p>{/if}
+                    {#if a.state === "open" || a.state === "rework"}
+                      <label class="klein"><input type="checkbox" bind:checked={rechte[a.brief_id]} /> {t.spende.rechte}</label>
+                      <label class="knopf hochladen">{t.spende.hochladen}
+                        <input type="file" accept={a.file_types.map((x) => "." + x).join(",")} disabled={arbeitet} onchange={(e) => hochladen(a, e)} /></label>
+                    {:else if a.file_name}
+                      <p class="leise klein">{t.spende.datei} {a.file_name} · {zeit(a.uploaded)}</p>
+                    {/if}
+                  </div>
+                {/each}
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </section>
 
     {#if konto.roles.length}
       <section aria-labelledby="t-rollen">
@@ -293,4 +381,17 @@
   .freigabe label { display: grid; gap: 4px; font-size: .9rem; }
   .freigabe textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--linie); border-radius: 6px; background: transparent; color: inherit; }
   .freigabe .aktion { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .zusage { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px 14px; align-items: end; margin: 14px 0 18px; }
+  .zusage label { display: grid; gap: 4px; font-size: .9rem; }
+  .zusage .breit { grid-column: 1 / -1; }
+  .zusage input, .zusage select { min-height: 40px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--linie-hell); background: var(--graphit-2); color: var(--text); font: 400 .95rem var(--schrift); }
+  .zusagen { list-style: none; padding: 0; display: grid; gap: 12px; }
+  .zusage-eintrag { border: 1px solid var(--linie); border-radius: 10px; padding: 14px 16px; }
+  .zusage-eintrag.aus { opacity: .65; }
+  .zusage-kopf { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .zusage-kopf .knopf { margin-left: auto; min-height: 36px; }
+  .auftrag { border-top: 1px solid var(--linie); margin-top: 12px; padding-top: 10px; display: grid; gap: 6px; }
+  .auftrag .inhalt { white-space: pre-wrap; margin: 0; }
+  .hochladen { position: relative; width: fit-content; cursor: pointer; }
+  .hochladen input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 </style>

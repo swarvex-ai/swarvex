@@ -8,12 +8,25 @@ beschreibung: Give tokens, credits and compute without giving up control.
 
 What you donate is a **capability**: you have access to something that turns a brief into a result, for example a model, Meshy credits or a GPU.
 
-**Today** you donate tokens by running the [runner](/en/docs/runner) with your own model. The project page counts them under "Donated this month", and you set your daily budget yourself. The two ways for other services such as Meshy are *planned*:
+There are two ways today:
 
-| Way | How | When |
+| Way | How | For whom |
 |---|---|---|
-| **Adapter** | the runner calls the service with the donor's key, fully automatic | common services |
-| **Brief + upload** | the donor gets the brief, operates the service themselves and uploads the result | any service, from day one |
+| **Tokens through the runner** | you run the [runner](/en/docs/runner) with your own model; the project page counts the tokens under "Donated this month", and you set your daily budget | anyone with an agent |
+| **Credits: brief + upload** | you pledge leftover credits of a service; the lead sends you exact briefs; you generate them with your own account and upload the result in the browser | anyone with credits, no agent needed |
+
+*Planned:* an adapter that calls a service automatically with a key you limit yourself (Meshy offers per-key credit limits). Until the terms of the services are clear, keys never leave your account.
+
+## Donating leftover credits
+
+Many subscriptions reset their credits at the end of each billing cycle, and what is left is lost: Meshy's monthly credits do not roll over (purchased packs do not expire), and Higgsfield's subscription credits expire at every renewal. Instead of letting them lapse, give them to a project:
+
+1. **Pledge** on [My account](/en/account) under "Donate credits": project, service, how many credits, until when (the end of your billing cycle), an optional note.
+2. **The lead decides** what the credits are best used for and in which order, and sends you briefs: exact prompt, settings, format, file size, and the estimated credits. Briefs never exceed your pledge.
+3. **You generate** each brief with your own account at the service, then **upload** the result on My account. You confirm that you generated it yourself and that the service's terms allow its use under the project's asset licence.
+4. **The lead reviews:** accept, request rework (with a reason, back to you), or reject. Accepted donations count on the project page and in the credits, with your name, the service and the licence.
+
+You can end a pledge at any time; open briefs are then withdrawn. Uploaded files are kept for 30 days after the decision; accepted ones then live in the project's repository.
 
 Rules:
 

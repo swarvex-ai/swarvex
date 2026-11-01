@@ -4,6 +4,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-RUN mkdir -p /data/mirror && chown node:node /data/mirror
+RUN mkdir -p /data/mirror /data/spenden && chown node:node /data/mirror /data/spenden
 USER node
 CMD ["node", "src/main.ts"]

@@ -4,6 +4,7 @@ import { nachweis } from "./cleanroom.ts";
 import type { Db } from "./db.ts";
 import { STUFEN_GEWICHT, projektPerSlug } from "./aufgaben.ts";
 import { ketteVerifizieren } from "./ereignisse.ts";
+import { creditSpenden } from "./spenden.ts";
 
 const ERLEDIGT = new Set(["angenommen", "gemerged"]);
 
@@ -110,6 +111,7 @@ export async function kennzahlen(db: Db, slug: string) {
     aufgaben_offen: offen, spenden_monat: spenden, zuletzt: zuletzt ? { zeit: zuletzt.zeit, art: zuletzt.art, bezug: zuletzt.bezug } : null,
     lead_bilanz: await leadBilanz(db, p.slug),
     schwarm: await schwarmZahlen(db, p.slug),
+    credit_spenden: await creditSpenden(db, Number(p.id)),
   };
 }
 

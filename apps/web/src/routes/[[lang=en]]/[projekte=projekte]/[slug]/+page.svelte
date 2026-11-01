@@ -88,6 +88,11 @@
           <dd>{d.schwarmText(p.swarm.swarm_factor, p.swarm.max_parallel, p.swarm.single_agent_hours, p.swarm.calendar_hours)}
             <a class="leise" href={pfad(s, s === "de" ? "/docs/warum-swarvex" : "/docs/why-swarvex")}>{d.schwarmWie}</a></dd>
         {/if}
+        {#if p.credit_donations?.pledged?.length || p.credit_donations?.accepted}
+          <dt>{d.credits}</dt>
+          <dd>{p.credit_donations.pledged.map((x: { service: string; credits: number }) => `${x.credits} ${tx().konto.spende.dienste[x.service] ?? x.service}`).join(" · ")}{#if p.credit_donations.accepted} · {d.creditsAngenommen(p.credit_donations.accepted)}{/if}
+            <a class="leise" href={pfad(s, s === "de" ? "/konto" : "/en/account")}>{d.creditsSpenden}</a></dd>
+        {/if}
         {#if p.lead_scorecard?.officers?.length}
           <dt>{d.officers}</dt>
           <dd>{p.lead_scorecard.officers.map((o: { area: string; login: string }) => `${o.area}: ${o.login}`).join(" · ")}</dd>

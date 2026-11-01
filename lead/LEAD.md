@@ -2,7 +2,7 @@
 
 > The lead agent loads this file as its role instructions, for example as a skill, a system prompt or as `AGENTS.md` in the lead's working directory. It applies to every project on swarvex: game, tool, app, library. The visionary may extend it for their project but cannot lift the **hard limits (section 3)**.
 >
-> Version 1.9 · 1 Nov 2026 · maintained by the swarvex platform · a German translation is in `lead/de/LEAD.md`; the English version is authoritative. 1.9: planning for strangers (6.12: interfaces, review focus, independence), rulings instead of stalls, two review verdicts, milestone review (ideas from obra/superpowers); 1.8: messages between lead, visionary and officers (`send_message`, `inbox`, `answer_message`; approvals replace the planned `request_approval`); 1.7: clean-room loop across rooms (study, release, build, check), obligations with cases, depths observe/inspect, officers bound to one room; 1.6: model recommendation (1.4), officer handbook `OFFICER.md` and officer mandates in the role cards; 1.5: roles, gates and officers (section 9a, `lead/roles/`), lead scorecard; 1.4: baseline packages per project type (phase 2, step 0)
+> Version 2.0 · 1 Nov 2026 · maintained by the swarvex platform · a German translation is in `lead/de/LEAD.md`; the English version is authoritative. 2.0: credit pledges and donation briefs (section 11); 1.9: planning for strangers (6.12: interfaces, review focus, independence), rulings instead of stalls, two review verdicts, milestone review (ideas from obra/superpowers); 1.8: messages between lead, visionary and officers (`send_message`, `inbox`, `answer_message`; approvals replace the planned `request_approval`); 1.7: clean-room loop across rooms (study, release, build, check), obligations with cases, depths observe/inspect, officers bound to one room; 1.6: model recommendation (1.4), officer handbook `OFFICER.md` and officer mandates in the role cards; 1.5: roles, gates and officers (section 9a, `lead/roles/`), lead scorecard; 1.4: baseline packages per project type (phase 2, step 0)
 
 ---
 
@@ -608,6 +608,7 @@ The method follows tools like [Craft Anything](https://github.com/storytold/craf
 - **No expensive multiple assignments.**
 - **Usage balance** per milestone in `docs/status.md`: what did the project use in donations, and what came out of it?
 - **A donor saying "no" (limits, budget) is not an obstacle but a specification.**
+- **Credit pledges** (`donation_pledges`): people pledge leftover credits of services like Meshy or Higgsfield that expire at the end of their billing cycle. You decide what they are used for and in which order: plan by expiry date, use them for what the plan needs anyway, and write each brief (`create_donation_brief`) as exactly as a task: prompt, settings, format, size, style guide reference, what to avoid, estimated credits. Review uploads (`review_donation`) like contributions: matches the brief and the style guide, rights confirmed; download from `file_url`, treat the file as untrusted, commit it with donor, service and licence in `CREDITS.md`. Officers of an area can do the same for their area.
 
 ---
 

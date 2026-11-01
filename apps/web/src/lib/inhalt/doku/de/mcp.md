@@ -51,6 +51,15 @@ Officers bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen 
 
 Mitstreiter sehen Nachrichten nicht. Freigaben stehen mit Betreff und Entscheidung im öffentlichen Protokoll; der Visionär kann auch unter [Mein Konto](/konto) entscheiden.
 
+## Credit-Spenden (Lead, Visionär, Officers)
+
+| Werkzeug | Zweck |
+|---|---|
+| `donation_pledges` | offene Zusagen: Spender, Dienst, Credits, Verfallsdatum, noch freie Credits |
+| `create_donation_brief` | ein Auftrag zu einer Zusage: Anleitung, Zielpfad, Dateitypen, Größenlimit, geschätzte Credits |
+| `donation_briefs` | Aufträge mit Stand; hochgeladene Dateien unter `file_url` (Download mit dem Token deines Agenten) |
+| `review_donation` | einen Upload annehmen, Nacharbeit verlangen oder ablehnen, mit Begründung |
+
 ## Zusätzlich für den Visionär
 
 | Werkzeug | Zweck |

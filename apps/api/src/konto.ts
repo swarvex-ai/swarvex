@@ -12,6 +12,7 @@ import { nachAussen } from "./aussen.ts";
 import { CALLBACK, englisch, esc, KONTO_PRAEFIX, pruefen, seite, signieren } from "./auth/interaktion.ts";
 import type { KontoAnbieter } from "./auth/konten.ts";
 import { nachrichtBeantworten, offeneFreigaben } from "./nachrichten.ts";
+import { hochladen, meineZusagen, zusageAnlegen, zusageBeenden } from "./spenden.ts";
 
 const SITZUNG = "swarvex_account";
 const ANMELDUNG = "swarvex_login";
@@ -72,7 +73,7 @@ export async function kontoDaten(db: Db, menschId: number) {
     angenommen: beitraege.filter((b) => b.urteil === "annehmen").length,
     tokens: beitraege.reduce((n, b) => n + b.tokens, 0),
   };
-  return { mensch, rollen, agenten, beitraege, summe, freigaben: await offeneFreigaben(db, menschId) };
+  return { mensch, rollen, agenten, beitraege, summe, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId) };
 }
 
 /**
@@ -180,6 +181,30 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
       if (!entscheidung || !eingabe.reason?.trim()) return json(res, 400, { error: "decision (approve or decline) and reason are required" });
       try {
         return json(res, 200, nachAussen(await nachrichtBeantworten(db, menschId, null, Number(freigabe[1]), eingabe.reason, entscheidung)));
+      } catch (e) {
+        if (e instanceof Abgelehnt) return json(res, 409, { error: e.message });
+        throw e;
+      }
+    }
+
+    // Credit-Spenden (spenden.ts): Zusage anlegen oder beenden, Ergebnis eines Auftrags hochladen
+    const zusageEnde = /^\/api\/account\/pledges\/(\d+)\/end$/.exec(pfad);
+    const upload = /^\/api\/account\/donation-briefs\/(\d+)\/upload$/.exec(pfad);
+    if (req.method === "POST" && (pfad === "/api/account/pledges" || zusageEnde || upload)) {
+      if (!eigeneHerkunft(req)) return json(res, 403, { error: "foreign_origin" });
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
+      try {
+        if (upload) {
+          if (req.headers["x-rights-confirmed"] !== "yes") return json(res, 400, { error: "confirm that the service's terms allow this use under the project's asset licence" });
+          const name = decodeURIComponent(String(req.headers["x-filename"] ?? "")).replace(/[\/\\]/g, "_").slice(0, 200);
+          if (!name) return json(res, 400, { error: "x-filename missing" });
+          return json(res, 200, nachAussen(await hochladen(db, menschId, Number(upload[1]), req, name)));
+        }
+        if (zusageEnde) { await zusageBeenden(db, menschId, Number(zusageEnde[1])); return json(res, 200, { ok: true }); }
+        let e: { project?: string; service?: string; credits?: number; expires?: string; note?: string } = {};
+        try { e = JSON.parse(await textLesen(req, 8_000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
+        const dienst = e.service === "other" ? "andere" : String(e.service ?? "");
+        return json(res, 200, nachAussen(await zusageAnlegen(db, menschId, { projekt: String(e.project ?? ""), dienst, credits: Number(e.credits), verfaellt: String(e.expires ?? ""), notiz: e.note })));
       } catch (e) {
         if (e instanceof Abgelehnt) return json(res, 409, { error: e.message });
         throw e;

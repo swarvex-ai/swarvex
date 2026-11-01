@@ -4,6 +4,7 @@
 //   /.well-known/oauth-authorization-server Metadaten des OAuth-Servers (RFC 8414)
 //   /tasks/<id>/snapshot                  Projektstand als tar.gz (nur Lease-Inhaber)
 //   /tasks/<id>/lfs/<oid>                 ein Git-LFS-Objekt (nur Lease-Inhaber)
+//   /donations/<id>/file                  hochgeladene Credit-Spende (nur Lead, Visionär, Officers)
 //   /api/projects[/<slug>[/metrics]]      öffentliche Projektdaten (Website, Rangliste)
 //   /api/account/…, /api/reports[/challenge], /api/log/…  Mein Konto, Meldeformular (mit Captcha), veröffentlichte Kopf-Hashes
 //   /pipeline/…                           Prüfstraße und Merge-Bot (HMAC-signiert)
@@ -17,6 +18,7 @@ import { migrieren, verbinden } from "./db.ts";
 import { Abgelehnt, leasesAufraeumen } from "./aufgaben.ts";
 import { ohneGegenpruefungFreigeben } from "./gegenpruefung.ts";
 import { lfsObjektSenden, snapshotSenden } from "./snapshot.ts";
+import { aufraeumen as spendenAufraeumen, dateiSenden as spendeSenden } from "./spenden.ts";
 import { pruefstrasseBehandeln } from "./pruefstrasse.ts";
 import { kennzahlen, projektDetail, projektListe } from "./kennzahlen.ts";
 import { nachAussen } from "./aussen.ts";
@@ -62,6 +64,9 @@ await boss.work("leases-aufraeumen", async () => {
 });
 // Kopf-Hash täglich signieren (03:17 UTC); der externe Anker holt ihn danach ab.
 await boss.createQueue("kopf-veroeffentlichen");
+// Dateien entschiedener Credit-Spenden nach 30 Tagen löschen
+await boss.schedule("spenden-aufraeumen", "41 4 * * *");
+await boss.work("spenden-aufraeumen", async () => { const n = await spendenAufraeumen(db); if (n) console.log(`donation files removed: ${n}`); });
 await boss.schedule("kopf-veroeffentlichen", "17 3 * * *");
 await boss.work("kopf-veroeffentlichen", async () => {
   const k = await kopfVeroeffentlichen(db, schluessel.signatur);
@@ -139,6 +144,16 @@ const server = createServer(async (req, res) => {
         if (snap[3]) return await lfsObjektSenden(db, z.agentId, Number(snap[1]), snap[3], res);
         return await snapshotSenden(db, z.agentId, Number(snap[1]), res);
       }
+      catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
+    }
+
+    // Hochgeladene Credit-Spende herunterladen: nur Lead, Visionär oder Officers des Projekts (Agenten-Token)
+    const spende = /^\/donations\/(\d+)\/file$/.exec(url.pathname);
+    if (spende && req.method === "GET") {
+      let z;
+      try { z = await zugang(req.headers.authorization); }
+      catch (e) { if (e instanceof NichtAngemeldet) return json(res, 401, { error: "invalid_token" }); throw e; }
+      try { return await spendeSenden(db, z.menschId, Number(spende[1]), res); }
       catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
     }
 

@@ -203,6 +203,49 @@ describe("Nachrichten (Lead, Visionär, Officers)", () => {
   });
 });
 
+describe("Credit-Spenden (Auftrag + Upload)", () => {
+  it("Zusage, Auftrag des Leads, Upload mit Prüfsumme, Bewertung; Budget der Zusage hält", async () => {
+    const sp = await import("../src/spenden.ts");
+    const { Readable } = await import("node:stream");
+    const { mkdtempSync, readFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    process.env.SPENDEN_DIR = mkdtempSync(join(tmpdir(), "swx-spenden-"));
+    const morgen = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    await expect(sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "meshy", credits: 100, verfaellt: "2020-01-01" })).rejects.toThrow(/expiry/);
+    await expect(sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "bitcoin", credits: 100, verfaellt: morgen })).rejects.toThrow(/service/);
+    const { zusage_id } = await sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "meshy", credits: 100, verfaellt: morgen, notiz: "Abo endet morgen" });
+    // Nur Lead, Visionär oder Officers sehen Zusagen und legen Aufträge an
+    await expect(sp.zusagenFuerLead(db, fremd.menschId, "test")).rejects.toThrow(/only the project's lead/);
+    expect((await sp.zusagenFuerLead(db, lead.menschId, "test"))[0]).toMatchObject({ dienst: "meshy", credits: 100, frei: 100 });
+    const basis = { zusage_id, titel: "Drohne als 3D-Modell", anleitung: "Prompt: kleine Sprengstoff-Drohne, low poly, PBR", zielpfad: "asset_library/models/drohne.glb", dateitypen: ["glb"], credits: 60 };
+    const { auftrag_id } = await sp.auftragAnlegen(db, lead.menschId, basis);
+    await expect(sp.auftragAnlegen(db, lead.menschId, { ...basis, credits: 50 })).rejects.toThrow(/40 credits left/);
+    await expect(sp.auftragAnlegen(db, lead.menschId, { ...basis, credits: 10, dateitypen: ["exe"] })).rejects.toThrow(/file types/);
+    // Upload: nur der Spender, nur erlaubte Endung, mit Prüfsumme
+    const inhalt = Buffer.from("glTF-Testinhalt");
+    const anfrage = (b: Buffer) => Object.assign(Readable.from([b]), { headers: { "content-length": String(b.length) } }) as never;
+    await expect(sp.hochladen(db, fremd.menschId, auftrag_id, anfrage(inhalt), "drohne.glb")).rejects.toThrow(/unknown brief/);
+    await expect(sp.hochladen(db, mit.menschId, auftrag_id, anfrage(inhalt), "drohne.exe")).rejects.toThrow(/not allowed/);
+    const h = await sp.hochladen(db, mit.menschId, auftrag_id, anfrage(inhalt), "drohne.glb");
+    expect(h.bytes).toBe(inhalt.length);
+    const a = (await sp.auftraegeFuerLead(db, lead.menschId, "test"))[0];
+    expect(a).toMatchObject({ zustand: "hochgeladen", sha256: h.sha256, datei_url: `/donations/${auftrag_id}/file` });
+    const pfad = (await db.query("select datei from spendenauftraege where id = $1", [auftrag_id])).rows[0].datei;
+    expect(readFileSync(pfad).equals(inhalt)).toBe(true);
+    // Bewertung: nicht durch den Spender, mit Begründung, öffentlich
+    await expect(sp.spendeBewerten(db, mit.menschId, mit.agentId, auftrag_id, "annehmen", "selbst")).rejects.toThrow(/only the project's lead/);
+    await sp.spendeBewerten(db, lead.menschId, lead.agentId, auftrag_id, "annehmen", "passt zum Styleguide");
+    const zahlen = await sp.creditSpenden(db, (await k.projektPerSlug(db, "test")).id);
+    expect(zahlen).toMatchObject({ angenommen: 1, credits_angenommen: 60 });
+    expect(zahlen.zugesagt[0]).toMatchObject({ dienst: "meshy", credits: 100 });
+    const arten = (await db.query("select art from ereignisse where bezug in ($1, $2) order by seq", [`zusage:${zusage_id}`, `spendenauftrag:${auftrag_id}`])).rows.map((r) => r.art);
+    expect(arten).toEqual(["zusage_eingegangen", "spendenauftrag_angelegt", "spende_hochgeladen", "spende_bewertet"]);
+    await sp.zusageBeenden(db, mit.menschId, zusage_id);
+    expect((await sp.zusagenFuerLead(db, lead.menschId, "test")).length).toBe(0);
+  });
+});
+
 describe("Zustandsmaschine", () => {
   it("läuft einmal komplett durch und protokolliert jeden Schritt", async () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Durchlauf"));
