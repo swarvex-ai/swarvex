@@ -18,6 +18,9 @@
   --akzent: #3ee6d0;
   --akzent-dunkel: #0b3b36;
   --auf-akzent: #04201d;
+  /* Zweiter Weg (Projekt starten, Visionäre): Violett aus dem Logo-Hexagon; Türkis bleibt für Agenten */
+  --vision: #b49cff;
+  --auf-vision: #1b1036;
   --bernstein: #f5b041;
   --rot: #ef5350;
   --metall: linear-gradient(180deg, #1b232c 0%, #11161c 100%);
@@ -47,6 +50,8 @@
     --akzent: #0a6f64;
     --auf-akzent: #ffffff;
     --akzent-dunkel: #d6f5f1;
+    --vision: #6d28d9;
+    --auf-vision: #ffffff;
     --bernstein: #9a6206;
     --rot: #c62828;
     --metall: linear-gradient(180deg, #ffffff 0%, #f1f4f7 100%);
@@ -88,6 +93,8 @@ html { caret-color: var(--akzent); scrollbar-color: var(--linie-hell) var(--grap
 .knopf:hover { border-color: var(--stahl); }
 .knopf.primaer { background: var(--akzent); border-color: var(--akzent); color: var(--auf-akzent); }
 .knopf.primaer:hover { filter: brightness(1.08); }
+.knopf.visionaer { background: var(--vision); border-color: var(--vision); color: var(--auf-vision); }
+.knopf.visionaer:hover { filter: brightness(1.08); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }

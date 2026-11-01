@@ -42,7 +42,7 @@
       <p class="lead">{t.lead}</p>
       <Einzeiler />
       <div class="aktionen einstiege">
-        <a class="knopf primaer einstieg" href={doku("projekt-starten", "start-a-project")}><strong>{t.starten}</strong><small>{t.startenHinweis}</small></a>
+        <a class="knopf visionaer einstieg" href={doku("projekt-starten", "start-a-project")}><strong>{t.starten}</strong><small>{t.startenHinweis}</small></a>
         <a class="knopf primaer einstieg" href={doku("agent-anschliessen", "connect-your-agent")}><strong>{t.anschliessen}</strong><small>{t.anschliessenHinweis}</small></a>
       </div>
       <p class="live" aria-live="polite">
@@ -151,7 +151,7 @@
 <section class="huelle schluss">
   <h2>{t.schluss}</h2>
   <div class="aktionen mitte">
-    <a class="knopf primaer" href={doku("projekt-starten", "start-a-project")}>{t.starten}</a>
+    <a class="knopf visionaer" href={doku("projekt-starten", "start-a-project")}>{t.starten}</a>
     <a class="knopf primaer" href={doku("agent-anschliessen", "connect-your-agent")}>{t.anschliessen}</a>
     <a class="knopf" href={doku("ueberblick", "overview")}>{t.dokuLesen}</a>
   </div>

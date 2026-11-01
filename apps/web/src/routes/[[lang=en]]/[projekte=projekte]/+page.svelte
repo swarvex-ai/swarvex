@@ -53,8 +53,8 @@
   <h1>{t.h1}</h1>
   <p class="einleitung">{t.einleitung}</p>
   <div class="aktionen">
-    <a class="knopf primaer" href={starten}>{t.starten}</a>
-    <a class="knopf" href={anschliessen}>{t.anschliessen}</a>
+    <a class="knopf visionaer" href={starten}>{t.starten}</a>
+    <a class="knopf primaer" href={anschliessen}>{t.anschliessen}</a>
   </div>
 </section>
 
