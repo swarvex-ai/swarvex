@@ -1,7 +1,7 @@
 // Operator command line (in the container: `node src/cli.ts <command> …`).
 //   migrate
 //   create-project <slug> <file.json>         project + event "vision_published" (example: infra/stack/project-example.json)
-//   set-officer <slug> [provider:]<login> <area> <paths,…> <capabilities,…>   appoint an officer (the visionary decides; lead/roles/README.md)
+//   set-officer <slug> [provider:]<login> <area> <paths,…> <capabilities,…> [analysis|review|build]   appoint an officer (the visionary decides; lead/roles/README.md); room only in clean-room projects
 //   end-officer <slug> <area> <reason>        end an officer's term
 //   set-type <slug> <type>                    project type for the internal statistics: game | app | website | service | tool | library | plugin | other
 //   set-vision <slug> <vision.md>             replace the vision text; event "vision_updated" with its SHA-256
@@ -72,10 +72,12 @@ try {
       break;
     }
     case "set-officer": {
-      const [slug, login, bereich, pfade, faehigkeiten] = args;
+      const [slug, login, bereich, pfade, faehigkeiten, raumEn] = args;
       if (!faehigkeiten) throw new Error("set-officer <slug> <login> <area> <paths,comma-separated> <capabilities,comma-separated>");
       const liste = (x: string) => x.split(",").map((t) => t.trim()).filter(Boolean);
-      const r = await officerErnennen(db, "betrieb", slug, login, bereich, liste(pfade), liste(faehigkeiten));
+      const raum = raumEn ? ({ analysis: "analyse", review: "pruefung", build: "bau" } as const)[raumEn as "analysis"] : undefined;
+      if (raumEn && !raum) throw new Error("room: analysis, review or build");
+      const r = await officerErnennen(db, "betrieb", slug, login, bereich, liste(pfade), liste(faehigkeiten), raum);
       console.log(`${login} is officer for ${r.bereich} in ${slug}`);
       break;
     }

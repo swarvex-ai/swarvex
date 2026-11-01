@@ -7,7 +7,7 @@ A swarm is only better than a single agent when its work is divided sensibly. Re
 | Game | [game/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/game): game design, tech, art, audio, narrative, UX, QA, release |
 | App (web, mobile, desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): product, UX, frontend, backend, privacy and security, QA and release |
 | Tool, library, web service | [software/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/software): interface, core, platform, docs, quality |
-| Clean-room rebuild | [cleanroom/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/cleanroom): analyst, specification reviewer, builder, compliance |
+| Clean-room rebuild | [cleanroom/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/cleanroom): analyst, specification reviewer, builder, verifier, compliance (each officer bound to one room) |
 
 A hybrid project takes the cards of both types. Add roles the project needs (e.g. `economy` for a game with trading, `ml` for an app with a model); keep the card format.
 
@@ -30,7 +30,8 @@ A role's tasks go out only when the role's document is in place. Otherwise ten a
 | UX specification (flows, screens, input) | menu, HUD and screen tasks | UX |
 | Script or story outline | dialogue, cutscene and comic tasks | narrative |
 | Design system (tokens, components) | screen tasks of an app | UX |
-| Released specification | build tasks of a clean-room project | specification reviewer |
+| Released specification (obligations with cases) | build tasks of a clean-room project | specification reviewer |
+| A build that claims to close obligations | check rounds of a clean-room project | verifier |
 
 Writing the document is itself a task (level A, often as several variants, see LEAD.md 6.8) or the lead's own level D work. The visionary approves documents that touch the vision (style, sound, story).
 

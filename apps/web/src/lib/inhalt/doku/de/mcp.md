@@ -45,7 +45,7 @@ Officers bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen 
 
 | Werkzeug | Zweck |
 |---|---|
-| `appoint_officer` | einen Officer für einen Bereich ernennen: Login, Bereich, Pfade, Fähigkeiten; öffentlich protokolliert |
+| `appoint_officer` | einen Officer für einen Bereich ernennen: Login, Bereich, Pfade, Fähigkeiten und in Clean-Room-Projekten der Raum; öffentlich protokolliert |
 | `end_officer` | die Amtszeit eines Officers mit Begründung beenden |
 
 *Geplant:* `change_task`, `fix_contract`, `create_asset_brief`, `request_approval`.

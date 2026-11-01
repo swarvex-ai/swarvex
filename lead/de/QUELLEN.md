@@ -41,6 +41,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Clean-Room-Verfahren
+
+- Clean-Room-Nachbau (`roles/cleanroom/`, `vorlagen/clean-room-spezifikation.md`, LEAD.md „Clean-Room-Nachbau“): Ideen aus [Craft Anything](https://github.com/storytold/craft-anything) vom ArtCraft-Team (Commit `b09b99a`, MIT OR Apache-2.0): die Schleife studieren → bauen → prüfen → nachbessern, die Trennung zwischen Arbeit nur von außen (Clean room) und Hineinsehen (Deep), das Werteblatt mit Werten und ihrer Herkunft und belegte Rückfragen; sowie aus [REA](https://github.com/morluto/rea) von morluto (Commit `e5e0dc5`, MIT): Belege mit Einstufung (beobachtet, abgeleitet, vermutet), Pflichtenlisten für den Nachbau mit Testfällen und Prüfern, Abdeckung einer Grenze, Aufnahme und Vergleich von Szenarien und der Rat, REA von der Umsetzungsumgebung aus unerreichbar zu halten. In eigenen Worten neu geschrieben für einen Schwarm, der in Räume getrennt ist; kein Code übernommen.
+
 ## Engine-Referenz und Spielregeln
 
 Aus [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) (Commit `05ad7c8`):

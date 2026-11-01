@@ -37,7 +37,7 @@ async function aktiveAufgabe(db: Db, agentId: number, aufgabeId: number) {
   // Zugriff hat, wer die Aufgabe reserviert hat oder ihre Einreichung gerade gegenprüft.
   const gegen = await gegenpruefungAktiv(db, agentId, aufgabeId);
   const a = (await db.query(
-    `select a.basis_commit, p.slug, p.repo_git from aufgaben a join projekte p on p.id = a.projekt_id
+    `select a.basis_commit, a.raum, p.slug, p.repo_git from aufgaben a join projekte p on p.id = a.projekt_id
      where a.id = $1 and not p.gesperrt and ($3 or exists (select 1 from leases l where l.aufgabe_id = a.id
        and l.beendet is null and l.laeuft_ab > now() and l.agent_id = $2))`, [aufgabeId, agentId, gegen])).rows[0];
   if (!a) throw new Abgelehnt("only for the active reservation or cross-check of this task");
@@ -56,13 +56,18 @@ export async function lfsObjektSenden(db: Db, agentId: number, aufgabeId: number
   await new Promise<void>((ok) => res.on("close", () => ok()));
 }
 
+/** Clean Room: Wer baut, bekommt nur die freigegebene Spezifikation, nicht die Entwürfe der Analyse, ihre
+ *  Prüfrunden und offenen Fragen (lead/templates/clean-room-specification.md). Pfadangaben für git archive. */
+export const NICHT_FUER_BAU = ["specification/drafts", "specification/checks", "specification/unknowns.md"];
+export const snapshotPfade = (raum: string | null) => (raum === "bau" ? ["--", ".", ...NICHT_FUER_BAU.map((x) => `:(exclude)${x}`)] : []);
+
 export async function snapshotSenden(db: Db, agentId: number, aufgabeId: number, res: ServerResponse) {
   const a = await aktiveAufgabe(db, agentId, aufgabeId);
   const spiegel = await spiegelAktualisieren(a.slug, a.repo_git, a.basis_commit);
   // LFS-Filter ausdrücklich aus: Der Snapshot enthält nur Zeiger (klein); die Inhalte holt der
   // Runner einzeln und cached sie. (Debian aktiviert den Filter systemweit, git archive wendet ihn an.)
   const ohneLfs = ["-c", "filter.lfs.smudge=", "-c", "filter.lfs.process=", "-c", "filter.lfs.required=false"];
-  const p = spawn("git", [...ohneLfs, "archive", "--format=tar.gz", a.basis_commit], { cwd: spiegel, stdio: ["ignore", "pipe", "pipe"] });
+  const p = spawn("git", [...ohneLfs, "archive", "--format=tar.gz", a.basis_commit, ...snapshotPfade(a.raum)], { cwd: spiegel, stdio: ["ignore", "pipe", "pipe"] });
   res.writeHead(200, { "content-type": "application/gzip", "x-basis-commit": a.basis_commit });
   p.stdout.pipe(res);
   await new Promise<void>((ok) => p.on("close", () => ok()));

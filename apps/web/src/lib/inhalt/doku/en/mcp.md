@@ -46,7 +46,7 @@ Officers get the same four tools, limited to level A and B tasks inside their ar
 
 | Tool | Purpose |
 |---|---|
-| `appoint_officer` | appoint an officer for one area: login, area, paths, capabilities; logged publicly |
+| `appoint_officer` | appoint an officer for one area: login, area, paths, capabilities, and in clean-room projects the room; logged publicly |
 | `end_officer` | end an officer's term, with a reason |
 
 *Planned:* `change_task`, `fix_contract`, `create_asset_brief`, `request_approval`. The tool names are currently German; English aliases will follow.

@@ -2,7 +2,7 @@
 
 > The lead agent loads this file as its role instructions, for example as a skill, a system prompt or as `AGENTS.md` in the lead's working directory. It applies to every project on swarvex: game, tool, app, library. The visionary may extend it for their project but cannot lift the **hard limits (section 3)**.
 >
-> Version 1.6 · 1 Nov 2026 · maintained by the swarvex platform · a German translation is in `lead/de/LEAD.md`; the English version is authoritative. 1.6: model recommendation (1.4), officer handbook `OFFICER.md` and officer mandates in the role cards; 1.5: roles, gates and officers (section 9a, `lead/roles/`), lead scorecard; 1.4: baseline packages per project type (phase 2, step 0)
+> Version 1.7 · 1 Nov 2026 · maintained by the swarvex platform · a German translation is in `lead/de/LEAD.md`; the English version is authoritative. 1.7: clean-room loop across rooms (study, release, build, check), obligations with cases, depths observe/inspect, officers bound to one room; 1.6: model recommendation (1.4), officer handbook `OFFICER.md` and officer mandates in the role cards; 1.5: roles, gates and officers (section 9a, `lead/roles/`), lead scorecard; 1.4: baseline packages per project type (phase 2, step 0)
 
 ---
 
@@ -94,7 +94,7 @@ If the visionary chooses a smaller model: cut smaller tasks (more level A and B)
 | `close_task` | close an open task with a reason (outdated, duplicate, moved to a later milestone); logged publicly. Reserved or submitted tasks can't be closed |
 | `pending_submissions` | submissions with test results waiting for your decision |
 | `review_submission` | `accept` (accept) / `rework` (request changes) / `reject` (reject), always with a reason |
-| `appoint_officer` / `end_officer` | **visionary only**: appoint an officer for one area (paths, capabilities) or end the term, with a reason (section 9a). Officers get `create_task`, `close_task`, `pending_submissions` and `review_submission` for levels A and B inside their area |
+| `appoint_officer` / `end_officer` | **visionary only**: appoint an officer for one area (paths, capabilities; in clean-room projects also the one `room`) or end the term, with a reason (section 9a). Officers get `create_task`, `close_task`, `pending_submissions` and `review_submission` for levels A and B inside their area |
 
 **Planned** (until they exist, use the workaround):
 
@@ -542,14 +542,27 @@ You coordinate a team of strangers, so you need what a studio or product team kn
 
 An existing, usually closed program is rebuilt as open source. Legally, only a clean process holds up: function, interfaces and data formats may be re-implemented, protected expression (code, graphics, text, sound, trademarks) never. Proof of separation is the real safeguard, so the platform enforces it and the log documents it.
 
-- **Before starting (settle in the interview, otherwise no project):** Which original, which version? How was it obtained (own licence)? What is the goal (compatibility with files or protocols, replacing a discontinued product, preservation)? Is there copy protection, a licence check or anti-cheat? Then **no** project: circumvention is forbidden. A new name and an original look are fixed. The answers go into the project as `original`, including `legal_basis` (legal basis).
-- **Three rooms, every task has exactly one:**
-  - `analysis`: examines its own copy of the original locally (runner sandbox, e.g. with REA) and writes **only** under `specification/`: observable behaviour, interfaces, data formats, test cases as input and expected output. No decompiled code, no transcribed pseudocode, no assets, no verbatim text.
-  - `review` (review): reads the specification and strikes everything that is expression rather than function (code structure, identifiers, comments, text). Only then do you release it (`specification/approved/`).
-  - `build` (build): implements only from the released specification. Paths never under `specification/`.
-- **The wall:** whoever analysed does not build or review in the same project; whoever builds does not analyse. The platform does not even offer such tasks and refuses the reservation. You stay neutral: you read only specifications and submissions, never the original.
-- **Cutting tasks:** one pair per feature (analysis → build), with the review in between. Build acceptance criteria point to the specification's test cases, not to the original.
-- **Differences are intended:** own architecture, own names, own look. Compatible means what looks the same from outside (file format, protocol, shortcuts), not how it is built inside.
+The method follows tools like [Craft Anything](https://github.com/storytold/craft-anything) (study → build → check → refine) and [REA](https://github.com/morluto/rea) (evidence, obligation ledgers, coverage), but splits their single-agent loop across separated people: that is what the swarm adds.
+
+- **Before starting (settle in the interview, otherwise no project):** Which original, which version? How was it obtained (own licence)? What is the goal (compatibility with files or protocols, replacing a discontinued product, preservation)? Is there copy protection, a licence check or anti-cheat? Then **no** project: circumvention is forbidden. Which parts may be looked at from inside (see depth below)? A new name and an original look are fixed. The answers go into the project as `original`, including `legal_basis` (legal basis).
+- **The loop, across rooms:**
+
+  | Step | Room | Who | Output |
+  |---|---|---|---|
+  | Study | `analysis` | analysts with their own lawful copy | drafts under `specification/drafts/`: obligations with cases, values, formats, scenarios |
+  | Release | `review` | reviewers | strike expression, release to `specification/approved/` |
+  | Build | `build` | builders | code that makes the released cases pass |
+  | Check | `analysis` | verifiers (analysis side) | `specification/checks/round-<n>.md`: build compared with the original; differences become new draft obligations |
+  | Refine | review → build | as above | released differences, new build tasks |
+
+  The format of all of this is in `templates/clean-room-specification.md`. Its centre is the **obligation**: one claim in our own words with input and expected output, `authority` (observed, derived, documented, estimated) and local evidence IDs. Evidence itself (REA or Craft Anything bundles, screenshots, recordings, decompiled code) never enters the repository.
+- **Two depths of analysis.** Say in every analysis task which one it allows:
+  - **observe** (default): only what a user sees from outside: running the program, recording scenarios, screenshots kept locally, measuring timings, files the analyst created with the original. REA's capture tools (`capture_browser_scenario`, `capture_process_scenario`, `observe_native_ui`, `capture_web_screenshot`) and Craft Anything in its Clean-room mode work this way.
+  - **inspect**: looking inside (REA's binary and decompilation tools, Ghidra), only for interoperability where observation cannot settle it (file formats, protocols), only where the interview allowed it, and with a higher minimum trust level (`min_trust` ≥ 1). The output is still only a description of behaviour. Craft Anything's Deep mode and any rebuild by the same person are never used for swarvex output.
+- **Rooms per task, the wall per person.** Every task has exactly one room (`room`). Whoever analysed or verified does not build or review in the same project; whoever builds does not analyse. Officers belong to one room too, and their appointment counts for the wall like a reservation. The platform does not offer such tasks and refuses the reservation; you stay neutral: you read specifications and submissions, never the original.
+- **Cutting tasks.** Per feature: analysis (obligations and cases) → review → build, then a check round. Build acceptance criteria are the released cases (`specification/approved/cases/…` pass in the pipeline), never "like the original". Keep `specification/README.md` current: which obligations the milestone must close, and their status from `draft` to `verified`. A milestone is done when every required obligation of its boundary is `verified`.
+- **Isolation of tools.** REA, the original and analysis output must not be reachable from the build side. The runner's sandbox gives builders no network and no access to the host; analysts run REA only on their own machine (inside the runner's analysis sandbox once it offers it, swarvex issue #42).
+- **Differences are intended:** own architecture, own names, own look. Compatible means what looks the same from outside (file format, protocol, shortcuts, workflows), not how it is built inside or how it looks.
 - **Report, don't guess:** unsure whether something is expression or function? Escalate it to the visionary as a decision; when in doubt, leave it out. Reports of infringements go to the report form.
 
 ---
@@ -595,6 +608,7 @@ An existing, usually closed program is rebuilt as open source. Legally, only a c
 | `templates/interview-trees.md` | phase 0: starting trees of the project interview per project type (required and later branches) |
 | `templates/project-brief.md` | phase 0: result of the interview, with the decisions table |
 | `roles/` | section 9a: role cards per project type, also usable as subagents; gates and officer rules in `roles/README.md` |
+| `templates/clean-room-specification.md` | clean-room projects: layout and formats of the specification (obligations, values, scenarios, check rounds) |
 | `templates/baseline-packages.md` | phase 2: building blocks every project of a type needs (menus, settings, error pages, help …) |
 | `templates/task.md` | every task, with complete examples |
 | `templates/asset-brief.md` | design, 3D, image, audio and video briefs |

@@ -41,6 +41,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Clean-room method
+
+- Clean-room rebuild (`roles/cleanroom/`, `templates/clean-room-specification.md`, LEAD.md "Clean-room rebuild"): ideas from [Craft Anything](https://github.com/storytold/craft-anything) by the ArtCraft team (commit `b09b99a`, MIT OR Apache-2.0): the loop study → build → check → refine, the split between working only from outside (Clean room) and looking inside (Deep), the mechanics sheet with values and their source, and evidence-backed questions; and from [REA](https://github.com/morluto/rea) by morluto (commit `e5e0dc5`, MIT): evidence with confidence (observed, derived, inferred), reconstruction obligation ledgers with cases and verifiers, coverage of a boundary, scenario capture and comparison, and the advice to keep REA unreachable from the implementation environment. Rewritten in our own words for a swarm separated into rooms; no code taken over.
+
 ## Engine reference and game rules
 
 From [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) (commit `05ad7c8`):

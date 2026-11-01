@@ -148,14 +148,15 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
 
   if (await istVisionaerIrgendwo(db, wer.menschId)) {
     s.registerTool("appoint_officer", {
-      description: "(Visionary) Appoints an officer who runs one area of your project for the lead: creates, closes and reviews level A and B tasks whose paths and capabilities lie inside the area. The person must have signed in to swarvex once. Logged publicly. Replaces the current officer of that area.",
+      description: "(Visionary) Appoints an officer who runs one area of your project for the lead: creates, closes and reviews level A and B tasks whose paths and capabilities lie inside the area (in clean-room projects: inside one room). The person must have signed in to swarvex once. Logged publicly. Replaces the current officer of that area.",
       inputSchema: {
         project: z.string(), login: z.string().describe("GitHub login, or provider:login"),
         area: z.string().describe("Role from the role catalog, e.g. audio, art, ux"),
         paths: z.array(z.string()).min(1).describe("Globs of the area, e.g. [\"game/audio/**\", \"docs/design/audio/**\"]"),
         capabilities: z.array(z.string()).min(1).describe("Capabilities of the area; a family with .*, e.g. [\"asset.audio\", \"text.*\"]"),
+        room: z.enum(["analysis", "review", "build"]).optional().describe("Clean-room projects only, and required there: the one room this officer works in; the wall applies to the appointment like to a reservation"),
       },
-    }, sicher(async ({ project, login, area, paths, capabilities }) => k.officerErnennen(db, wer, project, login, area, paths, capabilities)));
+    }, sicher(async ({ project, login, area, paths, capabilities, room }) => k.officerErnennen(db, wer, project, login, area, paths, capabilities, room ? RAUM_REIN[room] : undefined)));
 
     s.registerTool("end_officer", {
       description: "(Visionary) Ends the term of an area's officer, with a reason. Logged publicly; their open tasks stay.",

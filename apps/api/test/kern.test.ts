@@ -265,6 +265,20 @@ describe("Clean Room (E-26)", () => {
     const d = await projektDetail(db, "cr");
     expect(d.clean_room?.trennung_eingehalten).toBe(true);
     expect(d.clean_room?.menschen_je_raum).toMatchObject({ analyse: 1, bau: 1 });
+
+    // Officers im Clean Room: genau ein Raum, die Trennwand gilt auch für das Amt
+    const vis = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea','crvis','crvis') returning id")).rows[0].id);
+    const visAgent = Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'crvis-agent','crvis-agent') returning id", [vis])).rows[0].id);
+    await db.query("insert into projekt_rollen values ($1,$2,'visionaer')", [cr, vis]);
+    const v = { menschId: vis, agentId: visAgent };
+    await expect(k.officerErnennen(db, v, "cr", "fremd", "analyst", ["specification/drafts/**"], ["text.*"])).rejects.toThrow(/needs a room/);
+    await expect(k.officerErnennen(db, v, "cr", "fremd", "analyst", ["specification/drafts/**"], ["text.*"], "analyse")).rejects.toThrow(/fremd has already worked in room "build"/);
+    await k.officerErnennen(db, v, "cr", "mitstreiterin", "analyst", ["specification/drafts/**"], ["spec"], "analyse");
+    const o = { menschId: mit.menschId, agentId: mit.agentId };
+    await k.aufgabeAnlegen(db, o, "cr", { ...basis, titel: "Format beschreiben", stufe: "A", raum: "analyse", pfade: ["specification/drafts/format.md"] });
+    await expect(k.aufgabeAnlegen(db, o, "cr", { ...basis, titel: "Prüfen", stufe: "A", raum: "pruefung", pfade: ["specification/drafts/format.md"] })).rejects.toThrow(/officer's room/);
+    await expect(k.officerErnennen(db, v, "test", "fremd", "audio", ["game/audio/**"], ["asset.audio"], "bau")).rejects.toThrow(/visionary|only exist in clean-room/);
+    await k.officerBeenden(db, v, "cr", "analyst", "Test");
   });
 });
 

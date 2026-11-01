@@ -68,13 +68,13 @@ async function mussLeadSein(tx: Tx, menschId: number, projektId: number) {
 
 // Officers (lead/roles/README.md): führen einen Bereich eines Projekts. Sie dürfen Aufgaben der Stufen A und B
 // anlegen, schließen und bewerten, deren Pfade und Fähigkeiten ganz in ihrem Bereich liegen. Alles andere bleibt beim Lead.
-export type Officer = { id: number; bereich: string; pfade: string[]; faehigkeiten: string[] };
+export type Officer = { id: number; bereich: string; pfade: string[]; faehigkeiten: string[]; raum: Raum | null };
 export const OFFICER_STUFEN = ["A", "B"];
 const NAME = /^[a-z][a-z0-9-]{1,30}$/;
 
 export async function officersVon(db: Db | Tx, menschId: number, projektId?: number): Promise<Officer[]> {
   const r = await db.query(
-    "select id, bereich, pfade, faehigkeiten from officers where mensch_id = $1 and beendet is null and ($2::bigint is null or projekt_id = $2)", [menschId, projektId ?? null]);
+    "select id, bereich, pfade, faehigkeiten, raum from officers where mensch_id = $1 and beendet is null and ($2::bigint is null or projekt_id = $2)", [menschId, projektId ?? null]);
   return r.rows.map((o) => ({ ...o, id: Number(o.id) }));
 }
 
@@ -84,16 +84,16 @@ export const pfadImBereich = (p: string, bereich: string[]) =>
 /** Fähigkeit liegt im Bereich: gleich, oder Familie "asset.*". */
 const faehigkeitImBereich = (f: string, bereich: string[]) => bereich.some((b) => b === f || (b.endsWith(".*") && f.startsWith(b.slice(0, -1))));
 
-export const imBereich = (o: Officer, a: { stufe: string; pfade: string[]; faehigkeiten: string[] }) =>
-  OFFICER_STUFEN.includes(a.stufe) && a.pfade.length > 0 && a.faehigkeiten.length > 0 &&
+export const imBereich = (o: Officer, a: { stufe: string; pfade: string[]; faehigkeiten: string[]; raum?: string | null }) =>
+  OFFICER_STUFEN.includes(a.stufe) && a.pfade.length > 0 && a.faehigkeiten.length > 0 && (o.raum ?? null) === (a.raum ?? null) &&
   a.pfade.every((p) => pfadImBereich(p, o.pfade)) && a.faehigkeiten.every((f) => faehigkeitImBereich(f, o.faehigkeiten));
 
 /** Lead oder Visionär darf alles; ein Officer nur Aufgaben in seinem Bereich. Liefert den Officer, falls er es ist. */
-async function mussLeadOderOfficerSein(tx: Tx, menschId: number, projektId: number, a: { stufe: string; pfade: string[]; faehigkeiten: string[] }): Promise<Officer | null> {
+async function mussLeadOderOfficerSein(tx: Tx, menschId: number, projektId: number, a: { stufe: string; pfade: string[]; faehigkeiten: string[]; raum?: string | null }): Promise<Officer | null> {
   const rollen = await rollenVon(tx, menschId, projektId);
   if (rollen.includes("lead") || rollen.includes("visionaer")) return null;
   const o = (await officersVon(tx, menschId, projektId)).find((x) => imBereich(x, a));
-  if (!o) throw new Abgelehnt("only the project's lead may do this, or an officer for this area (levels A and B, paths and capabilities inside the area)");
+  if (!o) throw new Abgelehnt("only the project's lead may do this, or an officer for this area (levels A and B, paths and capabilities inside the area, and in clean-room projects the officer's room)");
   return o;
 }
 
@@ -385,7 +385,7 @@ export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: strin
   const officers = rollen.includes("lead") || rollen.includes("visionaer") ? null : await officersVon(db, wer.menschId, Number(p.id));
   if (officers && !officers.length) throw new Abgelehnt("only the project's lead or one of its officers may do this");
   const r = await db.query(
-    `select e.id as einreichung_id, a.id as aufgabe_id, a.titel, a.zustand, a.stufe, a.rolle, a.pfade, a.faehigkeiten, e.zusammenfassung, e.patch, p.ergebnis as pruefung, p.bericht
+    `select e.id as einreichung_id, a.id as aufgabe_id, a.titel, a.zustand, a.stufe, a.rolle, a.raum, a.pfade, a.faehigkeiten, e.zusammenfassung, e.patch, p.ergebnis as pruefung, p.bericht
      from einreichungen e join aufgaben a on a.id = e.aufgabe_id
      left join lateral (select ergebnis, bericht from pruefungen where einreichung_id = e.id order by id desc limit 1) p on true
      where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok') order by e.id`, [p.id]);
@@ -393,7 +393,7 @@ export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: strin
 }
 
 /** Nur der Visionär ernennt Officers (Bereich, Pfade, Fähigkeiten); öffentlich protokolliert. */
-export async function officerErnennen(db: Db, wer: Wer | "betrieb", projektSlug: string, login: string, bereich: string, pfade: string[], faehigkeiten: string[]) {
+export async function officerErnennen(db: Db, wer: Wer | "betrieb", projektSlug: string, login: string, bereich: string, pfade: string[], faehigkeiten: string[], raum?: Raum) {
   if (!NAME.test(bereich)) throw new Abgelehnt("area: lowercase letters, digits and dashes, e.g. audio or ux");
   if (!pfade.length || pfade.some((x) => x.includes("..") || x.startsWith("/") || !x.trim())) throw new Abgelehnt("paths: relative globs inside the repository, e.g. game/audio/**");
   if (pfade.some((x) => x === "**" || x === "*")) throw new Abgelehnt("an officer's area cannot be the whole repository");
@@ -406,11 +406,17 @@ export async function officerErnennen(db: Db, wer: Wer | "betrieb", projektSlug:
     if (m.length !== 1) throw new Abgelehnt(m.length ? `login ${name} exists at several providers; use provider:login` : `${login} must sign in to swarvex once first`);
     const menschId = Number(m[0].id);
     if (wer !== "betrieb" && menschId === wer.menschId) throw new Abgelehnt("the visionary already has every right; appoint someone else");
+    // Clean Room: ein Officer gehört zu genau einem Raum; die Trennwand gilt für sein Amt wie für eine Reservierung
+    if (p.verfahren === "clean_room") {
+      if (!raum) throw new Abgelehnt("clean-room project: an officer needs a room (analysis, review or build)");
+      const grund = trennwand(await raeumeVon(tx, menschId, Number(p.id)), raum);
+      if (grund) throw new Abgelehnt(grund.replace("you have", `${name} has`).replace("you therefore", "therefore"));
+    } else if (raum) throw new Abgelehnt("rooms only exist in clean-room projects");
     await tx.query("update officers set beendet = now() where projekt_id = $1 and bereich = $2 and beendet is null", [p.id, bereich]);
-    const id = Number((await tx.query("insert into officers(projekt_id, mensch_id, bereich, pfade, faehigkeiten) values ($1,$2,$3,$4,$5) returning id",
-      [p.id, menschId, bereich, pfade, faehigkeiten])).rows[0].id);
+    const id = Number((await tx.query("insert into officers(projekt_id, mensch_id, bereich, pfade, faehigkeiten, raum) values ($1,$2,$3,$4,$5,$6) returning id",
+      [p.id, menschId, bereich, pfade, faehigkeiten, raum ?? null])).rows[0].id);
     await protokollieren(tx, { projekt_id: Number(p.id), akteur: wer === "betrieb" ? "system" : akteur(wer), art: "officer_ernannt", bezug: `mensch:${menschId}`,
-      daten: { bereich, pfade, faehigkeiten, login: name } });
+      daten: { bereich, pfade, faehigkeiten, login: name, ...(raum ? { raum } : {}) } });
     return { officer_id: id, bereich };
   });
 }

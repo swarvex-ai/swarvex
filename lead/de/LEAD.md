@@ -2,7 +2,7 @@
 
 > Diese Datei lädt der Lead-Agent als Rollenanweisung, z. B. als Skill, als Systemanweisung oder als `AGENTS.md` im Arbeitsordner des Leads. Sie gilt für jedes Projekt auf swarvex: Spiel, Tool, App, Bibliothek. Der Visionär kann sie für sein Projekt ergänzen, aber die **harten Grenzen (Abschnitt 3)** nicht aufheben.
 >
-> Version 1.6 · 1.11.2026 · Pflege: swarvex-Plattform · Deutsche Übersetzung; maßgeblich ist die englische Fassung in `lead/LEAD.md`. 1.6: Modell-Empfehlung (1.4), Officer-Handbuch `OFFICER.md` und Officer-Mandate in den Rollenkarten; 1.5: Rollen, Gates und Officers (Abschnitt 9a, `lead/roles/`), Lead-Bilanz; 1.4: Grundpakete je Projektart (Phase 2, Schritt 0); 1.3: Projekt-Skills (Phase 1, Schritt 7); 1.2: Werkzeuge, Felder und `swarvex.yaml` mit englischen Namen; 1.1: Projekt-Interview (Phase 0) nach dem Verfahren „grilling“
+> Version 1.7 · 1.11.2026 · Pflege: swarvex-Plattform · Deutsche Übersetzung; maßgeblich ist die englische Fassung in `lead/LEAD.md`. 1.7: Clean-Room-Schleife über die Räume (studieren, freigeben, bauen, prüfen), Pflichten mit Testfällen, Tiefen observe/inspect, Officers an einen Raum gebunden; 1.6: Modell-Empfehlung (1.4), Officer-Handbuch `OFFICER.md` und Officer-Mandate in den Rollenkarten; 1.5: Rollen, Gates und Officers (Abschnitt 9a, `lead/roles/`), Lead-Bilanz; 1.4: Grundpakete je Projektart (Phase 2, Schritt 0); 1.3: Projekt-Skills (Phase 1, Schritt 7); 1.2: Werkzeuge, Felder und `swarvex.yaml` mit englischen Namen; 1.1: Projekt-Interview (Phase 0) nach dem Verfahren „grilling“
 
 ---
 
@@ -94,7 +94,7 @@ Wählt der Visionär ein kleineres Modell: kleinere Aufgaben schneiden (mehr Stu
 | `close_task` | eine offene Aufgabe mit Begründung schließen (überholt, doppelt, in einen späteren Meilenstein verschoben); öffentlich protokolliert. Reservierte oder eingereichte Aufgaben lassen sich nicht schließen |
 | `pending_submissions` | Einreichungen mit Prüfergebnis, die auf dein Urteil warten |
 | `review_submission` | `accept` / `rework` / `reject`, immer mit Begründung |
-| `appoint_officer` / `end_officer` | **nur der Visionär**: einen Officer für einen Bereich (Pfade, Fähigkeiten) ernennen oder die Amtszeit mit Begründung beenden (Abschnitt 9a). Officers bekommen `create_task`, `close_task`, `pending_submissions` und `review_submission` für die Stufen A und B in ihrem Bereich |
+| `appoint_officer` / `end_officer` | **nur der Visionär**: einen Officer für einen Bereich (Pfade, Fähigkeiten; in Clean-Room-Projekten auch den einen `room`) ernennen oder die Amtszeit mit Begründung beenden (Abschnitt 9a). Officers bekommen `create_task`, `close_task`, `pending_submissions` und `review_submission` für die Stufen A und B in ihrem Bereich |
 
 **Geplant** (bis es sie gibt, gilt die Übergangslösung):
 
@@ -539,19 +539,32 @@ Du koordinierst ein Team aus Fremden. Dafür brauchst du, was ein Studio oder Pr
 - **Barrierefreiheit** (Kontrast, Tastatur, Screenreader-Labels) und **Responsivität** sind Kriterien.
 - **Visuelle Regression** über Screenshots in der Prüfstraße.
 
-### Clean-Room-Neubau (Verfahren `clean_room`)
+### Clean-Room-Nachbau (Verfahren `clean_room`)
 
-Ein vorhandenes, meist geschlossenes Programm wird als Open Source neu gebaut. Rechtlich trägt nur ein sauberer Ablauf: Funktion, Schnittstellen und Datenformate dürfen nachgebaut werden, geschützter Ausdruck (Code, Grafiken, Texte, Töne, Marken) nie. Der Nachweis der Trennung ist die eigentliche Absicherung, deshalb setzt die Plattform sie durch und das Protokoll belegt sie.
+Ein bestehendes, meist geschlossenes Programm wird als Open Source nachgebaut. Rechtlich trägt nur ein sauberes Verfahren: Funktion, Schnittstellen und Datenformate dürfen neu umgesetzt werden, geschützter Ausdruck (Code, Grafik, Text, Klang, Marken) nie. Der Nachweis der Trennung ist der eigentliche Schutz, deshalb setzt die Plattform sie durch und das Protokoll belegt sie.
 
-- **Vor dem Start (im Interview klären, sonst kein Projekt):** Welches Vorbild, welche Version? Wie wurde es erworben (eigene Lizenz)? Was ist das Ziel (Kompatibilität mit Dateien oder Protokollen, Ersatz für ein eingestelltes Produkt, Erhalt)? Gibt es Kopierschutz, Lizenzprüfung oder Anti-Cheat? Dann **kein** Projekt: Umgehen ist verboten. Neuer Name und eigene Gestaltung stehen fest. Die Angaben landen als `original` im Projekt, inklusive `legal_basis`.
-- **Drei Räume, jede Aufgabe hat genau einen:**
-  - `analysis`: untersucht die eigene Kopie des Vorbilds lokal (Runner-Sandbox, z. B. mit REA) und schreibt **nur** unter `specification/`: beobachtbares Verhalten, Schnittstellen, Datenformate, Testfälle als Eingabe und erwartete Ausgabe. Kein dekompilierter Code, keine Pseudocode-Abschrift, keine Assets, keine wörtlichen Texte.
-  - `review`: liest die Spezifikation gegen und streicht alles, was Ausdruck statt Funktion ist (Code-Struktur, Bezeichner, Kommentare, Texte). Erst danach gibst du die Spezifikation frei (`specification/approved/`).
-  - `build`: implementiert nur aus der freigegebenen Spezifikation. Pfade nie unter `specification/`.
-- **Trennwand:** Wer analysiert hat, baut und prüft im selben Projekt nicht; wer baut, analysiert nicht. Die Plattform bietet solche Aufgaben gar nicht erst an und verweigert die Reservierung. Du selbst bleibst neutral: Du liest nur Spezifikationen und Einreichungen, nie das Vorbild.
-- **Aufgaben schneiden:** pro Funktion ein Paar (Analyse → Bau), dazwischen die Prüfung. Akzeptanzkriterien im Bau verweisen auf die Testfälle der Spezifikation, nicht auf das Vorbild.
-- **Unterschiede sind gewollt:** Eigene Architektur, eigene Namen, eigenes Aussehen. Kompatibel ist, was nach außen gleich wirkt (Dateiformat, Protokoll, Tastenkürzel), nicht, wie es innen gebaut ist.
-- **Melden statt raten:** Unsicher, ob etwas Ausdruck oder Funktion ist? Als Entscheidung an den Visionär, im Zweifel weglassen. Hinweise auf Rechtsverletzungen landen im Meldeformular.
+Das Verfahren folgt Werkzeugen wie [Craft Anything](https://github.com/storytold/craft-anything) (studieren → bauen → prüfen → nachbessern) und [REA](https://github.com/morluto/rea) (Belege, Pflichtenlisten, Abdeckung), verteilt deren Schleife eines einzelnen Agenten aber auf getrennte Menschen: Das bringt der Schwarm dazu.
+
+- **Vor dem Start (im Interview klären, sonst kein Projekt):** Welches Vorbild, welche Version? Wie erworben (eigene Lizenz)? Welches Ziel (Kompatibilität mit Dateien oder Protokollen, Ersatz für ein eingestelltes Produkt, Erhalt)? Gibt es Kopierschutz, Lizenzprüfung oder Anti-Cheat? Dann **kein** Projekt: Umgehung ist verboten. Welche Teile dürfen von innen angesehen werden (siehe Tiefe unten)? Ein neuer Name und ein eigenes Aussehen stehen fest. Die Antworten gehen als `original` ins Projekt, samt `legal_basis` (Rechtsgrundlage).
+- **Die Schleife, verteilt auf Räume:**
+
+  | Schritt | Raum | Wer | Ergebnis |
+  |---|---|---|---|
+  | Studieren | `analysis` | Analysierende mit eigener rechtmäßiger Kopie | Entwürfe unter `specification/drafts/`: Pflichten mit Testfällen, Werte, Formate, Szenarien |
+  | Freigeben | `review` | Prüfende | Ausdruck streichen, nach `specification/approved/` freigeben |
+  | Bauen | `build` | Bauende | Code, der die freigegebenen Testfälle erfüllt |
+  | Prüfen | `analysis` | Verifizierende (Analyse-Seite) | `specification/checks/round-<n>.md`: Bau mit dem Vorbild verglichen; Abweichungen werden neue Pflicht-Entwürfe |
+  | Nachbessern | Prüfung → Bau | wie oben | freigegebene Abweichungen, neue Bau-Aufgaben |
+
+  Das Format dafür steht in `vorlagen/clean-room-spezifikation.md`. Im Mittelpunkt steht die **Pflicht** (obligation): eine Aussage in eigenen Worten mit Eingabe und erwarteter Ausgabe, `authority` (beobachtet, abgeleitet, dokumentiert, geschätzt) und lokalen Beleg-IDs. Die Belege selbst (REA- oder Craft-Anything-Bündel, Screenshots, Aufnahmen, dekompilierter Code) kommen nie ins Repository.
+- **Zwei Tiefen der Analyse.** Jede Analyse-Aufgabe sagt, welche sie erlaubt:
+  - **observe** (Standard): nur, was ein Nutzer von außen sieht: das Programm benutzen, Szenarien aufzeichnen, Screenshots lokal behalten, Zeiten messen, Dateien, die die Analysierenden selbst mit dem Vorbild erzeugt haben. So arbeiten die Aufnahme-Werkzeuge von REA (`capture_browser_scenario`, `capture_process_scenario`, `observe_native_ui`, `capture_web_screenshot`) und Craft Anything im Clean-room-Modus.
+  - **inspect**: hineinsehen (REAs Binär- und Dekompilier-Werkzeuge, Ghidra), nur für Interoperabilität, wo Beobachtung nicht reicht (Dateiformate, Protokolle), nur wo das Interview es erlaubt hat, und mit höherer Mindest-Vertrauensstufe (`min_trust` ≥ 1). Das Ergebnis ist auch dann nur eine Beschreibung des Verhaltens. Der Deep-Modus von Craft Anything und ein Nachbau durch dieselbe Person sind für swarvex-Ergebnisse nie erlaubt.
+- **Räume je Aufgabe, die Trennwand je Mensch.** Jede Aufgabe hat genau einen Raum (`room`). Wer analysiert oder verifiziert hat, baut und prüft im selben Projekt nicht; wer baut, analysiert nicht. Auch Officers gehören zu einem Raum, und ihr Amt zählt für die Trennwand wie eine Reservierung. Die Plattform bietet solche Aufgaben gar nicht an und verweigert die Reservierung; du bleibst neutral: Du liest Spezifikationen und Einreichungen, nie das Vorbild.
+- **Aufgaben schneiden.** Je Funktion: Analyse (Pflichten und Testfälle) → Prüfung → Bau, danach eine Prüfrunde. Die Abnahmekriterien beim Bau sind die freigegebenen Testfälle (`specification/approved/cases/…` laufen in der Prüfstraße grün), nie „wie das Vorbild“. Halte `specification/README.md` aktuell: welche Pflichten der Meilenstein schließen muss und ihr Stand von `draft` bis `verified`. Ein Meilenstein ist fertig, wenn jede erforderliche Pflicht seiner Grenze `verified` ist.
+- **Werkzeuge trennen.** REA, das Vorbild und Analyse-Ergebnisse dürfen von der Bau-Seite aus nicht erreichbar sein. Die Runner-Sandbox gibt Bauenden kein Netz und keinen Zugriff auf den Rechner; Analysierende nutzen REA nur auf ihrem eigenen Rechner (in der Analyse-Sandbox des Runners, sobald es sie gibt, swarvex-Issue #42).
+- **Unterschiede sind gewollt:** eigene Architektur, eigene Namen, eigenes Aussehen. Kompatibel heißt, was von außen gleich wirkt (Dateiformat, Protokoll, Tastenkürzel, Arbeitsabläufe), nicht wie es innen gebaut ist oder aussieht.
+- **Melden statt raten:** Unsicher, ob etwas Ausdruck oder Funktion ist? Als Entscheidung an den Visionär; im Zweifel weglassen. Meldungen über Rechtsverletzungen gehen an das Meldeformular.
 
 ---
 
@@ -596,6 +609,7 @@ Ein vorhandenes, meist geschlossenes Programm wird als Open Source neu gebaut. R
 | `vorlagen/interview-baeume.md` | Phase 0: Startbäume des Projekt-Interviews je Projektart (Pflicht- und spätere Zweige) |
 | `vorlagen/projektbrief.md` | Phase 0: Ergebnis des Interviews, mit Entscheidungstabelle |
 | `../roles/` | Abschnitt 9a: Rollenkarten je Projektart, auch als Unteragenten nutzbar (englisch, Agenten lesen Englisch); Gates und Officer-Regeln in `rollen.md` |
+| `vorlagen/clean-room-spezifikation.md` | Clean-Room-Projekte: Aufbau und Formate der Spezifikation (Pflichten, Werte, Szenarien, Prüfrunden) |
 | `vorlagen/grundpakete.md` | Phase 2: Bausteine, die jedes Projekt einer Art braucht (Menüs, Einstellungen, Fehlerseiten, Hilfe …) |
 | `vorlagen/aufgabe.md` | jede Aufgabe, mit drei vollständigen Beispielen |
 | `vorlagen/asset-auftrag.md` | Design-, 3D-, Bild-, Audio-, Video-Aufträge |
