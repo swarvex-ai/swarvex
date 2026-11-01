@@ -26,11 +26,16 @@
   let ordnung = $state<keyof typeof ordnungen>("aktiv");
   let suche = $state("");
   let engine = $state<string | null>(null);
+  // Kategorien: Projektart, dazu Clean-Room als eigenes Verfahren (quer zu den Arten)
+  const KATEGORIEN = ["game", "app", "website", "service", "tool", "library", "plugin", "clean_room"] as const;
+  let kategorie = $state<string | null>(null);
+  const inKategorie = (p: Projekt, k: string) => (k === "clean_room" ? p.procedure === "clean_room" : (p.project_type ?? "other") === k);
 
   const projekte = $derived((data.liste?.projects ?? []) as Projekt[]);
   const engines = $derived([...new Set(projekte.map((p) => p.engine))].sort());
   const gefiltert = $derived(projekte
     .filter((p) => !engine || p.engine === engine)
+    .filter((p) => !kategorie || inKategorie(p, kategorie))
     .filter((p) => {
       const q = suche.trim().toLowerCase();
       return !q || [p.name, p.vision_short, p.engine, ...(p.wants ?? [])].some((x) => x?.toLowerCase().includes(q));
@@ -38,6 +43,8 @@
     .sort((a, b) => ordnungen[ordnung](b) - ordnungen[ordnung](a)));
   const projektPfad = (slug: string) => pfad(s, `${t.pfad}/${slug}`);
   const starten = $derived(pfad(s, s === "de" ? "/docs/projekt-starten" : "/docs/start-a-project"));
+  const anschliessen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
+  const anzahl = (k: string) => projekte.filter((p) => inKategorie(p, k)).length;
 </script>
 
 <Seo titel={t.seoTitel} beschreibung={t.beschreibung} pfad={pfad(s, t.pfad)} alternativen={{ de: "/projekte", en: "/en/projects" }} />
@@ -45,9 +52,19 @@
 <section class="huelle kopf">
   <h1>{t.h1}</h1>
   <p class="einleitung">{t.einleitung}</p>
+  <div class="aktionen">
+    <a class="knopf primaer" href={starten}>{t.starten}</a>
+    <a class="knopf" href={anschliessen}>{t.anschliessen}</a>
+  </div>
 </section>
 
 <section class="huelle">
+  <div class="kategorien chips" role="group" aria-label={t.kategorie}>
+    <button type="button" class="chip" aria-pressed={kategorie === null} onclick={() => (kategorie = null)}>{t.alle} <span class="zahl">{projekte.length}</span></button>
+    {#each KATEGORIEN as k}
+      <button type="button" class="chip" class:leer={anzahl(k) === 0} aria-pressed={kategorie === k} onclick={() => (kategorie = k)}>{t.kategorien[k]} <span class="zahl">{anzahl(k)}</span></button>
+    {/each}
+  </div>
   <div class="werkzeuge">
     <label class="suche">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -71,7 +88,11 @@
   {:else if projekte.length === 0}
     <p class="hinweis">{t.leer} <a href={starten}>{t.starten}</a></p>
   {:else if gefiltert.length === 0}
-    <p class="hinweis">{t.keine}</p>
+    {#if kategorie && anzahl(kategorie) === 0}
+      <p class="hinweis">{t.keineInKategorie} <a href={starten}>{t.starten}</a></p>
+    {:else}
+      <p class="hinweis">{t.keine}</p>
+    {/if}
   {:else}
     <p class="stand leise" aria-live="polite">{t.stand}</p>
     <ul class="liste">
@@ -107,7 +128,7 @@
   .kopf { padding-top: clamp(48px, 7vw, 88px); }
   .einleitung { max-width: 64ch; color: var(--stahl); font-size: 1.1rem; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .werkzeuge { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin: 28px 0 8px; }
+  .werkzeuge { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin: 16px 0 8px; }
   .suche { flex: 1 1 280px; display: flex; align-items: center; gap: 8px; padding: 0 12px; min-height: 44px; border: 1px solid var(--linie-hell);
     border-radius: 7px; background: var(--graphit-2); color: var(--leise); }
   .suche:focus-within { border-color: var(--akzent); }
@@ -139,4 +160,10 @@
   .balken { flex: 1; height: 6px; border-radius: 3px; background: var(--graphit-3); overflow: hidden; min-width: 120px; }
   .balken i { display: block; height: 100%; background: var(--akzent); }
   @media (max-width: 760px) { .projekt { grid-template-columns: 1fr; } .zahlen { grid-template-columns: repeat(2, 1fr); } }
+  .aktionen { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .kategorien { margin: 28px 0 0; }
+  .kategorien .chip { font-family: var(--schrift); }
+  .kategorien .zahl { margin-left: 4px; color: var(--leise); font: 500 .8rem var(--mono); }
+  .kategorien .chip.leer { opacity: .6; }
+  .kategorien .chip[aria-pressed="true"] .zahl { color: inherit; }
 </style>

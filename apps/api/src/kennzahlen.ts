@@ -93,6 +93,7 @@ export async function kennzahlen(db: Db, slug: string) {
   return {
     projekt: p.slug, name: p.name, vision_kurz: p.vision_kurz, vision_veroeffentlicht: vision?.zeit ?? null,
     lead_modell: p.lead_modell, engine: p.engine, lizenz: `${p.lizenz_code} / ${p.lizenz_assets}`, ziel: p.ziel,
+    projektart: p.projektart ?? null, verfahren: p.verfahren,
     fortschritt_prozent: gesamt, meilensteine,
     fortschritt_berechnung: "accepted tasks ÷ all tasks per milestone, weighted A=1 B=2 C=3 D=5; total = mean of the milestones",
     agenten_aktiv: aktiv.length, agenten_aktiv_nach_art: nachArt,
