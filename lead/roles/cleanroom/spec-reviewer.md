@@ -39,3 +39,31 @@ Set `role: spec-reviewer` on every task. Typical tasks, smallest useful slice fi
 
 ## Works with
 analyst (questions back through the lead), compliance, builder (completeness feedback through the lead).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `spec-reviewer`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `specification/approved/**`, `specification/review/**`, `docs/areas/spec-reviewer.md`
+- capabilities: `review`, `text.*`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Review every draft and strike expression; release only what is function.
+- Write the review notes: what was struck and why.
+- Keep released specifications free of duplicates and contradictions.
+
+**Every session:**
+- Review waiting drafts within 48 hours.
+- Check build feedback (through the lead) for gaps in released specifications.
+
+**Hand to the lead** (note it in `docs/areas/spec-reviewer.md` under "For the lead"):
+- doubtful cases (when in doubt, leave it out)
+- patterns of expression in an analyst's drafts
+
+**You do well when:**
+- nothing released that a reviewer later strikes
+- builders rarely need clarification

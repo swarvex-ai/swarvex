@@ -43,3 +43,35 @@ Set `role: backend` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 frontend (contract), privacy-security (data and permissions), qa-release (deploy).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `backend`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `server/**`, `migrations/**`, `api/**`, `docs/areas/backend.md`
+- capabilities: `code.*`, `test.*`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep the API contract with samples and contract tests; every endpoint task references it.
+- Cut endpoint tasks after the contract, migrations with up and down path, load tests per endpoint.
+- Check every change for validation, permissions and personal data in logs.
+- Review server submissions in your paths.
+
+**Every session:**
+- Check contract tests and migration runs in the pipeline.
+- Read error rates and slow endpoints if monitoring exists.
+- Review waiting submissions within 24 hours.
+
+**Hand to the lead** (note it in `docs/areas/backend.md` under "For the lead"):
+- contract changes (versioned, with the lead)
+- new stored data (privacy-security)
+- infrastructure changes
+
+**You do well when:**
+- no silent contract change
+- migrations reversible
+- no personal data in logs

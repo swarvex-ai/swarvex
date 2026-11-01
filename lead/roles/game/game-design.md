@@ -48,3 +48,36 @@ Set `role: game-design` on every task. Typical tasks, smallest useful slice firs
 
 ## Works with
 tech (feasibility, interfaces), ux (how the player learns and reads it), qa (playtests), narrative (when mechanics carry story).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `game-design`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `docs/gdd.md`, `docs/design/systems/**`, `docs/design/levels/**`, `game/data/**`, `docs/areas/game-design.md`
+- capabilities: `design.game`, `text.*`, `simulation`, `daten`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep the GDD section of every system current: rules, edge cases, tuning table with units and ranges.
+- Own the balance data: every change to `game/data/**` goes through a task with a before/after table from a simulation or playtest.
+- Write level briefs (goal, beats with timings, threats, teaching moment) before any level task goes out.
+- Keep the player-experience map: the intended feeling per minute of the milestone, and check playtest reports against it.
+- Cut variants for open design questions and bring the comparison (pros, cons, pillar fit, cost) to the lead for the visionary.
+
+**Every session:**
+- Read new playtest reports and simulation results; turn every confirmed problem into a design or balance task.
+- Check that no open code task contradicts the GDD; flag contradictions to the lead.
+- Keep at least as many open design and balance tasks as there are active agents with matching capabilities.
+
+**Hand to the lead** (note it in `docs/areas/game-design.md` under "For the lead"):
+- any change to a pillar, the core loop or scope
+- mechanics that need new code interfaces (tech decides)
+- balance changes that alter the milestone's success criteria
+
+**You do well when:**
+- rework below 20 % in the area
+- tuning values change in data only, never in code
+- playtest findings become tasks within one session

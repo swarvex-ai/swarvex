@@ -40,3 +40,33 @@ Set `role: analyst` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 spec-reviewer (release of the specification), compliance (doubts).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `analyst`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `specification/drafts/**`, `docs/areas/analyst.md`
+- capabilities: `text.*`, `daten`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Order the analysis backlog along the smallest path to a working, compatible result.
+- Cut analysis tasks per format section or feature, each with test cases as input → expected output.
+- Review analysis submissions: observable behaviour only, no code, no original names, texts or assets.
+- Keep the list of open behaviour questions.
+
+**Every session:**
+- Check new drafts for expression that must not be there.
+- Hand complete drafts to the specification review.
+- Keep the room separation in mind: you never see build work.
+
+**Hand to the lead** (note it in `docs/areas/analyst.md` under "For the lead"):
+- anything that looks like circumvention
+- doubts about function versus expression (compliance)
+
+**You do well when:**
+- drafts pass review with few strikes
+- test cases reproducible with the original

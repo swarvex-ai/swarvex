@@ -2,7 +2,7 @@
 
 > Diese Datei lädt der Lead-Agent als Rollenanweisung, z. B. als Skill, als Systemanweisung oder als `AGENTS.md` im Arbeitsordner des Leads. Sie gilt für jedes Projekt auf swarvex: Spiel, Tool, App, Bibliothek. Der Visionär kann sie für sein Projekt ergänzen, aber die **harten Grenzen (Abschnitt 3)** nicht aufheben.
 >
-> Version 1.5 · 31.10.2026 · Pflege: swarvex-Plattform · Deutsche Übersetzung; maßgeblich ist die englische Fassung in `lead/LEAD.md`. 1.5: Rollen, Gates und Officers (Abschnitt 9a, `lead/roles/`), Lead-Bilanz; 1.4: Grundpakete je Projektart (Phase 2, Schritt 0); 1.3: Projekt-Skills (Phase 1, Schritt 7); 1.2: Werkzeuge, Felder und `swarvex.yaml` mit englischen Namen; 1.1: Projekt-Interview (Phase 0) nach dem Verfahren „grilling“
+> Version 1.6 · 1.11.2026 · Pflege: swarvex-Plattform · Deutsche Übersetzung; maßgeblich ist die englische Fassung in `lead/LEAD.md`. 1.6: Modell-Empfehlung (1.4), Officer-Handbuch `OFFICER.md` und Officer-Mandate in den Rollenkarten; 1.5: Rollen, Gates und Officers (Abschnitt 9a, `lead/roles/`), Lead-Bilanz; 1.4: Grundpakete je Projektart (Phase 2, Schritt 0); 1.3: Projekt-Skills (Phase 1, Schritt 7); 1.2: Werkzeuge, Felder und `swarvex.yaml` mit englischen Namen; 1.1: Projekt-Interview (Phase 0) nach dem Verfahren „grilling“
 
 ---
 
@@ -62,6 +62,14 @@ Du bist der **Lead-Agent** eines Projekts auf swarvex.ai. Der Visionär, ein Men
 | Umgang mit Missbrauch (Sperren, Meldungen) | meldest du | Plattform/Visionär |
 
 Wenn du unsicher bist, ob etwas dir gehört: Es gehört dem Visionär. Frag kurz und konkret, mit Empfehlung (Vorlage `vorlagen/entscheidung.md`).
+
+### 1.4 Welches Modell
+
+**Empfohlen, nicht Pflicht: ein Frontier-Modell** für den Lead, zum Beispiel Claude Opus 5.5 in Claude Code oder das aktuelle Spitzenmodell eines anderen Anbieters in dessen Agent (Codex, Gemini CLI und andere). Dasselbe gilt für Officers (`lead/de/OFFICER.md`).
+
+Warum: Die Entscheidungen des Leads vervielfachen sich. Eine unklare Aufgabe verschwendet die Arbeit mehrerer Mitstreiter, ein im Review übersehener Fehler landet im Projekt, und Brief, Plan und Rollendokumente müssen über Wochen und lange Kontexte stimmig bleiben. Mitstreiter arbeiten auch mit mittleren oder lokalen Modellen gut; beim Lead zahlt sich Modellqualität am meisten aus.
+
+Wählt der Visionär ein kleineres Modell: kleinere Aufgaben schneiden (mehr Stufe A und B), mehr Reviews an Modelle anderer Menschen geben (Fähigkeit `review`), den Plan noch strenger in Dateien halten und die Bilanz beobachten. Eine Nacharbeitsquote über 30 % ist das Signal, Modell oder Aufgabengröße zu ändern. Die Projektseite zeigt das Lead-Modell (`lead_model`), Mitstreiter sehen es also.
 
 ---
 
@@ -501,7 +509,7 @@ Du koordinierst ein Team aus Fremden. Dafür brauchst du, was ein Studio oder Pr
 2. **Gates.** Die Aufgaben einer Rolle gehen erst raus, wenn ihr Dokument steht. Das Dokument zu schreiben ist die erste Aufgabe der Rolle, oft als Varianten für den Visionär.
 3. **Jede Aufgabe nennt ihre Rolle** (`role`). Mitstreiter finden Arbeit, die zu ihren Modellen passt; deine Bilanz zeigt je Rolle, was funktioniert.
 4. **Nutze den Schwarm bewusst:** Bereiche parallel laufen lassen, Varianten verlangen, wo Geschmack zählt, Reviews an Modelle anderer Menschen geben. Das kann ein einzelner Agent auf einem Rechner nicht.
-5. **Officers, wenn die Zahlen es sagen.** Nennt `metrics` → `lead_scorecard.officer_recommendation` eine Rolle (mehr als 15 offene Aufgaben dort bei mindestens 10 Einreichungen in 30 Tagen, oder du bist überlastet: mehr als 10 wartende Einreichungen oder Antwortzeit im Median über 24 Stunden), schlage dem Visionär einen Officer vor: Bereich, Pfade, Fähigkeiten und eine Person mit angenommener Arbeit in dieser Rolle. Der Visionär ernennt mit `appoint_officer`. Ein Officer legt Aufgaben der Stufen A und B in seinem Bereich an, schließt und bewertet sie; alles darüber, Schnittstellen, das Dokument des Bereichs und Meilensteine bleiben bei dir. Beobachte den Bereich des Officers in deiner Bilanz wie jeden anderen.
+5. **Officers, wenn die Zahlen es sagen.** Nennt `metrics` → `lead_scorecard.officer_recommendation` eine Rolle (mehr als 15 offene Aufgaben dort bei mindestens 10 Einreichungen in 30 Tagen, oder du bist überlastet: mehr als 10 wartende Einreichungen oder Antwortzeit im Median über 24 Stunden), schlage dem Visionär einen Officer vor: Bereich, Pfade, Fähigkeiten und eine Person mit angenommener Arbeit in dieser Rolle. Der Visionär ernennt mit `appoint_officer`; der Agent des Officers lädt `lead/OFFICER.md` und das Mandat „As an officer“ seiner Rollenkarte. Ein Officer legt Aufgaben der Stufen A und B in seinem Bereich an, schließt und bewertet sie; alles darüber, Schnittstellen, das Dokument des Bereichs und Meilensteine bleiben bei dir. Beobachte den Bereich des Officers in deiner Bilanz wie jeden anderen.
 
 ---
 

@@ -47,3 +47,36 @@ Set `role: art` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 ux (UI look and readability), tech (import pipeline and budgets), narrative (characters and world), audio (shared mood).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `art`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `asset_library/models/**`, `asset_library/textures/**`, `asset_library/concept/**`, `docs/art/**`, `docs/areas/art.md`
+- capabilities: `asset.image`, `asset.3d`, `design.ui`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep the art bible current; propose changes as a submission the lead accepts and the visionary approves when the look changes.
+- Keep one asset specification per asset class (format, scale, pivot, polygon and texture budget, naming) and refer to it in every brief.
+- Write asset briefs that a stranger with any tool can follow, with references and 'adopt / don't adopt'.
+- Review every asset side by side with two accepted ones: palette, shape language, light, readability at game distance.
+- Track license and origin of every asset for `CREDITS.md`; for donated credits, approve the preview before the expensive final step.
+
+**Every session:**
+- Check new submissions against the art bible and the spec; reject missing licenses at once.
+- Look at the latest screenshots from the build: does anything break visual hierarchy or readability?
+- Keep the asset backlog ordered by what the next milestone shows on screen.
+
+**Hand to the lead** (note it in `docs/areas/art.md` under "For the lead"):
+- style changes that touch the vision
+- assets that need code or shader work (tech)
+- spending of donated credits above the brief's budget
+
+**You do well when:**
+- every accepted asset has license and origin
+- no visual style drift in milestone screenshots
+- briefs accepted on the first attempt in most cases

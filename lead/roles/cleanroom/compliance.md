@@ -38,3 +38,31 @@ Set `role: compliance` on every task. Typical tasks, smallest useful slice first
 
 ## Works with
 every clean-room role; the visionary for decisions.
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `compliance`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `docs/compliance/**`, `docs/areas/compliance.md`
+- capabilities: `review`, `text.*`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Audit the separation per milestone from the public log: people per room, violations.
+- Check new assets and texts for similarity with the original.
+- Keep the decision log of doubtful cases and the project's `original` record current.
+
+**Every session:**
+- Read the separation evidence on the project page.
+- Review flagged doubts.
+
+**Hand to the lead** (note it in `docs/areas/compliance.md` under "For the lead"):
+- every doubtful case (the visionary decides)
+- any sign of circumvention
+
+**You do well when:**
+- separation intact in every audit
+- doubts decided, not ignored

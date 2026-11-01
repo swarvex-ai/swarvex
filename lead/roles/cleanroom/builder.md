@@ -38,3 +38,31 @@ Set `role: builder` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 spec-reviewer (through the lead), compliance.
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `builder`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `src/**`, `tests/**`, `docs/areas/builder.md`
+- capabilities: `code.*`, `test.*`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Cut build tasks per released specification section, pointing to its test cases.
+- Review build submissions: released specifications only, own architecture and names, no file under `specification/`.
+- Keep own assets and texts original.
+
+**Every session:**
+- Check which released sections have no build task yet.
+- Review waiting submissions within 24 hours.
+
+**Hand to the lead** (note it in `docs/areas/builder.md` under "For the lead"):
+- gaps in a released specification (through the lead to review)
+- architecture decisions (level C/D)
+
+**You do well when:**
+- released test cases pass
+- nothing traced back to the original

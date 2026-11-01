@@ -43,3 +43,33 @@ Set `role: product` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 ux (screens), frontend and backend (feasibility), privacy-security (data), qa-release (acceptance).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `product`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `docs/flows.md`, `docs/product/**`, `docs/areas/product.md`
+- capabilities: `design.ui`, `text.*`, `review`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep the main flows step by step, with the screens they touch and their 'done when'.
+- Order the feature backlog by flow and milestone; every feature names the flow it serves.
+- Run usability tests per flow and turn findings into tasks for UX, frontend or backend.
+- Keep the baseline package decisions of the app current with the lead.
+
+**Every session:**
+- Read usability and bug reports; update the flows.
+- Check every new task names its flow.
+- Prepare the comparison when a flow needs a decision.
+
+**Hand to the lead** (note it in `docs/areas/product.md` under "For the lead"):
+- scope changes and new flows (the visionary decides)
+- anything that changes the data stored about people (privacy)
+
+**You do well when:**
+- every feature traceable to a flow
+- usability findings handled within a milestone

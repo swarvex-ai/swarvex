@@ -41,3 +41,32 @@ Set `role: core` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 interface (spec), platform (builds), quality (tests and performance).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `core`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `src/formats/**`, `src/plugins/**`, `tests/**`, `docs/areas/core.md`
+- capabilities: `code.*`, `test.*`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Cut variant tasks behind existing extension points (formats, commands, backends).
+- Cut bug fixes with a regression test seen red first.
+- Review core submissions: contract and golden tests unchanged, allowed paths only, no unchecked dependency.
+
+**Every session:**
+- Read failing pipeline runs and new bug reports.
+- Check the extension-point backlog against demand.
+- Review waiting submissions within 24 hours.
+
+**Hand to the lead** (note it in `docs/areas/core.md` under "For the lead"):
+- interface or module-boundary changes (level C/D)
+- new dependencies
+
+**You do well when:**
+- variants land as level B without core changes
+- regressions caught by tests

@@ -42,3 +42,34 @@ Set `role: frontend` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 ux (specs), backend (contract), qa-release (tests and releases).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `frontend`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `src/routes/**`, `src/lib/**`, `tests/e2e/**`, `docs/areas/frontend.md`
+- capabilities: `code.typescript`, `test.typescript`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Cut one task per screen against the mock server after the reference screen exists.
+- Keep the API client typed from the contract; reject hand-written duplicates.
+- Watch the performance budget per route (size, start time) and cut fixes with measured targets.
+- Review client submissions: allowed paths, error states, budget.
+
+**Every session:**
+- Check the budget numbers of the latest build.
+- Check that the mock still matches the contract.
+- Review waiting submissions within 24 hours.
+
+**Hand to the lead** (note it in `docs/areas/frontend.md` under "For the lead"):
+- contract changes (backend, with the lead)
+- framework or state-handling changes (level C/D)
+
+**You do well when:**
+- screens built in parallel without conflicts
+- budget kept
+- no untyped API calls

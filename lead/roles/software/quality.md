@@ -41,3 +41,33 @@ Set `role: quality` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 core (fixes), interface (golden tests), platform (matrix).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `quality`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `tests/**`, `benchmarks/**`, `fuzz/**`, `docs/areas/quality.md`
+- capabilities: `test.*`, `simulation`, `review`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep coverage of the main tasks and fuzz or property tests for every parser of untrusted input.
+- Keep benchmarks with budgets; every regression becomes a task.
+- Review changes for security: untrusted input, permissions, secrets.
+
+**Every session:**
+- Read benchmark and fuzz results.
+- Check flaky tests.
+- Review security-relevant submissions first.
+
+**Hand to the lead** (note it in `docs/areas/quality.md` under "For the lead"):
+- vulnerabilities (privately)
+- budget changes
+- fixes in production code
+
+**You do well when:**
+- no unnoticed performance regression
+- parsers fuzzed in CI

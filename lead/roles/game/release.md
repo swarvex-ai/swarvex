@@ -44,3 +44,36 @@ Set `role: release` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 tech (export), qa (release blockers), narrative (texts), art (store visuals).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `release`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `export_presets.cfg`, `CHANGELOG.md`, `CREDITS.md`, `docs/release/**`, `game/data/texts/translations/**`, `docs/areas/release.md`
+- capabilities: `text.*`, `code.*`, `daten`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep builds per platform reproducible from a clean checkout and cut a smoke-test task per platform before each release.
+- Keep `CHANGELOG.md` and `CREDITS.md` complete against the public log: every accepted contribution with model or service.
+- Run translations: one task per language, a second model or person reviews; length limits and glossary kept.
+- Prepare store and project-page material from the current build.
+- Check the baseline package items due for the release.
+
+**Every session:**
+- Compare credits with the log since the last release.
+- Check that the export still builds.
+- List open release blockers for the lead.
+
+**Hand to the lead** (note it in `docs/areas/release.md` under "For the lead"):
+- the release date and the release itself (the visionary approves)
+- export changes that need code (tech)
+- license questions
+
+**You do well when:**
+- credits never miss a contributor
+- builds reproducible
+- translations reviewed before release

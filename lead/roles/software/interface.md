@@ -41,3 +41,33 @@ Set `role: interface` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 core (implementation), docs (reference), quality (tests).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `interface`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `docs/interface/**`, `tests/golden/**`, `docs/areas/interface.md`
+- capabilities: `text.*`, `test.*`, `review`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep the interface spec (commands or functions, options, defaults, formats, errors) and its golden tests together.
+- Cut one spec task per command or format before implementation tasks go out.
+- Guard compatibility: every breaking change has a version bump and a migration note.
+- Review usability: error messages say what to do.
+
+**Every session:**
+- Check new implementation submissions against the spec.
+- Read user issues for confusing behaviour.
+- Keep golden files current.
+
+**Hand to the lead** (note it in `docs/areas/interface.md` under "For the lead"):
+- breaking changes
+- new public commands or modules (level C)
+
+**You do well when:**
+- spec and code never disagree
+- breaking changes always announced

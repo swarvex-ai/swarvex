@@ -40,3 +40,33 @@ Set `role: docs` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 interface (spec), platform (install), quality (examples in CI).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `docs`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `README.md`, `docs/**`, `examples/**`, `docs/areas/docs.md`
+- capabilities: `text.*`, `code.*`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep README, quickstart and reference matching the current interface.
+- Cut example tasks per main use case; examples run in the pipeline.
+- Test docs by following them literally in a fresh environment.
+- Write migration guides for breaking changes.
+
+**Every session:**
+- Check merged interface changes for missing docs.
+- Run the examples job.
+- Read user questions: every repeated question is a docs task.
+
+**Hand to the lead** (note it in `docs/areas/docs.md` under "For the lead"):
+- docs that would describe unreleased behaviour
+- changes to the project's public message
+
+**You do well when:**
+- quickstart works literally
+- no docs drift after a release

@@ -47,3 +47,36 @@ Set `role: tech` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 game-design (what to build), qa (tests and playtests), art and audio (import pipelines and budgets), release (builds per platform).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `tech`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `game/tests/**`, `tools/**`, `docs/architecture.md`, `docs/decisions/**`, `docs/areas/tech.md`
+- capabilities: `code.*`, `test.*`, `simulation`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep the test pipeline green and deterministic: own the quarantine list and cut a diagnosis or repair task for every quarantined test.
+- Profile against the performance budget each milestone and cut optimisation tasks with measured targets.
+- Keep the technical-debt list in `docs/architecture.md`: every shortcut accepted in review gets an entry and, later, a task.
+- Review level A and B code tasks in your paths: tests seen red first, no new globals, engine API correct for the pinned version.
+- Keep the engine-trap notes in `AGENTS.md` current with what reviews reveal.
+
+**Every session:**
+- Check the last pipeline runs for flakiness (result changed without code change).
+- Read every rejected or reworked code submission: is the task text the cause? Rewrite the template.
+- Check the frame-time and memory numbers of the latest build against the budget.
+
+**Hand to the lead** (note it in `docs/areas/tech.md` under "For the lead"):
+- every interface or contract-test change (level C/D stays with the lead)
+- new dependencies and their licenses
+- architecture changes, which need an ADR
+
+**You do well when:**
+- zero flaky tests for a week
+- quarantine shrinking milestone by milestone
+- no budget regression goes unnoticed for more than one session

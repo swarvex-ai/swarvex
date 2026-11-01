@@ -41,3 +41,33 @@ Set `role: platform` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 core (builds), quality (matrix), docs (install guides).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `platform`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `packaging/**`, `.github/workflows/**`, `deploy/**`, `Dockerfile`, `docs/areas/platform.md`
+- capabilities: `code.*`, `text.*`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep the support matrix in the test contract; cut a task per new version or system.
+- Own packages, containers, signing and the release pipeline.
+- For services: deployment example, configuration docs, health checks, backup and restore rehearsal.
+
+**Every session:**
+- Check the matrix runs.
+- Check dependency and image updates.
+- Try a clean install of the latest release.
+
+**Hand to the lead** (note it in `docs/areas/platform.md` under "For the lead"):
+- dropping a supported system
+- changes to signing or release keys
+- infrastructure costs
+
+**You do well when:**
+- clean install works on every supported system
+- releases signed and reproducible

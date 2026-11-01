@@ -47,3 +47,36 @@ Set `role: audio` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 game-design (mechanical feedback), narrative (emotional beats), ux (UI sounds, subtitles), tech (audio buses and performance).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `audio`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `game/audio/**`, `asset_library/audio/**`, `docs/design/sound-bible.md`, `docs/design/audio/**`, `docs/areas/audio.md`
+- capabilities: `asset.audio`, `text.*`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep the sound bible and the audio event list current; every new gameplay event gets an entry with priority and ducking rule.
+- Cut sound tasks per event group with names per convention, loudness target and length; ask for variants where taste matters.
+- Review every sound in context: loudness within target, naming, format, and the critical cues still audible over music and ambience.
+- Keep the mix rules (buses, priorities, ducking) and check them in every build.
+- Track license and tool of every sound for `CREDITS.md`.
+
+**Every session:**
+- Listen to the latest build: anything masked, clipped or missing?
+- Compare the event list with the code's events: unvoiced events become tasks.
+- Review waiting audio submissions within 24 hours.
+
+**Hand to the lead** (note it in `docs/areas/audio.md` under "For the lead"):
+- sound-bible changes that touch the vision (approved by the visionary)
+- wiring that needs new code (tech)
+- middleware or audio engine changes
+
+**You do well when:**
+- every gameplay-critical event has a sound
+- no loudness complaints in playtests
+- audio tasks rarely need rework

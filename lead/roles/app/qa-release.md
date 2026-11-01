@@ -40,3 +40,34 @@ Set `role: qa-release` on every task. Typical tasks, smallest useful slice first
 
 ## Works with
 every role (acceptance checks), privacy-security (legal pages).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `qa-release`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `tests/**`, `CHANGELOG.md`, `CREDITS.md`, `docs/release/**`, `docs/areas/qa-release.md`
+- capabilities: `test.*`, `text.*`, `review`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Turn success criteria into checks; keep e2e tests per flow stable.
+- Run releases per platform: reproducible builds, store listings, release notes from the log.
+- Triage bug reports and cut fix tasks for the owning role.
+- Keep credits and licenses complete.
+
+**Every session:**
+- Read pipeline results and bug reports.
+- Check flaky e2e tests.
+- List release blockers for the lead.
+
+**Hand to the lead** (note it in `docs/areas/qa-release.md` under "For the lead"):
+- release go (the visionary approves)
+- criteria that cannot be met
+
+**You do well when:**
+- releases reproducible
+- flaky tests near zero
+- credits complete

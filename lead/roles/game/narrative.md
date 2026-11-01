@@ -45,3 +45,36 @@ Set `role: narrative` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 game-design (where story meets play), art (comic and character look), audio (voice and emotional cues), ux (subtitles, text size).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `narrative`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `docs/design/story.md`, `docs/design/narrative/**`, `game/data/texts/**`, `docs/areas/narrative.md`
+- capabilities: `text.*`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep the story outline, world rules and character sheets consistent with the vision and with each other.
+- Cut script tasks per cutscene, comic or announcement block with length budget and channel; ask for variants.
+- Keep the glossary of names and the text table: every player-facing line is a key, with length limits.
+- Check that story fits play: no forced long text, skippable where the brief says so, beats placed where the level brief has room.
+- Hand art and audio what they need: character visual notes, emotional cues per scene.
+
+**Every session:**
+- Read new scripts and texts against the outline and accepted scripts (names, facts, timeline).
+- Check new level briefs for story placement.
+- Keep the text table free of missing keys.
+
+**Hand to the lead** (note it in `docs/areas/narrative.md` under "For the lead"):
+- any change to the vision's story beats (the visionary decides)
+- story needs that require new mechanics
+- cutscenes or comics that need code
+
+**You do well when:**
+- no contradiction found in reviews or playtests
+- text keys complete before each build
+- the visionary picks from variants instead of rewriting

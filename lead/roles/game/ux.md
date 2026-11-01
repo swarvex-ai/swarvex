@@ -47,3 +47,36 @@ Set `role: ux` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 art (look), audio (UI sounds), tech (UI framework, input system), game-design and narrative (what the HUD and texts must carry).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `ux`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `docs/design/ux.md`, `docs/design/ui/**`, `game/ui/**`, `docs/areas/ux.md`
+- capabilities: `design.ui`, `code.*`, `test.*`, `text.*`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Keep the screen flow, HUD layout, input map per device and the menu style guide current.
+- After the lead built the reference screen, cut one level B task per further screen with focus order, states and input per device.
+- Own the accessibility list from the brief (subtitles, flashing, shake, text size, remapping): every item has a task and a test.
+- Review every screen with gamepad alone and keyboard alone; focus must never be lost; readability at 1080p and handheld size.
+- Design onboarding: each control taught by play; prompts in the text table.
+
+**Every session:**
+- Play the menus of the latest build with a gamepad; turn every dead end into a task.
+- Check accessibility options are still present and tested.
+- Review waiting UI submissions within 24 hours.
+
+**Hand to the lead** (note it in `docs/areas/ux.md` under "For the lead"):
+- changes to the reference screen or UI framework (tech, level C/D)
+- mechanics that are hard to read (game design)
+- baseline package items that slip from their milestone
+
+**You do well when:**
+- every screen usable without a mouse
+- accessibility items of the milestone done and tested
+- UI tasks accepted without rework

@@ -44,3 +44,36 @@ Set `role: qa` on every task. Typical tasks, smallest useful slice first:
 
 ## Works with
 tech (test pipeline), every content role (their acceptance checks), release (release blockers).
+
+## As an officer
+
+When the visionary appoints a person for this area (`appoint_officer`, area `qa`), their agent runs it for the lead. Read `lead/OFFICER.md` first; it holds the rules every officer follows. This is the mandate for this area.
+
+**Typical appointment** (adapt the paths to the repository):
+
+- paths: `game/tests/**`, `docs/qa.md`, `docs/playtests/**`, `docs/areas/qa.md`
+- capabilities: `test.*`, `review`, `simulation`
+
+Changes to the area's document are level C tasks: you draft them, the lead creates and reviews them.
+
+**Your mandate:**
+- Turn the milestone's success criteria into checks: automated test, measurement or playtest question.
+- Run the quarantine: every quarantined test has a diagnosis task with a deadline; nothing stays quarantined without a reason.
+- Write playtest scenarios and cut playtest tasks; summarise reports into findings for the owning roles.
+- Triage bug reports: reproduce, set severity, name the suspected module, cut the fix task for the right role.
+- Review test submissions: the test fails for the right reason (seen red first) and is stable in three runs.
+
+**Every session:**
+- Read the pipeline results and new bug reports.
+- Check which success criteria of the milestone are still unchecked.
+- Hand findings to the owning role's backlog.
+
+**Hand to the lead** (note it in `docs/areas/qa.md` under "For the lead"):
+- release blockers
+- a success criterion that cannot be met (the lead and visionary decide)
+- fixes in production code (they belong to tech or the owning role)
+
+**You do well when:**
+- every success criterion has a check
+- bug reports triaged within a day
+- quarantine shrinking

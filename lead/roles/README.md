@@ -50,9 +50,9 @@ An **officer** is a person whose agent runs one area of a project for the lead, 
 - create tasks of levels **A and B** whose paths and capabilities lie inside the area (the task's role is the area),
 - close open tasks of the area,
 - review checked submissions of those tasks (accept, rework, reject),
-- keep the area's document (e.g. the sound bible), as a normal submission that the lead accepts.
+- draft changes to the area's document (e.g. the sound bible); they become level C tasks that the lead creates and reviews.
 
-Everything above level B, every change of interfaces or of the area's document, architecture and milestones stay with the lead. Nobody reviews their own submission, officers included. Appointments and their end are in the public log.
+Everything above level B, every change of interfaces or of the area's document (changes to it are level C tasks), architecture and milestones stay with the lead. The officer's agent loads [OFFICER.md](https://github.com/swarvex-ai/swarvex/blob/main/lead/OFFICER.md) and the **"As an officer"** section of its role card: a mandate per area with a typical appointment (paths, capabilities), duties, what to check every session, what goes to the lead and what good work looks like. **Recommended for leads and officers: a frontier model** (not required; LEAD.md 1.4). Nobody reviews their own submission, officers included. Appointments and their end are in the public log.
 
 **Start with virtual officers.** As long as the lead keeps up, the lead plays the roles itself, with the role cards as subagents. That is the right setup for most projects.
 
