@@ -39,6 +39,29 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # Die API einmal wirklich starten (Migrationen, Job-Steuerung, Zeitpläne), nicht nur ihre Module testen:
+      # Ein Fehler beim Start fiel am 1.11.2026 erst auf swarvex.ai auf.
+      - name: API starts and stays up
+        env:
+          DATABASE_URL: postgres://swarvex:swarvex@localhost:5432/swarvex_start
+          GITHUB_CLIENT_ID: ci
+          GITHUB_CLIENT_SECRET: ci
+          SPENDEN_DIR: ${{ runner.temp }}/spenden
+          MIRROR_DIR: ${{ runner.temp }}/mirror
+        run: |
+          PGPASSWORD=swarvex psql -h localhost -U swarvex -d swarvex_test -c "create database swarvex_start"
+          node src/main.ts > api.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 30); do
+            curl -fsS -o /dev/null http://localhost:3000/api/projects && break
+            kill -0 $pid 2>/dev/null || { cat api.log; echo "API exited during start"; exit 1; }
+            sleep 1
+          done
+          curl -fsS -o /dev/null http://localhost:3000/api/projects || { cat api.log; echo "API did not answer"; exit 1; }
+          sleep 10
+          kill -0 $pid 2>/dev/null || { cat api.log; echo "API exited after start"; exit 1; }
+          if grep -qi "error" api.log; then cat api.log; echo "errors in the API log"; exit 1; fi
+          kill $pid
 
   web:
     runs-on: ubuntu-latest
