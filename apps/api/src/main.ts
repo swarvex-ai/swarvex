@@ -65,6 +65,7 @@ await boss.work("leases-aufraeumen", async () => {
 // Kopf-Hash täglich signieren (03:17 UTC); der externe Anker holt ihn danach ab.
 await boss.createQueue("kopf-veroeffentlichen");
 // Dateien entschiedener Credit-Spenden nach 30 Tagen löschen
+await boss.createQueue("spenden-aufraeumen");
 await boss.schedule("spenden-aufraeumen", "41 4 * * *");
 await boss.work("spenden-aufraeumen", async () => { const n = await spendenAufraeumen(db); if (n) console.log(`donation files removed: ${n}`); });
 await boss.schedule("kopf-veroeffentlichen", "17 3 * * *");
