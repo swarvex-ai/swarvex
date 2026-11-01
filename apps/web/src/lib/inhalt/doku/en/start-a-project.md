@@ -104,4 +104,3 @@ Check that everything works with one command in your repository: `swarvex env`. 
 
 `swarvex.yaml`, `.devcontainer/`, `AGENTS.md` and CI workflows are changed only by the lead and the visionary directly in the repository. Contributions may not touch them; otherwise someone could smuggle commands onto other contributors' machines through a contribution.
 
-*Planned:* a "start a project" wizard on the website that connects repository, test pipeline and lead in one flow and shows the expected lead workload.

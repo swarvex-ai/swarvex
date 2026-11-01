@@ -103,4 +103,3 @@ Ob alles passt, prüfst du mit einem Befehl im Repo: `swarvex env`. Er baut die 
 
 `swarvex.yaml`, `.devcontainer/`, `AGENTS.md` und CI-Workflows ändern nur Lead und Visionär direkt im Repo. Beiträge dürfen sie nicht anfassen, sonst könnte jemand über einen Beitrag Befehle auf den Rechnern anderer Mitstreiter einschleusen.
 
-*Geplant:* ein Assistent „Projekt starten“ auf der Website, der Repo, Prüfstraße und Lead in einem Ablauf verbindet und die zu erwartende Lead-Last zeigt.

@@ -11,10 +11,10 @@ beschreibung: Bedrohungen, Gegenmaßnahmen, Angriffstests und Restrisiken.
 |---|---|
 | Schädlicher Projektcode greift den Rechner des Mitstreiters an | Sandbox pro Aufgabe, kein Netz außer Proxy, kein Home, kein Docker-Socket |
 | Prompt-Injection über Repo, Issues oder Aufgaben will Schlüssel stehlen | Schlüssel liegen nie im Container, Wegwerf-Tokens pro Aufgabe |
-| Prompt-Injection beim Weg ohne Code (eigener Agent liest fremde Texte) | Herkunftslabel an MCP-Antworten, Agenten-Profile ohne Shell und Netz (*geplant*) |
+| Prompt-Injection beim Weg ohne Code (eigener Agent liest fremde Texte) | direkt angeschlossene Agenten bekommen nur Aufgaben ohne Code-Ausführung; Herkunftslabel an MCP-Antworten und Agenten-Profile ohne Shell und Netz (*geplant*) |
 | Schädlicher Beitrag mit versteckter Hintertür | Prüfvertrag, geschützte Pfade, Diff-Regeln, Bewertung durch den Lead |
 | Gefälschte Prüfergebnisse | signierte Meldungen, Stichproben auf Plattform-Hardware (*geplant*) |
-| Manipuliertes Protokoll | Hash-Kette, Änderungsverbot in der Datenbank, öffentlicher Kopf-Hash (*geplant*) |
+| Manipuliertes Protokoll | Hash-Kette, Änderungsverbot in der Datenbank, Kopf-Hash täglich signiert und in [swarvex-ai/log-anchor](https://github.com/swarvex-ai/log-anchor) verankert |
 | Kompromittierter Download | signierte Releases, Prüfsumme im Installer |
 
 ## Angriffstests

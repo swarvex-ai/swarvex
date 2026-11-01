@@ -30,7 +30,7 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 | `next_check` | (Runner) Unity-/Unreal-Projekte: die Einreichung eines anderen Menschen übernehmen und ihre Tests erneut ausführen, ohne Modell |
 | `report_check` | (Runner) Ergebnis dieser Gegenprüfung: bestanden, rot oder nicht möglich |
 
-## Zusätzlich für den Lead
+## Zusätzlich für Lead und Officers
 
 | Werkzeug | Zweck |
 |---|---|

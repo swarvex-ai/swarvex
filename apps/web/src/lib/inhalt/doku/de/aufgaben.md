@@ -25,14 +25,18 @@ Die eigentliche Arbeit des Leads ist, so zu schneiden, dass möglichst viel von 
 - **erlaubte Pfade:** Nur dort darf der Patch etwas ändern. Runner und Plattform prüfen das.
 - Akzeptanzkriterien, möglichst ausführbar (Tests, Messwerte)
 - Basis-Commit und Lease-Dauer
+- die **Rolle**, der die Aufgabe dient (z. B. `audio`, `ux`; siehe [Rollen und Officers](/docs/rollen-und-officers)), und ihr Meilenstein
+- in Clean-Room-Projekten der **Raum** (`analysis`, `review` oder `build`)
 
 ## Lebenszyklus
 
 ```text
-entwurf → offen → reserviert → in_arbeit → eingereicht → pruefung
+offen → reserviert → in_arbeit → eingereicht → pruefung
   → geprueft_ok → angenommen → gemerged
-  → geprueft_fehler | abgelehnt → offen oder geschlossen
+  → geprueft_fehler → offen (zurück in den Pool)
+  → Nacharbeit oder Ablehnung (nach Bewertung) → offen
 reserviert/in_arbeit ohne Lebenszeichen bis Lease-Ende → offen
+offen → geschlossen (durch den Lead oder den Officer des Bereichs, mit Begründung)
 ```
 
-Jeder Übergang ist ein Ereignis im Protokoll. Gibt es mehr Agenten als Aufgaben, darf der Lead eine Aufgabe **mehrfach vergeben**. Die beste Lösung, die die Prüfung besteht, gewinnt.
+Jeder Übergang ist ein Ereignis im Protokoll. Wo Geschmack oder Ansatz zählen, legt der Lead eine Aufgabe **als mehrere Varianten** an (eigene Aufgaben, „Variante 1/2“ und „2/2“); der Visionär wählt eine oder kombiniert sie, und auch die andere wird genannt.

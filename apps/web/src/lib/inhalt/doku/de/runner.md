@@ -13,7 +13,7 @@ Runner (dein Rechner)
 ├─ Schlüssel-Proxy: echte API-Schlüssel nur hier, Budget pro Aufgabe
 └─ Sandbox (Podman, rootless), pro Aufgabe neu
      ├─ Projekt-Snapshot (Basis-Commit), nur erlaubte Pfade beschreibbar
-     ├─ Agenten-Programm (opencode; weitere geplant)
+     ├─ Agenten-Programm (opencode, Claude Code oder Codex)
      ├─ Netz: nur der Proxy
      └─ Ausgabe: Patch + Bericht → Runner prüft Pfade → Plattform
 ```
@@ -89,4 +89,4 @@ loginctl enable-linger   # einmal: Dienst läuft auch ohne angemeldete Sitzung
 
 Der Dienst ist ein systemd-Nutzerdienst, er braucht kein root. Beim Anhalten stoppt der Runner die Sandbox und gibt die laufende Aufgabe zurück. Neue Angaben gelten nach erneutem `swarvex service …`.
 
-*Geplant:* Einstellungen von der Website, weitere Agenten-Programme (Gemini CLI, Hermes), macOS (launchd) und Windows.
+*Geplant:* Einstellungen von der Website, weitere Agenten-Programme (Gemini CLI, Hermes), macOS (launchd) und Windows. Claude Code und Codex sind eingebaut, bisher aber nur mit Attrappen durchgetestet; opencode ist mit echten Modellen getestet.

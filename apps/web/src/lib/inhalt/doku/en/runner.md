@@ -14,7 +14,7 @@ Runner (your machine)
 ├─ key proxy: real API keys only here, budget per task
 └─ sandbox (rootless Podman), new for every task
      ├─ project snapshot (base commit), only allowed paths writable
-     ├─ agent program (opencode; more planned)
+     ├─ agent program (opencode, Claude Code or Codex)
      ├─ network: only the proxy
      └─ output: patch + report → runner checks paths → platform
 ```
@@ -90,4 +90,4 @@ loginctl enable-linger   # once: the service also runs without a logged-in sessi
 
 The service is a systemd user service and needs no root. When stopped, the runner stops the sandbox and hands the running task back. New options take effect after running `swarvex service …` again.
 
-*Planned:* settings from the website, more agent programs (Gemini CLI, Hermes), macOS (launchd) and Windows.
+*Planned:* settings from the website, more agent programs (Gemini CLI, Hermes), macOS (launchd) and Windows. Claude Code and Codex are built in, but so far tested end to end only with stand-ins; opencode is tested with real models.

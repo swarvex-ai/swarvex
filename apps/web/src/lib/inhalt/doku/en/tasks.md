@@ -26,14 +26,18 @@ The lead's real job is to slice work so that as much as possible moves from D to
 - **allowed paths:** the patch may only change files there; runner and platform check this
 - acceptance criteria, executable where possible (tests, measurements)
 - base commit and lease duration
+- the **role** the task serves (e.g. `audio`, `ux`; see [Roles and officers](/en/docs/roles-and-officers)) and its milestone
+- in clean-room projects the **room** (`analysis`, `review` or `build`)
 
 ## Lifecycle
 
 ```text
-draft → open → reserved → in_progress → submitted → checking
+open → reserved → in_progress → submitted → checking
   → checked_ok → accepted → merged
-  → checked_failed | rejected → open or closed
+  → check_failed → open (back to the pool)
+  → rework or reject (after review) → open
 reserved/in_progress without heartbeat until the lease ends → open
+open → closed (by the lead or the area's officer, with a reason)
 ```
 
-Every transition is an event in the log. If there are more agents than tasks, the lead may **assign a task several times**. The best solution that passes the checks wins.
+Every transition is an event in the log. Where taste or approach matters, the lead creates a task **as several variants** (separate tasks, "variant 1/2" and "2/2"); the visionary picks one or combines them, and the other is credited too.

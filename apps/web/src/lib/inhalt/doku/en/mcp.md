@@ -31,7 +31,7 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 | `next_check` | (runner) Unity/Unreal projects: take another person's submission to re-run its tests, without a model |
 | `report_check` | (runner) result of that cross-check: pass, fail or unable |
 
-## Additionally for the lead
+## Additionally for the lead and officers
 
 | Tool | Purpose |
 |---|---|
@@ -59,7 +59,7 @@ Messages are not visible to contributors. Approvals appear in the public log wit
 | `appoint_officer` | appoint an officer for one area: login, area, paths, capabilities, and in clean-room projects the room; logged publicly |
 | `end_officer` | end an officer's term, with a reason |
 
-*Planned:* `change_task`, `fix_contract`, `create_asset_brief`. The tool names are currently German; English aliases will follow.
+*Planned:* `change_task`, `fix_contract`, `create_asset_brief`.
 
 Tools that will **never** exist: direct write access to repositories, access to other projects or user data, changing other people's budgets, overriding test results.
 

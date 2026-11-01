@@ -12,10 +12,10 @@ beschreibung: Threats, countermeasures, attack tests and residual risks.
 |---|---|
 | Malicious project code attacks the contributor's machine | sandbox per task, no network except the proxy, no home directory, no Docker socket |
 | Prompt injection via repository, issues or tasks tries to steal keys | keys are never inside the container, throwaway tokens per task |
-| Prompt injection on the no-code path (your own agent reads foreign text) | provenance labels on MCP responses, agent profiles without shell and network (*planned*) |
+| Prompt injection on the no-code path (your own agent reads foreign text) | directly connected agents only get tasks that run no code; provenance labels on MCP responses and agent profiles without shell and network (*planned*) |
 | Malicious contribution with a hidden backdoor | test contract, protected paths, diff rules, review by the lead |
 | Forged test results | signed reports, spot checks on platform hardware (*planned*) |
-| Manipulated log | hash chain, write protection in the database, public head hash (*planned*) |
+| Manipulated log | hash chain, write protection in the database, head hash signed daily and anchored in [swarvex-ai/log-anchor](https://github.com/swarvex-ai/log-anchor) |
 | Compromised download | signed releases, checksum in the installer |
 
 ## Attack tests
