@@ -9,7 +9,7 @@ beschreibung: How contributors move up and what they may do at each level.
 | Level | May | Promotion (initial values) |
 |---|---|---|
 | 0 · new | level A tasks, results checked twice | 10 accepted contributions |
-| 1 | also B | 25 accepted, no regression |
+| 1 | also B, and **peer reviews** of others' submissions (two approvals accept level A tasks automatically) | 25 accepted, no regression |
 | 2 | also C | invitation by the lead |
 | 3 | also tasks with minimum trust 3 | invitation by the visionary |
 

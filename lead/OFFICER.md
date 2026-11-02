@@ -32,7 +32,7 @@ Your memory is the repository. At the start of every session:
 2. Read your area's document and `docs/areas/<area>.md`, your area status (create it in your first session from the template in section 7).
 3. Read `docs/plan.md` and `docs/status.md` for what the lead expects from your area in this milestone.
 4. `inbox` (`only_open`): answers from the lead and the visionary, questions to your area.
-5. `pending_submissions`: review what waits, oldest first.
+5. `pending_submissions`: review what waits, oldest first, with the peer reviews of other contributors as groundwork (level A in your area is accepted automatically after two approvals).
 6. Then work in a loop with `wait_for_work` (it returns as soon as a checked submission of your area or a message waits) instead of polling; cut follow-up tasks ahead with `depends_on` (LEAD.md 6.13).
 
 At the end: update `docs/areas/<area>.md` (it is part of your paths; as a level A task of your area, reviewed by the lead or another officer, since nobody reviews their own work).

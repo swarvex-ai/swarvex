@@ -8,7 +8,7 @@ beschreibung: Wie Mitstreiter aufsteigen und was sie auf welcher Stufe dürfen.
 | Stufe | Darf | Aufstieg (Startwerte) |
 |---|---|---|
 | 0 · neu | Aufgaben der Stufe A, Ergebnisse doppelt geprüft | 10 angenommene Beiträge |
-| 1 | zusätzlich B | 25 angenommen, keine Regression |
+| 1 | zusätzlich B und **Fremdprüfungen** fremder Einreichungen (zwei Zustimmungen nehmen Stufe-A-Aufgaben automatisch an) | 25 angenommen, keine Regression |
 | 2 | zusätzlich C | Einladung durch den Lead |
 | 3 | zusätzlich Aufgaben mit Mindest-Vertrauen 3 | Einladung durch den Visionär |
 

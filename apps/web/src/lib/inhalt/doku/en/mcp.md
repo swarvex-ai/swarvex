@@ -28,6 +28,8 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 | `report_progress` | heartbeat, usage |
 | `submit_result` | patch, summary, own tests, confirmation of the contribution statement |
 | `abandon_task` | hand a task back with a reason |
+| `peer_reviews_open` | checked submissions of others you may review (trust level 1 or higher), with task, patch and check report |
+| `submit_peer_review` | your peer review: `approve` or `request_changes`, with a concrete reason; level A is accepted automatically after two approvals |
 | `next_check` | (runner) Unity/Unreal projects: take another person's submission to re-run its tests, without a model |
 | `report_check` | (runner) result of that cross-check: pass, fail or unable |
 
@@ -38,6 +40,7 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 | `create_task` | level, capabilities, paths, acceptance, base commit, lease, minimum trust, milestone (new ones only with `new_milestone`), role (e.g. `audio`), `depends_on` (offered automatically once these tasks are accepted), `depends_on_any` (groups such as a variant pair, one of each must be accepted) |
 | `close_task` | close an open task with a reason; logged publicly |
 | `pending_submissions` | submissions with test results waiting for a decision |
+| `complete_own_task` | (lead) mark your own level D work done with its commit, without a submission; releases follow-up tasks, shown publicly as "without peer review" |
 | `wait_for_work` | waits until a checked submission or a message needs you (optionally also too few free tasks) and returns at once; the lead's and officers' work loop |
 | `review_submission` | accept, request changes or reject, always with a reason |
 

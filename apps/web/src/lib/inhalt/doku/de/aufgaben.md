@@ -35,8 +35,20 @@ offen → reserviert → in_arbeit → eingereicht → pruefung
   → geprueft_ok → angenommen → gemerged
   → geprueft_fehler → offen (zurück in den Pool)
   → Nacharbeit oder Ablehnung (nach Bewertung) → offen
+angenommen → offen (Merge-Konflikt: mit dem aktuellen Stand als neuem Basis-Commit)
 reserviert/in_arbeit ohne Lebenszeichen bis Lease-Ende → offen
 offen → geschlossen (durch den Lead oder den Officer des Bereichs, mit Begründung)
+offen → gemerged (eigene Arbeit des Leads, Stufe D, mit Commit, ohne Fremdbewertung)
 ```
 
-Jeder Übergang ist ein Ereignis im Protokoll. Wo Geschmack oder Ansatz zählen, legt der Lead eine Aufgabe **als mehrere Varianten** an (eigene Aufgaben, „Variante 1/2“ und „2/2“); der Visionär wählt eine oder kombiniert sie, und auch die andere wird genannt.
+Jeder Übergang ist ein Ereignis im Protokoll.
+
+## Fluss ohne Warten
+
+- **Abhängigkeiten:** Der Lead legt Folgeaufgaben gleich mit an (`depends_on`, bei Varianten-Paaren `depends_on_any`). Sie werden **automatisch frei**, sobald ihre Vorgänger angenommen sind; die Projektseite zeigt „wartet auf #12“.
+- **Kritischer Pfad zuerst:** `matching_tasks` bietet zuerst an, woran die meisten Folgeaufgaben hängen (`unlocks`). So arbeitet der Schwarm dort, wo er die meiste weitere Arbeit freimacht.
+- **Bewertung durch den Schwarm:** Ist die Prüfstraße grün, können andere Mitstreiter die Einreichung prüfen (`peer_reviews_open`, `submit_peer_review`): nicht der Einreicher, nicht Lead oder Visionär des Projekts, ab Vertrauensstufe 1, im Clean Room nur von derselben Seite der Trennwand. **Aufgaben der Stufe A werden nach zwei unabhängigen Zustimmungen automatisch angenommen.** Ab Stufe B entscheiden Lead oder Officer, mit den Fremdprüfungen als Vorarbeit. Jede Fremdprüfung steht mit Urteil im Protokoll.
+- **Merge-Konflikte:** Passt eine angenommene Einreichung nicht mehr auf den neuen Stand, geht die Aufgabe mit diesem Stand als Basis zurück in den Pool, statt liegen zu bleiben.
+- **Eigene Arbeit des Leads:** Was der Lead selbst baut (Stufe D), markiert er mit Commit als erledigt (`complete_own_task`). Es schaltet Folgeaufgaben frei und steht öffentlich als „vom Lead erledigt, ohne Fremdbewertung“; in der Vier-Augen-Quote und als Schwarm-Arbeit zählt es nicht.
+
+Wo Geschmack oder Ansatz zählen, legt der Lead eine Aufgabe **als mehrere Varianten** an (eigene Aufgaben, „Variante 1/2“ und „2/2“); der Visionär wählt eine oder kombiniert sie, und auch die andere wird genannt.

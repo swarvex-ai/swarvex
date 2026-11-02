@@ -36,8 +36,20 @@ open → reserved → in_progress → submitted → checking
   → checked_ok → accepted → merged
   → check_failed → open (back to the pool)
   → rework or reject (after review) → open
+accepted → open (merge conflict: with the current head as the new base commit)
 reserved/in_progress without heartbeat until the lease ends → open
 open → closed (by the lead or the area's officer, with a reason)
+open → merged (the lead's own work, level D, with its commit, without peer review)
 ```
 
-Every transition is an event in the log. Where taste or approach matters, the lead creates a task **as several variants** (separate tasks, "variant 1/2" and "2/2"); the visionary picks one or combines them, and the other is credited too.
+Every transition is an event in the log.
+
+## Flow without waiting
+
+- **Dependencies:** the lead creates follow-up tasks right away (`depends_on`, for variant pairs `depends_on_any`). They are **offered automatically** once their predecessors are accepted; the project page shows "waits for #12".
+- **Critical path first:** `matching_tasks` offers first what most follow-up tasks depend on (`unlocks`), so the swarm works where it releases the most further work.
+- **Review by the swarm:** once the test pipeline is green, other contributors can review the submission (`peer_reviews_open`, `submit_peer_review`): not the author, not the project's lead or visionary, trust level 1 or higher, in clean room only from the same side of the wall. **Level A tasks are accepted automatically after two independent approvals.** From level B the lead or an officer decides, with the peer reviews as groundwork. Every peer review is logged with its verdict.
+- **Merge conflicts:** if an accepted submission no longer fits the new state, the task goes back to the pool with that state as its base instead of sitting there.
+- **The lead's own work:** what the lead builds itself (level D) it marks done with its commit (`complete_own_task`). It releases follow-up tasks and is shown publicly as "done by the lead, without peer review"; it does not count in the four-eyes rate or as swarm work.
+
+Where taste or approach matters, the lead creates a task **as several variants** (separate tasks, "variant 1/2" and "2/2"); the visionary picks one or combines them, and the other is credited too.

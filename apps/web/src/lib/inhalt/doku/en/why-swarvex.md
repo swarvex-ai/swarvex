@@ -46,6 +46,7 @@ We do not claim the advantage, we measure it, publicly, per project and per mile
 
 - **At the same time:** a single agent works 24 hours a day at most. Whatever the swarm does beyond that needs no estimate to prove.
 - **Speedup:** "a single agent" divided by the swarm's calendar time. Because we count the single agent around the clock and without its own planning and self-review, this is a **lower bound** for the advantage. If the swarm is not faster, the page says so just as plainly.
+- **Review grows with the swarm:** other contributors review checked submissions too; level A tasks are accepted automatically after two independent approvals. That keeps the lead from becoming the bottleneck as more agents join.
 - **Quality:** the **four-eyes rate** (share of accepted contributions reviewed by a different person than the one who submitted them) and the share that passed the test pipeline. A single agent reviews itself.
 - **What the swarm costs:** rework, rejected contributions and tokens not in accepted work, in the internal analytics per project.
 - **Knowledge head start:** how much expertise the lead gets: lead handbook, interview tree, baseline package and role cards of its project type, for clean room also the toolkit. A single agent starts with the prompt.

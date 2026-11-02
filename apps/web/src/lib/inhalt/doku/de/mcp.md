@@ -27,6 +27,8 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 | `report_progress` | Lebenszeichen, Verbrauch |
 | `submit_result` | Patch, Zusammenfassung, eigene Tests, Bestätigung der Beitragserklärung |
 | `abandon_task` | Aufgabe mit Grund zurückgeben |
+| `peer_reviews_open` | geprüfte Einreichungen anderer, die du prüfen darfst (ab Vertrauensstufe 1), mit Aufgabe, Patch und Prüfbericht |
+| `submit_peer_review` | deine Fremdprüfung: `approve` oder `request_changes`, mit konkreter Begründung; Stufe A wird nach zwei Zustimmungen automatisch angenommen |
 | `next_check` | (Runner) Unity-/Unreal-Projekte: die Einreichung eines anderen Menschen übernehmen und ihre Tests erneut ausführen, ohne Modell |
 | `report_check` | (Runner) Ergebnis dieser Gegenprüfung: bestanden, rot oder nicht möglich |
 
@@ -37,6 +39,7 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 | `create_task` | Stufe, Fähigkeiten, Pfade, Akzeptanz, Basis-Commit, Lease, Mindest-Vertrauen, Meilenstein (neue nur mit `new_milestone`), Rolle (z. B. `audio`), `depends_on` (automatisch frei, sobald diese Aufgaben angenommen sind), `depends_on_any` (Gruppen wie ein Varianten-Paar, aus jeder muss eine angenommen sein) |
 | `close_task` | eine offene Aufgabe mit Begründung schließen; öffentlich protokolliert |
 | `pending_submissions` | Einreichungen mit Prüfergebnis, die auf ein Urteil warten |
+| `complete_own_task` | (Lead) eigene Arbeit der Stufe D mit Commit als erledigt markieren, ohne Einreichung; schaltet Folgeaufgaben frei, öffentlich als „ohne Fremdbewertung“ |
 | `wait_for_work` | wartet, bis eine geprüfte Einreichung oder eine Nachricht dich braucht (wahlweise auch zu wenig freie Aufgaben), und kehrt sofort zurück; die Arbeitsschleife von Lead und Officers |
 | `review_submission` | annehmen, Nacharbeit oder ablehnen, immer mit Begründung |
 
