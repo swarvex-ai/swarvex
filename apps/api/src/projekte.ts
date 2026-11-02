@@ -6,18 +6,28 @@ import { Abgelehnt } from "./aufgaben.ts";
 import { appBereit, repoPruefen } from "./github.ts";
 
 export const OSI_LIZENZEN = new Set(["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0", "LGPL-2.1-or-later", "LGPL-3.0-or-later",
-  "GPL-2.0-or-later", "GPL-3.0-only", "GPL-3.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later", "EUPL-1.2", "0BSD", "Zlib", "Unlicense"]);
+  "GPL-2.0-or-later", "GPL-3.0-only", "GPL-3.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later", "EUPL-1.2", "0BSD", "Zlib", "Unlicense",
+  // häufig bei älteren Projekten, die weitergeführt werden (Verfahren continuation erbt die Lizenz)
+  "GPL-2.0-only", "LGPL-2.1-only", "LGPL-3.0-only", "MPL-1.1", "EPL-2.0", "Artistic-2.0", "BSL-1.0", "CDDL-1.0", "Python-2.0", "PostgreSQL", "MIT-0"]);
 export const FREIE_ASSET_LIZENZEN = new Set(["CC BY 4.0", "CC BY-SA 4.0", "CC0 1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "CC0-1.0", "OFL-1.1"]);
-export const PROJEKTARTEN: Record<string, string> = { game: "spiel", app: "app", website: "website", service: "dienst", tool: "tool", library: "bibliothek", plugin: "plugin", other: "sonstiges" };
+export const PROJEKTARTEN: Record<string, string> = { game: "spiel", app: "app", website: "website", service: "dienst", tool: "tool", library: "bibliothek", plugin: "plugin", research: "forschung", other: "sonstiges" };
 export const PROJEKTE_JE_MENSCH = 3;
 /** Art des Originals bei Clean Room: wählt den Werkzeug-Pfad (lead/roles/cleanroom/toolkit.md). */
 export const VORBILD_ARTEN = ["windows", "linux_macos", "android", "web", "game", "firmware", "format_protocol"];
 const VORBILD_FELDER = ["name", "version", "acquisition", "target", "depth", "inspect", "legal_basis", "goal"] as const;
+/** Art eines Forschungsprojekts (lead/LEAD.md 9): wählt die Rollen und Prüfungen, die zuerst zählen. */
+export const FORSCHUNG_ARTEN = ["formal_proof", "reproduction", "scientific_software", "verification"];
+const FORSCHUNG_FELDER = ["kind", "source", "success"] as const;
+/** Zustand des Originals beim Weiterführen: archiviert, ohne Antwort, Maintainer stimmen zu, Maintainer übergeben. */
+export const UPSTREAM_ZUSTAENDE = ["archived", "no_answer", "maintainers_agree", "handover"];
+const UPSTREAM_FELDER = ["repo", "status", "contact"] as const;
 
 export type NeuesProjekt = {
   slug: string; name: string; vision_md: string; vision_short: string; engine: string; license_code: string; license_assets: string;
   repo_url?: string | null; lead_model: string; goal: string; type?: string; procedure?: string;
   original?: { name?: string; version?: string; acquisition?: string; target?: string; depth?: string; inspect?: string; legal_basis?: string; goal?: string } | null;
+  research?: { kind?: string; source?: string; success?: string } | null;
+  upstream?: { repo?: string; status?: string; contact?: string } | null;
 };
 
 /** Prüft ein neues Projekt; liefert die Fehler (leer = in Ordnung). */
@@ -29,13 +39,14 @@ export function projektPruefen(p: NeuesProjekt): string[] {
   if ((p.vision_md ?? "").length > 20000) f.push("vision_md: at most 20,000 characters");
   if (!p.engine?.trim() || p.engine.length > 60) f.push("engine: 1–60 characters, e.g. godot-4.7, sveltekit, rust");
   if (!OSI_LIZENZEN.has(p.license_code)) f.push(`license_code ${p.license_code} is not an OSI license (e.g. MIT, Apache-2.0, GPL-3.0-or-later, AGPL-3.0-or-later, MPL-2.0)`);
-  if (!FREIE_ASSET_LIZENZEN.has(p.license_assets)) f.push(`license_assets ${p.license_assets} is not a free license (e.g. CC BY 4.0, CC BY-SA 4.0, CC0 1.0)`);
+  // Weitergeführte Projekte erben die Lizenz des Originals, oft auch für ihre Assets (z. B. GPL für alte Spiele)
+  if (!FREIE_ASSET_LIZENZEN.has(p.license_assets) && !(p.procedure === "continuation" && OSI_LIZENZEN.has(p.license_assets))) f.push(`license_assets ${p.license_assets} is not a free license (e.g. CC BY 4.0, CC BY-SA 4.0, CC0 1.0)`);
   if (p.type && !PROJEKTARTEN[p.type]) f.push(`type: ${Object.keys(PROJEKTARTEN).join(" | ")}`);
   if (p.repo_url && !/^https:\/\/(github\.com|codeberg\.org|gitlab\.com)\/[\w.-]+\/[\w.-]+\/?$/.test(p.repo_url)) f.push("repo_url: a public repository, e.g. https://github.com/owner/name");
   if (!p.lead_model?.trim() || p.lead_model.length > 120) f.push("lead_model: which agent and model leads the project");
   if (!p.goal?.trim() || p.goal.length > 200) f.push("goal: the first goal in one sentence");
   const verfahren = p.procedure ?? "standard";
-  if (!["standard", "clean_room"].includes(verfahren)) f.push("procedure: standard or clean_room");
+  if (!["standard", "clean_room", "continuation"].includes(verfahren)) f.push("procedure: standard, clean_room or continuation");
   if (verfahren === "clean_room") {
     const o = p.original ?? {};
     if (!(o.name?.trim() && o.acquisition?.trim())) f.push("a clean-room project needs original.name and original.acquisition (how you lawfully obtained it)");
@@ -45,7 +56,32 @@ export function projektPruefen(p: NeuesProjekt): string[] {
       f.push("looking inside (original.depth inspect) needs original.inspect (which parts) and original.legal_basis");
     if (VORBILD_FELDER.some((k) => String(o[k] ?? "").length > 300)) f.push("original: at most 300 characters per field");
   }
+  if (verfahren === "continuation") {
+    const u = p.upstream ?? {};
+    if (!/^https:\/\/[\w.-]+\.[a-z]{2,}\/[\w./~-]+$/.test(u.repo ?? "")) f.push("upstream.repo: the address of the original repository (https://…)");
+    if (!UPSTREAM_ZUSTAENDE.includes(u.status ?? "")) f.push(`upstream.status: ${UPSTREAM_ZUSTAENDE.join(" | ")}`);
+    if (u.status === "no_answer" && !u.contact?.trim()) f.push("upstream.contact: where you asked the maintainers (e.g. the link to your issue) when they did not answer");
+    if (UPSTREAM_FELDER.some((k) => String(u[k] ?? "").length > 300)) f.push("upstream: at most 300 characters per field");
+    if (p.repo_url && u.repo && p.repo_url.replace(/\/$/, "") === u.repo.replace(/\/$/, "")) f.push("repo_url is the fork, not the original");
+  }
+  if (p.type === "research") {
+    const r = p.research ?? {};
+    if (verfahren !== "standard") f.push("a research project uses the standard procedure");
+    if (!FORSCHUNG_ARTEN.includes(r.kind ?? "")) f.push(`research.kind: ${FORSCHUNG_ARTEN.join(" | ")}`);
+    if (!(r.source?.trim() && r.success?.trim())) f.push("a research project needs research.source (paper, theorem or repository, exactly) and research.success (what counts as done, and who or what decides)");
+    if (FORSCHUNG_FELDER.some((k) => String(r[k] ?? "").length > 500)) f.push("research: at most 500 characters per field");
+  }
   return f;
+}
+
+/** Angaben zum Original beim Weiterführen: nur bekannte Felder, getrimmt. */
+function upstreamNormal(u: NeuesProjekt["upstream"]) {
+  return Object.fromEntries(UPSTREAM_FELDER.map((k) => [k, String(u?.[k] ?? "").trim()]).filter(([, v]) => v));
+}
+
+/** Eckdaten eines Forschungsprojekts: nur bekannte Felder, getrimmt. */
+function forschungNormal(r: NeuesProjekt["research"]) {
+  return Object.fromEntries(FORSCHUNG_FELDER.map((k) => [k, String(r?.[k] ?? "").trim()]).filter(([, v]) => v));
 }
 
 /** Nur bekannte Felder, getrimmt; ohne Angabe gilt die Tiefe observe (nur von außen). */
@@ -68,16 +104,18 @@ export async function projektAnlegen(db: Db, p: NeuesProjekt, von: number | "bet
     if ((await tx.query("select 1 from projekte where slug = $1", [p.slug])).rowCount) throw new Abgelehnt(`the address ${p.slug} is taken`);
     const verfahren = p.procedure ?? "standard";
     const id = Number((await tx.query(
-      `insert into projekte(slug, name, vision_md, vision_kurz, engine, lizenz_code, lizenz_assets, repo_url, lead_modell, ziel, verfahren, vorbild, projektart, entwurf, angelegt_von)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id`,
+      `insert into projekte(slug, name, vision_md, vision_kurz, engine, lizenz_code, lizenz_assets, repo_url, lead_modell, ziel, verfahren, vorbild, projektart, forschung, upstream, entwurf, angelegt_von)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id`,
       [p.slug, p.name.trim(), p.vision_md?.trim() || p.vision_short.trim(), p.vision_short.trim(), p.engine.trim(), p.license_code, p.license_assets, p.repo_url ?? null,
        p.lead_model.trim(), p.goal.trim(), verfahren, verfahren === "clean_room" ? vorbildNormal(p.original) : null, p.type ? PROJEKTARTEN[p.type] : null,
-       von !== "betrieb", von === "betrieb" ? null : von])).rows[0].id);
+       p.type === "research" ? forschungNormal(p.research) : null, verfahren === "continuation" ? upstreamNormal(p.upstream) : null, von !== "betrieb", von === "betrieb" ? null : von])).rows[0].id);
     if (von !== "betrieb") {
       await tx.query("insert into projekt_rollen(projekt_id, mensch_id, rolle) values ($1,$2,'visionaer'), ($1,$2,'lead')", [id, von]);
     }
     await protokollieren(tx, { projekt_id: id, akteur: von === "betrieb" ? "system" : `mensch:${von}`, art: "vision_veroeffentlicht", bezug: `projekt:${id}`,
-      daten: { slug: p.slug, name: p.name.trim(), lead_modell: p.lead_model.trim(), verfahren, ...(p.type ? { projektart: PROJEKTARTEN[p.type] } : {}), ...(verfahren === "clean_room" ? { vorbild: vorbildNormal(p.original) } : {}) } });
+      daten: { slug: p.slug, name: p.name.trim(), lead_modell: p.lead_model.trim(), verfahren, ...(p.type ? { projektart: PROJEKTARTEN[p.type] } : {}), ...(verfahren === "clean_room" ? { vorbild: vorbildNormal(p.original) } : {}),
+        ...(p.type === "research" ? { forschung: forschungNormal(p.research) } : {}),
+        ...(verfahren === "continuation" ? { upstream: upstreamNormal(p.upstream) } : {}) } });
     return { projekt_id: id, slug: p.slug };
   });
 }

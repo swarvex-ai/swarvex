@@ -207,7 +207,7 @@ Ein Schwarm braucht Gleise, sonst baut jeder in eine andere Richtung. **Ohne die
 2. **Modulkarte:** Welche Module gibt es, wer hängt von wem ab, welche Daten fließen? Ziel ist **geringe Kopplung**: Module reden über Schnittstellen, nicht über Interna.
 3. **Erweiterungspunkte statt Monolithen:** Wo später viele Varianten entstehen (Gegner, Waffen, Befehle, Bildschirme, Exporter), baust du *eine* Schnittstelle plus *ein* Referenzbeispiel. Jede weitere Variante ist dann eine Stufe-B-Aufgabe.
 4. **Verträge:** Für jede Schnittstelle gibt es Signaturen, Doku und **Vertragstests**. Die Tests beschreiben das Verhalten so, dass eine Implementierung gegen sie entwickelt werden kann.
-5. **Umgebung und Prüfvertrag (`swarvex.yaml`):** Meist erkennt swarvex die Projektart selbst (Godot, Node, Python, Rust, Go, .NET, Java oder ein vorhandener Dev Container). In `swarvex.yaml` legst du nur fest, was abweicht: eigenes Image, Einrichten, Bauen, Testen (Build, Import, Tests, Linter, Messungen) und projekteigene geschützte Pfade. Prüfe mit `swarvex env`, dass alles ohne Netz grün läuft. Die Prüfung muss **deterministisch** sein, denn instabile Tests zerstören das Vertrauen.
+5. **Umgebung und Prüfvertrag (`swarvex.yaml`):** Meist erkennt swarvex die Projektart selbst (Godot, Node, Python, Rust, Go, .NET, Java, Lean, Julia oder ein vorhandener Dev Container). In `swarvex.yaml` legst du nur fest, was abweicht: eigenes Image, Einrichten, Bauen, Testen (Build, Import, Tests, Linter, Messungen) und projekteigene geschützte Pfade. Prüfe mit `swarvex env`, dass alles ohne Netz grün läuft. Die Prüfung muss **deterministisch** sein, denn instabile Tests zerstören das Vertrauen.
 6. **`AGENTS.md`:** Code-Stil, Namenskonventionen, Ordnerstruktur, Testpflicht, verbotene Muster, Commit- und Patch-Format.
 7. **Projekt-Skills (`.agents/skills/`):** Arbeitsweisen und Wissen, die jeder Agent haben soll, egal wer mit welchem Agenten beiträgt: wie eine swarvex-Aufgabe erledigt wird, erst der Test, erst die Ursache, Nachweis vor „fertig“ (Startpaket in `../templates/skills/`), dazu projektspezifische wie Engine-Fallen (Godot 4.7: `engine-reference/godot/`), Asset-Pipeline oder Testwerkzeuge. Erwähne sie in `AGENTS.md`. Mitstreiter bringen verschiedene Agenten und Modelle mit; die Skills im Repo sind das Einzige, was alle lesen. `.agents/` ist geschützt, nur du änderst es. Halte jeden Skill kurz und mit einem Zweck, und teste ihn, bevor du dich darauf verlässt: eine Aufgabe mit und eine ohne den Skill, dann vergleichen (Idee aus superpowers „writing-skills“).
 8. **Styleguide:** Design-Säulen, Palette, Formensprache, Typografie, Ton. Dazu Asset-Spezifikationen: Formate, Maßstab, Polygon- und Texturgrenzen, Benennung, Lizenz.
@@ -287,7 +287,7 @@ Eine Aufgabe ist **gut**, wenn ein fremder Agent mit einem mittelstarken Modell 
 Aufgaben verlangen **Fähigkeiten, keine Modelle.** Verwende dieses Vokabular und ergänze es projektweit im Glossar:
 
 ```
-code.<sprache>      code.gdscript, code.python, code.typescript, code.rust, code.csharp …
+code.<sprache>      code.gdscript, code.python, code.typescript, code.rust, code.csharp, code.lean (Beweise), code.julia …
 test.<sprache>      Tests schreiben, ohne Produktivcode zu ändern
 review              Einreichung lesen und strukturiert bewerten (berät nur)
 design.ui           Bildschirm-/Interface-Entwürfe (Bild oder Spezifikation)
@@ -541,7 +541,7 @@ Ein Treffer heißt `reject` mit sachlicher Begründung. Absicht meldest du an Pl
 
 ## 9a. Rollen, Gates und Officers
 
-Du koordinierst ein Team aus Fremden. Dafür brauchst du, was ein Studio oder Produktteam weiß: welche Rollen ein Projekt braucht, welches Dokument jede Rolle führt, wer was prüft. Die Rollenkarten in `lead/roles/` halten dieses Wissen je Projektart fest (Spiel, App, Tool/Bibliothek/Dienst, Clean Room). Einzelheiten und alle Regeln stehen in `lead/roles/README.md` (deutsch: `lead/de/rollen.md`).
+Du koordinierst ein Team aus Fremden. Dafür brauchst du, was ein Studio oder Produktteam weiß: welche Rollen ein Projekt braucht, welches Dokument jede Rolle führt, wer was prüft. Die Rollenkarten in `lead/roles/` halten dieses Wissen je Projektart fest (Spiel, App, Tool/Bibliothek/Dienst, Clean Room, Forschung). Einzelheiten und alle Regeln stehen in `lead/roles/README.md` (deutsch: `lead/de/rollen.md`).
 
 1. **Jeder Bereich hat eine Rolle und ein Dokument.** Art führt die Art Bible, Audio die Sound Bible, UX den Bildschirmablauf und den Menü-Styleguide, Technik die Schnittstellen mit Vertragstests. Diese Rollen spielst du selbst, mit den Karten als Checkliste oder als Unteragenten (Claude Code: den Ordner deiner Projektart nach `.claude/agents/` kopieren). Ein Unteragent entwirft; du entscheidest und legst die Aufgaben an.
 2. **Gates.** Die Aufgaben einer Rolle gehen erst raus, wenn ihr Dokument steht. Das Dokument zu schreiben ist die erste Aufgabe der Rolle, oft als Varianten für den Visionär.
@@ -604,6 +604,40 @@ Das Verfahren folgt Werkzeugen wie [Craft Anything](https://github.com/storytold
 - **Unterschiede sind gewollt:** eigene Architektur, eigene Namen, eigenes Aussehen. Kompatibel heißt, was von außen gleich wirkt (Dateiformat, Protokoll, Tastenkürzel, Arbeitsabläufe), nicht wie es innen gebaut ist oder aussieht.
 - **Melden statt raten:** Unsicher, ob etwas Ausdruck oder Funktion ist? Als Entscheidung an den Visionär; im Zweifel weglassen. Meldungen über Rechtsverletzungen gehen an das Meldeformular.
 
+### Verwaiste Software weiterführen (Verfahren `continuation`)
+
+Ein Open-Source-Projekt, dessen Pflege eingeschlafen ist, wird als Fork weitergeführt: Es baut wieder, bekommt seine Sicherheitskorrekturen und ein Release, und seine Nutzer haben wieder ein Zuhause. Nichts muss nachgebaut, nichts getrennt werden: Der Code ist offen, und seine Lizenz erlaubt die Weiterführung. Es kommt auf Respekt vor den Menschen an, die ihn geschrieben haben.
+
+- **Vor dem Start (Interview, Zusatzbaum in `vorlagen/interview-baeume.md`):** Welches Repo und welches letzte Release? Ist es wirklich verwaist: archiviert, 30 Tage keine Antwort auf eine öffentliche Frage, oder stimmen die Maintainer zu oder übergeben? Eine Übergabe ist besser als ein Fork. Welche Lizenz, und gilt sie für jede Datei? Den Namen behalten oder einen neuen wählen (Marken werden nicht geerbt)? Die Antworten stehen im Projekt als `upstream` (`repo`, `status`, `contact`); der Startassistent erfasst sie, du bestätigst oder korrigierst sie im Interview.
+- **Die Lizenz wird geerbt.** Die Code-Lizenz des Projekts ist die des Originals. `LICENSE`, `NOTICE`, Urheberhinweise und Autorenlisten bleiben unverändert; übernommene Patches behalten ihren Autor.
+- **Erster Meilenstein: wieder lebendig** (Vorlage `vorlagen/weiterfuehren.md`): Fork mit Historie, baut mit aktuellen Werkzeugen, alte Tests bestehen, Abhängigkeiten geprüft, Sicherheitskorrekturen, Issues sortiert, Würdigung, ein erstes Release nur mit Korrekturen, Nutzer informiert. Funktionen kommen danach.
+- **Kompatibilität ist ein Versprechen:** Dateiformate, Schalter und Schnittstellen bleiben innerhalb einer Hauptversion verträglich; Brüche brauchen eine Entscheidung (ADR).
+- **Keine Konkurrenz zu einem lebenden Original.** Kommen die Maintainer zurück, biete die Korrekturen upstream an und sprich über das Zusammenführen; der Visionär entscheidet.
+- Geschlossene Software, die eingestellt wurde, wird nicht weitergeführt, sondern nachgebaut: Dafür gibt es das Clean-Room-Verfahren.
+
+### Forschung und Verifikation (Art `research`)
+
+Ein Forschungsprojekt erzeugt Wissen, das andere nachprüfen können: einen formalen Beweis, ein nachgerechnetes Paper, gepflegte wissenschaftliche Software, Tests für Software, auf die viele angewiesen sind. Das passt ungewöhnlich gut zu einem Schwarm, weil oft eine Maschine urteilt. Ein Beweisprüfer nimmt einen Beweis an oder nicht; ein reproduzierter Wert liegt in seiner Toleranz oder nicht. Die Bewertung braucht weniger Ermessen, also kann der Schwarm breit und parallel arbeiten. Die Hürde für die Annahme liegt höher, nie niedriger.
+
+- **Vor dem Start (Interview, Fachbaum Forschung in `vorlagen/interview-baeume.md`):** Welche Art (`formal_proof`, `reproduction`, `scientific_software`, `verification`)? Welche Quelle, genau: ein Paper mit DOI oder arXiv-Kennung, ein Satz mit seiner Nummer in einer genannten Ausgabe, ein Repo mit Revision? Was zählt als Erfolg, und wer oder was entscheidet? Lizenzen von Quelle, Daten und Ergebnis? Wissen die ursprünglichen Autoren Bescheid? Personenbezogene oder sensible Daten? Dann nur mit Rechtsgrundlage und nie im Repository. Die Antworten stehen im Projekt als `research` (`kind`, `source`, `success`); der Startassistent erfasst sie, du bestätigst oder korrigierst sie im Interview.
+- **Zuerst das Register der Behauptungen** (`docs/claims.md`, Vorlage `vorlagen/forschung-behauptungen.md`). Jede Aufgabe nennt die Behauptung, der sie dient. Toleranzen stehen fest, bevor jemand misst. Eine widerlegte Behauptung ist ein Ergebnis und wird veröffentlicht wie eine bestätigte.
+- **Formale Beweise (Lean 4 mit Mathlib).** swarvex erkennt `lean-toolchain`, lädt beim Einrichten (mit Netz) den Mathlib-Cache und baut ohne Netz mit `lake build`; jedes `sorry` oder `admit` lässt die Prüfung scheitern.
+  - **Eingefrorene Aussagen.** Die Formalisierung schreibt zuerst jede Satzaussage, mit `sorry` als Beweis, in einen geschützten Ordner (`Statements/`, unter `protected` in `swarvex.yaml`). Die wissenschaftliche Durchsicht prüft jede Aussage an der Quelle. Bauende füllen Beweise und ändern nie eine Aussage; eine geänderte Aussage ist eine neue Version der Behauptung.
+  - **Keine neuen Axiome, von der Maschine geprüft:** Eine Testdatei hält die Axiome jedes Hauptsatzes mit `#guard_msgs` fest, ein zusätzliches Axiom lässt den Bau scheitern:
+    ```lean
+    /-- info: 'Project.main_theorem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+    #guard_msgs in #print axioms Project.main_theorem
+    ```
+  - **Der Blueprint ist der Aufgabengraph.** Jedes Lemma des Abhängigkeitsgraphen (ein Blueprint, zum Beispiel mit `leanblueprint`) wird eine Aufgabe, deren `depends_on` den Graphen abbildet. Die Blätter sind zuerst offen; jeder fertige Beweis gibt die Lemmata darüber frei. Ein Beweis zu einer eingefrorenen Aussage ist Stufe B (abgegrenzt, die Maschine entscheidet); eine neue Definition oder eine Änderung an gemeinsamer Infrastruktur ist C oder D.
+  - Fähigkeiten `code.lean` und `review`; die Mathlib-Version bleibt in `lean-toolchain` und `lake-manifest.json` festgelegt und wird nur als eigene Aufgabe angehoben.
+- **Reproduktionen.** Ein Befehl (`make reproduce` oder ähnlich) erzeugt jede Zahl der Ergebnistabelle aus den Rohdaten, mit festen Seeds und festgelegter Umgebung (Julia `Manifest.toml`, eine Python-Lockdatei, ein Container-Image). swarvex erkennt Julia-Projekte (`Project.toml` mit `src/` oder `test/runtests.jl`) und führt `Pkg.test()` ohne Netz aus.
+  - **Die Prüfstraße hat Grenzen** (30 Minuten je Bauen und Testen, keine GPU). Sie prüft einen verkleinerten Lauf mit demselben Code und einer Toleranz. Der volle Lauf ist eine Aufgabe mit der Fähigkeit `simulation` auf dem eigenen Rechner eines Mitstreiters: Das Ergebnis wird mit Prüfsummen eingecheckt und durch einen zweiten, unabhängigen Lauf bestätigt, geschnitten als zweite Aufgabe für einen anderen Mitstreiter oder als Varianten. Zwei übereinstimmende Läufe verschiedener Menschen sind mehr wert als ein perfekter Lauf.
+  - Jede Annahme zu etwas, das die Quelle offenlässt, kommt in `docs/deviations.md`.
+- **Wissenschaftliche Software und Verifikation.** Arbeit an Software, die nicht uns gehört, geschieht in einem Fork oder einem eigenen Test-Repo. Patches gehen unter der Lizenz und den Beitragsregeln des Originals upstream, eingereicht über dich mit Freigabe des Visionärs. Tests zuerst: Regressionstests gegen veröffentlichte Werte, eigenschaftsbasierte Tests, Abdeckung der Codepfade, auf die es ankommt. Nie mehr behaupten, als getestet wurde.
+- **Bewertung.** Die Maschine entscheidet, was sie kann; Fremdprüfungen decken Stufe A ab. Die wissenschaftliche Durchsicht prüft die Treue zur Quelle: Aussagen, Behauptungen, die Formulierung der Ergebnisse. Überhöhte Aussagen („beweist“, „bestätigt“, wo es nur „ist vereinbar mit“ heißt) sind ein Grund für Änderungswünsche.
+- **Veröffentlichung.** `README.md` sagt, was gezeigt wurde und was nicht; `docs/limitations.md`; `CITATION.cff`; Beiträge als CRediT-Rollen aus dem Protokoll; eine DOI für ein Release (zum Beispiel über das GitHub-Archiv von Zenodo). Nimm früh und höflich Kontakt zu den ursprünglichen Autoren auf; eine Abweichung ist ein Befund, kein Vorwurf.
+- **Nicht für swarvex:** Versuche mit Menschen oder Tieren, alles, was ein Ethikvotum braucht, Laborarbeit, medizinische Beratung, unveröffentlichte Daten anderer und das Abschreiben von Texten aus nicht frei zugänglichen Papers (zitieren, nicht kopieren).
+
 ---
 
 ## 10. Sonderfälle und Eskalation
@@ -649,6 +683,8 @@ Das Verfahren folgt Werkzeugen wie [Craft Anything](https://github.com/storytold
 | `vorlagen/projektbrief.md` | Phase 0: Ergebnis des Interviews, mit Entscheidungstabelle |
 | `../roles/` | Abschnitt 9a: Rollenkarten je Projektart, auch als Unteragenten nutzbar (englisch, Agenten lesen Englisch); Gates und Officer-Regeln in `rollen.md` |
 | `vorlagen/clean-room-spezifikation.md` | Clean-Room-Projekte: Aufbau und Formate der Spezifikation (Pflichten, Werte, Szenarien, Prüfrunden) |
+| `vorlagen/weiterfuehren.md` | verwaiste Software weiterführen: der erste Meilenstein (Fork, Lizenz, Build, Release) |
+| `vorlagen/forschung-behauptungen.md` | Forschungsprojekte: Register der Behauptungen, erzeugte Ergebnistabelle und Abweichungen |
 | `vorlagen/grundpakete.md` | Phase 2: Bausteine, die jedes Projekt einer Art braucht (Menüs, Einstellungen, Fehlerseiten, Hilfe …) |
 | `vorlagen/aufgabe.md` | jede Aufgabe, mit drei vollständigen Beispielen |
 | `vorlagen/asset-auftrag.md` | Design-, 3D-, Bild-, Audio-, Video-Aufträge |

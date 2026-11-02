@@ -36,7 +36,7 @@
   const b = $derived(t.detail.bilanz);
   type Jetzt = { available: number; blocked: number; active: number; waiting_for_check: number; oldest_check_hours: number | null; awaiting_review: number; oldest_review_hours: number | null; bottleneck: string | null };
   const bilanz = $derived(p.swarm_balance as { time_flow: Record<string, number | null> | null; now: Jetzt; total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; units?: number; evidence?: string; units_per_day?: number; throughput_factor?: number } | null } | undefined);
-  const paket = $derived((p.project_type ? data.pakete?.[`${p.project_type}${p.procedure === "clean_room" ? "-cleanroom" : ""}`] : undefined) as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
+  const paket = $derived((p.project_type ? data.pakete?.[`${p.project_type}${p.procedure === "clean_room" ? "-cleanroom" : p.procedure === "continuation" ? "-continuation" : ""}`] : undefined) as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
   const methode = $derived(pfad(s, s === "de" ? "/docs/warum-swarvex#wie-wir-den-vorteil-messen" : "/docs/why-swarvex#how-we-measure-the-advantage"));
 </script>
 
@@ -93,6 +93,14 @@
         <dt>{d.engine}</dt><dd>{p.engine}</dd>
         <dt>{d.lizenz}</dt><dd>{p.license}</dd>
         <dt>{d.leadModell}</dt><dd>{p.lead_model}</dd>
+        {#if p.upstream}
+          <dt>{tx().starten.anlegen.weiter}</dt>
+          <dd><a href={p.upstream.repo} rel="nofollow noopener">{p.upstream.repo.replace(/^https:\/\//, "")}</a> · {tx().starten.upstream.zustaende[p.upstream.status]?.[0] ?? p.upstream.status}</dd>
+        {/if}
+        {#if p.research}
+          <dt>{tx().starten.anlegen.forschung}</dt>
+          <dd>{tx().starten.forschung.arten[p.research.kind]?.[0] ?? p.research.kind} · {p.research.source}<br /><span class="leise">{p.research.success}</span></dd>
+        {/if}
         {#if p.credit_donations?.pledged?.length || p.credit_donations?.accepted}
           <dt>{d.credits}</dt>
           <dd>{p.credit_donations.pledged.map((x: { service: string; credits: number }) => `${x.credits} ${tx().konto.spende.dienste[x.service] ?? x.service}`).join(" · ")}{#if p.credit_donations.accepted} · {d.creditsAngenommen(p.credit_donations.accepted)}{/if}

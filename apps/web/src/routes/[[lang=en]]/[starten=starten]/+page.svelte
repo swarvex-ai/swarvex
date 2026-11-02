@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Assistent „Projekt starten“: Lead wählen, Weg (neu oder Clean-Room-Nachbau) und Projektart, bei Clean Room das Original,
+  // Assistent „Projekt starten“: Lead wählen, Weg (neu, Clean-Room-Nachbau oder Weiterführen) und Projektart, bei Clean Room das Original,
+  // beim Weiterführen das Original-Repo mit Lizenz und Zustand, bei Forschung Art, Quelle und Erfolgskriterium,
   // Eckdaten, mit GitHub anmelden, anlegen (POST /api/account/projects, apps/api/src/projekte.ts),
   // dann die Befehle für genau dieses Lead-Paket (/lead/<paket>.md). Eingaben überleben die Anmeldung in sessionStorage.
   import { onMount } from "svelte";
@@ -10,7 +11,9 @@
 
   const s = $derived(sprache());
   const t = $derived(tx().starten);
-  const ARTEN = ["game", "app", "website", "service", "tool", "library", "plugin"];
+  const ARTEN = ["game", "app", "website", "service", "tool", "library", "plugin", "research"];
+  // Art eines Forschungsprojekts (apps/api/src/projekte.ts FORSCHUNG_ARTEN)
+  const FORSCHUNG = ["formal_proof", "reproduction", "scientific_software", "verification"];
   // Art des Originals: wählt den Werkzeug-Pfad im Lead-Paket (lead/roles/cleanroom/toolkit.md)
   const VORBILDER = ["windows", "linux_macos", "android", "web", "game", "firmware", "format_protocol"];
   const MODELL: Record<string, string> = { claude: "Claude Opus 5.5", codex: "", andere: "" };
@@ -18,34 +21,45 @@
     game: ["godot-4", "unity-6", "bevy", "phaser", "love2d"], app: ["sveltekit", "react", "flutter", "tauri", "react-native"],
     website: ["sveltekit", "astro", "hugo", "eleventy"], service: ["node", "go", "python-fastapi", "rust-axum", "dotnet"],
     tool: ["rust", "go", "python", "node"], library: ["rust", "typescript", "python", "go", "c"], plugin: ["godot-plugin", "vscode-extension", "blender-addon", "obsidian-plugin"],
+    research: ["lean4-mathlib", "julia", "python", "r", "rust"],
   };
   // Lizenz-Empfehlung je Art (der Visionär kann jede OSI- bzw. freie Lizenz wählen)
   const LIZENZ: Record<string, [string, string]> = {
     game: ["GPL-3.0-or-later", "CC BY-SA 4.0"], app: ["GPL-3.0-or-later", "CC BY-SA 4.0"], website: ["MIT", "CC BY 4.0"], service: ["AGPL-3.0-or-later", "CC BY-SA 4.0"],
     tool: ["GPL-3.0-or-later", "CC BY 4.0"], library: ["MIT", "CC BY 4.0"], plugin: ["GPL-3.0-or-later", "CC BY-SA 4.0"],
+    research: ["Apache-2.0", "CC BY 4.0"],
   };
   const CODE = ["MIT", "Apache-2.0", "MPL-2.0", "GPL-3.0-or-later", "AGPL-3.0-or-later", "LGPL-3.0-or-later", "EUPL-1.2", "BSD-3-Clause", "ISC", "0BSD", "Unlicense"];
+  // Beim Weiterführen erbt der Fork die Lizenz des Originals: alle OSI-Lizenzen, die die API annimmt (apps/api/src/projekte.ts)
+  const CODE_GEERBT = ["MIT", "MIT-0", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD", "Zlib", "Unlicense", "MPL-1.1", "MPL-2.0",
+    "GPL-2.0-only", "GPL-2.0-or-later", "GPL-3.0-only", "GPL-3.0-or-later", "LGPL-2.1-only", "LGPL-2.1-or-later", "LGPL-3.0-only", "LGPL-3.0-or-later",
+    "AGPL-3.0-only", "AGPL-3.0-or-later", "EUPL-1.2", "EPL-2.0", "Artistic-2.0", "BSL-1.0", "CDDL-1.0", "Python-2.0", "PostgreSQL"];
+  const ZUSTAENDE = ["archived", "no_answer", "maintainers_agree", "handover"];
   const ASSETS = ["CC BY-SA 4.0", "CC BY 4.0", "CC0 1.0", "OFL-1.1"];
   const SPEICHER = "swarvex-starten";
 
-  type Daten = { agent: string; modell: string; type: string; cleanroom: boolean; weg: "" | "neu" | "nachbau";
+  type Daten = { agent: string; modell: string; type: string; cleanroom: boolean; weg: "" | "neu" | "nachbau" | "weiter";
                  original: { name: string; version: string; acquisition: string; target: string; depth: "observe" | "inspect"; goal: string; legal_basis: string; inspect: string };
+                 research: { kind: string; source: string; success: string };
+                 upstream: { repo: string; license: string; status: string; contact: string };
                  name: string; slug: string; slugFrei: boolean; vision_short: string; vision_md: string; engine: string;
                  license_code: string; license_assets: string; goal: string; repo_url: string };
   let d = $state<Daten>({ agent: "claude", modell: MODELL.claude, type: "", cleanroom: false, weg: "",
     original: { name: "", version: "", acquisition: "", target: "", depth: "observe", goal: "", legal_basis: "", inspect: "" },
+    research: { kind: "", source: "", success: "" },
+    upstream: { repo: "", license: "", status: "", contact: "" },
     name: "", slug: "", slugFrei: false, vision_short: "", vision_md: "", engine: "open", license_code: "", license_assets: "", goal: "", repo_url: "" });
   let schritt = $state(0);
   let angemeldet = $state<boolean | null>(null);
   let arbeitet = $state(false);
   let fehler = $state("");
   // cleanroom: kurze Beschreibung des Originals für den Startauftrag, leer bei neuen Projekten
-  let ergebnis = $state<{ slug: string; name: string; paket: string; type: string; cleanroom: string; agent: string } | null>(null);
+  let ergebnis = $state<{ slug: string; name: string; paket: string; type: string; cleanroom: string; forschung?: string; weiter?: string; agent: string } | null>(null);
 
   onMount(async () => {
     try {
       const alt = JSON.parse(sessionStorage.getItem(SPEICHER) ?? "null");
-      if (alt?.d) { d = { ...d, ...alt.d, original: { ...d.original, ...alt.d.original } }; schritt = alt.schritt ?? 0; ergebnis = alt.ergebnis ?? null; }
+      if (alt?.d) { d = { ...d, ...alt.d, original: { ...d.original, ...alt.d.original }, research: { ...d.research, ...alt.d.research }, upstream: { ...d.upstream, ...alt.d.upstream } }; schritt = alt.schritt ?? 0; ergebnis = alt.ergebnis ?? null; }
     } catch { /* ohne Speicher beginnt der Assistent von vorn */ }
     try { const r = await fetch("/api/account", { cache: "no-store" }); r.body?.cancel(); angemeldet = r.ok; } catch { angemeldet = false; }
   });
@@ -59,26 +73,40 @@
     .normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
   function nameGeaendert() { if (!d.slugFrei) d.slug = ausName(d.name); }
   function agentWaehlen(a: string) { d.agent = a; if (!d.modell || Object.values(MODELL).includes(d.modell)) d.modell = MODELL[a]; }
-  function wegWaehlen(w: "neu" | "nachbau") { d.weg = w; d.cleanroom = w === "nachbau"; }
+  function wegWaehlen(w: "neu" | "nachbau" | "weiter") {
+    d.weg = w; d.cleanroom = w === "nachbau";
+    if (w !== "neu" && d.type === "research") d.type = "";
+    if (w === "weiter" && d.upstream.license) d.license_code = d.upstream.license;
+  }
+  // Die Lizenz des Originals ist die Code-Lizenz des Forks; für Assets steht sie zusätzlich zur Wahl
+  function lizenzGeerbt(l: string) { d.upstream.license = l; d.license_code = l; }
   function artWaehlen(a: string) {
     if (!d.license_code || d.license_code === LIZENZ[d.type]?.[0]) d.license_code = LIZENZ[a][0];
     if (!d.license_assets || d.license_assets === LIZENZ[d.type]?.[1]) d.license_assets = LIZENZ[a][1];
     d.type = a;
   }
+  // Ein formaler Beweis braucht Lean; solange der Stack offen ist, schlägt der Assistent ihn vor
+  function forschungWaehlen(k: string) { d.research.kind = k; if (k === "formal_proof" && d.engine === "open") d.engine = "lean4-mathlib"; }
 
   const AGENT_NAME: Record<string, string> = { claude: "Claude Code", codex: "Codex", andere: "" };
   const leadModell = $derived([AGENT_NAME[d.agent], d.modell.trim()].filter(Boolean).join(" · "));
   const slugOk = $derived(/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(d.slug));
   const repoOk = $derived(!d.repo_url || /^https:\/\/(github\.com|codeberg\.org|gitlab\.com)\/[\w.-]+\/[\w.-]+\/?$/.test(d.repo_url.trim()));
   // Schrittfolge: Clean Room bekommt einen eigenen Schritt „Original“
-  type Schritt = "lead" | "art" | "original" | "projekt" | "anlegen" | "los";
-  const folge = $derived<Schritt[]>(["lead", "art", ...(d.cleanroom ? ["original" as const] : []), "projekt", "anlegen", "los"]);
+  type Schritt = "lead" | "art" | "original" | "upstream" | "forschung" | "projekt" | "anlegen" | "los";
+  const forschung = $derived(d.type === "research" && d.weg === "neu");
+  const fortfuehren = $derived(d.weg === "weiter");
+  const folge = $derived<Schritt[]>(["lead", "art", ...(d.cleanroom ? ["original" as const] : []), ...(fortfuehren ? ["upstream" as const] : []),
+    ...(forschung ? ["forschung" as const] : []), "projekt", "anlegen", "los"]);
+  const upstreamOk = $derived(/^https:\/\/[\w.-]+\.[a-z]{2,}\/[\w./~-]+$/.test(d.upstream.repo.trim()));
   const id = $derived(folge[Math.min(schritt, folge.length - 1)]);
   const o = $derived(d.original);
   const fertig = $derived<Partial<Record<Schritt, boolean>>>({
     lead: leadModell.length > 0 && d.modell.trim().length > 0,
     art: !!d.weg && !!d.type,
     original: !!(o.name.trim() && o.acquisition.trim() && o.target) && (o.depth === "observe" || !!(o.inspect.trim() && o.legal_basis.trim())),
+    upstream: upstreamOk && !!d.upstream.license && ZUSTAENDE.includes(d.upstream.status) && (d.upstream.status !== "no_answer" || !!d.upstream.contact.trim()),
+    forschung: FORSCHUNG.includes(d.research.kind) && !!d.research.source.trim() && !!d.research.success.trim(),
     projekt: !!d.name.trim() && slugOk && !!d.vision_short.trim() && !!d.engine.trim() && !!d.goal.trim() && repoOk,
   });
   const zu = (x: Schritt) => (schritt = folge.indexOf(x));
@@ -90,17 +118,21 @@
     arbeitet = true; fehler = "";
     const body = { slug: d.slug, name: d.name.trim(), vision_short: d.vision_short.trim(), vision_md: d.vision_md.trim(), engine: d.engine.trim(),
       license_code: d.license_code, license_assets: d.license_assets, repo_url: d.repo_url.trim().replace(/\/$/, "") || null, lead_model: leadModell,
-      goal: d.goal.trim(), type: d.type, procedure: d.cleanroom ? "clean_room" : "standard",
+      goal: d.goal.trim(), type: d.type, procedure: d.cleanroom ? "clean_room" : fortfuehren ? "continuation" : "standard",
       // Bei „nur beobachten“ gehen Umfang und Rechtsgrundlage nicht mit, auch wenn vorher etwas eingetragen war
       original: d.cleanroom ? Object.fromEntries(Object.entries(d.original).map(([k, v]) => [k, v.trim()])
-        .filter(([k, v]) => v && (d.original.depth === "inspect" || !["inspect", "legal_basis"].includes(k)))) : null };
+        .filter(([k, v]) => v && (d.original.depth === "inspect" || !["inspect", "legal_basis"].includes(k)))) : null,
+      research: forschung ? { kind: d.research.kind, source: d.research.source.trim(), success: d.research.success.trim() } : null,
+      upstream: fortfuehren ? { repo: d.upstream.repo.trim().replace(/\/$/, ""), status: d.upstream.status, contact: d.upstream.contact.trim() } : null };
     try {
       const r = await fetch("/api/account/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       const j = await r.json().catch(() => ({}));
       if (r.status === 401) { angemeldet = false; return; }
       if (!r.ok) { fehler = j.error ?? t.anlegen.fehler; return; }
-      ergebnis = { slug: j.slug, name: body.name, paket: `${d.type}${d.cleanroom ? "-cleanroom" : ""}`, type: d.type, agent: d.agent,
-        cleanroom: d.cleanroom ? `${d.original.name}, ${t.original.arten[d.original.target][0]}, ${t.original.tiefe[d.original.depth][0]}` : "" };
+      ergebnis = { slug: j.slug, name: body.name, paket: `${d.type}${d.cleanroom ? "-cleanroom" : fortfuehren ? "-continuation" : ""}`, type: d.type, agent: d.agent,
+        cleanroom: d.cleanroom ? `${d.original.name}, ${t.original.arten[d.original.target][0]}, ${t.original.tiefe[d.original.depth][0]}` : "",
+        forschung: forschung ? `${t.forschung.arten[d.research.kind][0]}, ${body.research!.source}; ${body.research!.success}` : "",
+        weiter: fortfuehren ? `${body.upstream!.repo} (${d.upstream.license}, ${t.upstream.zustaende[d.upstream.status][0]})` : "" };
       zu("los");
     } catch { fehler = t.anlegen.fehler; } finally { arbeitet = false; }
   }
@@ -109,7 +141,7 @@
   const anmeldeLink = $derived(`/api/account/login?lang=${s}&next=${s === "en" ? "start" : "starten"}`);
   const BASIS = "https://swarvex.ai";
   const ordner = $derived(ergebnis ? `mkdir -p ~/swarvex-lead/${ergebnis.slug} && cd ~/swarvex-lead/${ergebnis.slug}` : "");
-  const auftrag = $derived(ergebnis ? t.auftrag(ergebnis.slug, t.art.arten[ergebnis.type][0], ergebnis.cleanroom) : "");
+  const auftrag = $derived(ergebnis ? t.auftrag(ergebnis.slug, t.art.arten[ergebnis.type][0], ergebnis.cleanroom, ergebnis.forschung, ergebnis.weiter) : "");
   let kopiert = $state(false);
   async function auftragKopieren() {
     try { await navigator.clipboard.writeText(auftrag); kopiert = true; setTimeout(() => (kopiert = false), 1800); } catch { /* Text bleibt markierbar */ }
@@ -148,16 +180,17 @@
     {:else if id === "art"}
       <h2>{t.art.h2}</h2>
       <div class="wahl wege" role="radiogroup" aria-label={t.art.h2}>
-        {#each ["neu", "nachbau"] as const as w}
+        {#each ["neu", "nachbau", "weiter"] as const as w}
           <button type="button" role="radio" aria-checked={d.weg === w} class:an={d.weg === w} onclick={() => wegWaehlen(w)}>
             <strong>{t.art.wege[w][0]}</strong><small>{t.art.wege[w][1]}</small>
           </button>
         {/each}
       </div>
       {#if d.weg === "nachbau"}<p class="leise klein">{t.art.cleanroomText} <a href={doku("clean-room", "clean-room")}>{t.art.cleanroomMehr}</a></p>{/if}
-      <h3>{d.weg === "nachbau" ? t.art.entstehtNachbau : t.art.entsteht}</h3>
+      {#if fortfuehren}<p class="leise klein">{t.art.weiterText} <a href={doku("software-bewahren", "software-preservation")}>{t.art.weiterMehr}</a></p>{/if}
+      <h3>{d.weg === "nachbau" ? t.art.entstehtNachbau : fortfuehren ? t.art.entstehtWeiter : t.art.entsteht}</h3>
       <div class="wahl arten" role="radiogroup" aria-label={t.art.entsteht}>
-        {#each ARTEN as a}
+        {#each ARTEN.filter((a) => d.weg === "neu" || a !== "research") as a}
           <button type="button" role="radio" aria-checked={d.type === a} class:an={d.type === a} onclick={() => artWaehlen(a)}>
             <strong>{t.art.arten[a][0]}</strong><small>{t.art.arten[a][1]}</small>
           </button>
@@ -199,6 +232,48 @@
       <p class="tipp">{t.original.schutz}</p>
       <p class="leise klein">{t.original.werkzeuge}</p>
 
+    {:else if id === "upstream"}
+      <h2>{t.upstream.h2}</h2>
+      <p class="leise">{t.upstream.text}</p>
+      <div class="felder">
+        <label class="breit">{t.upstream.repo}<input type="url" maxlength="300" bind:value={d.upstream.repo} class:falsch={!!d.upstream.repo && !upstreamOk} placeholder={t.upstream.repoHilfe} required /></label>
+        <label class="breit">{t.upstream.lizenz}
+          <select value={d.upstream.license} onchange={(e) => lizenzGeerbt(e.currentTarget.value)} required>
+            <option value="" disabled>{t.upstream.lizenzWaehlen}</option>{#each CODE_GEERBT as l}<option>{l}</option>{/each}
+          </select><small class="leise">{t.upstream.lizenzHilfe}</small></label>
+      </div>
+      <h3>{t.upstream.zustandH3}</h3>
+      <div class="wahl wege" role="radiogroup" aria-label={t.upstream.zustandH3}>
+        {#each ZUSTAENDE as z}
+          <button type="button" role="radio" aria-checked={d.upstream.status === z} class:an={d.upstream.status === z} onclick={() => (d.upstream.status = z)}>
+            <strong>{t.upstream.zustaende[z][0]}</strong><small>{t.upstream.zustaende[z][1]}</small>
+          </button>
+        {/each}
+      </div>
+      {#if d.upstream.status === "no_answer" || d.upstream.status === "maintainers_agree" || d.upstream.status === "handover"}
+        <label>{t.upstream.kontakt}<input type="text" maxlength="300" bind:value={d.upstream.contact} placeholder={t.upstream.kontaktHilfe} required={d.upstream.status === "no_answer"} /></label>
+      {/if}
+      <p class="tipp">{t.upstream.fragen}</p>
+      <p class="leise klein">{t.upstream.marke}</p>
+
+    {:else if id === "forschung"}
+      <h2>{t.forschung.h2}</h2>
+      <p class="leise">{t.forschung.text} <a href={doku("forschung", "research")}>{t.forschung.mehr}</a></p>
+      <h3>{t.forschung.artH3}</h3>
+      <div class="wahl wege" role="radiogroup" aria-label={t.forschung.artH3}>
+        {#each FORSCHUNG as k}
+          <button type="button" role="radio" aria-checked={d.research.kind === k} class:an={d.research.kind === k} onclick={() => forschungWaehlen(k)}>
+            <strong>{t.forschung.arten[k][0]}</strong><small>{t.forschung.arten[k][1]}</small>
+          </button>
+        {/each}
+      </div>
+      <div class="felder">
+        <label class="breit">{t.forschung.quelle}<input type="text" maxlength="500" bind:value={d.research.source} placeholder={t.forschung.quelleHilfe[d.research.kind || "reproduction"]} required /></label>
+        <label class="breit">{t.forschung.erfolg}<input type="text" maxlength="500" bind:value={d.research.success} placeholder={t.forschung.erfolgHilfe[d.research.kind || "reproduction"]} required /></label>
+      </div>
+      <p class="leise klein">{t.forschung.werkzeuge}</p>
+      <p class="tipp">{t.forschung.grenzen}</p>
+
     {:else if id === "projekt"}
       <h2>{t.projekt.h2}</h2>
       <div class="felder">
@@ -211,8 +286,12 @@
         <label>{t.projekt.engine}<input type="text" maxlength="60" list="stacks" bind:value={d.engine} required /><small class="leise">{t.projekt.engineHilfe}</small></label>
         <datalist id="stacks"><option value="open"></option>{#each STACKS[d.type] ?? [] as x}<option value={x}></option>{/each}</datalist>
         <label>{t.projekt.ziel}<input type="text" maxlength="200" bind:value={d.goal} placeholder={t.projekt.zielHilfe} required /></label>
-        <label>{t.projekt.lizenzCode}<select bind:value={d.license_code}>{#each CODE as l}<option>{l}</option>{/each}</select></label>
-        <label>{t.projekt.lizenzAssets}<select bind:value={d.license_assets}>{#each ASSETS as l}<option>{l}</option>{/each}</select></label>
+        {#if fortfuehren}
+          <label>{t.projekt.lizenzCode}<select value={d.license_code} disabled><option>{d.license_code}</option></select><small class="leise">{t.upstream.geerbt}</small></label>
+        {:else}
+          <label>{t.projekt.lizenzCode}<select bind:value={d.license_code}>{#each CODE as l}<option>{l}</option>{/each}</select></label>
+        {/if}
+        <label>{t.projekt.lizenzAssets}<select bind:value={d.license_assets}>{#each fortfuehren && d.upstream.license && !ASSETS.includes(d.upstream.license) ? [...ASSETS, d.upstream.license] : ASSETS as l}<option>{l}</option>{/each}</select></label>
         <p class="leise klein breit">{t.projekt.lizenzHilfe} <a href={doku("lizenz", "license")}>{t.projekt.lizenzMehr}</a></p>
         <label class="breit">{t.projekt.repo}<input type="url" maxlength="200" bind:value={d.repo_url} class:falsch={!repoOk} placeholder="https://github.com/…" /><small class="leise">{t.projekt.repoHilfe}</small></label>
       </div>
@@ -224,6 +303,12 @@
         <div><dt>{t.anlegen.art}</dt><dd>{t.art.arten[d.type][0]}{#if d.cleanroom}{` · ${t.anlegen.cleanroom}`}{/if} <button class="link" onclick={() => zu("art")}>{t.anlegen.aendern}</button></dd></div>
         {#if d.cleanroom}
           <div><dt>{t.original.h2}</dt><dd>{d.original.name}{#if d.original.version} {d.original.version}{/if} · {t.original.arten[d.original.target]?.[0]} · {t.original.tiefe[d.original.depth][0]} <button class="link" onclick={() => zu("original")}>{t.anlegen.aendern}</button></dd></div>
+        {/if}
+        {#if fortfuehren}
+          <div><dt>{t.anlegen.weiter}</dt><dd>{d.upstream.repo} · {d.upstream.license} · {t.upstream.zustaende[d.upstream.status]?.[0]} <button class="link" onclick={() => zu("upstream")}>{t.anlegen.aendern}</button></dd></div>
+        {/if}
+        {#if forschung}
+          <div><dt>{t.anlegen.forschung}</dt><dd>{t.forschung.arten[d.research.kind]?.[0]} · {d.research.source} · {d.research.success} <button class="link" onclick={() => zu("forschung")}>{t.anlegen.aendern}</button></dd></div>
         {/if}
         <div><dt>{t.projekt.name}</dt><dd><strong>{d.name}</strong> · {d.vision_short} <button class="link" onclick={() => zu("projekt")}>{t.anlegen.aendern}</button></dd></div>
         <div><dt>{t.anlegen.adresse}</dt><dd><code>swarvex.ai{pfad(s, tx().projekte.pfad)}/{d.slug}</code></dd></div>

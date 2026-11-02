@@ -347,6 +347,7 @@ func vorlagen() map[string]func(string) Umgebung {
 	return map[string]func(string) Umgebung{
 		"godot": func(w string) Umgebung { return godot(w, "") }, "node": node, "python": python, "rust": rust,
 		"go": golang, "dotnet": dotnet, "java-maven": maven, "java-gradle": gradle, "default": standard,
+		"lean": lean, "julia": julia,
 		"unity": func(w string) Umgebung {
 			ordner, _ := unityProjekt(w)
 			return unity(w, ordner)
@@ -390,6 +391,11 @@ func erkennen(w string) Umgebung {
 		return unreal(w, uproject)
 	}
 	switch {
+	// Forschung (lead/roles/research): Lean-Beweise und Julia-Pakete vor den allgemeinen Sprachen erkennen
+	case gibt(w, "lean-toolchain"):
+		return lean(w)
+	case gibt(w, "Project.toml") && gibt(w, "src/*.jl", "test/runtests.jl"):
+		return julia(w)
 	case gibt(w, "package.json"):
 		return node(w)
 	case gibt(w, "pyproject.toml", "requirements.txt", "setup.py"):
@@ -520,6 +526,40 @@ func maven(w string) Umgebung {
 func gradle(w string) Umgebung {
 	return Umgebung{Vorlage: "java-gradle", Quelle: "detected", Image: "docker.io/library/gradle:8-jdk21", Einrichten: "gradle --no-daemon dependencies -q",
 		Testen: "gradle --no-daemon --offline test", Hinweis: "Java project (Gradle, JDK 21); without network use `--offline`."}
+}
+
+var leanToolchain = regexp.MustCompile(`^[\w./:-]+$`)
+
+// lean: Lean 4 mit Lake; die Toolchain kommt aus lean-toolchain (elan). Mathlib-Caches lädt die Einrichtung (mit Netz),
+// gebaut und geprüft wird ohne Netz. Ein Beweis mit sorry oder admit ist kein Beweis: die Prüfung wird rot.
+func lean(w string) Umgebung {
+	toolchain := "leanprover/lean4:stable"
+	if roh, err := os.ReadFile(filepath.Join(w, "lean-toolchain")); err == nil {
+		if t := strings.TrimSpace(string(roh)); leanToolchain.MatchString(t) {
+			toolchain = t
+		}
+	}
+	basis := "FROM docker.io/library/debian:trixie-slim\n" +
+		"RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git && rm -rf /var/lib/apt/lists/*\n" +
+		"ENV ELAN_HOME=/opt/elan PATH=/opt/elan/bin:$PATH\n" +
+		// elan lädt eine Toolchain sonst erst beim ersten Aufruf; in der Sandbox gibt es dafür weder Netz noch Schreibrechte
+		fmt.Sprintf("RUN curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --no-modify-path --default-toolchain %[1]s && elan toolchain install %[1]s && chmod -R a+rX /opt/elan", toolchain)
+	return Umgebung{
+		Vorlage: "lean", Quelle: "detected", Basis: basis,
+		Einrichten: "lake exe cache get 2>/dev/null || true; lake update --keep-toolchain 2>/dev/null || true",
+		Bauen:      "lake build",
+		Testen: `lake build || exit 1; ` +
+			`if grep -rnwE 'sorry|admit' --include='*.lean' --exclude-dir=.lake --exclude-dir=lake-packages . ; then echo "Unfinished proof: sorry or admit found."; exit 1; fi; ` +
+			`if lake test --help >/dev/null 2>&1 && grep -qE 'testDriver|@\[test_driver\]' lakefile.* 2>/dev/null; then lake test; fi`,
+		Hinweis: fmt.Sprintf("Lean 4 project (%s, Lake). Build with `lake build`; a proof containing sorry or admit fails the check.", toolchain),
+	}
+}
+
+func julia(w string) Umgebung {
+	return Umgebung{Vorlage: "julia", Quelle: "detected", Image: "docker.io/library/julia:1",
+		Einrichten: `julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'`,
+		Testen:     `julia --project=. -e 'using Pkg; Pkg.test()'`,
+		Hinweis:    "Julia package; dependencies are instantiated in the setup, tests run with Pkg.test()."}
 }
 
 func standard(w string) Umgebung {

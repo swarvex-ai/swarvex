@@ -85,6 +85,21 @@
 | A12 | **Analytics/telemetry** | L | G17 | only with consent, minimal |
 | A13 | **Store requirements** (guidelines, accounts, fees) | L | A1, G18 | |
 
+## Specialist tree: research (proofs, reproductions, scientific software)
+
+| ID | Decision | R/L | after | Hint |
+|---|---|---|---|---|
+| F1 | **Kind of research:** formal proof, reproduction of a paper, scientific software, test and verification of an open-source component | R | G1 | determines the role cards to use first |
+| F2 | **Source:** the paper (DOI or arXiv), the theorem and where it is stated, the software and its repository | R | F1 | pin a version or revision |
+| F3 | **Claims:** the results that count as success, each with acceptance and, for numbers, a tolerance decided now | R | F2 | `templates/research-claims.md`; a refuted claim is a result too |
+| F4 | **Toolchain:** proof assistant and library revision (Lean and Mathlib), languages and pinned versions | R | F1 | the environment must pass `swarvex env` offline |
+| F5 | **Compute:** time and memory for one run; GPU needed? | R | F3 | a task must fit one runner session; split long runs into chained tasks |
+| F6 | **Data:** datasets, sizes, licences, personal data? | R | F2 | registered by the data steward before use |
+| F7 | **Original authors and code:** do they exist, may we use their code and data, do we contact them? | R | F2 | look before you build: an existing reproduction changes the plan |
+| F8 | **Ethics and dual use:** could the result cause harm (weapons, surveillance, personal data)? | R | F1 | if yes: no project, or a narrower scope agreed with the visionary |
+| F9 | **Publication:** where and how results are released, archived (DOI) and credited | L | F3 | CITATION.cff from the start |
+| F10 | **Automatic acceptance:** which claims the machine decides alone (proof checker, tolerance check) and which need a human | L | F3 | the more the machine decides, the faster the swarm |
+
 ## Closing
 
 The required frontier is empty when all **R** nodes of the trunk and of the matching specialist tree are in the project brief as *decided*, *recommendation accepted* or *delegated*. Then follows the visionary's explicit confirmation (LEAD.md, phase 0, step 6).
@@ -102,3 +117,16 @@ Only when an existing program is to be rebuilt. Each question with a recommendat
 7. **Depth:** May any part be looked at from inside (decompiled, inspected with REA or Ghidra), and why is observation not enough there? *(Recommendation: `observe` only, plus `inspect` for named file formats or protocols where interoperability needs it.)*
 8. **Comparison:** How do we check a build against the original: same input files, recorded scenarios, measured values? *(Recommendation: obligations with cases per `templates/clean-room-specification.md`, check rounds after each build, a milestone is done when its required obligations are verified.)*
 9. **Legal basis:** One sentence on why the analysis is allowed (e.g. "own licence, observing program behaviour under Art. 5(3) of the EU Software Directive, goal interoperability"). *(Stored with the project as its legal basis and publicly visible.)*
+
+## Additional tree: continuing abandoned software
+
+Only when an existing open-source project whose maintenance has stopped is to be continued as a fork. Each question with a recommendation, as usual.
+
+1. **Original:** Which repository, which last release, which last commit? *(Recommendation: fork from the last release tag with the full history, so every line keeps its author.)*
+2. **Is it really abandoned?** Archived repository, no answer from the maintainers, or do they agree or even hand over? *(Recommendation: ask first, publicly in an issue, and wait 30 days. A handover beats a fork; a fork beats a dead project.)*
+3. **Licence:** What is the original's licence, and is it the same for every file? *(Mandatory: the fork keeps it. Copyright notices, `LICENSE`, `NOTICE` and the authors stay. New files may use a compatible licence only where the original's licence allows it.)*
+4. **Name:** Keep the name or choose a new one? *(Recommendation: a new name if the old one is a trademark, if the maintainers ask for it or if the original might come back; say "continuation of X" in the README.)*
+5. **Users:** Who still uses it, on which versions, and where do they ask for help? *(Recommendation: tell them where the continuation lives; a migration note for the first release.)*
+6. **First goal:** Builds and passes its old tests again? Security fixes? A new platform? *(Recommendation: first a green build on current toolchains and a release with only fixes; features after that.)*
+7. **Open issues and pull requests:** Which of the original's are carried over? *(Recommendation: link to them, re-cut the ones you take as swarvex tasks, credit the original authors of carried-over patches.)*
+8. **Upstream:** Do fixes go back if the original comes alive again? *(Recommendation: yes, offered as pull requests; the continuation does not compete with a living original.)*

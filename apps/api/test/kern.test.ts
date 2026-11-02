@@ -293,6 +293,20 @@ describe("Projekt starten (Assistent)", () => {
     await expect(projektAnlegen(db, { ...neu, slug: "test" }, m)).rejects.toThrow(/taken/);
     // nur beobachten: ohne Rechtsgrundlage und ohne Umfang zulässig
     expect(projektPruefen({ ...neu, procedure: "clean_room", original: { name: "X", acquisition: "gekauft", target: "windows", depth: "observe" } })).toEqual([]);
+    // Forschung: Art, Quelle und Erfolgskriterium sind Pflicht, Clean Room passt nicht dazu
+    const forschung: NeuesProjekt = { ...neu, type: "research", research: { kind: "formal_proof", source: "Hardy & Wright, Theorem 366", success: "lake build green without sorry" } };
+    expect(projektPruefen(forschung)).toEqual([]);
+    expect(projektPruefen({ ...forschung, research: { kind: "alchemy", source: "x", success: "y" } }).join()).toMatch(/research.kind/);
+    expect(projektPruefen({ ...forschung, research: { kind: "reproduction" } }).join()).toMatch(/research.source/);
+    expect(projektPruefen({ ...forschung, procedure: "clean_room", original: { name: "X", acquisition: "gekauft" } }).join()).toMatch(/standard procedure/);
+    // Weiterführen: Original-Repo und Zustand sind Pflicht, ohne Antwort auch der Link zur Anfrage; die Lizenz darf älter sein
+    const weiter: NeuesProjekt = { ...neu, procedure: "continuation", license_code: "GPL-2.0-only", license_assets: "GPL-2.0-only",
+      upstream: { repo: "https://github.com/alt/spiel", status: "archived" } };
+    expect(projektPruefen(weiter)).toEqual([]);
+    expect(projektPruefen({ ...weiter, procedure: "standard" }).join()).toMatch(/license_assets/);
+    expect(projektPruefen({ ...weiter, upstream: { repo: "https://github.com/alt/spiel", status: "no_answer" } }).join()).toMatch(/upstream.contact/);
+    expect(projektPruefen({ ...weiter, upstream: { repo: "ftp://x", status: "archived" } }).join()).toMatch(/upstream.repo/);
+    expect(projektPruefen({ ...weiter, repo_url: "https://github.com/alt/spiel" }).join()).toMatch(/fork/);
     const r = await projektAnlegen(db, neu, m);
     const rollen = (await db.query("select rolle from projekt_rollen where projekt_id = $1 and mensch_id = $2 order by rolle", [r.projekt_id, m])).rows.map((x) => x.rolle);
     expect(rollen).toEqual(["lead", "visionaer"]);

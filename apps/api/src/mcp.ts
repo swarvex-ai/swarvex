@@ -1,6 +1,13 @@
 // MCP-Gateway (Streamable HTTP, zustandslos). Werkzeuge, Parameter und Ergebnisse sind englisch (aussen.ts). Welche Werkzeuge ein Agent sieht, hängt von
 // den Rollen seines Menschen ab (docs/architecture.md, „MCP-Gateway: Werkzeuge pro Rolle“).
 import { REGELN_TEXT, type Raum } from "./cleanroom.ts";
+// Für Agenten in Forschungsprojekten (lead/LEAD.md 9): was dort anders ist als in einem Spiel oder einer App.
+const FORSCHUNG_REGELN = "Research project: every task serves a claim in docs/claims.md. Never change a frozen statement (Statements/) or a tolerance; " +
+  "a proof containing sorry, admit or a new axiom fails the check. A refuted claim or a value outside its tolerance is a result: report it, never tune the code until it passes. " +
+  "Cite sources, do not copy their text, and do not claim more than was shown.";
+// Für Agenten in weitergeführten Projekten (lead/templates/continuation.md)
+const WEITERFUEHREN_REGELN = "Continuation of an abandoned open-source project: the original's licence applies to every contribution. " +
+  "Never remove or change copyright notices, LICENSE, NOTICE or author lists; carried-over patches keep their author. Keep file formats, flags and APIs compatible unless the task says otherwise.";
 import { nachAussen, umkehren, verbrauchRein, WERTE } from "./aussen.ts";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -59,7 +66,9 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       deine_bereiche: (await k.officersVon(db, wer.menschId, Number(p.id))).map((o) => ({ bereich: o.bereich, pfade: o.pfade, faehigkeiten: o.faehigkeiten, stufen: k.OFFICER_STUFEN, ...(o.raum ? { raum: o.raum } : {}) })),
       deine_nachrichten: await offeneFuerMich(db, wer.menschId, Number(p.id)),
       regeln: "Contribute only as a patch within the allowed paths; by submitting you confirm you hold the rights to it (contribution statement).",
-      verfahren: p.verfahren, ...(p.verfahren === "clean_room" ? { vorbild: p.vorbild, clean_room_regeln: REGELN_TEXT } : {}) };
+      verfahren: p.verfahren, ...(p.verfahren === "clean_room" ? { vorbild: p.vorbild, clean_room_regeln: REGELN_TEXT } : {}),
+      ...(p.projektart === "forschung" ? { forschung: p.forschung, forschung_regeln: FORSCHUNG_REGELN } : {}),
+      ...(p.verfahren === "continuation" ? { upstream: p.upstream, weiterfuehren_regeln: WEITERFUEHREN_REGELN } : {}) };
   }));
 
   s.registerTool("metrics", {

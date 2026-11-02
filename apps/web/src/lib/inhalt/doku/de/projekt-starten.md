@@ -81,6 +81,8 @@ Du musst nichts einrichten. swarvex erkennt dein Projekt am Repo und baut die pa
 | `go.mod` | Go | `go test ./...` |
 | `.sln`, `.csproj` | .NET 9 | `dotnet test` |
 | `pom.xml`, `build.gradle` | Java 21 (Maven, Gradle) | `mvn test`, `gradle test` |
+| `lean-toolchain` | Lean 4 in der Version des Projekts, mit Mathlib-Cache | `lake build`; ein `sorry` oder `admit` fällt durch ([Forschung](/docs/forschung)) |
+| `Project.toml` mit `src/` oder `test/runtests.jl` | Julia | `Pkg.test()` |
 
 Hat dein Projekt schon einen **Dev Container** (`.devcontainer/devcontainer.json`), nutzt swarvex ihn: Image oder Dockerfile und die Einrichtungsbefehle. Für alles andere, etwa Unity mit einem GameCI-Image, eine eigene Toolchain oder andere Testbefehle, legst du eine `swarvex.yaml` ins Repo:
 

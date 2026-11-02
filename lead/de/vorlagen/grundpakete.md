@@ -164,3 +164,21 @@ B6 und B7 sind für Repos in der Organisation `swarvex-ai` bereits abgedeckt: Gi
 | P-4 | **Passt zum Wirtsprogramm** | folgt dessen UI-Richtlinien, Tastenkürzeln und Begriffen | v1 |
 | P-5 | **Scheitert harmlos** | ein Fehler im Plugin reißt das Wirtsprogramm nie mit und wird verständlich gemeldet | erster |
 | P-6 | **Marktplatz-Eintrag** | Beschreibung, Screenshots, Versionshinweise | Release |
+
+## Forschung (formale Beweise, Reproduktionen, wissenschaftliche Software)
+
+| ID | Baustein | Fertig, wenn | Standard |
+|---|---|---|---|
+| R-1 | **Register der Behauptungen** | `docs/claims.md` nach `vorlagen/forschung-behauptungen.md`: jede Behauptung mit Quelle, Abnahme und Toleranz, festgelegt vor dem Messen | erster |
+| R-2 | **Feste Umgebung** | Werkzeuge und Abhängigkeiten festgelegt (lean-toolchain und lake-manifest, Lockfiles, Container); `swarvex env` baut und testet ohne Netz | erster |
+| R-3 | **Ein Befehl reproduziert alles** | `make reproduce` (oder gleichwertig) erzeugt jedes Ergebnis neu; nichts von Hand bearbeitet | erster |
+| R-4 | **Ergebnistabelle** | aus dem Register erzeugt: Behauptung, erwartet, gemessen, Toleranz, Status (bestätigt, widerlegt, Abweichung, offen) | erster |
+| R-5 | **Herkunft der Daten** | `data/README.md`: Quelle, Version, Lizenz, Prüfsumme, Abrufbefehl; große Daten in der Einrichtung geladen, kleine Testdaten im Repo | erster |
+| R-6 | **Determinismus** | Seeds fest, Versionen und Hardware notiert, verbleibende Streuung erklärt | erster |
+| R-7 | **Abweichungen und Grenzen** | `docs/deviations.md` und `docs/limitations.md`: jede Annahme und jede Grenze in klaren Worten | erster |
+| R-8 | **Nur formale Beweise** | Blueprint mit Abhängigkeitsgraph; kein `sorry` oder `admit` (die Lean-Umgebung prüft das); keine neuen Axiome (`#print axioms` für die Hauptsätze in der CI) | erster |
+| R-9 | **Zitieren und Würdigung** | `CITATION.cff`; die Quelle zitiert; alle Beitragenden genannt, Menschen, Agenten und Modelle | v1 |
+| R-10 | **Lizenzen** | Code unter einer OSI-Lizenz, Text und Daten unter CC BY 4.0 oder CC0; fremde Daten nur, wenn ihre Lizenz unsere Nutzung erlaubt | erster |
+| R-11 | **Archivierte Veröffentlichung** | zu jedem Meilenstein ein Release mit DOI (z. B. Zenodo) | Release |
+| R-12 | **Kontakt zur Quelle** | ursprüngliche Autoren oder Betreuer informiert und vor der Veröffentlichung zur Durchsicht eingeladen | Release |
+| R-13 | **Ethik-Prüfung** | Doppelnutzung und personenbezogene Daten geprüft und festgehalten (Interview F8) | erster |

@@ -85,6 +85,21 @@
 | A12 | **Analyse/Telemetrie** | S | G17 | nur mit Einwilligung, minimal |
 | A13 | **Store-Anforderungen** (Richtlinien, Konten, Gebühren) | S | A1, G18 | |
 
+## Fachbaum: Forschung (Beweise, Reproduktionen, wissenschaftliche Software)
+
+| ID | Entscheidung | R/L | nach | Hinweis |
+|---|---|---|---|---|
+| F1 | **Art der Forschung:** formaler Beweis, Reproduktion eines Papers, wissenschaftliche Software, Test und Verifikation eines Open-Source-Bausteins | R | G1 | bestimmt, welche Rollenkarten zuerst gebraucht werden |
+| F2 | **Quelle:** das Paper (DOI oder arXiv), der Satz und wo er steht, die Software und ihr Repo | R | F1 | Version oder Revision festlegen |
+| F3 | **Behauptungen:** die Ergebnisse, die als Erfolg zählen, jede mit Abnahme und bei Zahlen mit einer jetzt festgelegten Toleranz | R | F2 | `vorlagen/forschung-behauptungen.md`; eine widerlegte Behauptung ist auch ein Ergebnis |
+| F4 | **Werkzeuge:** Beweisassistent und Bibliotheksstand (Lean und Mathlib), Sprachen und feste Versionen | R | F1 | die Umgebung muss `swarvex env` ohne Netz bestehen |
+| F5 | **Rechenbedarf:** Zeit und Speicher für einen Lauf; GPU nötig? | R | F3 | eine Aufgabe muss in eine Runner-Sitzung passen; lange Läufe in verkettete Aufgaben teilen |
+| F6 | **Daten:** Datensätze, Größen, Lizenzen, personenbezogene Daten? | R | F2 | vor der Nutzung von der Datenpflege erfasst |
+| F7 | **Ursprüngliche Autoren und Code:** gibt es sie, dürfen wir ihren Code und ihre Daten nutzen, sprechen wir sie an? | R | F2 | erst schauen, dann bauen: eine vorhandene Reproduktion ändert den Plan |
+| F8 | **Ethik und Doppelnutzung:** Könnte das Ergebnis schaden (Waffen, Überwachung, personenbezogene Daten)? | R | F1 | wenn ja: kein Projekt oder ein engerer, mit dem Visionär abgestimmter Umfang |
+| F9 | **Veröffentlichung:** wo und wie Ergebnisse erscheinen, archiviert (DOI) und gewürdigt werden | L | F3 | CITATION.cff von Anfang an |
+| F10 | **Automatische Abnahme:** welche Behauptungen die Maschine allein entscheidet (Beweisprüfer, Toleranzprüfung) und welche einen Menschen brauchen | L | F3 | je mehr die Maschine entscheidet, desto schneller der Schwarm |
+
 ## Abschluss
 
 Die Pflicht-Front ist leer, wenn alle **P**-Knoten des Stamms und des passenden Fachbaums im Projektbrief stehen, als *entschieden*, *Empfehlung angenommen* oder *delegiert*. Dann folgt die ausdrückliche Bestätigung durch den Visionär (LEAD.md, Phase 0, Schritt 6).
@@ -102,3 +117,16 @@ Nur wenn ein vorhandenes Programm neu gebaut werden soll. Jede Frage mit Empfehl
 7. **Tiefe:** Darf ein Teil von innen angesehen werden (dekompiliert, mit REA oder Ghidra untersucht), und warum reicht dort Beobachtung nicht? *(Empfehlung: nur `observe`, dazu `inspect` für benannte Dateiformate oder Protokolle, wo Interoperabilität es verlangt.)*
 8. **Vergleich:** Wie prüfen wir einen Bau gegen das Vorbild: gleiche Eingabedateien, aufgezeichnete Szenarien, gemessene Werte? *(Empfehlung: Pflichten mit Testfällen nach `vorlagen/clean-room-spezifikation.md`, Prüfrunden nach jedem Bau; ein Meilenstein ist fertig, wenn seine erforderlichen Pflichten bestätigt sind.)*
 9. **Rechtsgrundlage:** Ein Satz, warum die Analyse erlaubt ist (z. B. „eigene Lizenz, Beobachtung des Programmverhaltens nach § 69d Abs. 3 UrhG, Ziel Interoperabilität“). *(Wird beim Projekt als Rechtsgrundlage hinterlegt und ist öffentlich einsehbar.)*
+
+## Zusatzbaum: Verwaiste Software weiterführen
+
+Nur wenn ein vorhandenes Open-Source-Projekt, dessen Pflege eingeschlafen ist, als Fork weitergeführt werden soll. Jede Frage mit Empfehlung, wie gewohnt.
+
+1. **Original:** Welches Repo, welches letzte Release, welcher letzte Commit? *(Empfehlung: vom letzten Release-Tag mit voller Historie forken, damit jede Zeile ihren Autor behält.)*
+2. **Wirklich verwaist?** Archiviertes Repo, keine Antwort der Maintainer, oder stimmen sie zu oder übergeben sogar? *(Empfehlung: zuerst fragen, öffentlich in einem Issue, und 30 Tage warten. Eine Übergabe ist besser als ein Fork, ein Fork besser als ein totes Projekt.)*
+3. **Lizenz:** Unter welcher Lizenz steht das Original, und gilt sie für jede Datei? *(Pflicht: Der Fork behält sie. Urheberhinweise, `LICENSE`, `NOTICE` und die Autoren bleiben. Neue Dateien nur dann unter einer anderen, verträglichen Lizenz, wenn die Lizenz des Originals das erlaubt.)*
+4. **Name:** Den Namen behalten oder einen neuen wählen? *(Empfehlung: einen neuen Namen, wenn der alte eine Marke ist, die Maintainer es wünschen oder das Original zurückkommen könnte; im README „Weiterführung von X“.)*
+5. **Nutzer:** Wer nutzt es noch, in welchen Versionen, und wo fragen sie nach Hilfe? *(Empfehlung: ihnen sagen, wo die Weiterführung lebt; ein Umstiegshinweis zum ersten Release.)*
+6. **Erstes Ziel:** Baut es wieder und bestehen die alten Tests? Sicherheitskorrekturen? Eine neue Plattform? *(Empfehlung: zuerst ein grüner Build mit aktuellen Werkzeugen und ein Release nur mit Korrekturen; Funktionen danach.)*
+7. **Offene Issues und Pull Requests:** Welche aus dem Original werden übernommen? *(Empfehlung: verlinken, die übernommenen als swarvex-Aufgaben neu schneiden, die ursprünglichen Autoren übernommener Patches nennen.)*
+8. **Upstream:** Gehen Korrekturen zurück, falls das Original wieder auflebt? *(Empfehlung: ja, als Pull Requests angeboten; die Weiterführung konkurriert nicht mit einem lebenden Original.)*

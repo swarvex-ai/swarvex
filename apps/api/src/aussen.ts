@@ -21,7 +21,7 @@ export const FELDER: Record<string, string> = {
   gemerged: "merged", plus: "added", minus: "removed", sorte: "kind", sorten: "kinds", dateien_gesamt: "files_total", commit_url: "commit_url", zeilen_code: "lines_of_code",
   bilder: "images", audio: "audio", modelle_3d: "models_3d", videos: "videos", texte: "texts", reviews: "reviews", modelle: "models", agent_programm: "agent_program",
   modell: "model", tokens_je_annahme: "tokens_per_accepted", pfad: "path", lfs: "lfs", binaer: "binary", vorschau: "preview",
-  verfahren: "procedure", vorbild: "original", deine_rollen: "your_roles", regeln: "rules", clean_room_regeln: "clean_room_rules",
+  verfahren: "procedure", vorbild: "original", forschung: "research", forschung_regeln: "research_rules", weiterfuehren_regeln: "continuation_rules", deine_rollen: "your_roles", regeln: "rules", clean_room_regeln: "clean_room_rules",
   menschen_je_raum: "people_per_room", trennung_eingehalten: "separation_kept", verletzungen: "violations",
   aufgaben: "tasks", beitragende: "contributors", ereignisse: "events", protokoll: "log", eintraege: "entries", kopf: "head",
   veroeffentlicht: "published", ok: "ok",
@@ -79,7 +79,7 @@ export const WERTE: Record<string, Record<string, string>> = {
   verfahren: { standard: "standard", clean_room: "clean_room" },
   engpass: { lead: "lead", mitstreiter: "contributors", bewertung: "review", pruefung: "check", nachschub: "backlog", abhaengigkeiten: "dependencies" },
   dienst: { andere: "other" },
-  projektart: { spiel: "game", app: "app", website: "website", dienst: "service", tool: "tool", bibliothek: "library", plugin: "plugin", sonstiges: "other" },
+  projektart: { spiel: "game", app: "app", website: "website", dienst: "service", tool: "tool", bibliothek: "library", plugin: "plugin", forschung: "research", sonstiges: "other" },
   nachricht_art: { frage: "question", freigabe: "approval", info: "info" },
   entscheidung: { freigegeben: "approved", abgelehnt: "declined" },
   art: {

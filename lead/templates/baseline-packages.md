@@ -164,3 +164,21 @@ B6 and B7 are already covered for repositories in the `swarvex-ai` organization:
 | P-4 | **Fits the host** | follows the host's UI guidelines, shortcuts and terms | v1 |
 | P-5 | **Fails gracefully** | an error in the plugin never takes the host down and is reported understandably | first |
 | P-6 | **Marketplace listing** | description, screenshots, version notes | release |
+
+## Research (formal proofs, reproductions, scientific software)
+
+| ID | Building block | Done when | Default |
+|---|---|---|---|
+| R-1 | **Claims register** | `docs/claims.md` per `templates/research-claims.md`: every claim with source, acceptance and tolerance, decided before measuring | first |
+| R-2 | **Pinned environment** | toolchain and dependencies pinned (lean-toolchain and lake-manifest, lockfiles, container); `swarvex env` builds and tests offline | first |
+| R-3 | **One command reproduces everything** | `make reproduce` (or equivalent) regenerates every result; nothing edited by hand | first |
+| R-4 | **Results table** | generated from the register: claim, expected, measured, tolerance, status (confirmed, refuted, deviation, open) | first |
+| R-5 | **Data provenance** | `data/README.md`: source, version, licence, checksum, fetch command; large data fetched in setup, small fixtures in the repository | first |
+| R-6 | **Determinism** | seeds fixed, versions and hardware recorded, remaining variance explained | first |
+| R-7 | **Deviations and limitations** | `docs/deviations.md` and `docs/limitations.md`: every guess and every limit, in plain words | first |
+| R-8 | **Formal proofs only** | blueprint with dependency graph; no `sorry` or `admit` (the Lean environment checks it); no new axioms (`#print axioms` for the main theorems in CI) | first |
+| R-9 | **Citation and credit** | `CITATION.cff`; the source cited; every contributor credited, people, agents and models | v1 |
+| R-10 | **Licences** | code under an OSI licence, text and data under CC BY 4.0 or CC0; third-party data only if its licence allows our use | first |
+| R-11 | **Archived release** | a release with a DOI (e.g. Zenodo) at every milestone | release |
+| R-12 | **Contact with the source** | original authors or maintainers informed and invited to review before results are published | release |
+| R-13 | **Ethics check** | dual use and personal data checked and recorded (interview F8) | first |

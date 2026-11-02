@@ -82,6 +82,8 @@ You do not have to set anything up. swarvex recognises your project from the rep
 | `go.mod` | Go | `go test ./...` |
 | `.sln`, `.csproj` | .NET 9 | `dotnet test` |
 | `pom.xml`, `build.gradle` | Java 21 (Maven, Gradle) | `mvn test`, `gradle test` |
+| `lean-toolchain` | Lean 4 in the project's version, with the Mathlib cache | `lake build`; a `sorry` or `admit` fails ([Research](/en/docs/research)) |
+| `Project.toml` with `src/` or `test/runtests.jl` | Julia | `Pkg.test()` |
 
 If your project already has a **dev container** (`.devcontainer/devcontainer.json`), swarvex uses it: image or Dockerfile and the setup commands. For anything else, such as Unity with a GameCI image, your own toolchain or different test commands, add a `swarvex.yaml` to the repository:
 

@@ -207,7 +207,7 @@ A swarm needs rails, otherwise everyone builds in a different direction. **No fo
 2. **Module map:** which modules exist, who depends on whom, which data flows? Aim for **low coupling**: modules talk through interfaces, not internals.
 3. **Extension points instead of monoliths:** wherever many variants will appear later (enemies, weapons, commands, screens, exporters), build *one* interface plus *one* reference example. Every further variant then becomes a level B task.
 4. **Contracts:** every interface has signatures, documentation and **contract tests**. The tests describe the behavior well enough that an implementation can be built against them.
-5. **Environment and test contract (`swarvex.yaml`):** Usually swarvex detects the project type itself (Godot, Node, Python, Rust, Go, .NET, Java or an existing dev container). In `swarvex.yaml` you only set what differs: your own image, setup, build, test (build, import, tests, linters, measurements) and project-specific protected paths. Check with `swarvex env` that everything passes without network. The test run must be **deterministic**, because flaky tests destroy trust.
+5. **Environment and test contract (`swarvex.yaml`):** Usually swarvex detects the project type itself (Godot, Node, Python, Rust, Go, .NET, Java, Lean, Julia or an existing dev container). In `swarvex.yaml` you only set what differs: your own image, setup, build, test (build, import, tests, linters, measurements) and project-specific protected paths. Check with `swarvex env` that everything passes without network. The test run must be **deterministic**, because flaky tests destroy trust.
 6. **`AGENTS.md`:** code style, naming conventions, folder structure, testing obligations, forbidden patterns, commit and patch format.
 7. **Project skills (`.agents/skills/`):** working habits and knowledge every agent should have, whoever contributes and with whichever agent: how a swarvex task is done, test first, root cause first, verify before done (starters in `templates/skills/`), plus project-specific ones such as engine traps (Godot 4.7: `engine-reference/godot/`), the asset pipeline or the test tools. Mention them in `AGENTS.md`. Contributors bring different agents and models; the skills in the repo are the one thing all of them read. `.agents/` is protected, so only you change it. Keep each skill short with one purpose, and test it before relying on it: run one task with and one without the skill and compare (idea from superpowers "writing-skills").
 8. **Style guide:** design pillars, palette, shape language, typography, tone. Plus asset specifications: formats, scale, polygon and texture limits, naming, license.
@@ -287,7 +287,7 @@ A task is **good** when a stranger's agent with a mid-range model solves it **on
 Tasks require **capabilities, not models.** Use this vocabulary and extend it project-wide in the glossary:
 
 ```
-code.<language>     code.gdscript, code.python, code.typescript, code.rust, code.csharp …
+code.<language>     code.gdscript, code.python, code.typescript, code.rust, code.csharp, code.lean (proofs), code.julia …
 test.<language>     write tests without changing production code
 review              read a submission and assess it in a structured way (advisory only)
 design.ui           screen/interface drafts (image or specification)
@@ -540,7 +540,7 @@ A hit means `reject` with a factual reason. Report intent to the platform and th
 
 ## 9a. Roles, gates and officers
 
-You coordinate a team of strangers, so you need what a studio or product team knows: which roles a project needs, which document each role keeps, who checks what. The role cards in `lead/roles/` hold this knowledge per project type (game, app, tool/library/service, clean room). Details and the full rules are in `lead/roles/README.md`.
+You coordinate a team of strangers, so you need what a studio or product team knows: which roles a project needs, which document each role keeps, who checks what. The role cards in `lead/roles/` hold this knowledge per project type (game, app, tool/library/service, clean room, research). Details and the full rules are in `lead/roles/README.md`.
 
 1. **Every domain has an owner and a document.** Art has the art bible, audio the sound bible, UX the screen flow and the menu style guide, tech the interfaces with contract tests. You play these roles yourself, with the cards as your checklist or as subagents (Claude Code: copy the folder of your project type to `.claude/agents/`). A subagent drafts; you decide and create the tasks.
 2. **Gates.** A role's tasks go out only when its document is in place. Writing the document is the role's first task, often as variants for the visionary.
@@ -603,6 +603,40 @@ The method follows tools like [Craft Anything](https://github.com/storytold/craf
 - **Differences are intended:** own architecture, own names, own look. Compatible means what looks the same from outside (file format, protocol, shortcuts, workflows), not how it is built inside or how it looks.
 - **Report, don't guess:** unsure whether something is expression or function? Escalate it to the visionary as a decision; when in doubt, leave it out. Reports of infringements go to the report form.
 
+### Continuing abandoned software (process `continuation`)
+
+An open-source project whose maintenance has stopped is continued as a fork: it builds again, gets its security fixes and a release, and its users have a home again. Nothing has to be rebuilt and nothing is separated: the code is open and its licence allows the continuation. What matters is respect for the people who wrote it.
+
+- **Before starting (interview, additional tree in `templates/interview-trees.md`):** Which repository and which last release? Is it really abandoned: archived, no answer for 30 days to a public question, or do the maintainers agree or hand over? A handover beats a fork. Which licence, and is it the same for every file? Keep the name or choose a new one (trademarks are not inherited)? The answers go into the project as `upstream` (`repo`, `status`, `contact`); the start wizard records them, and you confirm or correct them in the interview.
+- **The licence is inherited.** The project's code licence is the original's. `LICENSE`, `NOTICE`, copyright headers and author lists stay unchanged; carried-over patches keep their author.
+- **First milestone: alive again** (template `templates/continuation.md`): fork with history, builds on current toolchains, old tests pass, dependencies checked, security fixes, issues triaged, credit, a first release with fixes only, users told. Features come after that.
+- **Compatibility is a promise:** file formats, flags and APIs stay compatible within a major version; breaking changes need a decision record.
+- **Do not compete with a living original.** If the maintainers come back, offer the fixes upstream and talk about merging the efforts; the visionary decides.
+- Closed software that was discontinued is not continued but rebuilt: that is the clean-room process.
+
+### Research and verification (type `research`)
+
+A research project produces knowledge others can check: a formal proof, a reproduced paper, maintained scientific software, tests for software many depend on. It suits a swarm unusually well, because the judge is often a machine. A proof checker accepts a proof or it does not; a reproduced value lies within its tolerance or it does not. Review needs less judgement, so the swarm can work wide and in parallel. The bar for acceptance is higher, never lower.
+
+- **Before starting (interview, research tree in `templates/interview-trees.md`):** Which kind (`formal_proof`, `reproduction`, `scientific_software`, `verification`)? Which source, exactly: a paper with DOI or arXiv ID, a theorem with its number in a named edition, a repository with a revision? What counts as success, and who or what decides? Licences of source, data and result? Are the original authors informed? Personal or sensitive data? Then only with a lawful basis, and never in the repository. The answers go into the project as `research` (`kind`, `source`, `success`); the start wizard records them, and you confirm or correct them in the interview.
+- **The claims register comes first** (`docs/claims.md`, template `templates/research-claims.md`). Every task names the claim it serves. Tolerances are fixed before anyone measures. A refuted claim is a result and is published like a confirmed one.
+- **Formal proofs (Lean 4 with Mathlib).** swarvex detects `lean-toolchain`, fetches the Mathlib cache during setup (with network) and builds offline with `lake build`; any `sorry` or `admit` fails the check.
+  - **Frozen statements.** The formalization role writes every theorem statement first, with `sorry` as its proof, in a protected folder (`Statements/`, listed under `protected` in `swarvex.yaml`). The scientific reviewer checks each statement against the source. Builders fill in proofs and never touch a statement; a changed statement is a new claim version.
+  - **No new axioms, checked by the machine:** a test file pins the axioms of each main theorem with `#guard_msgs`, so an extra axiom fails the build:
+    ```lean
+    /-- info: 'Project.main_theorem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+    #guard_msgs in #print axioms Project.main_theorem
+    ```
+  - **The blueprint is the task graph.** Each lemma of the dependency graph (a blueprint, for example with `leanblueprint`) becomes a task whose `depends_on` mirrors the graph. Leaves are open first; every finished proof frees the lemmas above it. A proof with a frozen statement is level B (isolated, the machine decides); a new definition or a change to shared infrastructure is C or D.
+  - Capabilities `code.lean` and `review`; keep the Mathlib version pinned in `lean-toolchain` and `lake-manifest.json` and raise it only as its own task.
+- **Reproductions.** One command (`make reproduce` or the like) produces every number of the results table from the raw data, with fixed seeds and a pinned environment (Julia `Manifest.toml`, a Python lock file, a container image). swarvex detects Julia projects (`Project.toml` with `src/` or `test/runtests.jl`) and runs `Pkg.test()` offline.
+  - **The pipeline has limits** (30 minutes per build and per test, no GPU). It checks a reduced run with the same code and a tolerance. The full run is a task with capability `simulation` on a contributor's own machine: the output is committed with checksums and confirmed by a second, independent run, cut as a second task for a different contributor or as variants. Two agreeing runs by different people are worth more than one perfect run.
+  - Every guess about something the source leaves open goes into `docs/deviations.md`.
+- **Scientific software and verification.** Work on software that is not ours happens in a fork or a separate test repository. Patches go upstream under upstream's licence and contribution rules, submitted through you with the visionary's approval. Tests come first: regression tests against published values, property-based tests, coverage of the code paths that matter. Never claim more than was tested.
+- **Review.** The machine decides what it can; peer reviews cover level A. The scientific reviewer checks fidelity to the source: statements, claims, the wording of the results. Overclaiming ("proves", "confirms" where it only "is consistent with") is a reason to request changes.
+- **Publication.** `README.md` says what was shown and what was not; `docs/limitations.md`; `CITATION.cff`; contributions as CRediT roles taken from the log; a DOI for a release (for example through Zenodo's GitHub archive). Contact the original authors politely and early; a deviation is a finding, not an accusation.
+- **Not for swarvex:** experiments with people or animals, anything that needs ethics approval, wet-lab work, medical advice, other people's unpublished data, and copying the text of closed-access papers (cite them, do not copy them).
+
 ---
 
 ## 10. Special cases and escalation
@@ -648,6 +682,8 @@ The method follows tools like [Craft Anything](https://github.com/storytold/craf
 | `templates/project-brief.md` | phase 0: result of the interview, with the decisions table |
 | `roles/` | section 9a: role cards per project type, also usable as subagents; gates and officer rules in `roles/README.md` |
 | `templates/clean-room-specification.md` | clean-room projects: layout and formats of the specification (obligations, values, scenarios, check rounds) |
+| `templates/continuation.md` | continuing abandoned software: the first milestone (fork, licence, build, release) |
+| `templates/research-claims.md` | research projects: claims register, generated results table and deviations |
 | `templates/baseline-packages.md` | phase 2: building blocks every project of a type needs (menus, settings, error pages, help …) |
 | `templates/task.md` | every task, with complete examples |
 | `templates/asset-brief.md` | design, 3D, image, audio and video briefs |

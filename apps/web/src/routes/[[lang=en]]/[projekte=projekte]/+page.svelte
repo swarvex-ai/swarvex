@@ -26,10 +26,10 @@
   let ordnung = $state<keyof typeof ordnungen>("aktiv");
   let suche = $state("");
   let engine = $state<string | null>(null);
-  // Kategorien: Projektart, dazu Clean-Room als eigenes Verfahren (quer zu den Arten)
-  const KATEGORIEN = ["game", "app", "website", "service", "tool", "library", "plugin", "clean_room"] as const;
+  // Kategorien: Projektart, dazu Clean Room und Weiterführen als eigene Verfahren (quer zu den Arten)
+  const KATEGORIEN = ["game", "app", "website", "service", "tool", "library", "plugin", "research", "clean_room", "continuation"] as const;
   let kategorie = $state<string | null>(null);
-  const inKategorie = (p: Projekt, k: string) => (k === "clean_room" ? p.procedure === "clean_room" : (p.project_type ?? "other") === k);
+  const inKategorie = (p: Projekt, k: string) => (k === "clean_room" || k === "continuation" ? p.procedure === k : (p.project_type ?? "other") === k);
 
   const projekte = $derived((data.liste?.projects ?? []) as Projekt[]);
   const engines = $derived([...new Set(projekte.map((p) => p.engine))].sort());

