@@ -38,6 +38,7 @@ type proxyKonfig struct {
 	aufgabenTok string // Wegwerf-Token der Sandbox
 	budget      int64  // max. Tokens für diese Aufgabe
 	listen      string
+	kontingent  *kontingentWaechter // Stand der Abo-Fenster; mit Regeln (Restkontingent-Modus) stoppt er an der Reserve
 }
 
 // Pfade je Schnittstelle: true = kostet Tokens (Budget prüfen, Verbrauch zählen).
@@ -63,6 +64,14 @@ func proxyStarten() {
 		listen:      envOder("SWARVEX_LISTEN", ":8080"),
 	}
 	k.budget, _ = strconv.ParseInt(envOder("SWARVEX_BUDGET_TOKENS", "200000"), 10, 64)
+	k.kontingent = &kontingentWaechter{}
+	if s := os.Getenv("SWARVEX_LEFTOVER"); s != "" {
+		r, err := restRegelnLesen(s)
+		if err != nil {
+			log.Fatal("proxy: " + err.Error())
+		}
+		k.kontingent.regeln = &r
+	}
 	if k.upstream == "" || k.modell == "" || len(k.aufgabenTok) < 32 || proxyPfade[k.api] == nil {
 		log.Fatal("proxy: SWARVEX_UPSTREAM, SWARVEX_MODEL, SWARVEX_TASK_TOKEN (>=32 characters) and SWARVEX_API (chat, anthropic, responses) are required")
 	}
@@ -95,6 +104,13 @@ func proxyHandler(k proxyKonfig, verbraucht *atomic.Int64) http.HandlerFunc {
 				w.Header().Set("content-type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
 				io.WriteString(w, `{"error":{"message":"the token budget for this task is used up","type":"budget_exhausted"}}`)
+				return
+			}
+			if err := k.kontingent.erlaubt(); kostet && err != nil {
+				ereignis("quota_reserve", map[string]any{"reason": err.Error()})
+				w.Header().Set("content-type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{"message": "leftover mode: " + err.Error(), "type": "quota_reserve"}})
 				return
 			}
 			weiterleiten(w, r, k, verbraucht, kostet)
@@ -196,6 +212,7 @@ func weiterleiten(w http.ResponseWriter, r *http.Request, k proxyKonfig, verbrau
 		return
 	}
 	defer antwort.Body.Close()
+	k.kontingent.sehen(kontingentAusKoepfen(antwort.Header, time.Now()))
 	for _, kopf := range []string{"content-type", "cache-control", "request-id", "x-request-id", "retry-after"} {
 		if v := antwort.Header.Get(kopf); v != "" {
 			w.Header().Set(kopf, v)
@@ -216,6 +233,7 @@ func weiterleiten(w http.ResponseWriter, r *http.Request, k proxyKonfig, verbrau
 				}
 				if daten, ok := bytes.CutPrefix(bytes.TrimSpace(zeile), []byte("data:")); ok {
 					z.lesen(daten)
+					k.kontingent.sehen(kontingentAusEreignis(bytes.TrimSpace(daten), time.Now()))
 				}
 			}
 			if err != nil {

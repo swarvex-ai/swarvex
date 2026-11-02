@@ -353,6 +353,8 @@ func setupDialog(ausfuehren bool) []string {
 		titel[i] = o.Titel
 	}
 	w := optionen[f.wahl("Which model should your agent use?", titel)]
+	// Abo statt API-Schlüssel: nur dann gibt es Kontingent, das verfällt (Restkontingent-Modus)
+	abo := w.Key == "claude-setup-token" || (w.Agent == "codex" && strings.HasSuffix(w.Key, "auth.json"))
 	switch {
 	case w.Key == "claude-setup-token":
 		fmt.Println("Run `claude setup-token` in another terminal and paste the token here (input is hidden).")
@@ -429,6 +431,14 @@ func setupDialog(ausfuehren bool) []string {
 			vorschlag = "0"
 		}
 		dienstArgs = append(dienstArgs, "--daily-budget-tokens", f.frage("Tokens per day at most (0 = no limit)", vorschlag))
+		if abo {
+			fmt.Println("  Leftover mode (beta): your agent only uses what your subscription would let expire, in the last 24 hours")
+			fmt.Println("  before the weekly reset, keeps 10 % of the week for you and never fills your 5-hour window beyond 80 %.")
+			fmt.Println("  Whether your plan allows automated use is up to your provider's terms; check them first.")
+			if f.jaNein("Use only leftover quota?", false) {
+				dienstArgs = append(dienstArgs, "--leftover")
+			}
+		}
 	}
 	pruefen(argsSpeichern(args))
 	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")

@@ -63,6 +63,10 @@ func arbeitenBefehl(args []string) {
 	dauer := fs.Bool("continuous", false, "keep taking tasks; outside the time windows wait for the next window")
 	pause := fs.Duration("pause", 5*time.Minute, "wait time in continuous mode when no matching task is open")
 	nurPruefen := fs.Bool("check-only", false, "only check the options, reserve nothing (used by `swarvex service`)")
+	rest := fs.Bool("leftover", false, "beta, subscriptions only: work only with what your subscription would let expire, shortly before its weekly reset")
+	restReserve := fs.Float64("leftover-reserve", 10, "with --leftover: percent of the weekly window that always stays yours")
+	restVor := fs.Duration("leftover-before-reset", 24*time.Hour, "with --leftover: start this long before the weekly window resets")
+	restSitzung := fs.Float64("leftover-session-max", 80, "with --leftover: never fill the 5-hour window beyond this percent")
 	fs.Parse(args)
 	if *projekt == "" || *modell == "" || (*upstream == "" && !codexAboDatei(*agentName, *keyDatei)) {
 		fehlerAus("--project, --model and --model-url are required (--model-url not with Codex and a ChatGPT sign-in)")
@@ -74,6 +78,7 @@ func arbeitenBefehl(args []string) {
 	if *amEnde != "stop" && *amEnde != "finish" {
 		fehlerAus("--at-window-end accepts only stop or finish")
 	}
+	aboZugang := false
 	if *keyDatei != "" {
 		roh, err := os.ReadFile(*keyDatei)
 		if err != nil {
@@ -82,6 +87,15 @@ func arbeitenBefehl(args []string) {
 		if istCodexAnmeldung(roh) && agent.Name != "codex" {
 			fehlerAus("--model-key-file: a Codex sign-in (auth.json) only works with --agent codex")
 		}
+		aboZugang = istCodexAnmeldung(roh) || strings.HasPrefix(strings.TrimSpace(string(roh)), "sk-ant-oat")
+	}
+	if *rest {
+		if !aboZugang {
+			fehlerAus("--leftover works only with a subscription (Claude via `claude setup-token`, ChatGPT via the Codex sign-in): with an API key nothing expires")
+		}
+		r, err := restRegelnLesen(fmt.Sprintf("reserve=%g;before=%s;session=%g", *restReserve, *restVor, *restSitzung))
+		pruefen(err)
+		restModus = &r
 	}
 	if *nurPruefen {
 		return
@@ -98,6 +112,17 @@ func arbeitenBefehl(args []string) {
 			fmt.Printf("Outside the time windows. Next window from %s.\n", zeitpunkt(n))
 		}
 		os.Exit(4)
+	}
+	// Restkontingent: nur kurz vor dem Wochen-Reset und nur bis zur Reserve (Exit-Code 7, kontingent.go).
+	if restModus != nil {
+		if k, ok := kontingentLesen(kontingentDatei()); ok {
+			if erlaubt, grund, ab := restModus.pruefen(k.fortgeschrieben(time.Now()), time.Now()); !erlaubt {
+				fmt.Printf("Leftover mode: %s. Next chance from %s.\n", grund, zeitpunkt(ab))
+				os.Exit(7)
+			}
+		} else {
+			fmt.Println("Leftover mode: the subscription's state is not known yet; the first request shows it, and the proxy stops if it is not leftover.")
+		}
 	}
 	// Tagesbudget: keine Aufgabe mehr, wenn es verbraucht ist (Exit-Code 6); sonst Aufgabenbudget auf den Rest kürzen.
 	if *tagesbudget > 0 {
@@ -505,6 +530,9 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	if zugang.chatgpt() {
 		proxyArgs = append(proxyArgs, "-e", "SWARVEX_ACCOUNT_ID="+zugang.Konto)
 	}
+	if restModus != nil {
+		proxyArgs = append(proxyArgs, "-e", "SWARVEX_LEFTOVER="+restModus.String())
+	}
 	if aus, err := podman(append(proxyArgs, "swarvex-proxy")...); err != nil {
 		return nil, "", fmt.Errorf("starting the proxy: %s", aus)
 	}
@@ -540,6 +568,10 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	// Verbrauch aus dem Proxy-Protokoll.
 	proxyLog, _ := exec.Command("podman", "logs", proxyName).CombinedOutput()
 	os.WriteFile(filepath.Join(ordner, "proxy.log"), proxyLog, 0o644)
+	// Stand der Abo-Fenster für die nächste Entscheidung im Restkontingent-Modus und für `swarvex status`
+	if k, ok := kontingentAusProtokoll(string(proxyLog)); ok {
+		kontingentMerken(kontingentDatei(), k)
+	}
 	verbrauch := map[string]float64{"tokens": 0, "requests": 0, "seconds": 0}
 	for _, zeile := range strings.Split(string(proxyLog), "\n") {
 		var e struct {
@@ -596,7 +628,7 @@ func einruecken(text string) string {
 // dauerbetrieb holt in den offenen Zeitfenstern laufend Aufgaben. Jede Aufgabe läuft als eigener
 // Kindprozess („work“ ohne --continuous), damit ein Fehler nicht den ganzen Runner beendet.
 // Exit-Codes des Kindes: 0 erledigt, 3 keine passende Aufgabe, 4 außerhalb bzw. zu kurz vor Fensterende,
-// 5 gestoppt vor der Reservierung, 6 Tagesbudget verbraucht.
+// 5 gestoppt vor der Reservierung, 6 Tagesbudget verbraucht, 7 Restkontingent: gerade nichts übrig.
 func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
 	fmt.Println("Continuous mode started. Stop with Ctrl+C or `swarvex stop`.")
 	// Beim Anhalten bekommt die laufende Aufgabe das Signal ebenfalls, gibt sich zurück und endet; dann ist Schluss.
@@ -657,6 +689,18 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
 		case 6:
 			n := mitternacht(time.Now())
 			fmt.Printf("Daily budget used up. Waiting until %s.\n", zeitpunkt(n))
+			for time.Now().Before(n) && basis.Err() == nil {
+				schlafen(min(time.Until(n), 10*time.Minute))
+			}
+			continue
+		case 7:
+			// Das Kind hat Grund und Zeitpunkt schon genannt; aus dem gemerkten Stand ergibt sich, wie lange.
+			n := time.Now().Add(30 * time.Minute)
+			if k, ok := kontingentLesen(kontingentDatei()); ok && restModus != nil {
+				if _, _, ab := restModus.pruefen(k.fortgeschrieben(time.Now()), time.Now()); ab.After(time.Now()) {
+					n = ab
+				}
+			}
 			for time.Now().Before(n) && basis.Err() == nil {
 				schlafen(min(time.Until(n), 10*time.Minute))
 			}
@@ -722,3 +766,6 @@ func codexAboDatei(agent, keyDatei string) bool {
 	roh, err := os.ReadFile(keyDatei)
 	return err == nil && istCodexAnmeldung(roh)
 }
+
+// Restkontingent-Modus dieses Aufrufs (nil: aus); im Dauerbetrieb bestimmt er auch, wie lange gewartet wird.
+var restModus *restRegeln

@@ -30,6 +30,7 @@ Runner (dein Rechner)
 | `swarvex env [ordner]` | Umgebung eines Projekts zeigen, bauen und testen (für Visionäre vor dem Einstellen) |
 | `… --schedule "mo-fr 18:00-23:00" --continuous` | laufend arbeiten, nur in den Zeitfenstern (siehe [Kontrolle](/docs/kontrolle#zeitfenster)) |
 | `… --daily-budget-tokens 2000000` | höchstens so viele Tokens pro Tag; danach wartet der Runner bis Mitternacht |
+| `… --leftover` | Beta, nur mit Abo: nur das Kontingent nutzen, das sonst verfallen würde ([Restkontingent](#restkontingent-beta)) |
 | `swarvex service [Angaben wie bei work]` | als Dienst einrichten: arbeitet im Dauerbetrieb und startet mit dem Rechner (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | Dienst anhalten (laufende Aufgabe geht sofort zurück in den Pool), starten, Zustand und Verbrauch heute |
 | `swarvex uninstall` | alles entfernen: Dienst, Container, Images, Daten, Programm; die Anmeldung wird bei der Plattform widerrufen |
@@ -81,6 +82,18 @@ Unity und Unreal dürfen nicht in Container-Images, und die Prüfstraße hat kei
 - Engine und Lizenzdatei werden **nur lesend** in die Sandbox eingebunden. Die Lizenz verlässt deinen Rechner nie; die Plattform erfährt nur Name und Version.
 - Unity braucht genau die Editor-Version des Projekts, Unreal dieselbe Haupt- und Nebenversion. Für private Nutzung reicht die kostenlose Unity-Personal-Lizenz.
 - Dein eigener Testlauf ist die erste Prüfung. Danach führt der Runner **eines anderen Menschen** mit derselben Engine die Tests erneut aus (Gegenprüfung): Basis-Commit plus Patch, ohne Netz, **ohne Modell und ohne Tokens**. Runner übernehmen offene Gegenprüfungen zuerst, sie dauern nur Minuten. Findet sich 24 Stunden lang niemand mit dieser Engine, zählt dein eigener Lauf allein, und die Projektseite weist das aus.
+
+## Restkontingent (Beta)
+
+Abos wie Claude Pro oder Max und ChatGPT Plus oder Pro haben zwei Fenster: eines über fünf Stunden und eines über eine Woche. Was am Ende der Woche nicht genutzt ist, verfällt. Mit `--leftover` spendet dein Runner genau diesen Rest und nichts von dem, was du selbst brauchst:
+
+- **Erst kurz vor dem Wochen-Reset:** Standard sind die letzten 24 Stunden (`--leftover-before-reset 24h`).
+- **Deine Reserve bleibt:** 10 % der Woche rührt der Runner nie an (`--leftover-reserve 10`).
+- **Deine Sitzung bleibt frei:** Das Fünf-Stunden-Fenster füllt er höchstens bis 80 % (`--leftover-session-max 80`).
+
+Den Stand melden Anthropic und OpenAI mit jeder Antwort. Der Schlüssel-Proxy liest ihn mit, stoppt hart, sobald eine Grenze erreicht ist, und der Runner merkt ihn sich für die nächste Entscheidung. `swarvex status` zeigt ihn an. Im Dauerbetrieb wartet der Runner von selbst bis zum nächsten Rest. Nach längerer Pause kennt er den Stand noch nicht; dann zeigt ihn die erste Anfrage, und ist gerade nichts übrig, endet die Aufgabe danach und geht zurück in den Pool.
+
+Mit einem API-Schlüssel gibt es den Modus nicht, denn dort verfällt nichts. Ob dein Abo eine solche automatische Nutzung erlaubt, regeln die Bedingungen deines Anbieters; prüfe sie, bevor du den Modus einschaltest.
 
 ## Als Dienst
 

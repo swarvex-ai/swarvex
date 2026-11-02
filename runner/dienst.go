@@ -184,6 +184,9 @@ func stopBefehl() {
 
 func statusBefehl() {
 	fmt.Printf("Usage today: %d tokens\n", verbrauchAmTag(verbrauchsDatei(), time.Now()))
+	if k, ok := kontingentLesen(kontingentDatei()); ok {
+		fmt.Printf("Subscription (as of %s): %s\n", zeitpunkt(k.Zeit), kontingentText(k, time.Now()))
+	}
 	if z, err := zugangLaden(); err == nil {
 		fmt.Println("Signed in at:", z.Plattform)
 	} else {

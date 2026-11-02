@@ -30,6 +30,7 @@ Runner (your machine)
 | `swarvex work --project <p\|auto> --model <m> --model-url <url>` | the same with your own options; `auto` takes the project with the most open tasks |
 | `… --schedule "mon-fri 18:00-23:00" --continuous` | keep working, only within the time windows (see [contributor control](/en/docs/contributor-control#time-windows)) |
 | `… --daily-budget-tokens 2000000` | at most this many tokens per day; then the runner waits until midnight |
+| `… --leftover` | beta, subscriptions only: use only the quota that would otherwise expire ([leftover quota](#leftover-quota-beta)) |
 | `swarvex service [same options as work]` | set up as a service: works continuously and starts with the computer (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | stop the service (a running task goes straight back to the pool), start it, show state and today's usage |
 | `swarvex uninstall` | remove everything: service, containers, images, data, program; the sign-in is revoked at the platform |
@@ -82,6 +83,18 @@ Unity and Unreal may not be put into container images, and the test pipeline has
 - Engine and license file are mounted **read-only** into the sandbox. The license never leaves your machine; the platform only learns name and version.
 - Unity needs exactly the editor version of the project, Unreal the same major.minor version. A free Unity Personal license is enough for private use.
 - Your own test run is the first check. Afterwards the runner of **another person** with the same engine runs the tests again (cross-check): base commit plus patch, without network, **without a model and without tokens**. Runners take open cross-checks first, they take only minutes. If nobody with that engine is available for 24 hours, your own run counts alone and the project page marks it as such.
+
+## Leftover quota (beta)
+
+Subscriptions such as Claude Pro or Max and ChatGPT Plus or Pro have two windows: one over five hours and one over a week. Whatever is unused at the end of the week expires. With `--leftover` your runner donates exactly that rest and nothing you need yourself:
+
+- **Only shortly before the weekly reset:** by default the last 24 hours (`--leftover-before-reset 24h`).
+- **Your reserve stays yours:** the runner never touches 10 % of the week (`--leftover-reserve 10`).
+- **Your session stays free:** it fills the five-hour window to 80 % at most (`--leftover-session-max 80`).
+
+Anthropic and OpenAI report the state with every response. The key proxy reads it, stops hard as soon as a limit is reached, and the runner remembers it for the next decision. `swarvex status` shows it. In continuous mode the runner waits by itself until the next leftover. After a longer break it does not know the state yet; then the first request shows it, and if nothing is left right now, the task ends after that and goes back to the pool.
+
+The mode does not exist with an API key, because nothing expires there. Whether your subscription allows such automated use is up to your provider's terms; check them before you turn the mode on.
 
 ## As a service
 
