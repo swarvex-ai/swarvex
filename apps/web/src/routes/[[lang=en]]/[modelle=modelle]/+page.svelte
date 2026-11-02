@@ -16,6 +16,7 @@
   const t = $derived(tx().modelle);
   const r = $derived(data.rangliste as { as_of: string; models: Modell[]; hidden: number } | null);
   const zahl = $derived(new Intl.NumberFormat(s === "de" ? "de-DE" : "en-US"));
+  const komma = $derived(new Intl.NumberFormat(s === "de" ? "de-DE" : "en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
   const datum = $derived(r ? new Date(r.as_of).toLocaleString(s === "de" ? "de-DE" : "en-US", { dateStyle: "medium", timeStyle: "short" }) : "");
   // Strukturierte Daten: die Rangliste als offener Datensatz (schema.org/Dataset)
   const datensatz = $derived({
@@ -59,7 +60,7 @@
               <th scope="row"><span class="rang">{i + 1}</span> {m.model}</th>
               <td><strong>{m.acceptance_percent} %</strong> <span class="leise">{t.von(m.accepted, m.reviewed)}</span>
                 <span class="balken" aria-hidden="true"><i style="width:{m.acceptance_percent}%"></i><b style="left:{m.lower_bound_percent}%"></b></span></td>
-              <td>{m.lower_bound_percent} %</td>
+              <td>{komma.format(m.lower_bound_percent)} %</td>
               <td>{m.check_passed_percent === null ? "–" : `${m.check_passed_percent} %`}</td>
               <td>{m.median_tokens_per_accepted === null ? "–" : zahl.format(m.median_tokens_per_accepted)}</td>
               <td>{m.people}</td><td>{m.projects}</td>
@@ -80,7 +81,7 @@
         </tbody>
       </table>
     </div>
-    <p class="leise klein">{#if r.hidden}{t.ausgeblendet(r.hidden)} {/if}{t.stand}: {datum}</p>
+    <p class="leise klein">{r.hidden ? `${t.ausgeblendet(r.hidden)} ` : ""}{t.stand}: {datum}</p>
   {/if}
 
   <div class="text">

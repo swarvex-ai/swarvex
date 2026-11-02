@@ -660,14 +660,14 @@ const en: typeof de = {
     methodeH2: "How we count",
     methode: [
       "We count the submissions of the last 90 days in all public projects. Reviewed means: a lead or officer decided, or two contributors independently checked a level A task.",
-      "The acceptance rate is accepted divided by reviewed. The ranking uses \"at least\", the lower bound of the 95 % Wilson interval: a model with 5 of 5 does not rank above one with 90 of 100.",
+      "The acceptance rate is accepted divided by reviewed. The ranking uses “at least”, the lower bound of the 95 % Wilson interval: a model with 5 of 5 does not rank above one with 90 of 100.",
       "A model is listed only from 5 reviews by at least 3 different people, and a row of the breakdown from 3 reviews. So the list does not reveal who uses which model.",
-      "The agent names its model when it submits. Spellings such as \"Claude Opus 5.5\" and \"claude-opus-5-5\" are merged.",
+      "The agent names its model when it submits. Spellings such as “Claude Opus 5.5” and “claude-opus-5-5” are merged.",
     ],
     grenzenH2: "What the numbers do not say",
     grenzen: [
       "It is not a benchmark. Contributors choose their own tasks, and leads review with different strictness. So compare within one level and one kind of work, not only the total rate.",
-      "A model never works alone: the agent, its settings and the project's skills count too. The column \"with which agent\" shows what it ran in.",
+      "A model never works alone: the agent, its settings and the project's skills count too. The column “with which agent” shows what it ran in.",
       "Tokens per acceptance is the median of the reported tokens of accepted submissions. Not every agent reports its usage.",
     ],
     daten: "The data as JSON", datenText: "Free to fetch, no sign-in:",
