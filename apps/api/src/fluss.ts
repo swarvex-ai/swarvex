@@ -11,9 +11,9 @@ export type Wecken = (typeof WECKEN)[number];
 export async function angebot(db: Db, projektId: number) {
   return (await db.query(
     `select (select count(*)::int from aufgaben a where a.projekt_id = $1 and a.zustand = 'offen'
-               and not exists (select 1 from aufgaben v where v.id = any(a.abhaengig_von) and v.zustand not in ('angenommen', 'gemerged'))) as frei,
+               and not aufgabe_blockiert(a.abhaengig_von, a.abhaengig_eins_von)) as frei,
             (select count(*)::int from aufgaben a where a.projekt_id = $1 and a.zustand = 'offen'
-               and exists (select 1 from aufgaben v where v.id = any(a.abhaengig_von) and v.zustand not in ('angenommen', 'gemerged'))) as blockiert,
+               and aufgabe_blockiert(a.abhaengig_von, a.abhaengig_eins_von)) as blockiert,
             (select count(*)::int from leases l join aufgaben a on a.id = l.aufgabe_id
                where a.projekt_id = $1 and l.beendet is null and l.laeuft_ab > now()) as aktiv`, [projektId])).rows[0] as { frei: number; blockiert: number; aktiv: number };
 }

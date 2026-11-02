@@ -128,11 +128,12 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
         room: z.enum(["analysis", "review", "build"]).optional().describe("Clean-room projects only: analysis (study the original, write the specification), review (check the specification), build (implement from the specification)"),
         role: z.string().optional().describe("Role from the role catalog this task serves, e.g. audio, art, ux, game-design (lead/roles); shown to contributors and used in the lead scorecard"),
         depends_on: z.array(z.number().int()).max(20).optional().describe("Task numbers of this project that must be accepted first. The task is created now and offered automatically as soon as all of them are accepted: cut follow-up work in advance instead of waiting"),
+        depends_on_any: z.array(z.array(z.number().int()).min(2).max(10)).max(10).optional().describe("Groups of task numbers of which at least one must be accepted, e.g. a variant pair [[45, 46]]; combined with depends_on"),
       },
     }, sicher(async (a) => k.aufgabeAnlegen(db, wer, a.project, {
       titel: a.title, beschreibung: a.description, stufe: a.level, faehigkeiten: a.capabilities, pfade: a.paths, akzeptanz: a.acceptance,
       basis_commit: a.base_commit, lease_minuten: a.lease_minutes, min_vertrauen: a.min_trust, meilenstein: a.milestone, neuer_meilenstein: a.new_milestone,
-      raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role, abhaengig_von: a.depends_on,
+      raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role, abhaengig_von: a.depends_on, abhaengig_eins_von: a.depends_on_any,
     })));
 
     s.registerTool("close_task", {

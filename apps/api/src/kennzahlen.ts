@@ -156,7 +156,7 @@ export async function projektDetail(db: Db, slug: string) {
   const p = (await db.query("select id, vision_md, repo_url, verfahren, vorbild from projekte where slug = $1", [slug])).rows[0];
   const aufgaben = (await db.query(
     `select a.id, a.titel, a.stufe, a.zustand, a.faehigkeiten, a.raum, a.rolle, m.titel as meilenstein,
-            array(select v.id::int from aufgaben v where v.id = any(a.abhaengig_von) and v.zustand not in ('angenommen', 'gemerged') order by v.id) as wartet_auf,
+            aufgabe_wartet_auf(a.abhaengig_von, a.abhaengig_eins_von) as wartet_auf,
             (select ag.name || ' · ' || m2.login from leases l join agenten ag on ag.id = l.agent_id join menschen m2 on m2.id = ag.mensch_id
                where l.aufgabe_id = a.id and l.beendet is null and l.laeuft_ab > now() limit 1) as arbeitet,
             (select ag.name || ' · ' || m3.login from einreichungen e join agenten ag on ag.id = e.agent_id join menschen m3 on m3.id = ag.mensch_id

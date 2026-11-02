@@ -23,7 +23,7 @@
   // Aufgaben-Filter: offen / in Arbeit (reserviert bis Prüfung) / fertig (angenommen, übernommen)
   const gruppe = (z: string) => (z === "open" ? "offen" : ["accepted", "merged"].includes(z) ? "fertig" : "arbeit");
   let filter = $state<"alle" | "offen" | "arbeit" | "fertig">("alle");
-  const aufgaben = $derived((p.tasks as { id: number; title: string; level: string; state: string; milestone: string | null; role: string | null; working: string | null; contribution_by: string | null; waiting_for: number[] }[])
+  const aufgaben = $derived((p.tasks as { id: number; title: string; level: string; state: string; milestone: string | null; role: string | null; working: string | null; contribution_by: string | null; waiting_for: number[][] }[])
     .filter((a) => filter === "alle" || gruppe(a.state) === filter));
   const ton = (z: string) => (z === "check_failed" ? "rot" : ["submitted", "checking"].includes(z) ? "bernstein" : z === "open" ? "leise" : "akzent");
   const mitmachen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));

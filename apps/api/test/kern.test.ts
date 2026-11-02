@@ -74,9 +74,20 @@ describe("Abhängigkeiten (Fluss ohne Warten)", () => {
     expect(await frei()).toContain(Number(v.id));
     expect(await frei()).not.toContain(Number(f.id));
     await expect(k.reservieren(db, mit, f.id)).rejects.toThrow(/waits for/);
+    // Varianten-Paar: Folgeaufgabe braucht v und eine der beiden Varianten
+    const x = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Variante 1"));
+    const y = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Variante 2"));
+    const g = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Nach dem Paar"), abhaengig_von: [Number(v.id)], abhaengig_eins_von: [[Number(x.id), Number(y.id)]] });
+    await expect(k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Allein"), abhaengig_eins_von: [[Number(x.id)]] })).rejects.toThrow(/depends_on_any/);
     await db.query("update aufgaben set zustand = 'angenommen' where id = $1", [v.id]);
     expect(await frei()).toContain(Number(f.id));
-    await k.schliessen(db, lead, f.id, "Test");
+    expect(await frei()).not.toContain(Number(g.id));
+    expect(await k.wartetAuf(db, (await db.query("select * from aufgaben where id = $1", [g.id])).rows[0])).toEqual([[Number(x.id), Number(y.id)]]);
+    await k.schliessen(db, lead, x.id, "Variante verworfen");
+    expect(await frei()).not.toContain(Number(g.id));      // geschlossen zählt nicht als erfüllt
+    await db.query("update aufgaben set zustand = 'gemerged' where id = $1", [y.id]);
+    expect(await frei()).toContain(Number(g.id));
+    for (const t of [f, g]) await k.schliessen(db, lead, t.id, "Test");
   });
   it("wait_for_work kehrt sofort zurück, wenn Nachschub fehlt, sonst nach der Frist", async () => {
     const { aufArbeitWarten } = await import("../src/fluss.ts");
