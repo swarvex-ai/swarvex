@@ -19,7 +19,7 @@ describe("Schwarm-Bilanz", () => {
     expect(b.schwarm).toEqual({ kalender_stunden: 2, agenten_stunden: 5, agenten: 3, menschen: 2, modelle: 2 });
     expect(b.ein_agent.stunden).toBe(3);          // 1 h + 1,5 h Nacharbeit-Versuch + 0,5 h; die offene Aufgabe zählt nicht
     expect(b.beschleunigung).toBe(1.5);           // 3 h nacheinander gegen 2 h im Kalender
-    expect(b.menschen_team).toMatchObject({ geschaetzte_stunden: 14, aufgaben_geschaetzt: 2, team: 4, wochen: 0.1, cocomo: null });
+    expect(b.menschen_team).toMatchObject({ geschaetzte_stunden: 14, aufgaben_geschaetzt: 2, team: 4, wochen: 0.1, cocomo: null, durchsatz_je_tag: 168 });
     expect(b.vier_augen_prozent).toBe(100);
     expect(b.pruefstrasse_prozent).toBe(100);
   });

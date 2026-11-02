@@ -65,6 +65,20 @@ describe("Aufgabe schließen", () => {
   });
 });
 
+describe("Schätzung nachtragen (Schwarm-Bilanz)", () => {
+  it("nur Lead oder Officer, nur vor dem Erledigen, öffentlich mit dem alten Wert", async () => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Ohne Schätzung") });
+    await expect(k.schaetzen(db, mit, a.id, 4)).rejects.toThrow(/lead/);
+    await expect(k.schaetzen(db, lead, a.id, 0)).rejects.toThrow(/more than 0/);
+    expect(await k.schaetzen(db, lead, a.id, 4)).toEqual({ aufgabe: Number(a.id), menschen_stunden: 4 });
+    await k.schaetzen(db, lead, a.id, 6);
+    const e = (await db.query("select daten from ereignisse where art = 'schaetzung_gesetzt' and bezug = $1 order by seq desc limit 1", [`aufgabe:${a.id}`])).rows[0].daten;
+    expect(e).toEqual({ menschen_stunden: 6, vorher: 4 });
+    await k.schliessen(db, lead, a.id, "Test");
+    await expect(k.schaetzen(db, lead, a.id, 8)).rejects.toThrow(/before the work is done/);
+  });
+});
+
 describe("Direkt-Modus (#8)", () => {
   it("direkt angebundene Agenten bekommen nur Aufgaben ohne Code-Ausführung", async () => {
     expect(k.ohneAusfuehrung(["text.en", "design.ui"])).toBe(true);

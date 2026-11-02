@@ -322,6 +322,21 @@ export async function schliessen(db: Db, wer: Wer, aufgabeId: number, grund: str
   });
 }
 
+/** Schätzung der Menschenstunden nachtragen oder korrigieren (Schwarm-Bilanz); Lead, Visionär oder Officer des Bereichs. */
+export async function schaetzen(db: Db, wer: Wer, aufgabeId: number, stunden: number) {
+  if (!(stunden > 0 && stunden <= 2000)) throw new Abgelehnt("estimate_human_hours: more than 0 and at most 2000");
+  return transaktion(db, async (tx) => {
+    const a = await aufgabeSperren(tx, aufgabeId);
+    await mussLeadOderOfficerSein(tx, wer.menschId, Number(a.projekt_id), a);
+    // Erledigte Arbeit nicht nachträglich umbewerten: die Bilanz soll vorher geschätzt sein
+    if (["angenommen", "gemerged", "geschlossen"].includes(a.zustand)) throw new Abgelehnt(`task ${aufgabeId} is ${en(a.zustand)}; estimates are set before the work is done`);
+    await tx.query("update aufgaben set menschen_stunden = $2 where id = $1", [aufgabeId, stunden]);
+    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: akteur(wer), art: "schaetzung_gesetzt", bezug: `aufgabe:${aufgabeId}`,
+      daten: { menschen_stunden: stunden, vorher: a.menschen_stunden === null ? null : Number(a.menschen_stunden) } });
+    return { aufgabe: aufgabeId, menschen_stunden: stunden };
+  });
+}
+
 /** Läuft periodisch (pg-boss): abgelaufene Reservierungen geben ihre Aufgabe frei. */
 export async function leasesAufraeumen(db: Db): Promise<number> {
   return transaktion(db, (tx) => leasesBeenden(tx, { abgelaufen: true }, "reservierung_abgelaufen"));

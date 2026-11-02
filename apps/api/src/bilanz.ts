@@ -57,6 +57,8 @@ export function gruppenBilanz(zeilen: Zeile[], start: Date | null) {
       aufgaben_geschaetzt: schaetzungen.size,
       team: TEAM.menschen,
       wochen: schaetzungen.size ? r1(menschenStunden / (TEAM.menschen * TEAM.stunden_je_woche)) : null,
+      // geschätzte Menschenstunden, die der Schwarm je Kalendertag erledigt: vergleichbar über verschieden große Umfänge
+      durchsatz_je_tag: schaetzungen.size && kalenderStunden > 0 ? r1(menschenStunden / (kalenderStunden / 24)) : null,
       cocomo: cocomo(codeZeilen),
     },
     // jeder angenommene Beitrag von einem anderen Menschen bewertet als dem, der ihn eingereicht hat
@@ -87,8 +89,14 @@ export async function schwarmBilanz(db: Db, projektId: number) {
     `select m.titel, count(*) filter (where a.zustand not in ('angenommen', 'gemerged', 'geschlossen'))::int as offen
      from aufgaben a join meilensteine m on m.id = a.meilenstein_id where a.projekt_id = $1 group by m.titel`, [projektId])).rows.map((r) => [r.titel, r.offen]));
   const vergleich = (await db.query("select vergleich from projekte where id = $1", [projektId])).rows[0]?.vergleich ?? null;
+  const gesamt = gruppenBilanz(zeilen, gesamtStart);
+  // Vergleich über den Durchsatz (Menschenstunden je Kalendertag), wenn der Vergleichswert eine Schätzung seines Umfangs hat
+  if (vergleich?.menschen_stunden && vergleich?.kalender_tage) {
+    vergleich.durchsatz_je_tag = r1(Number(vergleich.menschen_stunden) / Number(vergleich.kalender_tage));
+    if (gesamt?.menschen_team.durchsatz_je_tag) vergleich.durchsatz_faktor = r1(gesamt.menschen_team.durchsatz_je_tag / vergleich.durchsatz_je_tag);
+  }
   return {
-    gesamt: gruppenBilanz(zeilen, gesamtStart),
+    gesamt,
     meilensteine: titel.map((t) => ({ titel: t, abgeschlossen: (offen.get(t) ?? 0) === 0, ...gruppenBilanz(zeilen.filter((z) => z.meilenstein === t), startVon(t)) }))
       .filter((m) => m.aufgaben_fertig),
     vergleich,

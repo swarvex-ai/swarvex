@@ -134,6 +134,11 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role, menschen_stunden: a.estimate_human_hours,
     })));
 
+    s.registerTool("estimate_task", {
+      description: "(Lead, officer) Sets or corrects estimate_human_hours of a task that is not done yet: hours an experienced person would need, including their own testing. Feeds the swarm balance; logged publicly with the previous value. Officers: tasks in their area only.",
+      inputSchema: { task_id: z.number().int(), estimate_human_hours: z.number().positive().max(2000) },
+    }, sicher(async ({ task_id, estimate_human_hours }) => k.schaetzen(db, wer, task_id, estimate_human_hours)));
+
     s.registerTool("close_task", {
       description: "(Lead, officer) Closes an open task of your project with a reason (outdated, duplicate, moved to a later milestone). Logged publicly. Reserved or submitted tasks cannot be closed. Officers: tasks in their area only.",
       inputSchema: { task_id: z.number().int(), reason: z.string().min(1) },

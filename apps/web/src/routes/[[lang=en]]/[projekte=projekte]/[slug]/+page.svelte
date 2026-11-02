@@ -32,9 +32,9 @@
   // Schwarm-Bilanz (apps/api/src/bilanz.ts): gemessen, berechnet, geschätzt; dazu der Wissensvorsprung des Lead-Pakets
   type Gruppe = { tasks_done: number; swarm: { calendar_hours: number; agent_hours: number; agents: number; people: number; models: number };
     single_agent: { hours: number }; speedup: number | null; four_eyes_percent: number | null; pipeline_passed_percent: number | null;
-    human_team: { estimated_hours: number | null; tasks_estimated: number; team: number; weeks: number | null; cocomo: { months: number; people: number; person_months: number } | null } };
+    human_team: { estimated_hours: number | null; tasks_estimated: number; team: number; weeks: number | null; throughput_per_day: number | null; cocomo: { months: number; people: number; person_months: number } | null } };
   const b = $derived(t.detail.bilanz);
-  const bilanz = $derived(p.swarm_balance as { total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string } | null } | undefined);
+  const bilanz = $derived(p.swarm_balance as { total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; human_hours?: number; throughput_per_day?: number; throughput_factor?: number } | null } | undefined);
   const paket = $derived((p.project_type ? data.pakete?.[`${p.project_type}${p.procedure === "clean_room" ? "-cleanroom" : ""}`] : undefined) as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
   const methode = $derived(pfad(s, s === "de" ? "/docs/warum-swarvex#wie-wir-den-vorteil-messen" : "/docs/why-swarvex#how-we-measure-the-advantage"));
 </script>
@@ -123,6 +123,7 @@
           <p class="kopfzeile">{b.schwarm} <span class="leise">{b.gemessen}</span></p>
           <p class="zahl-gross">{b.dauer(g.swarm.calendar_hours)}</p>
           <p class="leise klein">{b.wer(g.swarm.agents, g.swarm.people, g.swarm.models)} · {b.aufgabenFertig(g.tasks_done)}</p>
+          {#if g.human_team.throughput_per_day}<p class="leise klein">{b.durchsatz(g.human_team.throughput_per_day)}</p>{/if}
         </div>
         <div class="spalte">
           <p class="kopfzeile">{b.einAgent} <span class="leise">{b.berechnet}</span></p>
@@ -161,7 +162,11 @@
     {:else}
       <p class="leise">{b.leer}</p>
     {/if}
-    {#if bilanz?.comparison}<p class="vergleich klein"><strong>{b.vergleich}:</strong> {s === "en" ? bilanz.comparison.description_en : bilanz.comparison.description}: {b.tage(bilanz.comparison.calendar_days)}.</p>{/if}
+    {#if bilanz?.comparison}
+      {@const v = bilanz.comparison}
+      <p class="vergleich klein"><strong>{b.vergleich}:</strong> {s === "en" ? v.description_en : v.description}: {b.tage(v.calendar_days)}{#if v.human_hours && v.throughput_per_day}{b.vergleichUmfang(v.human_hours, v.throughput_per_day)}{/if}.
+        {#if v.throughput_factor}<strong class="faktor-satz">{b.durchsatzFaktor(v.throughput_factor)}</strong>{/if}</p>
+    {/if}
     {#if paket}<p class="wissen klein">{b.wissen(paket.kb, paket.bausteine, paket.rollenkarten, paket.werkzeugkasten)}</p>{/if}
   </section>
 
