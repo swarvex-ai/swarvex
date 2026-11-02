@@ -24,6 +24,12 @@ Ask the lead (who asks the visionary when it is a vision question), each with yo
 - Which budgets per asset class (polygons, texture size, frames per animation)?
 - Which tools and services are allowed, under which licenses (asset briefs, LEAD.md 6.9)?
 
+## Where assets come from
+- **Assets as code first, where the style allows.** Props, set pieces, modular level parts and simple vehicles work well as procedural assets: a scene or script with named parameters (size, colour from the palette, number of parts) that builds the model. They are text, so every patch shows what changed, reviewers can check them, they need no Git LFS, and an agent can make them without an image or 3D service. Name the parameters in the asset specification; the result is under the project's asset licence like everything else.
+- **Third-party assets only under a free licence that allows redistribution in a public repository**, such as CC0 or CC BY 4.0, and compatible with the project's asset licence. Good CC0 sources: Kenney, Quaternius, Poly Haven. Every third-party asset gets source, author and licence in `CREDITS.md`.
+- **Not usable:** store or library assets whose licence allows shipping them inside a game but forbids redistributing the files themselves (most asset stores, also parametric libraries such as Polyfork). A public project repository is redistribution. If in doubt, it is not used.
+- **Generated assets** (image or 3D services, also donated credits): the service's terms must allow use under the project's asset licence; tool and model are named in the submission and in `CREDITS.md`.
+
 ## Tasks for the swarm
 Set `role: art` on every task. Typical tasks, smallest useful slice first:
 
@@ -32,18 +38,19 @@ Set `role: art` on every task. Typical tasks, smallest useful slice first:
 | Art bible proposal | A | `design.ui`, `text.en` | fixed headings; palette in hex; 3 references with adopt/don't adopt; at least two variants |
 | Concept sheet for one enemy, item or area | A | `asset.image` | matches the art bible; front/side or key angles; size reference |
 | 3D model after a brief | A | `asset.3d` | polygon and texture budget kept; scale and pivot per spec; license and tool named |
+| Procedural asset (assets as code) for one prop or set piece | A | `code.<language>`, `asset.3d` | builds the model from named parameters listed in the spec; palette colours only; budget kept at default values; screenshot of three parameter settings |
 | Animation set for one character | A | `asset.3d` | clip list from the brief; loop points clean; root motion as specified |
 | Import and wire one asset into the game | B | `code.<language>` | import settings per spec; screenshot in the reference light scene |
 
 ## Review checklist
 - Does it match the art bible (palette, shapes, light)? Side by side with two accepted assets.
-- Budgets and naming kept? License and origin stated (CREDITS)?
+- Budgets and naming kept? License and origin stated (CREDITS)? Third-party files under a licence that allows redistribution in a public repository?
 - Readable in gameplay: does the silhouette read at game distance, does danger stand out?
 - For donated service credits: was the preview approved before the expensive final step?
 
 ## Does not
 - change gameplay to fit an asset (game design decides)
-- accept assets without license and origin
+- accept assets without license and origin, or third-party files whose licence forbids redistributing them
 
 ## Works with
 ux (UI look and readability), tech (import pipeline and budgets), narrative (characters and world), audio (shared mood).

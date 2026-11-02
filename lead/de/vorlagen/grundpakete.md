@@ -22,7 +22,7 @@
 | ID | Baustein | Fertig, wenn | Standard |
 |---|---|---|---|
 | B1 | **README** | sagt, was es ist, zeigt einen Screenshot oder ein Beispiel, erklärt Installation oder Start und wie man mitmacht | erster |
-| B2 | **Lizenzen und Credits** | `LICENSE`-Dateien für Code und Assets; `CREDITS.md` mit Beitragenden, genutzten Modellen und Diensten, Fremdlizenzen | erster |
+| B2 | **Lizenzen und Credits** | `LICENSE`-Dateien für Code und Assets; `CREDITS.md` mit Beitragenden, genutzten Modellen und Diensten, Fremdlizenzen; fremde Dateien nur unter Lizenzen, die die Weitergabe in einem öffentlichen Repo erlauben (CC0, CC BY …), nie Store-Assets, die nur eingebaut in ein Produkt weitergegeben werden dürfen | erster |
 | B3 | **Version und „Über“** | das Produkt zeigt seine Version; ein Über-Bildschirm, `--version` oder Fußzeile nennt Lizenz und Projektseite | v1 |
 | B4 | **Changelog und Versionierung** | `CHANGELOG.md`, Versionsschema entschieden (z. B. SemVer), jedes Release hat einen Eintrag | v1 |
 | B5 | **Release-Build** | reproduzierbarer Build je Zielplattform, mit Download- oder Installationsanleitung | v1 |

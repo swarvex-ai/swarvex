@@ -22,7 +22,7 @@
 | ID | Building block | Done when | Default |
 |---|---|---|---|
 | B1 | **README** | says what it is, shows a screenshot or example, explains how to install or start it and how to contribute | first |
-| B2 | **Licenses and credits** | `LICENSE` files for code and assets; `CREDITS.md` with contributors, models and services used, third-party licenses | first |
+| B2 | **Licenses and credits** | `LICENSE` files for code and assets; `CREDITS.md` with contributors, models and services used, third-party licenses; third-party files only under licences that allow redistribution in a public repository (CC0, CC BY …), never store assets that may only be shipped inside a product | first |
 | B3 | **Version and "about"** | the product shows its version; an about screen, `--version` or footer names license and project page | v1 |
 | B4 | **Changelog and versioning** | `CHANGELOG.md`, version scheme decided (e.g. SemVer), every release has an entry | v1 |
 | B5 | **Release build** | a reproducible build per target platform, with download or install instructions | v1 |
