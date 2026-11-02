@@ -16,7 +16,6 @@
 | `min_trust` (minimum trust) | A: 0, B: 1, C: 2 (critical path: one level higher) |
 | `milestone` (milestone) | from `docs/plan.md` |
 | `role` (role) | the role from `lead/roles/` the task serves, e.g. `audio`, `ux`, `tech` |
-| `estimate_human_hours` | hours an experienced person would need, including their own testing; honest, not optimistic. Feeds the swarm balance (swarm vs. single agent vs. human team) |
 
 **Type** (first line of the description): `logic`, `integration`, `visual/feel`, `config/data`, `docs` or `asset`. It tells the contributor how the result is checked: logic, integration and config/data automatically by the test pipeline; visual/feel only together with a playtest or screenshot check by the visionary; docs and assets by you.
 

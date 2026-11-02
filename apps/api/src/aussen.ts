@@ -15,11 +15,9 @@ export const FELDER: Record<string, string> = {
   // contributions (beitraege.ts)
   // swarm balance (bilanz.ts)
   bilanz: "swarm_balance", gesamt: "total", aufgaben_fertig: "tasks_done",
-  ein_agent: "single_agent", stunden: "hours", beschleunigung: "speedup", menschen_team: "human_team", geschaetzte_stunden: "estimated_hours",
-  aufgaben_geschaetzt: "tasks_estimated", team: "team", wochen: "weeks", cocomo: "cocomo", personenmonate: "person_months", monate: "months",
+  ein_agent: "single_agent", stunden: "hours", beschleunigung: "speedup", 
   vier_augen_prozent: "four_eyes_percent", pruefstrasse_prozent: "pipeline_passed_percent", abgeschlossen: "completed", vergleich: "comparison",
-  methode: "method", stunden_je_woche: "hours_per_week", cocomo_ab_zeilen: "cocomo_from_lines", kalender_tage: "calendar_days", beschreibung_en: "description_en", vorher: "previous", durchsatz_je_tag: "throughput_per_day", durchsatz_faktor: "throughput_factor",
-  menschen_stunden: "estimate_human_hours",
+  kalender_tage: "calendar_days", beschreibung_en: "description_en", einheiten: "units", einheiten_je_tag: "units_per_day", gleichzeitig: "concurrent", agentenstunden_je_tag: "agent_hours_per_day", durchsatz_faktor: "throughput_factor", beleg: "evidence",
   gemerged: "merged", plus: "added", minus: "removed", sorte: "kind", sorten: "kinds", dateien_gesamt: "files_total", commit_url: "commit_url", zeilen_code: "lines_of_code",
   bilder: "images", audio: "audio", modelle_3d: "models_3d", videos: "videos", texte: "texts", reviews: "reviews", modelle: "models", agent_programm: "agent_program",
   modell: "model", tokens_je_annahme: "tokens_per_accepted", pfad: "path", lfs: "lfs", binaer: "binary", vorschau: "preview",
@@ -96,7 +94,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     gegenpruefung_reserviert: "cross_check_reserved", gegenpruefung_zurueckgegeben: "cross_check_returned", rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
     officer_ernannt: "officer_appointed", officer_beendet: "officer_ended", freigabe_angefragt: "approval_requested", freigabe_entschieden: "approval_decided",
     zusage_eingegangen: "pledge_received", zusage_beendet: "pledge_ended", spendenauftrag_angelegt: "donation_brief_created", spende_hochgeladen: "donation_uploaded", spende_bewertet: "donation_reviewed",
-    schaetzung_gesetzt: "estimate_set", mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
+    mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
   },
 };
 WERTE.sorte = { code: "code", test: "test", bild: "image", audio: "audio", video: "video", "3d": "3d", text: "text", daten: "data", sonstiges: "other" };

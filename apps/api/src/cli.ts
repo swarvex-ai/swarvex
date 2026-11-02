@@ -8,9 +8,10 @@
 //   set-role <slug> [provider:]<login> <role>  role: visionary | lead | contributor; e.g. github:nevs84
 //   set-repo <slug> <git-address>             SSH address for snapshots (deploy key, read-only)
 //   set-license <slug> <code-license> <asset-license>  e.g. GPL-3.0-or-later "CC BY-SA 4.0" (logged publicly)
-//   set-comparison <slug> <calendar-days> [--hours <estimated human hours>] <German text> | <English text>
-//                                             measured reference for the swarm balance, e.g.
-//                                             24 --hours 600 "Ein einzelner Agent hat das Spiel allein gebaut | A single agent built the game alone"
+//   set-comparison <slug> <calendar-days> [--units <task units> --evidence <url>] <German text> | <English text>
+//                                             reference for the swarm balance, e.g. 24 --units 80 --evidence https://github.com/…/docs/plan.md#ausgangslage
+//                                             "Ein einzelner Agent hat das Spiel allein gebaut | A single agent built the game alone".
+//                                             Units (level weights A 1, B 2, C 3, D 5) only with a public list in the repository.
 //   check-log [heads.jsonl|url]               verify the hash chain and compare it with published heads
 //                                             (without argument: our own table; better: the file from the anchor repo)
 //   publish-head                              sign the head hash now (otherwise daily)
@@ -137,15 +138,16 @@ try {
     }
     case "set-comparison": {
       const [slug, tage, ...rest] = args;
-      const h = rest[0] === "--hours" ? Number(rest[1]) : null;
-      const text = h === null ? rest : rest.slice(2);
-      if (h !== null && !(h > 0)) throw new Error("--hours needs a positive number");
-      const [de, en] = text.join(" ").split("|").map((x) => x.trim());
-      const vergleich = { kalender_tage: Number(tage), beschreibung: de, beschreibung_en: en || de, ...(h ? { menschen_stunden: h } : {}) };
+      const opt = (name: string) => { const i = rest.indexOf(name); if (i < 0) return null; const v = rest[i + 1]; rest.splice(i, 2); return v ?? ""; };
+      const einheiten = opt("--units"), beleg = opt("--evidence");
+      if ((einheiten === null) !== (beleg === null)) throw new Error("--units and --evidence belong together: units only with a public list of what they count");
+      if (einheiten !== null && !(Number(einheiten) > 0 && /^https:\/\//.test(beleg ?? ""))) throw new Error("--units needs a positive number, --evidence an https address");
+      const [de, en] = rest.join(" ").split("|").map((x) => x.trim());
+      const vergleich = { kalender_tage: Number(tage), beschreibung: de, beschreibung_en: en || de, ...(einheiten ? { einheiten: Number(einheiten), beleg } : {}) };
       if (!(vergleich.kalender_tage > 0) || !vergleich.beschreibung) throw new Error("usage: set-comparison <slug> <calendar-days> <German text> | <English text>");
       const p = (await db.query("update projekte set vergleich = $2 where slug = $1 returning id", [slug, vergleich])).rows[0];
       if (!p) throw new Error(`unknown project ${slug}`);
-      console.log(`${slug}: comparison ${vergleich.kalender_tage} days${h ? `, ${h} human hours` : ""}, "${vergleich.beschreibung}"`);
+      console.log(`${slug}: comparison ${vergleich.kalender_tage} days${einheiten ? `, ${einheiten} units (${beleg})` : ""}, "${vergleich.beschreibung}"`);
       break;
     }
     case "reports": {

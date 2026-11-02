@@ -30,11 +30,11 @@
   const liste = $derived(pfad(s, t.pfad));
 
   // Schwarm-Bilanz (apps/api/src/bilanz.ts): gemessen, berechnet, geschätzt; dazu der Wissensvorsprung des Lead-Pakets
-  type Gruppe = { tasks_done: number; swarm: { calendar_hours: number; agent_hours: number; agents: number; people: number; models: number };
-    single_agent: { hours: number }; speedup: number | null; four_eyes_percent: number | null; pipeline_passed_percent: number | null;
-    human_team: { estimated_hours: number | null; tasks_estimated: number; team: number; weeks: number | null; throughput_per_day: number | null; cocomo: { months: number; people: number; person_months: number } | null } };
+  type Gruppe = { tasks_done: number; units: number;
+    swarm: { calendar_hours: number; agent_hours: number; agents: number; people: number; models: number; concurrent: number | null; agent_hours_per_day: number | null; units_per_day: number | null };
+    single_agent: { hours: number }; speedup: number | null; four_eyes_percent: number | null; pipeline_passed_percent: number | null };
   const b = $derived(t.detail.bilanz);
-  const bilanz = $derived(p.swarm_balance as { total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; estimate_human_hours?: number; throughput_per_day?: number; throughput_factor?: number } | null } | undefined);
+  const bilanz = $derived(p.swarm_balance as { total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; units?: number; evidence?: string; units_per_day?: number; throughput_factor?: number } | null } | undefined);
   const paket = $derived((p.project_type ? data.pakete?.[`${p.project_type}${p.procedure === "clean_room" ? "-cleanroom" : ""}`] : undefined) as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
   const methode = $derived(pfad(s, s === "de" ? "/docs/warum-swarvex#wie-wir-den-vorteil-messen" : "/docs/why-swarvex#how-we-measure-the-advantage"));
 </script>
@@ -122,24 +122,19 @@
         <div class="spalte schwarm">
           <p class="kopfzeile">{b.schwarm} <span class="leise">{b.gemessen}</span></p>
           <p class="zahl-gross">{b.dauer(g.swarm.calendar_hours)}</p>
-          <p class="leise klein">{b.wer(g.swarm.agents, g.swarm.people, g.swarm.models)} · {b.aufgabenFertig(g.tasks_done)}</p>
-          {#if g.human_team.throughput_per_day}<p class="leise klein">{b.durchsatz(g.human_team.throughput_per_day)}</p>{/if}
+          <p class="leise klein">{b.wer(g.swarm.agents, g.swarm.people, g.swarm.models)}</p>
+          <p class="leise klein">{b.erledigt(g.tasks_done, g.units)}</p>
+        </div>
+        <div class="spalte">
+          <p class="kopfzeile">{b.gleichzeitigH} <span class="leise">{b.gemessen}</span></p>
+          <p class="zahl-gross">{g.swarm.concurrent === null ? "–" : b.gleichzeitig(g.swarm.concurrent)}</p>
+          {#if g.swarm.agent_hours_per_day !== null}<p class="leise klein">{b.agentenstunden(g.swarm.agent_hours_per_day)}</p>{/if}
         </div>
         <div class="spalte">
           <p class="kopfzeile">{b.einAgent} <span class="leise">{b.berechnet}</span></p>
           <p class="zahl-gross">{b.dauer(g.single_agent.hours)}</p>
           <p class="leise klein">{b.nacheinander}</p>
           <p class="faktor" class:gut={(g.speedup ?? 0) > 1}>{g.speedup && g.speedup > 1 ? b.schneller(g.speedup) : b.keinVorsprung}</p>
-        </div>
-        <div class="spalte">
-          <p class="kopfzeile">{b.team} <span class="leise">{b.geschaetzt}</span></p>
-          {#if g.human_team.weeks}
-            <p class="zahl-gross">{b.wochen(g.human_team.weeks, g.human_team.team)}</p>
-            <p class="leise klein">{b.leadSchaetzung(g.human_team.tasks_estimated, g.tasks_done)}</p>
-          {:else}
-            <p class="zahl-gross leise">{b.keineSchaetzung}</p>
-          {/if}
-          {#if g.human_team.cocomo}<p class="leise klein">{b.cocomo(g.human_team.cocomo.months, g.human_team.cocomo.people)}</p>{/if}
         </div>
       </div>
       {#if g.four_eyes_percent !== null}<p class="leise klein">{b.qualitaet(g.four_eyes_percent, g.pipeline_passed_percent ?? 0)}</p>{/if}
@@ -148,11 +143,11 @@
           <summary>{b.meilensteine}</summary>
           <div class="tabelle-bilanz">
             <table>
-              <thead><tr><th>{b.spalten.meilenstein}</th><th>{b.spalten.schwarm}</th><th>{b.spalten.einAgent}</th><th>{b.spalten.faktor}</th><th>{b.spalten.team}</th></tr></thead>
+              <thead><tr><th>{b.spalten.meilenstein}</th><th>{b.spalten.schwarm}</th><th>{b.spalten.gleichzeitig}</th><th>{b.spalten.einAgent}</th><th>{b.spalten.faktor}</th></tr></thead>
               <tbody>
                 {#each bilanz.milestones as m}
-                  <tr><td>{m.title}{#if m.completed} <span class="marke">{b.abgeschlossen}</span>{/if}</td><td>{b.dauer(m.swarm.calendar_hours)}</td><td>{b.dauer(m.single_agent.hours)}</td>
-                    <td>{m.speedup ? `${m.speedup}×` : "–"}</td><td>{m.human_team.weeks ? b.wochen(m.human_team.weeks, m.human_team.team) : "–"}</td></tr>
+                  <tr><td>{m.title}{#if m.completed} <span class="marke">{b.abgeschlossen}</span>{/if}</td><td>{b.dauer(m.swarm.calendar_hours)}</td>
+                    <td>{m.swarm.concurrent ?? "–"}</td><td>{b.dauer(m.single_agent.hours)}</td><td>{m.speedup ? `${m.speedup}×` : "–"}</td></tr>
                 {/each}
               </tbody>
             </table>
@@ -164,8 +159,9 @@
     {/if}
     {#if bilanz?.comparison}
       {@const v = bilanz.comparison}
-      <p class="vergleich klein"><strong>{b.vergleich}:</strong> {s === "en" ? v.description_en : v.description}: {b.tage(v.calendar_days)}{#if v.estimate_human_hours && v.throughput_per_day}{b.vergleichUmfang(v.estimate_human_hours, v.throughput_per_day)}{/if}.
+      <p class="vergleich klein"><strong>{b.vergleich}:</strong> {s === "en" ? v.description_en : v.description}: {b.tage(v.calendar_days)}{#if v.units && v.units_per_day}{b.vergleichEinheiten(v.units, v.units_per_day)} (<a href={v.evidence} rel="noopener">{b.beleg}</a>){/if}.
         {#if v.throughput_factor}<strong class="faktor-satz">{b.durchsatzFaktor(v.throughput_factor)}</strong>{/if}</p>
+      {#if v.units}<p class="leise klein">{b.einheitenErklaerung}</p>{/if}
     {/if}
     {#if paket}<p class="wissen klein">{b.wissen(paket.kb, paket.bausteine, paket.rollenkarten, paket.werkzeugkasten)}</p>{/if}
   </section>
@@ -320,7 +316,6 @@
   .bilanz .kopfzeile { font-weight: 600; }
   .bilanz .kopfzeile .leise { font-weight: 400; font-size: .82rem; }
   .bilanz .zahl-gross { font: 600 1.5rem var(--mono); }
-  .bilanz .zahl-gross.leise { font: 400 1rem var(--schrift); }
   .bilanz .faktor { margin-top: 6px !important; font-size: .92rem; color: var(--stahl); }
   .bilanz .faktor.gut { color: var(--akzent); font-weight: 600; }
   .bilanz .vergleich, .bilanz .wissen { margin: 8px 0 0; color: var(--stahl); max-width: 80ch; }

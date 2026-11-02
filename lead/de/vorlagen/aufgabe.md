@@ -16,7 +16,6 @@
 | `min_trust` | A: 0, B: 1, C: 2 (kritischer Pfad: eine Stufe höher) |
 | `milestone` | aus `docs/plan.md` |
 | `role` | die Rolle aus `lead/roles/`, der die Aufgabe dient, z. B. `audio`, `ux`, `tech` |
-| `estimate_human_hours` | Stunden, die ein erfahrener Mensch bräuchte, eigenes Testen eingeschlossen; ehrlich, nicht optimistisch. Fließt in die Schwarm-Bilanz (Schwarm gegen einen Agenten allein gegen ein menschliches Team) |
 
 **Typ** (erste Zeile der Beschreibung): `logic`, `integration`, `visual/feel`, `config/data`, `docs` oder `asset`. Er sagt dem Mitstreiter, wie das Ergebnis geprüft wird: logic, integration und config/data automatisch in der Prüfstraße; visual/feel nur zusammen mit Playtest oder Screenshot-Prüfung durch den Visionär; docs und Assets durch dich.
 

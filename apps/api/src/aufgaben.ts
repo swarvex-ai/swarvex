@@ -111,8 +111,6 @@ export type NeueAufgabe = {
   neuer_meilenstein?: boolean;
   /** Nur in Clean-Room-Projekten: analyse, pruefung oder bau (cleanroom.ts). */
   raum?: Raum;
-  /** Schätzung des Leads: Stunden, die ein erfahrener Mensch dafür bräuchte (Schwarm-Bilanz, bilanz.ts). */
-  menschen_stunden?: number;
   /** Rolle aus dem Rollenkatalog (lead/roles), z. B. audio, ux, art; bei Officers immer ihr Bereich. */
   rolle?: string;
 };
@@ -140,9 +138,9 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
       }
     }
     const r = await tx.query(
-      `insert into aufgaben(projekt_id, meilenstein_id, titel, beschreibung, stufe, faehigkeiten, pfade, akzeptanz, basis_commit, lease_minuten, min_vertrauen, raum, rolle, menschen_stunden)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning *`,
-      [p.id, meilensteinId, a.titel, a.beschreibung, a.stufe, a.faehigkeiten, a.pfade, a.akzeptanz, a.basis_commit ?? null, a.lease_minuten ?? 60, a.min_vertrauen ?? 0, a.raum ?? null, rolle, a.menschen_stunden ?? null],
+      `insert into aufgaben(projekt_id, meilenstein_id, titel, beschreibung, stufe, faehigkeiten, pfade, akzeptanz, basis_commit, lease_minuten, min_vertrauen, raum, rolle)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning *`,
+      [p.id, meilensteinId, a.titel, a.beschreibung, a.stufe, a.faehigkeiten, a.pfade, a.akzeptanz, a.basis_commit ?? null, a.lease_minuten ?? 60, a.min_vertrauen ?? 0, a.raum ?? null, rolle],
     );
     const aufgabe = r.rows[0];
     // Die erste Aufgabe macht aus dem Entwurf ein öffentlich gelistetes Projekt
@@ -319,21 +317,6 @@ export async function schliessen(db: Db, wer: Wer, aufgabeId: number, grund: str
     await mussLeadOderOfficerSein(tx, wer.menschId, Number(a.projekt_id), a);
     if (a.zustand !== "offen") throw new Abgelehnt(`only open tasks can be closed (task ${aufgabeId} is ${en(a.zustand)})`);
     await wechseln(tx, a, "geschlossen", akteur(wer), "aufgabe_geschlossen", { grund });
-  });
-}
-
-/** Schätzung der Menschenstunden nachtragen oder korrigieren (Schwarm-Bilanz); Lead, Visionär oder Officer des Bereichs. */
-export async function schaetzen(db: Db, wer: Wer, aufgabeId: number, stunden: number) {
-  if (!(stunden > 0 && stunden <= 2000)) throw new Abgelehnt("estimate_human_hours: more than 0 and at most 2000");
-  return transaktion(db, async (tx) => {
-    const a = await aufgabeSperren(tx, aufgabeId);
-    await mussLeadOderOfficerSein(tx, wer.menschId, Number(a.projekt_id), a);
-    // Erledigte Arbeit nicht nachträglich umbewerten: die Bilanz soll vorher geschätzt sein
-    if (["angenommen", "gemerged", "geschlossen"].includes(a.zustand)) throw new Abgelehnt(`task ${aufgabeId} is ${en(a.zustand)}; estimates are set before the work is done`);
-    await tx.query("update aufgaben set menschen_stunden = $2 where id = $1", [aufgabeId, stunden]);
-    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: akteur(wer), art: "schaetzung_gesetzt", bezug: `aufgabe:${aufgabeId}`,
-      daten: { menschen_stunden: stunden, vorher: a.menschen_stunden === null ? null : Number(a.menschen_stunden) } });
-    return { aufgabe: aufgabeId, menschen_stunden: stunden };
   });
 }
 
