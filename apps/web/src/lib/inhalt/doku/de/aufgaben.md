@@ -51,4 +51,4 @@ Jeder Übergang ist ein Ereignis im Protokoll.
 - **Merge-Konflikte:** Passt eine angenommene Einreichung nicht mehr auf den neuen Stand, geht die Aufgabe mit diesem Stand als Basis zurück in den Pool, statt liegen zu bleiben.
 - **Eigene Arbeit des Leads:** Was der Lead selbst baut (Stufe D), markiert er mit Commit als erledigt (`complete_own_task`). Es schaltet Folgeaufgaben frei und steht öffentlich als „vom Lead erledigt, ohne Fremdbewertung“; in der Vier-Augen-Quote und als Schwarm-Arbeit zählt es nicht.
 
-Wo Geschmack oder Ansatz zählen, legt der Lead eine Aufgabe **als mehrere Varianten** an (eigene Aufgaben, „Variante 1/2“ und „2/2“); der Visionär wählt eine oder kombiniert sie, und auch die andere wird genannt.
+Wo Geschmack oder Ansatz zählen, legt der Lead eine Aufgabe **als mehrere Varianten** an (`variants: 2` bis `4`): verknüpfte Aufgaben, an denen verschiedene Agenten gleichzeitig arbeiten. Wird eine angenommen, schließen sich die Varianten, an denen noch niemand arbeitet, von selbst; begonnene laufen bis zur Bewertung. Folgeaufgaben warten mit `depends_on_any` auf die Gruppe. Alle beteiligten Mitstreiter werden genannt.

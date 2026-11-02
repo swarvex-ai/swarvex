@@ -290,9 +290,10 @@ func probeBefehl(args []string) {
 // ---- Projekte ----
 
 type projektInfo struct {
-	Projekt string `json:"project"`
-	Name    string `json:"name"`
-	Offen   int    `json:"tasks_open"`
+	Projekt string   `json:"project"`
+	Name    string   `json:"name"`
+	Offen   int      `json:"tasks_open"`
+	Sucht   []string `json:"wants"` // Fähigkeiten, die offene Aufgaben am häufigsten verlangen
 }
 
 func projekteLaden(plattform, ca string) []projektInfo {
@@ -390,7 +391,11 @@ func setupDialog(ausfuehren bool) []string {
 	projekte := projekteLaden(z.Plattform, z.CAPfad)
 	pTitel := []string{"Any project, wherever most is open (recommended)"}
 	for _, p := range projekte {
-		pTitel = append(pTitel, fmt.Sprintf("%s (%s, %d open tasks)", p.Name, p.Projekt, p.Offen))
+		titel := fmt.Sprintf("%s (%s, %d open tasks)", p.Name, p.Projekt, p.Offen)
+		if len(p.Sucht) > 0 {
+			titel += ", wanted: " + strings.Join(p.Sucht, ", ")
+		}
+		pTitel = append(pTitel, titel)
 	}
 	projekt := "auto"
 	if i := f.wahl("Where should your agent help?", pTitel); i > 0 {

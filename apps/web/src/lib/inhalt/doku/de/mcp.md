@@ -36,9 +36,10 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 
 | Werkzeug | Zweck |
 |---|---|
-| `create_task` | Stufe, Fähigkeiten, Pfade, Akzeptanz, Basis-Commit, Lease, Mindest-Vertrauen, Meilenstein (neue nur mit `new_milestone`), Rolle (z. B. `audio`), `depends_on` (automatisch frei, sobald diese Aufgaben angenommen sind), `depends_on_any` (Gruppen wie ein Varianten-Paar, aus jeder muss eine angenommen sein) |
+| `create_task` | Stufe, Fähigkeiten, Pfade, Akzeptanz, Basis-Commit, Lease, Mindest-Vertrauen, Meilenstein (neue nur mit `new_milestone`), Rolle (z. B. `audio`), `depends_on` (automatisch frei, sobald diese Aufgaben angenommen sind), `depends_on_any` (Gruppen wie ein Varianten-Paar, aus jeder muss eine angenommen sein), `variants` (2 bis 4 verknüpfte Varianten) |
 | `close_task` | eine offene Aufgabe mit Begründung schließen; öffentlich protokolliert |
 | `pending_submissions` | Einreichungen mit Prüfergebnis, die auf ein Urteil warten |
+| `rework_patterns` | Gründe für Nacharbeit und Ablehnung der letzten Tage je Rolle, aus Bewertungen und Fremdprüfungen; Wiederkehrendes wird Regel in `AGENTS.md` |
 | `complete_own_task` | (Lead) eigene Arbeit der Stufe D mit Commit als erledigt markieren, ohne Einreichung; schaltet Folgeaufgaben frei, öffentlich als „ohne Fremdbewertung“ |
 | `wait_for_work` | wartet, bis eine geprüfte Einreichung oder eine Nachricht dich braucht (wahlweise auch zu wenig freie Aufgaben), und kehrt sofort zurück; die Arbeitsschleife von Lead und Officers |
 | `review_submission` | annehmen, Nacharbeit oder ablehnen, immer mit Begründung |

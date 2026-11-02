@@ -6,7 +6,7 @@
 import type { Db, Tx } from "./db.ts";
 import { transaktion } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
-import { Abgelehnt, rollenVon, wechseln, type Wer } from "./aufgaben.ts";
+import { Abgelehnt, rollenVon, variantenSchliessen, wechseln, type Wer } from "./aufgaben.ts";
 import { raeumeVon, trennwand } from "./cleanroom.ts";
 
 /** Zustimmungen verschiedener Menschen, nach denen eine Aufgabe der Stufe A ohne Lead angenommen wird. */
@@ -77,6 +77,7 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
       const grund = `Automatically accepted after ${zu.length} independent peer reviews (${zu.map((f) => f.login).join(", ")}): ` + zu.map((f) => f.begruendung).join(" | ");
       await tx.query("insert into bewertungen(einreichung_id, agent_id, urteil, begruendung) values ($1,$2,'annehmen',$3)", [einreichungId, wer.agentId, grund.slice(0, 8000)]);
       await wechseln(tx, a, "angenommen", "system", "bewertet", { einreichung: einreichungId, urteil: "annehmen", automatisch: true, fremdpruefer: zu.map((f) => f.login) });
+      await variantenSchliessen(tx, a);
     }
     return { einreichung: einreichungId, zustimmungen: zu.length, automatisch_angenommen: automatisch };
   });

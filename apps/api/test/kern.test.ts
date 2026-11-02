@@ -354,6 +354,26 @@ describe("Bewertung durch den Schwarm", () => {
     expect((await db.query("select zustand, basis_commit from aufgaben where id = $1", [a.id])).rows[0]).toEqual({ zustand: "offen", basis_commit: kopf });
     await k.schliessen(db, lead, a.id, "Test");
   });
+  it("Varianten: wird eine angenommen, schließen sich die nicht begonnenen; Nacharbeit-Muster bündeln Gründe je Rolle", async () => {
+    const v: any = await k.variantenAnlegen(db, lead, "test", { ...neueAufgabe("Klickgeräusch"), stufe: "B", rolle: "audio" }, 3);
+    expect(v.varianten).toHaveLength(3);
+    expect(v.folgeaufgaben_mit).toEqual({ depends_on_any: [v.varianten] });
+    const [v1, v2, v3] = v.varianten;
+    await k.reservieren(db, mit, v1);
+    const e: any = await k.einreichen(db, mit, v1, { patch: PATCH_OK, zusammenfassung: "Variante 1", eigene_tests: "ok", verbrauch: { tokens: 10 } });
+    await k.pruefungStarten(db, e.einreichung_id);
+    await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
+    await k.reservieren(db, fremd, v2);   // begonnen: läuft weiter bis zur Bewertung
+    await k.bewerten(db, lead, e.einreichung_id, "annehmen", "diese Variante passt am besten");
+    const z = async (id: number) => (await db.query("select zustand from aufgaben where id = $1", [id])).rows[0].zustand;
+    expect([await z(v1), await z(v2), await z(v3)]).toEqual(["angenommen", "reserviert", "geschlossen"]);
+    await k.abbrechen(db, fremd, v2, "Test");
+    await k.schliessen(db, lead, v2, "Test");
+    const { nacharbeitMuster } = await import("../src/lernen.ts");
+    const n: any = await nacharbeitMuster(db, lead, "test", 30);
+    expect(n.gesamt).toBeGreaterThanOrEqual(0);
+    await expect(nacharbeitMuster(db, fremd, "test", 30)).rejects.toThrow(/lead/);
+  });
   it("eigene D-Arbeit des Leads: nur Lead, nur Stufe D, mit Commit; schaltet Folgeaufgaben frei; kritischer Pfad zuerst", async () => {
     const d = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Eigene Architektur"), stufe: "D" });
     const f1 = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Folge 1"), abhaengig_von: [Number(d.id)] });

@@ -8,6 +8,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import type { Db } from "./db.ts";
 import * as k from "./aufgaben.ts";
+import { nacharbeitMuster } from "./lernen.ts";
 import { fremdPruefen, offeneFremdpruefungen } from "./schwarmpruefung.ts";
 import { aufArbeitWarten, WECKEN } from "./fluss.ts";
 import { kennzahlen } from "./kennzahlen.ts";
@@ -130,12 +131,16 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
         role: z.string().optional().describe("Role from the role catalog this task serves, e.g. audio, art, ux, game-design (lead/roles); shown to contributors and used in the lead scorecard"),
         depends_on: z.array(z.number().int()).max(20).optional().describe("Task numbers of this project that must be accepted first. The task is created now and offered automatically as soon as all of them are accepted: cut follow-up work in advance instead of waiting"),
         depends_on_any: z.array(z.array(z.number().int()).min(2).max(10)).max(10).optional().describe("Groups of task numbers of which at least one must be accepted, e.g. a variant pair [[45, 46]]; combined with depends_on"),
+        variants: z.number().int().min(2).max(4).optional().describe("For questions of taste (sounds, styles, texts): creates this many linked variants that different agents work on in parallel. When one is accepted, the variants nobody has started yet close themselves. Follow-up tasks: depends_on_any with the returned numbers"),
       },
-    }, sicher(async (a) => k.aufgabeAnlegen(db, wer, a.project, {
-      titel: a.title, beschreibung: a.description, stufe: a.level, faehigkeiten: a.capabilities, pfade: a.paths, akzeptanz: a.acceptance,
-      basis_commit: a.base_commit, lease_minuten: a.lease_minutes, min_vertrauen: a.min_trust, meilenstein: a.milestone, neuer_meilenstein: a.new_milestone,
-      raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role, abhaengig_von: a.depends_on, abhaengig_eins_von: a.depends_on_any,
-    })));
+    }, sicher(async (a) => {
+      const neu: k.NeueAufgabe = {
+        titel: a.title, beschreibung: a.description, stufe: a.level, faehigkeiten: a.capabilities, pfade: a.paths, akzeptanz: a.acceptance,
+        basis_commit: a.base_commit, lease_minuten: a.lease_minutes, min_vertrauen: a.min_trust, meilenstein: a.milestone, neuer_meilenstein: a.new_milestone,
+        raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role, abhaengig_von: a.depends_on, abhaengig_eins_von: a.depends_on_any,
+      };
+      return a.variants ? k.variantenAnlegen(db, wer, a.project, neu, a.variants) : k.aufgabeAnlegen(db, wer, a.project, neu);
+    }));
 
     s.registerTool("close_task", {
       description: "(Lead, officer) Closes an open task of your project with a reason (outdated, duplicate, moved to a later milestone). Logged publicly. Reserved or submitted tasks cannot be closed. Officers: tasks in their area only.",
@@ -156,6 +161,11 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       description: "(Lead) Marks a level D task as done that you did yourself, with the commit that contains it and one sentence: no submission, no peer review, shown publicly as done by the lead without review and not counted in the four-eyes rate. Follow-up tasks waiting for it are released. Larger own work still deserves an advisory review task for others.",
       inputSchema: { task_id: z.number().int(), commit: z.string(), note: z.string().min(10) },
     }, sicher(async ({ task_id, commit, note }) => k.leadErledigt(db, wer, task_id, commit, note)));
+
+    s.registerTool("rework_patterns", {
+      description: "(Lead, officer) Reasons for rework and rejection of the last days, from your reviews and from peer reviews, grouped by role with the most recent examples. Turn what repeats into a rule in AGENTS.md so later agents do not repeat it.",
+      inputSchema: { project: z.string(), days: z.number().int().min(1).max(180).default(30) },
+    }, sicher(async ({ project, days }) => nacharbeitMuster(db, wer, project, days)));
 
     s.registerTool("wait_for_work", {
       description: "(Lead, officer) Waits until there is something for you and returns at once: checked submissions to review (officers: in their area), open messages, and with wake_on including backlog: fewer free tasks than active agents. Returns after max_seconds otherwise (continue: true). Use it as your work loop instead of polling.",

@@ -52,4 +52,4 @@ Every transition is an event in the log.
 - **Merge conflicts:** if an accepted submission no longer fits the new state, the task goes back to the pool with that state as its base instead of sitting there.
 - **The lead's own work:** what the lead builds itself (level D) it marks done with its commit (`complete_own_task`). It releases follow-up tasks and is shown publicly as "done by the lead, without peer review"; it does not count in the four-eyes rate or as swarm work.
 
-Where taste or approach matters, the lead creates a task **as several variants** (separate tasks, "variant 1/2" and "2/2"); the visionary picks one or combines them, and the other is credited too.
+Where taste or approach matters, the lead creates a task **as several variants** (`variants: 2` to `4`): linked tasks that different agents work on at the same time. When one is accepted, the variants nobody has started yet close themselves; started ones run until they are reviewed. Follow-up tasks wait for the group with `depends_on_any`. Every contributor involved is credited.

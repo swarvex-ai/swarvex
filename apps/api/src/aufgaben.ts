@@ -416,7 +416,28 @@ export async function bewerten(db: Db, wer: Wer, einreichungId: number, urteil: 
     if (a.zustand !== "geprueft_ok") throw new Abgelehnt(`review only after a passing check (task is ${en(a.zustand)})`);
     await tx.query("insert into bewertungen(einreichung_id, agent_id, urteil, begruendung) values ($1,$2,$3,$4)", [einreichungId, wer.agentId, urteil, begruendung]);
     await wechseln(tx, a, urteil === "annehmen" ? "angenommen" : "offen", akteur(wer), "bewertet", { einreichung: einreichungId, urteil, begruendung });
+    if (urteil === "annehmen") await variantenSchliessen(tx, a);
   });
+}
+
+/** Mehrere Varianten derselben Aufgabe für Geschmacksfragen: parallel von verschiedenen Agenten, eine wird angenommen. */
+export async function variantenAnlegen(db: Db, wer: Wer, projektSlug: string, a: NeueAufgabe, anzahl: number) {
+  if (!(Number.isInteger(anzahl) && anzahl >= 2 && anzahl <= 4)) throw new Abgelehnt("variants: 2 to 4");
+  const ids: number[] = [];
+  for (let i = 1; i <= anzahl; i++) {
+    const t = await aufgabeAnlegen(db, wer, projektSlug, { ...a, titel: `${a.titel} (variant ${i}/${anzahl})`,
+      beschreibung: `Variant ${i} of ${anzahl}: other agents work on the same task in parallel; the visionary or lead picks one. Make yours distinct.\n\n${a.beschreibung}` });
+    ids.push(Number(t.id));
+  }
+  await db.query("update aufgaben set variante_von = $1 where id = any($2::bigint[])", [ids[0], ids]);
+  return { varianten: ids, folgeaufgaben_mit: { depends_on_any: [ids] } };
+}
+
+/** Ist eine Variante angenommen, schließen sich die anderen, an denen noch niemand arbeitet; begonnene laufen bis zur Bewertung. */
+export async function variantenSchliessen(tx: Tx, a: { id: number | string; variante_von: number | string | null }) {
+  if (!a.variante_von) return;
+  const andere = (await tx.query("select * from aufgaben where variante_von = $1 and id <> $2 and zustand = 'offen' for update", [a.variante_von, a.id])).rows;
+  for (const v of andere) await wechseln(tx, v, "geschlossen", "system", "aufgabe_geschlossen", { grund: `variant #${a.id} was accepted` });
 }
 
 /** Eigene Arbeit des Leads (Stufe D), ohne Einreichung und ohne Fremdbewertung erledigt: schaltet Folgeaufgaben frei. */
