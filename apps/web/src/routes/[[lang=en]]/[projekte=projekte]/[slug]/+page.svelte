@@ -128,7 +128,7 @@
         <div class="spalte">
           <p class="kopfzeile">{b.gleichzeitigH} <span class="leise">{b.gemessen}</span></p>
           <p class="zahl-gross">{g.swarm.concurrent === null ? "–" : b.gleichzeitig(g.swarm.concurrent)}</p>
-          {#if g.swarm.agent_hours_per_day !== null}<p class="leise klein">{b.agentenstunden(g.swarm.agent_hours_per_day)}</p>{/if}
+          <p class="leise klein">{g.swarm.agent_hours_per_day !== null ? b.agentenstunden(g.swarm.agent_hours_per_day) : b.abDreiTagen}</p>
         </div>
         <div class="spalte">
           <p class="kopfzeile">{b.einAgent} <span class="leise">{b.berechnet}</span></p>

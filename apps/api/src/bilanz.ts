@@ -13,6 +13,8 @@ type Zeile = {
 };
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
+/** Werte je Kalendertag erst ab dieser Messdauer: kürzere Zeiten auf einen Tag hochzurechnen ergäbe Zahlen ohne Aussage. */
+export const MIN_TAGE = 3;
 
 /** Bilanz einer Gruppe von Einreichungen (ganzes Projekt oder ein Meilenstein). start: erste Reservierung der Gruppe. */
 export function gruppenBilanz(zeilen: Zeile[], start: Date | null) {
@@ -36,8 +38,8 @@ export function gruppenBilanz(zeilen: Zeile[], start: Date | null) {
       modelle: new Set(zeilen.map((z) => z.modell).filter(Boolean)).size,
       // im Mittel gleichzeitig arbeitende Agenten; ein einzelner Agent kommt höchstens auf 1 (24 Agentenstunden je Tag)
       gleichzeitig: kalenderStunden > 0 ? r1(agentenStunden / kalenderStunden) : null,
-      agentenstunden_je_tag: kalenderStunden > 0 ? r1(agentenStunden / (kalenderStunden / 24)) : null,
-      einheiten_je_tag: kalenderStunden > 0 ? r1(einheiten / (kalenderStunden / 24)) : null,
+      agentenstunden_je_tag: kalenderStunden >= MIN_TAGE * 24 ? r1(agentenStunden / (kalenderStunden / 24)) : null,
+      einheiten_je_tag: kalenderStunden >= MIN_TAGE * 24 ? r1(einheiten / (kalenderStunden / 24)) : null,
     },
     ein_agent: { stunden: r1(einAgentStunden) },
     // > 1: der Schwarm war schneller, als ein einzelner Agent rund um die Uhr gewesen wäre (eine Untergrenze für den Vorteil)

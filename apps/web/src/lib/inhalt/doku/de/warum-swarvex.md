@@ -49,6 +49,7 @@ Wir behaupten den Vorteil nicht, wir messen ihn, öffentlich und je Projekt und 
 - **Was der Schwarm kostet:** Nacharbeit, abgelehnte Beiträge und Tokens, die nicht in angenommener Arbeit stecken, in der internen Auswertung je Projekt.
 - **Wissensvorsprung:** wie viel Fachwissen der Lead mitbekommt: Lead-Handbuch, Interview-Baum, Grundpaket und Rollenkarten seiner Projektart, beim Clean Room dazu der Werkzeugkasten. Ein einzelner Agent startet mit dem Prompt.
 - **Einheiten für Vergleiche:** Eine erledigte Aufgabe zählt nach ihrer Stufe: A 1, B 2, C 3, D 5, dieselben Gewichte wie beim Fortschritt. Damit lassen sich verschieden große Umfänge vergleichen, etwa ein früherer Stand gegen die Arbeit des Schwarms. Wird ein früherer Stand so eingeordnet, liegt die Liste öffentlich im Repo des Projekts und ist auf der Projektseite verlinkt.
+- **Werte je Tag** (Agentenstunden, Einheiten) und der Vergleich über Einheiten erscheinen erst ab drei Tagen Messdauer. Kürzere Zeiten auf einen Tag hochzurechnen ergäbe Zahlen ohne Aussage.
 
 **Was wir bewusst nicht zeigen:** geschätzte Zeiten für ein menschliches Team. Dafür gibt es keine belastbare Messung, und Schätzmodelle liegen hier um ein Vielfaches auseinander.
 

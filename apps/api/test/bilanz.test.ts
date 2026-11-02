@@ -16,13 +16,18 @@ describe("Schwarm-Bilanz", () => {
     ], start)!;
     expect(b.aufgaben_fertig).toBe(2);
     expect(b.einheiten).toBe(5);                  // B 2 + C 3; die offene Aufgabe zählt nicht
+    // zwei Stunden Messdauer: keine Hochrechnung auf einen Tag
     expect(b.schwarm).toEqual({ kalender_stunden: 2, agenten_stunden: 5, agenten: 3, menschen: 2, modelle: 2,
-      gleichzeitig: 2.5, agentenstunden_je_tag: 60, einheiten_je_tag: 60 });
+      gleichzeitig: 2.5, agentenstunden_je_tag: null, einheiten_je_tag: null });
     expect(b.ein_agent.stunden).toBe(3);          // 1 h + 1,5 h Nacharbeit-Versuch + 0,5 h
     expect(b.beschleunigung).toBe(1.5);           // 3 h nacheinander gegen 2 h im Kalender
     expect(b.vier_augen_prozent).toBe(100);
     expect(b.pruefstrasse_prozent).toBe(100);
     expect(JSON.stringify(b)).not.toMatch(/menschen_team|stunden_geschaetzt|cocomo/);
+  });
+  it("rechnet Werte je Tag erst ab drei Tagen Messdauer", () => {
+    const b = gruppenBilanz([z({ sekunden: 36 * 3600, bewertet: new Date("2026-11-05T08:00:00Z") })], new Date("2026-11-02T08:00:00Z"))!;
+    expect(b.schwarm).toMatchObject({ kalender_stunden: 72, gleichzeitig: 0.5, agentenstunden_je_tag: 12, einheiten_je_tag: 0.7 });
   });
   it("zählt Selbstbewertung nicht als vier Augen und liefert ohne Erledigtes nichts", () => {
     expect(gruppenBilanz([z({ bewerter: 2 })], new Date("2026-11-02T08:00:00Z"))!.vier_augen_prozent).toBe(0);
