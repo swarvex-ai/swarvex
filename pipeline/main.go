@@ -14,6 +14,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -108,6 +109,7 @@ type einreichung struct {
 	BasisCommit   string `json:"base_commit"`
 	Slug          string `json:"slug"`
 	RepoGit       string `json:"repo_git"`
+	GitToken      string `json:"git_token"` // GitHub App: Token nur für dieses Repo (sonst Deploy-Key)
 	Mensch        string `json:"person"`
 	Agent         string `json:"agent"`
 	Begruendung   string `json:"reason"`
@@ -123,7 +125,11 @@ func befehl(dir string, env []string, name string, args ...string) (string, erro
 	return string(aus), err
 }
 
-func gitEnv(key string) []string {
+func gitEnv(key string, e einreichung) []string {
+	if e.GitToken != "" { // als HTTP-Header, nicht in der Adresse oder Konfiguration; git-lfs liest ihn mit
+		kopf := "AUTHORIZATION: basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+e.GitToken))
+		return []string{"GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.https://github.com/.extraheader", "GIT_CONFIG_VALUE_0=" + kopf, "GIT_CONFIG_NOSYSTEM=1"}
+	}
 	return []string{"GIT_SSH_COMMAND=ssh -i " + key + " -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new", "GIT_CONFIG_NOSYSTEM=1"}
 }
 
@@ -132,11 +138,13 @@ func spiegel(e einreichung) (string, error) {
 	ziel := filepath.Join(arbeit, "mirror", e.Slug+".git")
 	if _, err := os.Stat(ziel); err != nil {
 		os.MkdirAll(filepath.Dir(ziel), 0o755)
-		if aus, err := befehl("", gitEnv(leseKey), "git", "clone", "--quiet", "--bare", e.RepoGit, ziel); err != nil {
+		if aus, err := befehl("", gitEnv(leseKey, e), "git", "clone", "--quiet", "--bare", e.RepoGit, ziel); err != nil {
 			return "", fmt.Errorf("clone: %s", aus)
 		}
 		befehl(ziel, nil, "git", "lfs", "install", "--local") // Checkout löst LFS-Zeiger auf
-	} else if aus, err := befehl(ziel, gitEnv(leseKey), "git", "fetch", "--quiet", "origin", "+refs/heads/*:refs/heads/*"); err != nil {
+	} else if aus, err := befehl(ziel, nil, "git", "remote", "set-url", "origin", e.RepoGit); err != nil {
+		return "", fmt.Errorf("remote: %s", aus)
+	} else if aus, err := befehl(ziel, gitEnv(leseKey, e), "git", "fetch", "--quiet", "origin", "+refs/heads/*:refs/heads/*"); err != nil {
 		return "", fmt.Errorf("fetch: %s", aus)
 	}
 	return ziel, nil
@@ -183,10 +191,10 @@ func einePruefung(e einreichung) (bool, string) {
 	defer os.RemoveAll(dir)
 	baum := filepath.Join(dir, "tree")
 	// Basis-Commit mit echten Git-LFS-Dateien auschecken (Worktree am Spiegel).
-	if aus, err := befehl(sp, gitEnv(leseKey), "git", "lfs", "fetch", "origin", e.BasisCommit); err != nil {
+	if aus, err := befehl(sp, gitEnv(leseKey, e), "git", "lfs", "fetch", "origin", e.BasisCommit); err != nil {
 		return false, "LFS: " + aus
 	}
-	if aus, err := befehl(sp, gitEnv(leseKey), "git", "worktree", "add", "--detach", "--force", baum, e.BasisCommit); err != nil {
+	if aus, err := befehl(sp, gitEnv(leseKey, e), "git", "worktree", "add", "--detach", "--force", baum, e.BasisCommit); err != nil {
 		return false, "base commit: " + aus
 	}
 	defer befehl(sp, nil, "git", "worktree", "remove", "--force", baum)
@@ -312,7 +320,7 @@ func mergen() {
 func einMerge(e einreichung) (string, error) {
 	dir, _ := os.MkdirTemp(filepath.Join(arbeit), "merge-")
 	defer os.RemoveAll(dir)
-	env := gitEnv(schreibKey)
+	env := gitEnv(schreibKey, e)
 	if aus, err := befehl("", env, "git", "clone", "--quiet", "--depth", "50", e.RepoGit, dir); err != nil {
 		return "", fmt.Errorf("clone: %s", aus)
 	}

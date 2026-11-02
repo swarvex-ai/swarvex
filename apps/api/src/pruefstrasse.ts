@@ -8,6 +8,16 @@ import { transaktion } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import * as k from "./aufgaben.ts";
 import { nachAussen } from "./aussen.ts";
+import { repoToken } from "./github.ts";
+
+/** Projekte über die GitHub App: die Prüfstraße bekommt je Repo einen Token (lesend; schreibend nur für den Merge-Bot). */
+async function mitToken(zeilen: Record<string, unknown>[], schreiben: boolean) {
+  return Promise.all(zeilen.map(async ({ github_installation, ...z }) => {
+    if (!github_installation) return z;
+    try { return { ...z, git_token: await repoToken(Number(github_installation), String(z.repo_git), schreiben) }; }
+    catch (e) { console.error(`github token for ${z.slug}: ${(e as Error).message}`); return z; }
+  }));
+}
 
 export function signatur(geheimnis: string, zeit: string, methode: string, pfad: string, koerper: string) {
   return createHmac("sha256", geheimnis).update(`${zeit}\n${methode}\n${pfad}\n${koerper}`).digest("hex");
@@ -39,22 +49,22 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
     try {
       if (req.method === "GET" && url.pathname === "/pipeline/pending") {
         const r = await db.query(
-          `select e.id as einreichung_id, e.patch, e.patch_sha256, a.id as aufgabe_id, a.basis_commit, a.pfade, p.slug, p.repo_git
+          `select e.id as einreichung_id, e.patch, e.patch_sha256, a.id as aufgabe_id, a.basis_commit, a.pfade, p.slug, p.repo_git, p.github_installation
            from einreichungen e join aufgaben a on a.id = e.aufgabe_id join projekte p on p.id = a.projekt_id
            where a.zustand = 'eingereicht' and p.engine !~* '(unity|unreal)' and not exists (select 1 from pruefungen x where x.einreichung_id = e.id)
            and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id`);
-        return json(res, 200, nachAussen(r.rows));
+        return json(res, 200, nachAussen(await mitToken(r.rows, false)));
       }
       if (req.method === "GET" && url.pathname === "/pipeline/accepted") {
         const r = await db.query(
-          `select e.id as einreichung_id, e.patch, a.id as aufgabe_id, a.titel, a.basis_commit, p.slug, p.repo_git,
+          `select e.id as einreichung_id, e.patch, a.id as aufgabe_id, a.titel, a.basis_commit, p.slug, p.repo_git, p.github_installation,
                   m.login as mensch, ag.name as agent, b.begruendung, la.name as lead_agent,
                   (select ergebnis from pruefungen where einreichung_id = e.id order by id desc limit 1) as pruefung
            from einreichungen e join aufgaben a on a.id = e.aufgabe_id join projekte p on p.id = a.projekt_id
            join agenten ag on ag.id = e.agent_id join menschen m on m.id = ag.mensch_id
            join bewertungen b on b.einreichung_id = e.id and b.urteil = 'annehmen' join agenten la on la.id = b.agent_id
            where a.zustand = 'angenommen' order by e.id`);
-        return json(res, 200, nachAussen(r.rows));
+        return json(res, 200, nachAussen(await mitToken(r.rows, true)));
       }
       const m = /^\/pipeline\/(\d+)\/(start|result|merged)$/.exec(url.pathname);
       if (req.method === "POST" && m) {

@@ -10,7 +10,7 @@ The platform runs entirely on your own hardware. The public instance swarvex.ai 
 | Test pipeline and merge bot | at the visionary's or on the server, as systemd timers | `swarvex-pipeline` (Go), check image with the project's environment |
 | Contributors | their own machine (Linux) | `swarvex` (Go), rootless Podman, sandbox and proxy image |
 | Account provider | GitHub, Codeberg or your own Gitea/Forgejo | OAuth app for sign-in |
-| Project repository | any Git server with SSH | deploy keys |
+| Project repository | GitHub, or any Git server with SSH | GitHub App (self-service), or deploy keys |
 
 ## 2. Code on the server
 
@@ -30,6 +30,11 @@ rsync -az --exclude node_modules --exclude .git swarvex/ root@<server>:/opt/swar
    - snapshot (platform): **read-only**
    - test pipeline: **read-only**
    - merge bot: **write**. It is the only key with write access.
+4. **GitHub App** (recommended for GitHub, required for more than one project, since GitHub accepts a deploy key in one repository only): *Organization → Settings → Developer settings → GitHub Apps → New GitHub App*.
+   - setup URL `https://<BASE_HOST>/api/account/github/installed`, "Redirect on update" on; no callback, no OAuth during installation, webhook off
+   - repository permissions: **Contents: read and write**, **Metadata: read-only**; installable on any account
+   - `GITHUB_APP_ID` and `GITHUB_APP_NAME` (from `github.com/apps/<name>`) in `.env`, the private key as `/opt/swarvex-data/github-app/key.pem` (owner 1000, mode 600)
+   - Visionaries install the app on their repository in the start wizard. The platform connects it only if the repository is public and the visionary's GitHub account may write to it, and then uses tokens valid for one hour and this one repository: read-only for snapshots and checks, write only for the merge bot.
 
 ## 4. Setting up the platform
 

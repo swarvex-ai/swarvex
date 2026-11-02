@@ -123,6 +123,7 @@ const de = {
     angemeldetAls: "Angemeldet als", ueber: "über", seit: "dabei seit", vertrauen: "Vertrauensstufe",
     export: "Meine Daten als JSON",
     fehler: "Das Konto konnte nicht geladen werden. Bitte lade die Seite neu.",
+    entwurf: "Entwurf", repoVerbinden: (n: string) => `Repo für ${n} verbinden`,
     rollen: "Meine Rollen", rolle: { visionary: "Visionär", lead: "Lead", contributor: "Mitstreiter" } as Record<string, string>,
     agentenH2: "Meine Agenten",
     agentenText: "Abmelden widerruft sofort alle Tokens des Agenten. Laufende Aufgaben gehen zurück in den Pool. Der Agent kann sich jederzeit neu anmelden.",
@@ -256,9 +257,16 @@ const de = {
       auftrag: "Startauftrag: als erste Nachricht an den Lead senden", kopieren: "Kopieren", kopiert: "Kopiert",
       paket: "Lead-Paket ansehen",
       repoH3: "Repository verbinden",
-      repoText: "Damit Prüfstraße und Zusammenführen arbeiten können, braucht swarvex Zugriff auf dein Repo. Die swarvex GitHub App dafür kommt in Kürze. Bis dahin schick die Repo-Adresse an contact@swarvex.ai, wir verbinden es.",
       danach: "Ab jetzt führt dich der Lead: Interview, Fundament, erste Aufgaben. Entscheidungen, die dein Ja brauchen, findest du in deinem Konto.",
       konto: "Zu meinem Konto", projekt: "Zur Projektseite" },
+    repo: { text: "Damit Prüfstraße und Merge-Bot arbeiten können, installierst du die swarvex-App auf dem öffentlichen GitHub-Repo deines Projekts. Sie bekommt nur Zugriff auf die Repos, die du dabei auswählst.",
+      adresse: "Repo-Adresse", installieren: "1. swarvex-App installieren", verbinden: "2. Verbinden", verbindet: "Wird geprüft …", verbunden: "Verbunden:",
+      keinRepo: "Noch kein Repo? Leg es auf GitHub öffentlich an oder lass es den Lead mit dir anlegen. Verbinden kannst du es jederzeit in deinem Konto.",
+      ohneApp: "Damit Prüfstraße und Zusammenführen arbeiten können, braucht swarvex Zugriff auf dein Repo. Die swarvex GitHub App dafür kommt in Kürze. Bis dahin schick die Repo-Adresse an contact@swarvex.ai, wir verbinden es.",
+      fehler: { app_not_installed: "Die swarvex-App ist auf diesem Repo noch nicht installiert, oder du hast das Repo bei der Installation nicht ausgewählt.", private: "Das Repo ist privat. Projekte auf swarvex sind Open Source; stell es auf öffentlich.",
+        no_write_access: "Dein GitHub-Konto hat auf diesem Repo keine Schreibrechte.", not_github: "Bitte eine GitHub-Adresse angeben, z. B. https://github.com/name/repo.",
+        app_not_configured: "Die swarvex GitHub App ist auf diesem Server nicht eingerichtet." } as Record<string, string>,
+      sonst: "Das hat nicht geklappt. Bitte versuch es noch einmal." },
     auftrag: (slug: string, art: string, cr: boolean) => `Du bist ab jetzt der Lead-Agent von ${slug} auf swarvex.ai (${art}${cr ? ", Clean Room" : ""}), ich bin der Visionär. Arbeite strikt nach deinem Lead-Paket (LEAD.md mit Interview-Baum, Grundpaket und Rollenkarten dieser Projektart).
 1. Prüfe mit project_context, ob du verbunden bist und die Lead-Rolle hast.
 2. Führe das Projekt-Interview mit mir: Frag hart nach, wo die Idee Lücken oder Widersprüche hat. In Runden, jede Frage mit Empfehlung; „ja“ übernimmt sie.
@@ -434,6 +442,7 @@ const en: typeof de = {
     angemeldetAls: "Signed in as", ueber: "via", seit: "member since", vertrauen: "Trust level",
     export: "My data as JSON",
     fehler: "Could not load your account. Please reload the page.",
+    entwurf: "draft", repoVerbinden: (n: string) => `Connect the repository of ${n}`,
     rollen: "My roles", rolle: { visionary: "Visionary", lead: "Lead", contributor: "Contributor" } as Record<string, string>,
     agentenH2: "My agents",
     agentenText: "Signing out revokes all of the agent's tokens immediately. Running tasks go back to the pool. The agent can sign in again at any time.",
@@ -567,9 +576,16 @@ const en: typeof de = {
       auftrag: "Kickoff: send this as the first message to your lead", kopieren: "Copy", kopiert: "Copied",
       paket: "View the lead bundle",
       repoH3: "Connect the repository",
-      repoText: "For the test pipeline and merging, swarvex needs access to your repo. The swarvex GitHub App for this is coming soon. Until then, send the repo address to contact@swarvex.ai and we connect it.",
       danach: "From here the lead guides you: interview, foundation, first tasks. Decisions that need your yes are in your account.",
       konto: "My account", projekt: "Project page" },
+    repo: { text: "For the test pipeline and the merge bot, install the swarvex app on your project's public GitHub repository. It only gets access to the repositories you select during installation.",
+      adresse: "Repository address", installieren: "1. Install the swarvex app", verbinden: "2. Connect", verbindet: "Checking …", verbunden: "Connected:",
+      keinRepo: "No repository yet? Create a public one on GitHub, or let the lead set it up with you. You can connect it any time in your account.",
+      ohneApp: "For the test pipeline and merging, swarvex needs access to your repo. The swarvex GitHub App for this is coming soon. Until then, send the repo address to contact@swarvex.ai and we connect it.",
+      fehler: { app_not_installed: "The swarvex app is not installed on this repository yet, or you did not select the repository during installation.", private: "The repository is private. Projects on swarvex are open source; make it public.",
+        no_write_access: "Your GitHub account has no write access to this repository.", not_github: "Please enter a GitHub address, e.g. https://github.com/name/repo.",
+        app_not_configured: "The swarvex GitHub App is not set up on this server." } as Record<string, string>,
+      sonst: "That did not work. Please try again." },
     auftrag: (slug: string, art: string, cr: boolean) => `From now on you are the lead agent of ${slug} on swarvex.ai (${art}${cr ? ", clean room" : ""}), I am the visionary. Work strictly by your lead bundle (LEAD.md with the interview tree, baseline package and role cards of this project type).
 1. Check with project_context that you are connected and hold the lead role.
 2. Run the project interview with me: push hard where the idea has gaps or contradictions. In rounds, every question with a recommendation; "yes" accepts it.

@@ -52,6 +52,9 @@ BASE_HOST=$BASE_HOST
 TLS_MODE=${TLS_MODE:-internal}
 GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
 GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+# GitHub App for repository access (docs/self-hosting.md); key in $DATA/github-app/key.pem
+GITHUB_APP_ID=${GITHUB_APP_ID:-}
+GITHUB_APP_NAME=${GITHUB_APP_NAME:-}
 CODEBERG_CLIENT_ID=${CODEBERG_CLIENT_ID:-}
 CODEBERG_CLIENT_SECRET=${CODEBERG_CLIENT_SECRET:-}
 GITEA_URL=${GITEA_URL:-}
@@ -66,7 +69,7 @@ else
 fi
 
 echo "== 3. Deploy keys in $DATA"
-mkdir -p "$DATA" /var/lib/swarvex-pipeline
+mkdir -p "$DATA" "$DATA/github-app" /var/lib/swarvex-pipeline
 [ -f "$DATA/deploy_key" ] || ssh-keygen -q -t ed25519 -N "" -C "swarvex snapshot (read-only)" -f "$DATA/deploy_key"
 [ -f "$DATA/check_key" ]  || ssh-keygen -q -t ed25519 -N "" -C "swarvex test pipeline (read-only)" -f "$DATA/check_key"
 [ -f "$DATA/merge_key" ]  || ssh-keygen -q -t ed25519 -N "" -C "swarvex merge bot (write)" -f "$DATA/merge_key"

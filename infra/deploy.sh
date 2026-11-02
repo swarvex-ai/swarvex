@@ -18,7 +18,9 @@ done
 if [ -d "$REPO/apps/web/static/media" ]; then
   rsync -az "$REPO/apps/web/static/media/" "$TARGET:/opt/swarvex-data/downloads/media/"
 fi
-ssh "$TARGET" 'mkdir -p /opt/swarvex-data/sites && { docker network inspect edge >/dev/null 2>&1 || docker network create edge >/dev/null; } && { docker network inspect analytics >/dev/null 2>&1 || docker network create --internal analytics >/dev/null; } && cd /opt/swarvex/infra/stack && docker compose build api web && sh /opt/swarvex/infra/grafana-setup.sh files && docker compose up -d postgres api web caddy && docker compose restart caddy && sh /opt/swarvex/infra/analytics-setup.sh && cd ../monitoring && docker compose up -d && sh /opt/swarvex/infra/grafana-setup.sh areas'
+ssh "$TARGET" 'mkdir -p /opt/swarvex-data/sites /opt/swarvex-data/github-app && { docker network inspect edge >/dev/null 2>&1 || docker network create edge >/dev/null; } && { docker network inspect analytics >/dev/null 2>&1 || docker network create --internal analytics >/dev/null; } && cd /opt/swarvex/infra/stack && docker compose build api web && sh /opt/swarvex/infra/grafana-setup.sh files && docker compose up -d postgres api web caddy && docker compose restart caddy && sh /opt/swarvex/infra/analytics-setup.sh && cd ../monitoring && docker compose up -d && sh /opt/swarvex/infra/grafana-setup.sh areas'
+# Prüfstraße und Merge-Bot (systemd-Timer auf dem Host) mit dem neuen Stand bauen
+ssh "$TARGET" 'cd /opt/swarvex && docker run --rm -v "$PWD:/src" -w /src/pipeline -e CGO_ENABLED=0 -e GOCACHE=/tmp/gc golang:1 go build -trimpath -ldflags="-s -w" -o swarvex-pipeline . && install -m 755 pipeline/swarvex-pipeline /usr/local/bin/ && rm -f pipeline/swarvex-pipeline && echo "pipeline built"'
 # Erst fertig, wenn die API wirklich antwortet (die Website allein sagt nichts über die API dahinter)
 ssh "$TARGET" 'cd /opt/swarvex/infra/stack && for i in $(seq 1 45); do
   docker compose exec -T api node -e "fetch(\"http://localhost:3000/api/projects\").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))" 2>/dev/null && { echo "api answers"; exit 0; }

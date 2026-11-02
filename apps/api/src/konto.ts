@@ -13,7 +13,8 @@ import { CALLBACK, englisch, esc, KONTO_PRAEFIX, pruefen, seite, signieren } fro
 import type { KontoAnbieter } from "./auth/konten.ts";
 import { nachrichtBeantworten, offeneFreigaben } from "./nachrichten.ts";
 import { hochladen, meineZusagen, zusageAnlegen, zusageBeenden } from "./spenden.ts";
-import { projektAnlegen, type NeuesProjekt } from "./projekte.ts";
+import { projektAnlegen, repoVerbinden, type NeuesProjekt } from "./projekte.ts";
+import { appBereit, installierenUrl } from "./github.ts";
 
 const SITZUNG = "swarvex_account";
 const ANMELDUNG = "swarvex_login";
@@ -51,7 +52,7 @@ export function sitzungAusstellen(geheimnis: string, menschId: number, jetzt = D
 export async function kontoDaten(db: Db, menschId: number) {
   const mensch = (await db.query("select login, konto_provider as anbieter, erstellt, vertrauensstufe from menschen where id = $1", [menschId])).rows[0];
   const rollen = (await db.query(
-    `select p.slug as projekt, p.name, r.rolle from projekt_rollen r join projekte p on p.id = r.projekt_id
+    `select p.slug as projekt, p.name, r.rolle, p.repo_git is not null as repo_verbunden, p.entwurf from projekt_rollen r join projekte p on p.id = r.projekt_id
      where r.mensch_id = $1 order by p.name, r.rolle`, [menschId])).rows;
   const agenten = (await db.query(
     `select a.id::int, a.name, a.client_id, a.erstellt, a.abgemeldet,
@@ -149,6 +150,19 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
       return;
     }
 
+    // GitHub App (github.ts): Installation starten und danach zurück in den Assistenten („Setup URL“ der App)
+    if (pfad === "/api/account/github" && req.method === "GET") return json(res, 200, { app: appBereit() });
+    if ((pfad === "/api/account/github/install" || pfad === "/api/account/github/installed") && req.method === "GET") {
+      // state = "<sprache>.<seite>", von uns gesetzt und von GitHub zurückgegeben; nur feste Ziele (kein offener Redirect)
+      const [sprache, von] = (url.searchParams.get("state") ?? `${url.searchParams.get("lang")}.${url.searchParams.get("from")}`).split(".");
+      const en = sprache === "en", konto = von === "konto";
+      const zurueck = konto ? zurSeite(en) : en ? "/en/start" : "/starten";
+      const ziel = pfad.endsWith("/install") && appBereit() ? installierenUrl(`${en ? "en" : "de"}.${konto ? "konto" : "starten"}`) : `${zurueck}?app=installed`;
+      res.writeHead(303, { location: ziel, "cache-control": "no-store" });
+      res.end();
+      return;
+    }
+
     const menschId = await sitzungLesen(db, geheimnis, cookie(req, SITZUNG));
 
     if (pfad === "/api/account" && req.method === "GET") {
@@ -198,6 +212,20 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
       try { p = JSON.parse(await textLesen(req, 40_000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
       try {
         return json(res, 200, nachAussen(await projektAnlegen(db, p, menschId)));
+      } catch (e) {
+        if (e instanceof Abgelehnt) return json(res, 409, { error: e.message });
+        throw e;
+      }
+    }
+
+    const repo = /^\/api\/account\/projects\/([a-z0-9-]+)\/repo$/.exec(pfad);
+    if (req.method === "POST" && repo) {
+      if (!eigeneHerkunft(req)) return json(res, 403, { error: "foreign_origin" });
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
+      let b: { repo_url?: string };
+      try { b = JSON.parse(await textLesen(req, 2_000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
+      try {
+        return json(res, 200, nachAussen(await repoVerbinden(db, repo[1], menschId, String(b.repo_url ?? ""))));
       } catch (e) {
         if (e instanceof Abgelehnt) return json(res, 409, { error: e.message });
         throw e;

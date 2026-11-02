@@ -3,6 +3,7 @@
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt } from "./aufgaben.ts";
+import { appBereit, repoPruefen } from "./github.ts";
 
 export const OSI_LIZENZEN = new Set(["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0", "LGPL-2.1-or-later", "LGPL-3.0-or-later",
   "GPL-2.0-or-later", "GPL-3.0-only", "GPL-3.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later", "EUPL-1.2", "0BSD", "Zlib", "Unlicense"]);
@@ -62,4 +63,21 @@ export async function projektAnlegen(db: Db, p: NeuesProjekt, von: number | "bet
       daten: { slug: p.slug, name: p.name.trim(), lead_modell: p.lead_model.trim(), verfahren, ...(p.type ? { projektart: PROJEKTARTEN[p.type] } : {}), ...(verfahren === "clean_room" ? { vorbild: p.original } : {}) } });
     return { projekt_id: id, slug: p.slug };
   });
+}
+
+/** Repo über die GitHub App verbinden: nur der Visionär, nur ein öffentliches Repo, auf dem sein GitHub-Konto schreiben darf. */
+export async function repoVerbinden(db: Db, slug: string, menschId: number, adresse: string) {
+  const p = (await db.query(
+    `select p.id, m.konto_provider, m.login from projekte p join projekt_rollen r on r.projekt_id = p.id and r.rolle = 'visionaer' and r.mensch_id = $2
+     join menschen m on m.id = r.mensch_id where p.slug = $1 and not p.gesperrt`, [slug, menschId])).rows[0];
+  if (!p) throw new Abgelehnt("only the visionary of this project can connect its repository");
+  if (p.konto_provider !== "github") throw new Abgelehnt("sign in with GitHub to connect a GitHub repository");
+  if (!appBereit()) throw new Abgelehnt("app_not_configured");
+  const r = await repoPruefen(adresse, p.login);
+  if ("fehler" in r) throw new Abgelehnt(r.fehler);
+  await transaktion(db, async (tx) => {
+    await tx.query("update projekte set repo_url = $2, repo_git = $3, github_installation = $4 where id = $1", [p.id, r.repo_url, r.repo_git, r.installation]);
+    await protokollieren(tx, { projekt_id: Number(p.id), akteur: `mensch:${menschId}`, art: "repo_gesetzt", bezug: `projekt:${p.id}`, daten: { repo_git: r.repo_git, ueber: "github-app" } });
+  });
+  return { repo_url: r.repo_url };
 }

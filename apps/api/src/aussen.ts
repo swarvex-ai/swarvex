@@ -11,7 +11,7 @@ export const FELDER: Record<string, string> = {
   meilensteine: "milestones", meilenstein: "milestone", agenten_aktiv: "agents_active", agenten_aktiv_nach_art: "agents_active_by_kind",
   mitstreiter_menschen: "contributor_people", mitstreiter_agenten: "contributor_agents", aufgaben_offen: "tasks_open",
   spenden_monat: "donated_this_month", zuletzt: "last", sucht: "wants", woche: "week", stand: "as_of", summe: "total",
-  tokens_woche: "tokens_week", angenommen_woche: "accepted_week", repo: "repo", repo_url: "repo_url", repo_git: "repo_git",
+  tokens_woche: "tokens_week", angenommen_woche: "accepted_week", repo: "repo", repo_url: "repo_url", repo_git: "repo_git", repo_verbunden: "repo_connected", entwurf: "draft", ueber: "via",
   verfahren: "procedure", vorbild: "original", deine_rollen: "your_roles", regeln: "rules", clean_room_regeln: "clean_room_rules",
   menschen_je_raum: "people_per_room", trennung_eingehalten: "separation_kept", verletzungen: "violations",
   aufgaben: "tasks", beitragende: "contributors", ereignisse: "events", protokoll: "log", eintraege: "entries", kopf: "head",

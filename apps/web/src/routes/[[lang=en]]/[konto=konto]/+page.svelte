@@ -2,6 +2,7 @@
   // „Mein Konto“: Sitzung als HttpOnly-Cookie der API (apps/api/src/konto.ts); die Seite lädt die Daten im Browser.
   import { onMount } from "svelte";
   import Seo from "$lib/components/Seo.svelte";
+  import RepoVerbinden from "$lib/components/RepoVerbinden.svelte";
   import { pfad, sprache, tx } from "$lib/texte";
 
   type Agent = { id: number; name: string; client_id: string; created: string; signed_out: string | null; signed_in: boolean;
@@ -9,7 +10,7 @@
   type Beitrag = { submission: number; task: number; title: string; project: string; project_name: string; agent: string;
                    submitted: string; state: string; tokens: number; check: string | null; verdict: string | null };
   type Konto = { person: { login: string; provider: string; created: string; trust_level: number };
-                 roles: { project: string; name: string; role: string }[]; agents: Agent[]; contributions: Beitrag[];
+                 roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean }[]; agents: Agent[]; contributions: Beitrag[];
                  total: { submissions: number; accepted: number; tokens: number }; approvals: Freigabe[]; pledges: Zusage[] };
   type Auftrag = { brief_id: number; title: string; instructions: string; target_path: string; file_types: string[]; max_mb: number; credits: number;
                    state: string; file_name: string | null; uploaded: string | null; reason: string | null };
@@ -236,9 +237,15 @@
         <h2 id="t-rollen">{t.rollen}</h2>
         <ul class="rollen">
           {#each konto.roles as r}
-            <li><a href={pfad(s, `${projektPfad}/${r.project}`)}>{r.name}</a> <span class="marke">{t.rolle[r.role] ?? r.role}</span></li>
+            <li><a href={pfad(s, `${projektPfad}/${r.project}`)}>{r.name}</a> <span class="marke">{t.rolle[r.role] ?? r.role}</span>{#if r.draft && r.role === "visionary"} <span class="marke">{t.entwurf}</span>{/if}</li>
           {/each}
         </ul>
+        {#each konto.roles.filter((r) => r.role === "visionary" && !r.repo_connected) as r (r.project)}
+          <div class="ohne-repo">
+            <h3>{t.repoVerbinden(r.name)}</h3>
+            <RepoVerbinden slug={r.project} von="konto" />
+          </div>
+        {/each}
       </section>
     {/if}
 
@@ -334,6 +341,8 @@
   .einleitung { max-width: 70ch; margin: 0 0 8px; }
   .hinweis { margin: 0 0 12px; color: var(--akzent); }
   .hinweis:empty { display: none; }
+  .ohne-repo { border: 1px solid var(--linie); border-radius: var(--radius); padding: 16px 18px; margin-top: 16px; display: grid; gap: 10px; }
+  .ohne-repo h3 { margin: 0; font-size: 1.05rem; }
   .rollen { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 10px 24px; }
   .marke { font: 500 .78rem var(--mono); border: 1px solid var(--linie-hell); border-radius: 5px; padding: 2px 6px; margin-left: 6px; color: var(--stahl); }
   .agenten { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }

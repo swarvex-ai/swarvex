@@ -4,7 +4,7 @@ import { migrieren, verbinden, type Db } from "../src/db.ts";
 import { ketteVerifizieren } from "../src/ereignisse.ts";
 import * as k from "../src/aufgaben.ts";
 import { kennzahlen, projektListe } from "../src/kennzahlen.ts";
-import { projektAnlegen, type NeuesProjekt } from "../src/projekte.ts";
+import { projektAnlegen, repoVerbinden, type NeuesProjekt } from "../src/projekte.ts";
 import * as g from "../src/gegenpruefung.ts";
 
 let db: Db;
@@ -265,6 +265,8 @@ describe("Projekt starten (Assistent)", () => {
     expect((await projektListe(db)).projekte.map((p) => p.projekt)).not.toContain("mein-spiel");
     await k.aufgabeAnlegen(db, { menschId: m, agentId: a }, "mein-spiel", { ...neueAufgabe("Hauptmenü"), pfade: ["game/**"] });
     expect((await projektListe(db)).projekte.map((p) => p.projekt)).toContain("mein-spiel");
+    await expect(repoVerbinden(db, "mein-spiel", mit.menschId, "https://github.com/x/y")).rejects.toThrow(/only the visionary/);
+    await expect(repoVerbinden(db, "mein-spiel", m, "https://github.com/x/y")).rejects.toThrow(/sign in with GitHub/);
   });
 });
 

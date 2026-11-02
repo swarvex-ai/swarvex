@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import Seo from "$lib/components/Seo.svelte";
   import Einzeiler from "$lib/components/Einzeiler.svelte";
+  import RepoVerbinden from "$lib/components/RepoVerbinden.svelte";
   import { pfad, sprache, tx } from "$lib/texte";
 
   const s = $derived(sprache());
@@ -214,7 +215,7 @@
       </ol>
       <p class="klein"><a href={`/lead/${ergebnis.paket}.md`}>{t.los.paket}</a></p>
       <h3>{t.los.repoH3}</h3>
-      <p class="leise">{t.los.repoText}</p>
+      <RepoVerbinden slug={ergebnis.slug} repo={d.repo_url} />
       <p>{t.los.danach}</p>
       <div class="knoepfe">
         <a class="knopf primaer" href={pfad(s, tx().konto.pfad)}>{t.los.konto}</a>
