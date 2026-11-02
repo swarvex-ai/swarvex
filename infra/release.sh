@@ -38,6 +38,8 @@ ssh-keygen -q -Y sign -f "$DATA/release_key" -n swarvex-release "$TARGET/SHA256S
 PUB=$(cut -d' ' -f1-2 "$DATA/release_key.pub")
 sed -e "s#@PLATFORM@#$PLATFORM#g" -e "s#@VERSION@#$VERSION#g" -e "s#@PUBKEY@#$PUB#g" \
   "$CODE/runner/install.sh.in" > "$DOWNLOADS/install.sh"
+# Windows: sets up the WSL distribution and runs install.sh inside it (signature check happens there)
+sed -e "s#@PLATFORM@#$PLATFORM#g" "$CODE/runner/install.ps1.in" > "$DOWNLOADS/install.ps1"
 chmod -R a+rX "$DOWNLOADS"
 echo "== Release $VERSION ready: $PLATFORM/install.sh"
 ls -la "$TARGET"

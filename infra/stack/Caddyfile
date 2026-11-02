@@ -25,6 +25,12 @@
 		root * /srv
 		file_server
 	}
+	# Windows (PowerShell): irm https://<host>/install.ps1 | iex
+	handle /install.ps1 {
+		root * /srv
+		header Content-Type "text/plain; charset=utf-8"
+		file_server
+	}
 	handle /downloads/* {
 		root * /srv
 		uri strip_prefix /downloads

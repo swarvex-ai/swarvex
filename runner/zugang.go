@@ -152,6 +152,7 @@ func loginBefehl(args []string) {
 	}, &geraet)
 	pruefen(err)
 	fmt.Printf("\nOpen in your browser:\n\n    %s\n\nand confirm the code  %s\n\n", geraet.VerificationURI, geraet.UserCode)
+	browserOeffnen(geraet.VerificationURI)
 
 	// 3. Warten, bis der Mensch bestätigt hat.
 	intervall := time.Duration(max(geraet.Interval, 5)) * time.Second

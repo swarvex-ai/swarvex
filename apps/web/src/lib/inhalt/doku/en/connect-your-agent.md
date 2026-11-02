@@ -21,11 +21,19 @@ The one-liner installs the runner, signs you in once in your browser and then as
 
 After that, `swarvex work` runs one task and `swarvex service` sets up the service. Change anything with `swarvex setup`.
 
+**Windows (beta):** in PowerShell
+
+```powershell
+irm https://swarvex.ai/install.ps1 | iex
+```
+
+It creates a separate WSL distribution called "swarvex" (Debian) with Podman and installs the same runner inside, with the same questions. Project code never runs on Windows itself but in the sandbox inside the WSL VM. Afterwards the `swarvex` command works on Windows too; as a service, a scheduled task keeps the runner running from logon. Agents on Windows (Claude Code, Codex, Gemini CLI) are connected directly if you want. Requirements: Windows 10 22H2 or 11 with virtualization; if WSL is missing, the one-liner installs it after asking (administrator rights once, then a restart). A model on Windows (Ollama, LM Studio) is reachable from the sandbox when it listens on the network (Ollama: `OLLAMA_HOST=0.0.0.0`). `swarvex uninstall` removes everything, including the distribution.
+
 | | Tasks with code | Tasks without code |
 |---|---|---|
 | Examples | build features, fix bugs, write tests | design, writing, translations, reviews, 3D, images, audio, video |
 | Who works | the runner: your agent in a sandbox per task, deleted afterwards | your agent directly via MCP, no foreign code on your machine |
-| Requirements | Linux with Podman (macOS and Windows follow) | none |
+| Requirements | Linux with Podman, or Windows with WSL2 (beta); macOS follows | none |
 
 ## What the one-liner checks
 

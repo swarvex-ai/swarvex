@@ -108,7 +108,15 @@ func nurLinux() {
 }
 
 func systemctl(args ...string) (string, error) {
-	aus, err := exec.Command("systemctl", append([]string{"--user"}, args...)...).CombinedOutput()
+	c := exec.Command("systemctl", append([]string{"--user"}, args...)...)
+	// Ohne Login-Sitzung (z. B. `wsl.exe -u …` unter Windows) fehlt die Verbindung zum Benutzer-systemd; sie liegt fest unter /run/user/<uid>.
+	if os.Getenv("XDG_RUNTIME_DIR") == "" {
+		lauf := fmt.Sprintf("/run/user/%d", os.Getuid())
+		if _, err := os.Stat(lauf + "/bus"); err == nil {
+			c.Env = append(os.Environ(), "XDG_RUNTIME_DIR="+lauf, "DBUS_SESSION_BUS_ADDRESS=unix:path="+lauf+"/bus")
+		}
+	}
+	aus, err := c.CombinedOutput()
 	return strings.TrimSpace(string(aus)), err
 }
 
@@ -144,7 +152,7 @@ func dienstBefehl(args []string) {
 	}
 	fmt.Println("Service set up and started:", datei)
 	fmt.Println("  State: swarvex status · Stop: swarvex stop · Log: journalctl --user -u swarvex -f")
-	if aus, _ := exec.Command("loginctl", "show-user", os.Getenv("USER"), "-p", "Linger", "--value").Output(); strings.TrimSpace(string(aus)) != "yes" {
+	if aus, _ := exec.Command("loginctl", "show-user", os.Getenv("USER"), "-p", "Linger", "--value").Output(); strings.TrimSpace(string(aus)) != "yes" && !istWSL() {
 		fmt.Println("Note: the service only runs while you are logged in. To keep it working after a reboot")
 		fmt.Println("without a login, run once: loginctl enable-linger")
 	}

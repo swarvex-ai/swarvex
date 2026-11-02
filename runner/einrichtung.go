@@ -168,28 +168,43 @@ func holeJSON(adresse string, ziel any) bool {
 	return r.StatusCode == 200 && json.NewDecoder(r.Body).Decode(ziel) == nil
 }
 
-// lokaleModelle fragt die üblichen lokalen Server ab. Aus dem Container sind sie über host.containers.internal erreichbar.
+// lokaleModelle fragt die üblichen lokalen Server ab. Aus dem Container sind sie über host.containers.internal erreichbar;
+// unter WSL zusätzlich Server, die unter Windows laufen, über die Windows-Adresse.
 func lokaleModelle() []modellWahl {
+	type ort struct{ abfrage, adresse, zusatz string }
+	orte := []ort{{"127.0.0.1", "host.containers.internal", ""}}
+	for _, a := range windowsAdressen() {
+		orte = append(orte, ort{a, a, " (Windows)"})
+	}
 	var w []modellWahl
-	var ollama struct {
-		Models []struct {
-			Name string `json:"name"`
-		} `json:"models"`
-	}
-	if holeJSON("http://127.0.0.1:11434/api/tags", &ollama) {
-		for _, m := range ollama.Models {
-			w = append(w, modellWahl{Titel: "Ollama: " + m.Name, Agent: "opencode", Modell: m.Name, URL: "http://host.containers.internal:11434", Lokal: true})
+	gesehen := map[string]bool{}
+	neu := func(titel, modell, port string, o ort) {
+		if k := modell + "|" + port; !gesehen[k] {
+			gesehen[k] = true
+			w = append(w, modellWahl{Titel: titel + o.zusatz, Agent: "opencode", Modell: modell, URL: "http://" + o.adresse + ":" + port, Lokal: true})
 		}
 	}
-	for _, s := range []struct{ name, port string }{{"LM Studio", "1234"}, {"llama.cpp", "8080"}, {"vLLM", "8000"}} {
-		var liste struct {
-			Data []struct {
-				ID string `json:"id"`
-			} `json:"data"`
+	for _, o := range orte {
+		var ollama struct {
+			Models []struct {
+				Name string `json:"name"`
+			} `json:"models"`
 		}
-		if holeJSON("http://127.0.0.1:"+s.port+"/v1/models", &liste) {
-			for _, m := range liste.Data {
-				w = append(w, modellWahl{Titel: s.name + ": " + m.ID, Agent: "opencode", Modell: m.ID, URL: "http://host.containers.internal:" + s.port, Lokal: true})
+		if holeJSON("http://"+o.abfrage+":11434/api/tags", &ollama) {
+			for _, m := range ollama.Models {
+				neu("Ollama: "+m.Name, m.Name, "11434", o)
+			}
+		}
+		for _, s := range []struct{ name, port string }{{"LM Studio", "1234"}, {"llama.cpp", "8080"}, {"vLLM", "8000"}} {
+			var liste struct {
+				Data []struct {
+					ID string `json:"id"`
+				} `json:"data"`
+			}
+			if holeJSON("http://"+o.abfrage+":"+s.port+"/v1/models", &liste) {
+				for _, m := range liste.Data {
+					neu(s.name+": "+m.ID, m.ID, s.port, o)
+				}
 			}
 		}
 	}
@@ -202,8 +217,8 @@ func heim(teile ...string) string {
 }
 
 // codexModell liest das Modell aus der Codex-Konfiguration (model = "…"), falls gesetzt.
-func codexModell() string {
-	roh, err := os.ReadFile(heim(".codex", "config.toml"))
+func codexModell(ordner string) string {
+	roh, err := os.ReadFile(filepath.Join(ordner, "config.toml"))
 	if err != nil {
 		return ""
 	}
@@ -215,8 +230,16 @@ func codexModell() string {
 
 func modellAuswahl() []modellWahl {
 	w := lokaleModelle()
-	if roh, err := os.ReadFile(heim(".codex", "auth.json")); err == nil && istCodexAnmeldung(roh) {
-		w = append(w, modellWahl{Titel: "Codex with your ChatGPT sign-in (~/.codex/auth.json)", Agent: "codex", Modell: codexModell(), Key: heim(".codex", "auth.json")})
+	// Codex-Anmeldung: hier und, unter WSL, im Windows-Benutzerordner
+	codexOrdner := []string{heim(".codex")}
+	if wh := windowsHeim(); wh != "" {
+		codexOrdner = append(codexOrdner, filepath.Join(wh, ".codex"))
+	}
+	for _, o := range codexOrdner {
+		datei := filepath.Join(o, "auth.json")
+		if roh, err := os.ReadFile(datei); err == nil && istCodexAnmeldung(roh) {
+			w = append(w, modellWahl{Titel: "Codex with your ChatGPT sign-in (" + datei + ")", Agent: "codex", Modell: codexModell(o), Key: datei})
+		}
 	}
 	if _, err := exec.LookPath("claude"); err == nil {
 		w = append(w, modellWahl{Titel: "Claude Code with your Claude subscription (token from `claude setup-token`)", Agent: "claude", Modell: "claude-sonnet-5-5", URL: "https://api.anthropic.com", Key: "claude-setup-token"})
@@ -406,7 +429,9 @@ func setupDialog(ausfuehren bool) []string {
 	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
 
 	fmt.Println("\n== 4/4 Tasks without code")
-	if gefunden := mcpAgentenGefunden(); len(gefunden) > 0 {
+	if istWSL() {
+		fmt.Println("Agents installed on Windows (Claude Code, Codex …) are connected by the Windows installer, or later with: swarvex connect")
+	} else if gefunden := mcpAgentenGefunden(); len(gefunden) > 0 {
 		namen := make([]string, len(gefunden))
 		for i, a := range gefunden {
 			namen[i] = a.Titel
@@ -459,7 +484,8 @@ var mcpAgenten = []mcpAgent{
 func mcpAgentenGefunden() []mcpAgent {
 	var r []mcpAgent
 	for _, a := range mcpAgenten {
-		if _, err := exec.LookPath(a.Programm); err == nil {
+		// unter WSL nicht die Windows-Programme aus dem angehängten Windows-PATH (/mnt/c/…): die verbindet install.ps1
+		if pfad, err := exec.LookPath(a.Programm); err == nil && !strings.HasPrefix(pfad, "/mnt/") {
 			r = append(r, a)
 		}
 	}

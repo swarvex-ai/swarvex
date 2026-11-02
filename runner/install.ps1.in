@@ -1,0 +1,154 @@
+# Install the swarvex runner on Windows, the one-liner (PowerShell):
+#
+#   irm @PLATFORM@/install.ps1 | iex
+#
+# The runner and its sandbox live in a separate WSL distribution called "swarvex" (Debian with rootless
+# Podman), so project code never runs on Windows itself. This script sets the distribution up, installs the
+# Linux runner inside it (install.sh verifies signature and checksum) and adds a "swarvex" command to Windows.
+# It changes nothing else on your system; "swarvex uninstall" removes everything again.
+
+& {
+$ErrorActionPreference = 'Stop'
+$Platform = '@PLATFORM@'
+$Distro = 'swarvex'
+$User = 'swarvex'
+$Bin = Join-Path $env:LOCALAPPDATA 'swarvex\bin'
+$env:WSL_UTF8 = '1'   # wsl.exe writes UTF-8 instead of UTF-16, so its output can be read
+
+function Step($text) { Write-Host "`n== $text" }
+function Ok($text) { Write-Host "   $text" }
+class Stop : System.Exception { Stop([string]$m) : base($m) {} }
+function Fail($text) { throw [Stop]::new($text) }
+function Ask($question, [bool]$default = $true) {
+  $hint = if ($default) { 'Y/n' } else { 'y/N' }
+  $a = Read-Host "$question [$hint]"
+  if ([string]::IsNullOrWhiteSpace($a)) { return $default }
+  return $a.Trim().ToLower() -in @('y', 'yes', 'j', 'ja')
+}
+function Wsl { & wsl.exe @args; if ($LASTEXITCODE -ne 0) { Fail "wsl.exe $($args -join ' ') failed (exit code $LASTEXITCODE)" } }
+function InDistro($script) {
+  # runs a shell script as root inside the distribution; the script comes through stdin, so Windows quoting cannot break it
+  $script -replace "`r", '' | & wsl.exe -d $Distro -u root -- sh -s
+  if ($LASTEXITCODE -ne 0) { Fail "Setting up the distribution failed (exit code $LASTEXITCODE)." }
+}
+
+try {
+  Step 'Checking requirements'
+  $build = [Environment]::OSVersion.Version.Build
+  if ($build -lt 19045) { Fail "Windows 10 22H2 or Windows 11 is required (this is build $build)." }
+  if ($env:PROCESSOR_ARCHITECTURE -notin @('AMD64', 'ARM64')) { Fail "Processor $($env:PROCESSOR_ARCHITECTURE) is not supported." }
+  $wslVersion = $null
+  if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
+    $out = (& wsl.exe --version 2>$null) -join "`n"
+    if ($LASTEXITCODE -eq 0 -and $out -match '(\d+)\.(\d+)\.(\d+)') { $wslVersion = [version]"$($Matches[1]).$($Matches[2]).$($Matches[3])" }
+  }
+  if (-not $wslVersion) {
+    Write-Host "`nWSL (Windows Subsystem for Linux) is missing. The sandbox needs it, together with virtualization in the BIOS/UEFI."
+    if (Ask 'Install WSL now? Windows asks for administrator rights once.') {
+      Start-Process wsl.exe -ArgumentList '--install', '--no-distribution' -Verb RunAs -Wait
+      Write-Host "`nWSL is installed. Restart Windows, then run the one-liner again:`n    irm $Platform/install.ps1 | iex"
+    }
+    return
+  }
+  if ($wslVersion -lt [version]'2.4.4') {
+    Ok "WSL $wslVersion is too old, updating (Windows may ask for administrator rights)"
+    Start-Process wsl.exe -ArgumentList '--update' -Verb RunAs -Wait
+  }
+  Ok "Windows build $build, $($env:PROCESSOR_ARCHITECTURE), WSL $wslVersion"
+
+  Step "WSL distribution '$Distro' (Debian)"
+  $vorhanden = @(& wsl.exe --list --quiet 2>$null | ForEach-Object { $_.Trim() }) -contains $Distro
+  if (-not $vorhanden) {
+    Wsl --install Debian --name $Distro --no-launch
+    Ok 'installed'
+  } else {
+    Ok 'already there, updating it'
+  }
+
+  Step 'Preparing Podman inside (takes a few minutes the first time)'
+  InDistro @"
+set -e
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq >/dev/null
+apt-get install -y -qq podman uidmap slirp4netns passt curl ca-certificates openssh-client tar git systemd systemd-sysv dbus-user-session >/dev/null
+id $User >/dev/null 2>&1 || useradd -m -s /bin/bash $User
+grep -q '^${User}:' /etc/subuid || usermod --add-subuids 100000-165535 --add-subgids 100000-165535 $User
+printf '[boot]\nsystemd=true\n\n[user]\ndefault=$User\n' > /etc/wsl.conf
+mkdir -p /var/lib/systemd/linger && touch /var/lib/systemd/linger/$User
+"@
+  Wsl --terminate $Distro   # restart with systemd
+  Ok 'Podman and systemd ready'
+
+  Step 'Installing the runner inside the distribution'
+  & wsl.exe -d $Distro -u $User --cd '~' -- sh -c "curl -fsSL $Platform/install.sh | sh"
+  if ($LASTEXITCODE -ne 0) { Write-Host "`nThe setup inside did not finish. Continue any time with: swarvex setup" }
+
+  Step "The 'swarvex' command for Windows"
+  New-Item -ItemType Directory -Force -Path $Bin | Out-Null
+  Set-Content -Encoding ascii -Path (Join-Path $Bin 'swarvex.cmd') -Value @"
+@echo off
+rem swarvex for Windows: forwards to the runner in the WSL distribution "$Distro" (install.ps1)
+wsl.exe -d $Distro -u $User --cd ~ -- /home/$User/.local/bin/swarvex %*
+set rc=%errorlevel%
+if /i "%~1"=="service" powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0swarvex-windows.ps1" service
+if /i "%~1"=="setup" powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0swarvex-windows.ps1" service
+if /i "%~1"=="uninstall" powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0swarvex-windows.ps1" uninstall
+exit /b %rc%
+"@
+  Set-Content -Encoding ascii -Path (Join-Path $Bin 'swarvex-windows.ps1') -Value @"
+# swarvex for Windows (install.ps1): keeps the WSL distribution running while the runner works as a service,
+# and removes everything on uninstall.
+param([string]`$was)
+`$env:WSL_UTF8 = '1'
+`$task = 'swarvex runner'
+if (`$was -eq 'service') {
+  & wsl.exe -d $Distro -u $User -- test -f /home/$User/.config/systemd/user/swarvex.service
+  if (`$LASTEXITCODE -ne 0) { return }
+  # WSL stops a distribution without running programs; a hidden program started at logon keeps it, and the service, alive
+  `$aktion = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument '--headless wsl.exe -d $Distro -u $User --exec sleep infinity'
+  `$ausloeser = New-ScheduledTaskTrigger -AtLogOn -User `$env:USERNAME
+  `$regeln = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)
+  Register-ScheduledTask -TaskName `$task -Action `$aktion -Trigger `$ausloeser -Settings `$regeln -Force | Out-Null
+  Start-ScheduledTask -TaskName `$task
+  Write-Host "Windows keeps the runner running from logon on (scheduled task '`$task'). Pause: swarvex stop"
+}
+if (`$was -eq 'uninstall') {
+  & wsl.exe -d $Distro -u $User -- test -x /home/$User/.local/bin/swarvex
+  if (`$LASTEXITCODE -eq 0) { return }   # cancelled inside, nothing removed
+  Unregister-ScheduledTask -TaskName `$task -Confirm:`$false -ErrorAction SilentlyContinue
+  & wsl.exe --unregister $Distro | Out-Null
+  `$pfad = [Environment]::GetEnvironmentVariable('Path', 'User') -split ';' | Where-Object { `$_ -and `$_ -ne '$Bin' }
+  [Environment]::SetEnvironmentVariable('Path', (`$pfad -join ';'), 'User')
+  Write-Host "Removed the WSL distribution '$Distro' and the swarvex command."
+  Start-Process -WindowStyle Hidden cmd.exe -ArgumentList '/c', 'timeout /t 2 >nul & rmdir /s /q "$Bin"'
+}
+"@
+  $pfad = [Environment]::GetEnvironmentVariable('Path', 'User')
+  if (($pfad -split ';') -notcontains $Bin) {
+    [Environment]::SetEnvironmentVariable('Path', (@($pfad, $Bin) | Where-Object { $_ }) -join ';', 'User')
+    $env:Path = "$env:Path;$Bin"
+    Ok "$Bin added to your PATH (new terminals see it)"
+  }
+  & (Join-Path $Bin 'swarvex-windows.ps1') service
+
+  Step 'Agents on Windows for tasks without code'
+  $mcp = "$Platform/mcp"
+  $agenten = @(@(
+    @{ Titel = 'Claude Code'; Programm = 'claude'; Befehl = @('mcp', 'add', '--scope', 'user', '--transport', 'http', 'swarvex', $mcp); Anmelden = 'in a session: /mcp -> swarvex -> Authenticate' },
+    @{ Titel = 'Codex'; Programm = 'codex'; Befehl = @('mcp', 'add', 'swarvex', '--url', $mcp); Anmelden = 'sign-in starts right away; later: codex mcp login swarvex' },
+    @{ Titel = 'Gemini CLI'; Programm = 'gemini'; Befehl = @('mcp', 'add', '--scope', 'user', '--transport', 'http', 'swarvex', $mcp); Anmelden = 'in a session: /mcp auth swarvex' }
+  ) | Where-Object { Get-Command $_.Programm -ErrorAction SilentlyContinue })
+  if ($agenten.Count -eq 0) {
+    Ok "No Claude Code, Codex or Gemini CLI found on Windows. Other agents: add the MCP server $mcp"
+  } elseif (Ask "Also connect $(($agenten | ForEach-Object { $_.Titel }) -join ', ') directly (design, texts, reviews; no code runs on your machine)?") {
+    foreach ($a in $agenten) {
+      & $a.Programm @($a.Befehl) 2>&1 | Out-Null
+      if ($LASTEXITCODE -eq 0) { Ok "$($a.Titel) connected. Sign in: $($a.Anmelden)" } else { Ok "$($a.Titel): could not add (already connected?)" }
+    }
+  }
+
+  Write-Host "`nDone. In a new terminal: swarvex work (one task), swarvex status, swarvex stop, swarvex setup (change settings), swarvex uninstall."
+} catch [Stop] {
+  Write-Host "`nx $($_.Exception.Message)" -ForegroundColor Red
+}
+}
