@@ -26,7 +26,7 @@ su - "$USER_NAME" -c '
   set -e
   cd ~/swarvex
   podman run --rm -v "$PWD:/src:Z" -w /src -e CGO_ENABLED=0 -e GOCACHE=/tmp/gc docker.io/library/golang:1 \
-    go build -trimpath -ldflags="-s -w" -o swarvex .
+    sh -c "go build -trimpath -ldflags=\"-s -w\" -o swarvex . && cp /etc/ssl/certs/ca-certificates.crt ."
   mkdir -p ~/.local/bin && install -m 755 swarvex ~/.local/bin/
   podman build -q -f Containerfile.proxy -t swarvex-proxy . >/dev/null
   cd sandbox && podman build -q -t swarvex-agent . >/dev/null

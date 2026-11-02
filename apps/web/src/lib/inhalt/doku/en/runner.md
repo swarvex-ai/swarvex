@@ -23,11 +23,14 @@ Runner (your machine)
 
 | Command | Effect |
 |---|---|
+| `swarvex setup` | guided setup: model (detects what is there), project, mode, direct connection; saves everything, the one-liner starts it by itself |
+| `swarvex connect` | add swarvex as MCP server to every agent found (Claude Code, Codex, Hermes, opencode, OpenClaw, Gemini CLI) |
 | `swarvex login --platform <url>` | sign in this device in the browser |
-| `swarvex work --project <p> --model <m> --model-url <url>` | pick up and work on one matching task |
+| `swarvex work` | pick up and work on one matching task, with the settings from `swarvex setup` |
+| `swarvex work --project <p\|auto> --model <m> --model-url <url>` | the same with your own options; `auto` takes the project with the most open tasks |
 | `… --schedule "mon-fri 18:00-23:00" --continuous` | keep working, only within the time windows (see [contributor control](/en/docs/contributor-control#time-windows)) |
 | `… --daily-budget-tokens 2000000` | at most this many tokens per day; then the runner waits until midnight |
-| `swarvex service <same options as arbeiten>` | set up as a service: works continuously and starts with the computer (Linux, systemd) |
+| `swarvex service [same options as work]` | set up as a service: works continuously and starts with the computer (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | stop the service (a running task goes straight back to the pool), start it, show state and today's usage |
 | `swarvex uninstall` | remove everything: service, containers, images, data, program; the sign-in is revoked at the platform |
 | `swarvex env [folder]` | show, build and test a project's environment (for visionaries before publishing) |

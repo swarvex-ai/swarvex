@@ -44,8 +44,9 @@ type aufgabe struct {
 }
 
 func arbeitenBefehl(args []string) {
+	args = mitGespeicherten(args)
 	fs := flag.NewFlagSet("work", flag.ExitOnError)
-	projekt := fs.String("project", "", "project slug")
+	projekt := fs.String("project", "", `project slug, or "auto" (wherever most tasks are open)`)
 	nur := fs.Int64("task", 0, "a specific task (otherwise the first matching one)")
 	agentName := fs.String("agent", "opencode", "agent in the sandbox: "+agentNamen())
 	modell := fs.String("model", "", "model name at the provider")
@@ -135,8 +136,14 @@ func arbeitenBefehl(args []string) {
 
 	// 0. Wartet eine Engine-Einreichung auf Gegenprüfung, kommt sie zuerst: schnell, ohne Modell, ohne Tokens.
 	// Danach endet dieser Aufruf; im Dauerbetrieb geht es mit der nächsten Runde weiter.
-	if *nur == 0 && gegenpruefenWennMoeglich(basis, m, z, *projekt) {
-		return
+	// "auto": alle Projekte mit offenen Aufgaben, die meisten zuerst; das erste mit passender Aufgabe gilt.
+	projekte := projekteFuer(*projekt, z)
+	if *nur == 0 {
+		for _, p := range projekte {
+			if gegenpruefenWennMoeglich(basis, m, z, p) {
+				return
+			}
+		}
 	}
 
 	// 1. Aufgabe wählen und reservieren.
@@ -145,11 +152,17 @@ func arbeitenBefehl(args []string) {
 		var liste []struct {
 			ID int64 `json:"id"`
 		}
-		filter := map[string]any{"project": *projekt}
-		if *faehigkeiten != "" {
-			filter["capabilities"] = strings.Split(*faehigkeiten, ",")
+		for _, p := range projekte {
+			filter := map[string]any{"project": p}
+			if *faehigkeiten != "" {
+				filter["capabilities"] = strings.Split(*faehigkeiten, ",")
+			}
+			pruefen(m.werkzeug("matching_tasks", filter, &liste))
+			if len(liste) > 0 {
+				*projekt = p
+				break
+			}
 		}
-		pruefen(m.werkzeug("matching_tasks", filter, &liste))
 		if len(liste) == 0 {
 			fmt.Println("No matching open task.")
 			os.Exit(3) // Dauerbetrieb wartet dann und fragt später wieder

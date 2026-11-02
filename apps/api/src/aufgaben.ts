@@ -153,6 +153,8 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
 /** Offene Aufgaben, die der Mensch nach Vertrauensstufe bearbeiten darf (optional nach Fähigkeiten gefiltert). */
 export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, faehigkeiten?: string[]) {
   const p = await projektPerSlug(db, projektSlug);
+  // Ohne verbundenes Repo gibt es keinen Snapshot: dem Runner nichts anbieten, statt ihn reservieren und scheitern zu lassen.
+  if (wer.runner === true && !p.repo_git) return [];
   const m = (await db.query("select vertrauensstufe from menschen where id = $1", [wer.menschId])).rows[0];
   const r = await db.query(
     "select id, titel, stufe, faehigkeiten, pfade, lease_minuten, raum from aufgaben where projekt_id = $1 and zustand = 'offen' and min_vertrauen <= $2 order by id",

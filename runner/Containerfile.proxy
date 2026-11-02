@@ -1,5 +1,7 @@
 # Key proxy: only the static runner binary in proxy mode, nothing else.
 FROM scratch
 COPY --chmod=755 swarvex /swarvex
+# CA list from the signed release package: the proxy talks HTTPS to the model provider
+COPY --chmod=644 ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 USER 65534:65534
 ENTRYPOINT ["/swarvex", "proxy"]

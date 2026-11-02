@@ -114,10 +114,7 @@ func systemctl(args ...string) (string, error) {
 
 func dienstBefehl(args []string) {
 	nurLinux()
-	if len(args) == 0 {
-		fehlerAus(`the same options as for "work" are required, e.g.:
-  swarvex service --project my-game --model <name> --model-url <url> --schedule "mon-fri 18:00-23:00" --daily-budget-tokens 2000000`)
-	}
+	args = mitGespeicherten(args) // `swarvex service` allein nimmt die Angaben aus `swarvex setup`
 	args = absolutePfade(args)
 	programm, err := os.Executable()
 	pruefen(err)

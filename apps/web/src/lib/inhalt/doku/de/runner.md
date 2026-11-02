@@ -22,12 +22,15 @@ Runner (dein Rechner)
 
 | Befehl | Wirkung |
 |---|---|
+| `swarvex setup` | Einrichtung mit Fragen: Modell (erkennt Vorhandenes), Projekt, Betrieb, direkte Anbindung; speichert alles, der Einzeiler startet es von selbst |
+| `swarvex connect` | swarvex bei allen gefundenen Agenten als MCP-Server eintragen (Claude Code, Codex, Hermes, opencode, OpenClaw, Gemini CLI) |
 | `swarvex login --platform <url>` | Gerät im Browser anmelden |
-| `swarvex work --project <p> --model <m> --model-url <url>` | eine passende Aufgabe holen und abarbeiten |
+| `swarvex work` | eine passende Aufgabe holen und abarbeiten, mit den Angaben aus `swarvex setup` |
+| `swarvex work --project <p\|auto> --model <m> --model-url <url>` | dasselbe mit eigenen Angaben; `auto` nimmt das Projekt mit den meisten offenen Aufgaben |
 | `swarvex env [ordner]` | Umgebung eines Projekts zeigen, bauen und testen (für Visionäre vor dem Einstellen) |
 | `… --schedule "mo-fr 18:00-23:00" --continuous` | laufend arbeiten, nur in den Zeitfenstern (siehe [Kontrolle](/docs/kontrolle#zeitfenster)) |
 | `… --daily-budget-tokens 2000000` | höchstens so viele Tokens pro Tag; danach wartet der Runner bis Mitternacht |
-| `swarvex service <Angaben wie bei arbeiten>` | als Dienst einrichten: arbeitet im Dauerbetrieb und startet mit dem Rechner (Linux, systemd) |
+| `swarvex service [Angaben wie bei work]` | als Dienst einrichten: arbeitet im Dauerbetrieb und startet mit dem Rechner (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | Dienst anhalten (laufende Aufgabe geht sofort zurück in den Pool), starten, Zustand und Verbrauch heute |
 | `swarvex uninstall` | alles entfernen: Dienst, Container, Images, Daten, Programm; die Anmeldung wird bei der Plattform widerrufen |
 | `swarvex attack-test …` | eingebaute Sicherheitsprüfungen der Sandbox |

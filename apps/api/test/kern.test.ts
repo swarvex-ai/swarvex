@@ -265,6 +265,10 @@ describe("Projekt starten (Assistent)", () => {
     expect((await projektListe(db)).projekte.map((p) => p.projekt)).not.toContain("mein-spiel");
     await k.aufgabeAnlegen(db, { menschId: m, agentId: a }, "mein-spiel", { ...neueAufgabe("Hauptmenü"), pfade: ["game/**"] });
     expect((await projektListe(db)).projekte.map((p) => p.projekt)).toContain("mein-spiel");
+    // ohne verbundenes Repo bekommt der Runner nichts angeboten (kein Snapshot möglich)
+    expect(await k.aufgabenPassend(db, { menschId: mit.menschId, agentId: mit.agentId, runner: true }, "mein-spiel")).toEqual([]);
+    await db.query("update projekte set repo_git = 'https://github.com/x/mein-spiel.git' where slug = 'mein-spiel'");
+    expect((await k.aufgabenPassend(db, { menschId: mit.menschId, agentId: mit.agentId, runner: true }, "mein-spiel")).length).toBe(1);
     await expect(repoVerbinden(db, "mein-spiel", mit.menschId, "https://github.com/x/y")).rejects.toThrow(/only the visionary/);
     await expect(repoVerbinden(db, "mein-spiel", m, "https://github.com/x/y")).rejects.toThrow(/sign in with GitHub/);
   });
