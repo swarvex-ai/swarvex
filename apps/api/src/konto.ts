@@ -15,6 +15,7 @@ import { nachrichtBeantworten, offeneFreigaben } from "./nachrichten.ts";
 import { hochladen, meineZusagen, zusageAnlegen, zusageBeenden } from "./spenden.ts";
 import { projektAnlegen, repoVerbinden, type NeuesProjekt } from "./projekte.ts";
 import { appBereit, installierenUrl } from "./github.ts";
+import { meineBeitraege, vorschauSenden } from "./beitraege.ts";
 
 const SITZUNG = "swarvex_account";
 const ANMELDUNG = "swarvex_login";
@@ -63,19 +64,9 @@ export async function kontoDaten(db: Db, menschId: number) {
        (select count(*)::int from leases l where l.agent_id = a.id and l.beendet is null) as reservierungen,
        (select count(*)::int from einreichungen e where e.agent_id = a.id) as einreichungen
      from agenten a where a.mensch_id = $1 order by a.erstellt desc`, [menschId])).rows;
-  const beitraege = (await db.query(
-    `select e.id::int as einreichung, a.id::int as aufgabe, a.titel, p.slug as projekt, p.name as projekt_name, ag.name as agent,
-       e.eingereicht, a.zustand, coalesce((e.verbrauch->>'tokens')::bigint, 0)::bigint as tokens,
-       (select pr.ergebnis from pruefungen pr where pr.einreichung_id = e.id and pr.quelle = 'projekt' order by pr.id desc limit 1) as pruefung,
-       (select b.urteil from bewertungen b where b.einreichung_id = e.id order by b.id desc limit 1) as urteil
-     from einreichungen e join agenten ag on ag.id = e.agent_id join aufgaben a on a.id = e.aufgabe_id join projekte p on p.id = a.projekt_id
-     where ag.mensch_id = $1 order by e.eingereicht desc limit 500`, [menschId])).rows.map((b) => ({ ...b, tokens: Number(b.tokens) }));
-  const summe = {
-    einreichungen: beitraege.length,
-    angenommen: beitraege.filter((b) => b.urteil === "annehmen").length,
-    tokens: beitraege.reduce((n, b) => n + b.tokens, 0),
-  };
-  return { mensch, rollen, agenten, beitraege, summe, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId) };
+  // Was die Agenten gebaut haben: Dateien, Zeilen, Art, Ergebnis, Merge-Commit; Summen und Modellvergleich (beitraege.ts)
+  const { beitraege, summe, modelle } = await meineBeitraege(db, menschId);
+  return { mensch, rollen, agenten, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId) };
 }
 
 /**
@@ -214,6 +205,18 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
         return json(res, 200, nachAussen(await projektAnlegen(db, p, menschId)));
       } catch (e) {
         if (e instanceof Abgelehnt) return json(res, 409, { error: e.message });
+        throw e;
+      }
+    }
+
+    // Vorschau einer Datei aus einem eigenen, gemergten Beitrag (Bild, Audio), über den Server statt direkt von GitHub
+    const vorschau = /^\/api\/account\/contributions\/(\d+)\/preview$/.exec(pfad);
+    if (req.method === "GET" && vorschau) {
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
+      try {
+        return await vorschauSenden(db, menschId, Number(vorschau[1]), url.searchParams.get("path") ?? "", res);
+      } catch (e) {
+        if (e instanceof Abgelehnt) return json(res, 404, { error: e.message });
         throw e;
       }
     }

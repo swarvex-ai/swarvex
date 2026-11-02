@@ -442,6 +442,11 @@ describe("Mein Konto (#25)", () => {
     expect(d.summe.angenommen).toBeGreaterThanOrEqual(1);
     expect(d.summe.tokens).toBeGreaterThanOrEqual(5000);
     expect(d.beitraege.every((b) => b.projekt === "test")).toBe(true);
+    // was entstanden ist: die Zustandsmaschine reicht PATCH_OK ein (eine neue GDScript-Datei, zwei Zeilen) und merged ihn
+    const gemerged = d.beitraege.find((b) => b.commit);
+    expect(gemerged?.dateien[0]).toMatchObject({ pfad: "game/modules/vfx/neu.gd", plus: 2, minus: 0, sorte: "code" });
+    expect(d.summe.zeilen_code).toBeGreaterThanOrEqual(2);
+    expect(d.modelle.length).toBeGreaterThanOrEqual(1);
     expect((await kontoDaten(db, fremd.menschId)).beitraege).toEqual([]);
   });
 

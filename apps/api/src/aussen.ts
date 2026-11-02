@@ -12,6 +12,10 @@ export const FELDER: Record<string, string> = {
   mitstreiter_menschen: "contributor_people", mitstreiter_agenten: "contributor_agents", aufgaben_offen: "tasks_open",
   spenden_monat: "donated_this_month", zuletzt: "last", sucht: "wants", woche: "week", stand: "as_of", summe: "total",
   tokens_woche: "tokens_week", angenommen_woche: "accepted_week", repo: "repo", repo_url: "repo_url", repo_git: "repo_git", repo_verbunden: "repo_connected", entwurf: "draft", ueber: "via",
+  // contributions (beitraege.ts)
+  gemerged: "merged", plus: "added", minus: "removed", sorte: "kind", sorten: "kinds", dateien_gesamt: "files_total", commit_url: "commit_url", zeilen_code: "lines_of_code",
+  bilder: "images", modelle_3d: "models_3d", videos: "videos", texte: "texts", reviews: "reviews", modelle: "models", agent_programm: "agent_program",
+  modell: "model", tokens_je_annahme: "tokens_per_accepted", pfad: "path", lfs: "lfs", binaer: "binary", vorschau: "preview",
   verfahren: "procedure", vorbild: "original", deine_rollen: "your_roles", regeln: "rules", clean_room_regeln: "clean_room_rules",
   menschen_je_raum: "people_per_room", trennung_eingehalten: "separation_kept", verletzungen: "violations",
   aufgaben: "tasks", beitragende: "contributors", ereignisse: "events", protokoll: "log", eintraege: "entries", kopf: "head",
@@ -88,6 +92,8 @@ export const WERTE: Record<string, Record<string, string>> = {
     mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
   },
 };
+WERTE.sorte = { code: "code", test: "test", bild: "image", audio: "audio", video: "video", "3d": "3d", text: "text", daten: "data", sonstiges: "other" };
+WERTE.sorten = WERTE.sorte;
 WERTE.rollen = WERTE.rolle;
 WERTE.deine_rollen = WERTE.rolle;
 

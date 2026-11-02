@@ -7,11 +7,17 @@
 
   type Agent = { id: number; name: string; client_id: string; created: string; signed_out: string | null; signed_in: boolean;
                  last: string | null; reservations: number; submissions: number };
+  type Datei = { path: string; added: number; removed: number; kind: string; lfs: boolean; binary: boolean; preview: boolean };
   type Beitrag = { submission: number; task: number; title: string; project: string; project_name: string; agent: string;
-                   submitted: string; state: string; tokens: number; check: string | null; verdict: string | null };
+                   submitted: string; state: string; tokens: number; check: string | null; verdict: string | null; reason: string | null;
+                   summary: string; added: number; removed: number; kinds: string[]; files: Datei[]; files_total: number;
+                   commit: string | null; commit_url: string | null; agent_program: string | null; model: string | null };
+  type Summe = { submissions: number; accepted: number; merged: number; projects: number; tokens: number; lines_of_code: number;
+                 images: number; audio: number; models_3d: number; videos: number; texts: number; reviews: number };
+  type Modell = { agent_program: string; model: string; submissions: number; accepted: number; acceptance_percent: number; tokens_per_accepted: number | null };
   type Konto = { person: { login: string; provider: string; created: string; trust_level: number };
                  roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean }[]; agents: Agent[]; contributions: Beitrag[];
-                 total: { submissions: number; accepted: number; tokens: number }; approvals: Freigabe[]; pledges: Zusage[] };
+                 total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[] };
   type Auftrag = { brief_id: number; title: string; instructions: string; target_path: string; file_types: string[]; max_mb: number; credits: number;
                    state: string; file_name: string | null; uploaded: string | null; reason: string | null };
   type Zusage = { pledge_id: number; project: string; project_name: string; service: string; credits: number; expires: string; note: string; state: string; briefs: Auftrag[] };
@@ -127,6 +133,11 @@
   const zeit = (x: string | null) => (x ? new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(x)) : t.agent.nie);
   const zahl = (n: number) => new Intl.NumberFormat(locale).format(n);
   const status = (a: Agent) => (a.signed_in ? "an" : a.signed_out ? "ab" : "aus");
+  // Beitragsübersicht: Karten mit Dateien und Vorschau; Filter „nur angenommene“
+  let nurAngenommen = $state(false);
+  const sichtbar = $derived((konto?.contributions ?? []).filter((b) => !nurAngenommen || b.verdict === "accept"));
+  const vorschau = (b: Beitrag, f: Datei) => `/api/account/contributions/${b.submission}/preview?path=${encodeURIComponent(f.path)}`;
+  const istBild = (f: Datei) => f.kind === "image";
   const anschliessen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
 </script>
 
@@ -293,32 +304,75 @@
       {#if konto.contributions.length === 0}
         <p class="leise">{t.keineBeitraege}</p>
       {:else}
+        {@const g = t.gebaut}
+        {@const sm = konto.total}
+        <p class="satz">{g.satz(sm.projects, sm.accepted)}</p>
         <dl class="summe">
-          <div><dd>{zahl(konto.total.submissions)}</dd><dt>{t.summe.einreichungen}</dt></div>
-          <div><dd>{zahl(konto.total.accepted)}</dd><dt>{t.summe.angenommen}</dt></div>
-          <div><dd>{zahl(konto.total.tokens)}</dd><dt>{t.summe.tokens}</dt></div>
+          {#each [[sm.lines_of_code, g.zeilen], [sm.images, g.bilder], [sm.audio, g.audio], [sm.models_3d, g.modelle3d], [sm.videos, g.videos], [sm.texts, g.texte], [sm.reviews, g.reviews], [sm.merged, g.gemerged]] as [n, name]}
+            {#if Number(n) > 0}<div><dd>{zahl(Number(n))}</dd><dt>{name}</dt></div>{/if}
+          {/each}
+          <div><dd>{zahl(sm.submissions)}</dd><dt>{t.summe.einreichungen}</dt></div>
+          <div><dd>{zahl(sm.tokens)}</dd><dt>{t.summe.tokens}</dt></div>
         </dl>
-        <div class="tabelle">
-          <table>
-            <thead><tr>
-              <th>{t.spalten.aufgabe}</th><th>{t.spalten.projekt}</th><th>{t.spalten.agent}</th><th>{t.spalten.eingereicht}</th>
-              <th>{t.spalten.pruefung}</th><th>{t.spalten.urteil}</th><th class="zahl">{t.spalten.tokens}</th>
-            </tr></thead>
-            <tbody>
-              {#each konto.contributions as b (b.submission)}
-                <tr>
-                  <td><span class="nr">#{b.task}</span> {b.title}</td>
-                  <td><a href={pfad(s, `${projektPfad}/${b.project}`)}>{b.project_name}</a></td>
-                  <td>{b.agent}</td>
-                  <td class="still">{zeit(b.submitted)}</td>
-                  <td><span class="ton {b.check ?? 'leer'}">{b.check ? t.pruefung[b.check] : t.offen}</span></td>
-                  <td>{b.verdict ? t.urteil[b.verdict] : t.offen}</td>
-                  <td class="zahl">{zahl(b.tokens)}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+        <div class="filter" role="radiogroup" aria-label={t.beitraegeH2}>
+          <button class="knopf" class:an={!nurAngenommen} role="radio" aria-checked={!nurAngenommen} onclick={() => (nurAngenommen = false)}>{g.alle}</button>
+          <button class="knopf" class:an={nurAngenommen} role="radio" aria-checked={nurAngenommen} onclick={() => (nurAngenommen = true)}>{g.nurAngenommen}</button>
         </div>
+        <ul class="beitraege">
+          {#each sichtbar as b (b.submission)}
+            <li class="beitrag">
+              <div class="beitrag-kopf">
+                <div>
+                  <h3><span class="nr">#{b.task}</span> {b.title}</h3>
+                  <p class="leise klein"><a href={pfad(s, `${projektPfad}/${b.project}`)}>{b.project_name}</a> · {b.agent}{#if b.model} · {b.model}{/if} · {zeit(b.submitted)}</p>
+                </div>
+                <div class="marken">
+                  {#each b.kinds as k}<span class="marke">{g.sorte[k] ?? k}</span>{/each}
+                  <span class="ton {b.check ?? 'leer'}">{b.check ? t.pruefung[b.check] : t.offen}</span>
+                  <span class="urteil {b.verdict ?? 'leer'}">{b.verdict ? t.urteil[b.verdict] : t.offen}</span>
+                </div>
+              </div>
+              {#if b.files.some((f) => f.preview)}
+                <div class="vorschauen">
+                  {#each b.files.filter((f) => f.preview) as f (f.path)}
+                    {#if istBild(f)}
+                      <a href={vorschau(b, f)} target="_blank" rel="noopener"><img src={vorschau(b, f)} alt={f.path} loading="lazy" /></a>
+                    {:else}
+                      <figure><figcaption class="klein">{f.path.split("/").pop()}</figcaption><audio controls preload="none" src={vorschau(b, f)}></audio></figure>
+                    {/if}
+                  {/each}
+                </div>
+              {/if}
+              <details>
+                <summary class="klein">{g.dateien(b.files_total)}{#if b.added || b.removed} · <span class="plus">+{zahl(b.added)}</span> <span class="minus">−{zahl(b.removed)}</span>{/if} · {zahl(b.tokens)} {t.spalten.tokens}</summary>
+                <ul class="dateien">
+                  {#each b.files as f (f.path)}
+                    <li><code>{f.path}</code> <span class="leise klein">{g.sorte[f.kind] ?? f.kind}{#if f.lfs} · {g.lfs}{:else if f.added || f.removed} · <span class="plus">+{f.added}</span> <span class="minus">−{f.removed}</span>{/if}</span></li>
+                  {/each}
+                  {#if b.files_total > b.files.length}<li class="leise klein">{g.weitere(b.files_total - b.files.length)}</li>{/if}
+                </ul>
+                {#if b.summary}<p class="klein"><span class="leise">{g.zusammenfassung}:</span> {b.summary}</p>{/if}
+              </details>
+              {#if b.reason}<p class="begruendung klein"><span class="leise">{g.lead}</span> {b.reason}</p>{/if}
+              {#if b.commit_url}<p class="klein"><a href={b.commit_url} rel="noopener">{g.commit} <code>{b.commit?.slice(0, 7)}</code></a></p>{/if}
+            </li>
+          {/each}
+        </ul>
+        {#if konto.models.length}
+          <h3 class="modelle-h3">{g.modelleH3}</h3>
+          <p class="leise klein">{g.modelleText}</p>
+          <div class="tabelle">
+            <table>
+              <thead><tr><th>{g.modellSpalten.agent}</th><th>{g.modellSpalten.modell}</th><th class="zahl">{g.modellSpalten.einreichungen}</th><th class="zahl">{g.modellSpalten.annahme}</th><th class="zahl">{g.modellSpalten.tokensJe}</th></tr></thead>
+              <tbody>
+                {#each konto.models as m}
+                  <tr><td>{m.agent_program || g.unbekannt}</td><td>{m.model || g.unbekannt}</td><td class="zahl">{zahl(m.submissions)}</td>
+                    <td class="zahl">{m.accepted} ({m.acceptance_percent} %)</td><td class="zahl">{m.tokens_per_accepted === null ? "–" : zahl(m.tokens_per_accepted)}</td></tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
       {/if}
     </section>
   {/if}
@@ -378,6 +432,32 @@
   .ton.pass { color: var(--akzent); }
   .ton.fail { color: var(--rot); }
   .ton.leer { color: var(--leise); }
+  .satz { font-size: 1.1rem; margin: 0 0 16px; }
+  .filter { display: flex; gap: 8px; margin: 0 0 14px; }
+  .filter .knopf { min-height: 34px; font-size: .88rem; }
+  .filter .knopf.an { border-color: var(--akzent); color: var(--akzent); }
+  .beitraege { list-style: none; padding: 0; margin: 0 0 24px; display: grid; gap: 12px; }
+  .beitrag { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: 16px 18px; display: grid; gap: 10px; min-width: 0; }
+  .beitrag p { margin: 0; }
+  .beitrag-kopf { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; }
+  .beitrag h3 { margin: 0 0 2px; font-size: 1.02rem; overflow-wrap: anywhere; }
+  .marken { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .marken .marke { margin-left: 0; }
+  .urteil.accept { color: var(--akzent); }
+  .urteil.reject { color: var(--rot); }
+  .urteil.rework { color: var(--bernstein); }
+  .urteil.leer { color: var(--leise); }
+  .vorschauen { display: flex; flex-wrap: wrap; gap: 10px; }
+  .vorschauen img { height: 96px; max-width: 160px; object-fit: contain; border-radius: 6px; border: 1px solid var(--linie); background: var(--graphit-2); }
+  .vorschauen figure { margin: 0; display: grid; gap: 4px; }
+  .vorschauen audio { height: 32px; max-width: 260px; }
+  details summary { cursor: pointer; color: var(--stahl); }
+  .dateien { list-style: none; padding: 8px 0 0; margin: 0; display: grid; gap: 4px; }
+  .dateien code { font-size: .82rem; overflow-wrap: anywhere; }
+  .plus { color: var(--akzent); }
+  .minus { color: var(--rot); }
+  .begruendung { border-left: 3px solid var(--linie-hell); padding-left: 10px; }
+  .modelle-h3 { margin: 8px 0 4px; font-size: 1.1rem; }
   @media (max-width: 760px) {
     .kopf { grid-template-columns: 1fr; }
     .wer { justify-items: start; text-align: left; }
