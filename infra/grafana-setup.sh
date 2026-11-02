@@ -4,7 +4,7 @@
 #   sh infra/grafana-setup.sh files   before Grafana starts: settings, secret files, Caddy site
 #   sh infra/grafana-setup.sh areas   after Grafana started: area "Auswertung" with its data source and dashboard
 #
-# Area "Main" (org 1, "Betrieb"): server metrics and logs, only team @swarvex-ai/admins.
+# Area "Betrieb" (org 1): server metrics, logs, lead balance and moderation signals; only team @swarvex-ai/admins.
 # Area "Auswertung" (org 2): only the analytics views; @swarvex-ai/marketing as viewer, admins as admin.
 # Marketing therefore cannot query Prometheus or Loki, not even through the API.
 #
@@ -67,6 +67,8 @@ set -eu
 G=http://localhost:3000
 A="admin:$(cat /run/secrets/grafana_admin)"
 for i in $(seq 1 60); do curl -fs $G/api/health >/dev/null 2>&1 && break; sleep 2; done
+# Bereich 1 heißt „Betrieb“ (Grafana nennt ihn „Main Org.“); die GitHub-Zuordnung nutzt die Nummer 1, nicht den Namen
+curl -fs -u "$A" -H 'content-type: application/json' -X PUT $G/api/orgs/1 -d '{"name":"Betrieb"}' >/dev/null
 code=$(curl -s -o /dev/null -w '%{http_code}' -u "$A" $G/api/orgs/name/Auswertung)
 [ "$code" = 200 ] || curl -fs -u "$A" -H 'content-type: application/json' -X POST $G/api/orgs -d '{"name":"Auswertung"}' >/dev/null
 org=$(curl -fs -u "$A" $G/api/orgs/name/Auswertung | sed 's/.*"id":\([0-9]*\).*/\1/')

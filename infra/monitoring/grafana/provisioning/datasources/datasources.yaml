@@ -1,8 +1,4 @@
 apiVersion: 1
-# Lag bis 31.10.2026 hier; die Auswertung hat jetzt einen eigenen Bereich (infra/grafana-setup.sh)
-deleteDatasources:
-  - name: Analytik
-    orgId: 1
 datasources:
   - name: Prometheus
     uid: prometheus
@@ -13,3 +9,18 @@ datasources:
     uid: loki
     type: loki
     url: http://loki:3100
+  # Bereich „Betrieb“: Lead-Bilanz und Moderation (dashboards/swarvex-intern.json); derselbe Leser ohne personenbezogene Daten
+  # wie im Bereich „Auswertung“ (dort legt infra/grafana-setup.sh die Quelle an)
+  - name: Analytik
+    uid: analytik
+    orgId: 1
+    type: grafana-postgresql-datasource
+    url: postgres:5432
+    user: analytik_leser
+    jsonData:
+      database: swarvex
+      sslmode: disable
+      postgresVersion: 1500
+      timeInterval: 1h
+    secureJsonData:
+      password: $__file{/run/secrets/analytics_db}

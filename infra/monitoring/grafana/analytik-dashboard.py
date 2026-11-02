@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Erzeugt dashboards/analytik.json: interne Auswertung für Marketing und Betrieb (Sichten im Schema analytik).
+"""Erzeugt zwei Dashboards aus den Sichten im Schema analytik:
+  analytik/analytik.json        Bereich „Auswertung“ (Marketing liest mit): Nutzung, Tokens, Schwarm, Ablauf
+  dashboards/swarvex-intern.json Bereich „Betrieb“ (nur admins): Lead-Bilanz je Projekt und Moderations-Signale,
+                                 weil Projekte bekannte Visionäre und Leads haben (Leistungsbewertung, Moderation).
 
 Nach Änderungen neu erzeugen:  python3 infra/monitoring/grafana/analytik-dashboard.py
 Alle Werte sind Summen oder Pseudonyme, keine personenbezogenen Daten (migrations/010_analytik.sql).
@@ -12,8 +15,17 @@ DS = {"type": "grafana-postgresql-datasource", "uid": "analytik"}
 F = "projektart in ($projektart) and engine in ($engine) and projekt in ($projekt)"
 FW = F + " and runner::text in ($weg)"
 
-panels = []
+# Zwei Ziele; bereich() wechselt, wohin zeile/panel/text schreiben
+BEREICHE = {"auswertung": {"panels": [], "y": 0}, "betrieb": {"panels": [], "y": 0}}
+aktuell = "auswertung"
+panels = BEREICHE[aktuell]["panels"]
 y = 0
+
+
+def bereich(name):
+    global panels, y, aktuell
+    BEREICHE[aktuell]["y"] = y
+    aktuell, panels, y = name, BEREICHE[name]["panels"], BEREICHE[name]["y"]
 
 
 def zeile(titel):
@@ -117,6 +129,7 @@ panel("table", "Schwarm je Projekt",
 weiter(10)
 
 # ---------- Lead ----------
+bereich("betrieb")
 zeile("Lead-Bilanz und Officers (letzte 30 Tage)")
 text("Wann ein Officer?", """Ein **Officer** führt einen Bereich (z. B. Audio) für den Lead: Aufgaben der Stufen A und B anlegen und bewerten.
 Die Projektseite und `metrics` empfehlen einen Officer für eine Rolle, wenn dort **mehr als 15 Aufgaben offen** sind und gearbeitet wird (**mindestens 10 Einreichungen in 30 Tagen**), oder wenn der Lead
@@ -130,6 +143,7 @@ panel("table", "Lead-Bilanz je Projekt und Rolle",
          nacharbeit_prozent as "Nacharbeit %", antwort_h_median as "Antwort (h, Median)"
          from analytik.lead_bilanz where projektart in ($projektart) and projekt in ($projekt) order by offen desc""", 8, 16, 9)
 weiter(9)
+bereich("auswertung")
 
 # ---------- Ablauf ----------
 zeile("Ablauf und Qualität")
@@ -176,6 +190,8 @@ panel("barchart", "Nach Tageszeit (Europe/Berlin)",
       f"from analytik.aktivitaet where $__timeFilter(zeit) and {FW} group by 1 order by 1", 14, 10, 8, optionen={"xField": "stunde"},
       beschreibung="Wann die Community arbeitet: hilft bei Lead-Sitzungen und Wartungsfenstern")
 weiter(8)
+bereich("betrieb")
+zeile("Moderation")
 panel("timeseries", "Signale: Abweisungen, Abbrüche, Meldungen, Sperren",
       "select $__timeGroupAlias(tag, 1d), art as metric, sum(anzahl) from analytik.signale where $__timeFilter(tag) "
       "and art <> 'pruefung_beendet' group by 1, 2 order by 1", 0, 24, 7, fmt="time_series",
@@ -189,23 +205,34 @@ def variable(name, label, sql):
             "multi": True, "includeAll": True, "current": {"selected": True, "text": ["All"], "value": ["$__all"]}, "sort": 1}
 
 
-dashboard = {
-    "uid": "swarvex-analytik", "title": "swarvex Auswertung", "tags": ["swarvex", "intern"], "timezone": "Europe/Berlin",
-    "schemaVersion": 41, "version": 1, "editable": False, "refresh": "15m",
-    "time": {"from": "now-30d", "to": "now"},
-    "description": "Interne Auswertung ohne personenbezogene Daten (Schema analytik). Nicht öffentlich.",
-    "templating": {"list": [
+def dashboard(uid, titel, beschreibung, liste, mit_weg):
+    variablen = [
         variable("projektart", "Projektart", "select distinct projektart from analytik.projekte order by 1"),
         variable("engine", "Engine", "select distinct engine from analytik.projekte where projektart in ($projektart) order by 1"),
         variable("projekt", "Projekt", "select projekt from analytik.projekte where projektart in ($projektart) and engine in ($engine) order by 1"),
-        {"name": "weg", "label": "Weg", "type": "custom", "query": "Runner : true, direkt : false", "multi": True, "includeAll": True,
-         "current": {"selected": True, "text": ["All"], "value": ["$__all"]},
-         "options": [{"text": "Runner", "value": "true", "selected": False}, {"text": "direkt", "value": "false", "selected": False}]},
-    ]},
-    "panels": [{**p, "id": i + 1} for i, p in enumerate(panels)],
-}
+    ]
+    if mit_weg:
+        variablen.append({"name": "weg", "label": "Weg", "type": "custom", "query": "Runner : true, direkt : false", "multi": True, "includeAll": True,
+                          "current": {"selected": True, "text": ["All"], "value": ["$__all"]},
+                          "options": [{"text": "Runner", "value": "true", "selected": False}, {"text": "direkt", "value": "false", "selected": False}]})
+    return {
+        "uid": uid, "title": titel, "tags": ["swarvex", "intern"], "timezone": "Europe/Berlin",
+        "schemaVersion": 41, "version": 1, "editable": False, "refresh": "15m",
+        "time": {"from": "now-30d", "to": "now"}, "description": beschreibung,
+        "templating": {"list": variablen},
+        "panels": [{**p, "id": i + 1} for i, p in enumerate(liste)],
+    }
 
-# Nicht im Datei-Provisioning (das landet im Bereich „Betrieb“); infra/grafana-setup.sh lädt es in den Bereich „Auswertung“
-ziel = Path(__file__).with_name("analytik") / "analytik.json"
-ziel.write_text(json.dumps(dashboard, ensure_ascii=False, indent=1) + "\n")
-print(f"{ziel}: {len(panels)} panels")
+
+hier = Path(__file__).parent
+ausgaben = [
+    # nicht im Datei-Provisioning (das landet im Bereich „Betrieb“); infra/grafana-setup.sh lädt es in den Bereich „Auswertung“
+    (hier / "analytik" / "analytik.json", dashboard("swarvex-analytik", "swarvex Auswertung",
+     "Interne Auswertung ohne personenbezogene Daten (Schema analytik). Nicht öffentlich.", BEREICHE["auswertung"]["panels"], True)),
+    # Datei-Provisioning: Bereich „Betrieb“, nur admins
+    (hier / "dashboards" / "swarvex-intern.json", dashboard("swarvex-intern", "swarvex intern: Leads und Moderation",
+     "Nur für admins: Lead-Bilanz je Projekt (Projekte haben bekannte Leads) und Moderations-Signale.", BEREICHE["betrieb"]["panels"], False)),
+]
+for ziel, d in ausgaben:
+    ziel.write_text(json.dumps(d, ensure_ascii=False, indent=1) + "\n")
+    print(f"{ziel}: {len(d['panels'])} panels")
