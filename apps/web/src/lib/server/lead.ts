@@ -92,3 +92,13 @@ ${zeilen.join("\n")}
 echo "${zeilen.length} role cards installed in .claude/agents"
 `;
 }
+
+/** Kennzahlen eines Pakets für die Schwarm-Bilanz der Projektseite („Wissensvorsprung“). */
+export function paketStatistik(name: string) {
+  const cleanroom = name.endsWith("-cleanroom");
+  const art = name.replace(/-cleanroom$/, "") as Art;
+  const grund = lies("templates/baseline-packages.md");
+  const bausteine = [abschnitt(grund, "## All projects"), abschnitt(grund, GRUNDPAKET[art])].join("\n").split("\n").filter((z) => /^\| [A-Z]+-\d+ \|/.test(z)).length;
+  const ordner = [ROLLEN[art], ...(cleanroom ? ["cleanroom"] : [])];
+  return { kb: Math.round(Buffer.byteLength(paket(name)) / 1024), rollenkarten: ordner.reduce((n, o) => n + karten(o).length, 0), bausteine, werkzeugkasten: cleanroom };
+}

@@ -111,6 +111,8 @@ export type NeueAufgabe = {
   neuer_meilenstein?: boolean;
   /** Nur in Clean-Room-Projekten: analyse, pruefung oder bau (cleanroom.ts). */
   raum?: Raum;
+  /** Schätzung des Leads: Stunden, die ein erfahrener Mensch dafür bräuchte (Schwarm-Bilanz, bilanz.ts). */
+  menschen_stunden?: number;
   /** Rolle aus dem Rollenkatalog (lead/roles), z. B. audio, ux, art; bei Officers immer ihr Bereich. */
   rolle?: string;
 };
@@ -138,9 +140,9 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
       }
     }
     const r = await tx.query(
-      `insert into aufgaben(projekt_id, meilenstein_id, titel, beschreibung, stufe, faehigkeiten, pfade, akzeptanz, basis_commit, lease_minuten, min_vertrauen, raum, rolle)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning *`,
-      [p.id, meilensteinId, a.titel, a.beschreibung, a.stufe, a.faehigkeiten, a.pfade, a.akzeptanz, a.basis_commit ?? null, a.lease_minuten ?? 60, a.min_vertrauen ?? 0, a.raum ?? null, rolle],
+      `insert into aufgaben(projekt_id, meilenstein_id, titel, beschreibung, stufe, faehigkeiten, pfade, akzeptanz, basis_commit, lease_minuten, min_vertrauen, raum, rolle, menschen_stunden)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning *`,
+      [p.id, meilensteinId, a.titel, a.beschreibung, a.stufe, a.faehigkeiten, a.pfade, a.akzeptanz, a.basis_commit ?? null, a.lease_minuten ?? 60, a.min_vertrauen ?? 0, a.raum ?? null, rolle, a.menschen_stunden ?? null],
     );
     const aufgabe = r.rows[0];
     // Die erste Aufgabe macht aus dem Entwurf ein öffentlich gelistetes Projekt

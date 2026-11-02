@@ -28,6 +28,15 @@
   const ton = (z: string) => (z === "check_failed" ? "rot" : ["submitted", "checking"].includes(z) ? "bernstein" : z === "open" ? "leise" : "akzent");
   const mitmachen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
   const liste = $derived(pfad(s, t.pfad));
+
+  // Schwarm-Bilanz (apps/api/src/bilanz.ts): gemessen, berechnet, geschätzt; dazu der Wissensvorsprung des Lead-Pakets
+  type Gruppe = { tasks_done: number; swarm: { calendar_hours: number; agent_hours: number; agents: number; people: number; models: number };
+    single_agent: { hours: number }; speedup: number | null; four_eyes_percent: number | null; pipeline_passed_percent: number | null;
+    human_team: { estimated_hours: number | null; tasks_estimated: number; team: number; weeks: number | null; cocomo: { months: number; people: number; person_months: number } | null } };
+  const b = $derived(t.detail.bilanz);
+  const bilanz = $derived(p.swarm_balance as { total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string } | null } | undefined);
+  const paket = $derived(data.pakete?.[`${p.project_type ?? "app"}${p.procedure === "clean_room" ? "-cleanroom" : ""}`] as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
+  const methode = $derived(pfad(s, s === "de" ? "/docs/warum-swarvex#wie-wir-den-vorteil-messen" : "/docs/why-swarvex#how-we-measure-the-advantage"));
 </script>
 
 <Seo
@@ -83,11 +92,6 @@
         <dt>{d.engine}</dt><dd>{p.engine}</dd>
         <dt>{d.lizenz}</dt><dd>{p.license}</dd>
         <dt>{d.leadModell}</dt><dd>{p.lead_model}</dd>
-        {#if p.swarm?.agent_hours > 0}
-          <dt>{d.schwarm}</dt>
-          <dd>{d.schwarmText(p.swarm.swarm_factor, p.swarm.max_parallel, p.swarm.single_agent_hours, p.swarm.calendar_hours)}
-            <a class="leise" href={pfad(s, s === "de" ? "/docs/warum-swarvex" : "/docs/why-swarvex")}>{d.schwarmWie}</a></dd>
-        {/if}
         {#if p.credit_donations?.pledged?.length || p.credit_donations?.accepted}
           <dt>{d.credits}</dt>
           <dd>{p.credit_donations.pledged.map((x: { service: string; credits: number }) => `${x.credits} ${tx().konto.spende.dienste[x.service] ?? x.service}`).join(" · ")}{#if p.credit_donations.accepted} · {d.creditsAngenommen(p.credit_donations.accepted)}{/if}
@@ -109,6 +113,57 @@
       </dl>
     </section>
   </div>
+
+  <section aria-labelledby="t-bilanz" class="bilanz">
+    <h2 id="t-bilanz">{b.h2} <a class="leise klein-titel" href={methode}>{b.wie}</a></h2>
+    {#if bilanz?.total}
+      {@const g = bilanz.total}
+      <div class="spalten">
+        <div class="spalte schwarm">
+          <p class="kopfzeile">{b.schwarm} <span class="leise">{b.gemessen}</span></p>
+          <p class="zahl-gross">{b.dauer(g.swarm.calendar_hours)}</p>
+          <p class="leise klein">{b.wer(g.swarm.agents, g.swarm.people, g.swarm.models)} · {b.aufgabenFertig(g.tasks_done)}</p>
+        </div>
+        <div class="spalte">
+          <p class="kopfzeile">{b.einAgent} <span class="leise">{b.berechnet}</span></p>
+          <p class="zahl-gross">{b.dauer(g.single_agent.hours)}</p>
+          <p class="leise klein">{b.nacheinander}</p>
+          <p class="faktor" class:gut={(g.speedup ?? 0) > 1}>{g.speedup && g.speedup > 1 ? b.schneller(g.speedup) : b.keinVorsprung}</p>
+        </div>
+        <div class="spalte">
+          <p class="kopfzeile">{b.team} <span class="leise">{b.geschaetzt}</span></p>
+          {#if g.human_team.weeks}
+            <p class="zahl-gross">{b.wochen(g.human_team.weeks, g.human_team.team)}</p>
+            <p class="leise klein">{b.leadSchaetzung(g.human_team.tasks_estimated, g.tasks_done)}</p>
+          {:else}
+            <p class="zahl-gross leise">{b.keineSchaetzung}</p>
+          {/if}
+          {#if g.human_team.cocomo}<p class="leise klein">{b.cocomo(g.human_team.cocomo.months, g.human_team.cocomo.people)}</p>{/if}
+        </div>
+      </div>
+      {#if g.four_eyes_percent !== null}<p class="leise klein">{b.qualitaet(g.four_eyes_percent, g.pipeline_passed_percent ?? 0)}</p>{/if}
+      {#if bilanz.milestones.length > 1}
+        <details class="klein">
+          <summary>{b.meilensteine}</summary>
+          <div class="tabelle-bilanz">
+            <table>
+              <thead><tr><th>{b.spalten.meilenstein}</th><th>{b.spalten.schwarm}</th><th>{b.spalten.einAgent}</th><th>{b.spalten.faktor}</th><th>{b.spalten.team}</th></tr></thead>
+              <tbody>
+                {#each bilanz.milestones as m}
+                  <tr><td>{m.title}{#if m.completed} <span class="marke">{b.abgeschlossen}</span>{/if}</td><td>{b.dauer(m.swarm.calendar_hours)}</td><td>{b.dauer(m.single_agent.hours)}</td>
+                    <td>{m.speedup ? `${m.speedup}×` : "–"}</td><td>{m.human_team.weeks ? b.wochen(m.human_team.weeks, m.human_team.team) : "–"}</td></tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      {/if}
+    {:else}
+      <p class="leise">{b.leer}</p>
+    {/if}
+    {#if bilanz?.comparison}<p class="vergleich klein"><strong>{b.vergleich}:</strong> {bilanz.comparison.description}: {b.tage(bilanz.comparison.calendar_days)}.</p>{/if}
+    {#if paket}<p class="wissen klein">{b.wissen(paket.kb, paket.bausteine, paket.rollenkarten, paket.werkzeugkasten)}</p>{/if}
+  </section>
 
   <section aria-labelledby="t-aufgaben">
     <div class="abschnittkopf">
@@ -253,4 +308,18 @@
     .beitragende li { grid-template-columns: 1fr auto; }
     .beitragende li > :nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
   }
+  .bilanz .spalten { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 12px; margin: 6px 0 10px; }
+  .bilanz .spalte { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: 16px 18px; display: grid; gap: 4px; align-content: start; }
+  .bilanz .spalte.schwarm { border-color: var(--akzent); }
+  .bilanz .spalte p { margin: 0; }
+  .bilanz .kopfzeile { font-weight: 600; }
+  .bilanz .kopfzeile .leise { font-weight: 400; font-size: .82rem; }
+  .bilanz .zahl-gross { font: 600 1.5rem var(--mono); }
+  .bilanz .zahl-gross.leise { font: 400 1rem var(--schrift); }
+  .bilanz .faktor { margin-top: 6px !important; font-size: .92rem; color: var(--stahl); }
+  .bilanz .faktor.gut { color: var(--akzent); font-weight: 600; }
+  .bilanz .vergleich, .bilanz .wissen { margin: 8px 0 0; color: var(--stahl); max-width: 80ch; }
+  .bilanz .tabelle-bilanz { overflow-x: auto; }
+  .bilanz table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  .bilanz th, .bilanz td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--linie); }
 </style>

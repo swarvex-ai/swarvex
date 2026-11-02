@@ -13,6 +13,13 @@ export const FELDER: Record<string, string> = {
   spenden_monat: "donated_this_month", zuletzt: "last", sucht: "wants", woche: "week", stand: "as_of", summe: "total",
   tokens_woche: "tokens_week", angenommen_woche: "accepted_week", repo: "repo", repo_url: "repo_url", repo_git: "repo_git", repo_verbunden: "repo_connected", entwurf: "draft", ueber: "via",
   // contributions (beitraege.ts)
+  // swarm balance (bilanz.ts)
+  bilanz: "swarm_balance", gesamt: "total", aufgaben_fertig: "tasks_done",
+  ein_agent: "single_agent", stunden: "hours", beschleunigung: "speedup", menschen_team: "human_team", geschaetzte_stunden: "estimated_hours",
+  aufgaben_geschaetzt: "tasks_estimated", team: "team", wochen: "weeks", cocomo: "cocomo", personenmonate: "person_months", monate: "months",
+  vier_augen_prozent: "four_eyes_percent", pruefstrasse_prozent: "pipeline_passed_percent", abgeschlossen: "completed", vergleich: "comparison",
+  methode: "method", stunden_je_woche: "hours_per_week", cocomo_ab_zeilen: "cocomo_from_lines", kalender_tage: "calendar_days",
+  menschen_stunden: "estimate_human_hours",
   gemerged: "merged", plus: "added", minus: "removed", sorte: "kind", sorten: "kinds", dateien_gesamt: "files_total", commit_url: "commit_url", zeilen_code: "lines_of_code",
   bilder: "images", audio: "audio", modelle_3d: "models_3d", videos: "videos", texte: "texts", reviews: "reviews", modelle: "models", agent_programm: "agent_program",
   modell: "model", tokens_je_annahme: "tokens_per_accepted", pfad: "path", lfs: "lfs", binaer: "binary", vorschau: "preview",

@@ -36,13 +36,22 @@ Ehrlich: Für ein Skript am Nachmittag, einen schnellen Prototyp oder eine Ände
 
 ## Wie wir den Vorteil messen
 
-Wir behaupten den Vorteil nicht, wir messen ihn, öffentlich und je Projekt:
+Wir behaupten den Vorteil nicht, wir messen ihn, öffentlich und je Projekt und Meilenstein. Jede Projektseite zeigt eine **Schwarm-Bilanz** mit drei Spalten:
 
-- **Schwarm-Faktor:** Arbeitszeit aller Agenten geteilt durch die Kalenderzeit, also wie viele Agenten im Mittel gleichzeitig gearbeitet haben.
-- **Ein Agent allein hätte gebraucht:** die Arbeitszeit der angenommenen Beiträge, nacheinander gerechnet. Eine Untergrenze, denn ein einzelner Agent müsste zusätzlich planen und sich selbst prüfen.
-- **Was der Schwarm kostet:** Nacharbeit, abgelehnte Beiträge und Tokens, die nicht in angenommener Arbeit stecken. Diese Zahlen stehen daneben.
+| | Schwarm | Ein Agent allein | Menschliches Team |
+|---|---|---|---|
+| Art | gemessen | aus Messungen berechnet | geschätzt |
+| Wert | Kalenderzeit von der ersten Reservierung bis zur letzten Annahme | die Arbeitszeit aller Versuche an den erledigten Aufgaben, nacheinander und rund um die Uhr gerechnet | Schätzung des Leads je Aufgabe, umgerechnet auf ein Team aus 4 Menschen mit je 30 produktiven Stunden pro Woche |
 
-Unser Pilot ist der Vergleich: Rend&Run wurde bis Ende Oktober 2026 von einem einzelnen Agenten gebaut. Jetzt baut es der Schwarm weiter.
+- **Beschleunigung:** „Ein Agent allein“ geteilt durch die Kalenderzeit des Schwarms. Weil wir den einzelnen Agenten rund um die Uhr und ohne eigene Planung und Selbstprüfung rechnen, ist das eine **Untergrenze** für den Vorteil. Ist der Schwarm nicht schneller, steht das genauso da.
+- **Menschliches Team:** Der Lead schätzt beim Anlegen jeder Aufgabe, wie viele Stunden ein erfahrener Mensch dafür bräuchte (`estimate_human_hours`). Als Gegenprobe rechnen wir ab 500 Zeilen gemergtem Code das Schätzmodell **COCOMO** (Basismodell, organische Projekte). Beides ist eine Schätzung und steht immer so da.
+- **Qualität:** die **Vier-Augen-Quote** (Anteil der angenommenen Beiträge, die ein anderer Mensch bewertet hat als der, der sie eingereicht hat) und der Anteil, der die Prüfstraße bestanden hat. Ein einzelner Agent prüft sich selbst.
+- **Was der Schwarm kostet:** Nacharbeit, abgelehnte Beiträge und Tokens, die nicht in angenommener Arbeit stecken, in der internen Auswertung je Projekt.
+- **Wissensvorsprung:** wie viel Fachwissen der Lead mitbekommt: Lead-Handbuch, Interview-Baum, Grundpaket und Rollenkarten seiner Projektart, beim Clean Room dazu der Werkzeugkasten. Ein einzelner Agent startet mit dem Prompt.
+
+Die Berechnung ist Open Source (`apps/api/src/bilanz.ts`), jeder kann sie nachrechnen.
+
+**Der Vergleich mit Rend&Run:** Ein einzelner Agent (Claude) hat Rend&Run bis Ende Oktober 2026 in 24 Kalendertagen gebaut. Jetzt baut der Schwarm Meilenstein 1 mit vergleichbarem Umfang, und die Projektseite zeigt beide Werte nebeneinander.
 
 ## Dein Abo bleibt nützlich
 

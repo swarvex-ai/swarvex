@@ -8,6 +8,7 @@
 //   set-role <slug> [provider:]<login> <role>  role: visionary | lead | contributor; e.g. github:nevs84
 //   set-repo <slug> <git-address>             SSH address for snapshots (deploy key, read-only)
 //   set-license <slug> <code-license> <asset-license>  e.g. GPL-3.0-or-later "CC BY-SA 4.0" (logged publicly)
+//   set-comparison <slug> <calendar-days> <text>  measured reference for the swarm balance, e.g. 24 "A single agent (Claude) built the game alone"
 //   check-log [heads.jsonl|url]               verify the hash chain and compare it with published heads
 //                                             (without argument: our own table; better: the file from the anchor repo)
 //   publish-head                              sign the head hash now (otherwise daily)
@@ -130,6 +131,15 @@ try {
         await protokollieren(tx, { projekt_id: Number(p.id), akteur: "system", art: "repo_gesetzt", bezug: `projekt:${p.id}`, daten: { repo_git: adresse } });
         console.log(`${slug}: repo ${adresse}`);
       });
+      break;
+    }
+    case "set-comparison": {
+      const [slug, tage, ...text] = args;
+      const vergleich = { kalender_tage: Number(tage), beschreibung: text.join(" ").trim() };
+      if (!(vergleich.kalender_tage > 0) || !vergleich.beschreibung) throw new Error("usage: set-comparison <slug> <calendar-days> <text>");
+      const p = (await db.query("update projekte set vergleich = $2 where slug = $1 returning id", [slug, vergleich])).rows[0];
+      if (!p) throw new Error(`unknown project ${slug}`);
+      console.log(`${slug}: comparison ${vergleich.kalender_tage} days, "${vergleich.beschreibung}"`);
       break;
     }
     case "reports": {

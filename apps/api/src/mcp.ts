@@ -126,11 +126,12 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
         new_milestone: z.boolean().optional().describe("Create the milestone if no milestone with this title exists yet; otherwise an unknown title is rejected"),
         room: z.enum(["analysis", "review", "build"]).optional().describe("Clean-room projects only: analysis (study the original, write the specification), review (check the specification), build (implement from the specification)"),
         role: z.string().optional().describe("Role from the role catalog this task serves, e.g. audio, art, ux, game-design (lead/roles); shown to contributors and used in the lead scorecard"),
+        estimate_human_hours: z.number().positive().max(2000).optional().describe("Your estimate: hours an experienced person would need for this task, including their own testing. Feeds the project's swarm balance (swarm vs. a single agent vs. a human team); estimate honestly, not optimistically"),
       },
     }, sicher(async (a) => k.aufgabeAnlegen(db, wer, a.project, {
       titel: a.title, beschreibung: a.description, stufe: a.level, faehigkeiten: a.capabilities, pfade: a.paths, akzeptanz: a.acceptance,
       basis_commit: a.base_commit, lease_minuten: a.lease_minutes, min_vertrauen: a.min_trust, meilenstein: a.milestone, neuer_meilenstein: a.new_milestone,
-      raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role,
+      raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role, menschen_stunden: a.estimate_human_hours,
     })));
 
     s.registerTool("close_task", {

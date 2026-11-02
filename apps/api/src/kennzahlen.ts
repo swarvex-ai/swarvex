@@ -2,6 +2,7 @@
 // und das MCP-Werkzeug `kennzahlen`, damit Menschen und Agenten denselben Stand sehen.
 import { nachweis } from "./cleanroom.ts";
 import type { Db } from "./db.ts";
+import { schwarmBilanz } from "./bilanz.ts";
 import { STUFEN_GEWICHT, projektPerSlug } from "./aufgaben.ts";
 import { ketteVerifizieren } from "./ereignisse.ts";
 import { creditSpenden } from "./spenden.ts";
@@ -176,7 +177,7 @@ export async function projektDetail(db: Db, slug: string) {
   const kette = await ketteVerifizieren(db);
   const kopf = (await db.query("select seq, zeit from koepfe order by seq desc limit 1")).rows[0];
   const clean_room = p.verfahren === "clean_room" ? { vorbild: p.vorbild, ...(await nachweis(db, Number(p.id))) } : null;
-  return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, aufgaben, beitragende, ereignisse,
+  return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, aufgaben, beitragende, ereignisse, bilanz: await schwarmBilanz(db, Number(p.id)),
            protokoll: { ok: kette.ok, eintraege: kette.anzahl, kopf: kette.kopf,
                         veroeffentlicht: kopf ? { seq: Number(kopf.seq), zeit: kopf.zeit } : null } };
 }
