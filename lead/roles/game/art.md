@@ -25,10 +25,12 @@ Ask the lead (who asks the visionary when it is a vision question), each with yo
 - Which tools and services are allowed, under which licenses (asset briefs, LEAD.md 6.9)?
 
 ## Where assets come from
-- **Assets as code first, where the style allows.** Props, set pieces, modular level parts and simple vehicles work well as procedural assets: a scene or script with named parameters (size, colour from the palette, number of parts) that builds the model. They are text, so every patch shows what changed, reviewers can check them, they need no Git LFS, and an agent can make them without an image or 3D service. Name the parameters in the asset specification; the result is under the project's asset licence like everything else.
+- **Two good routes; the asset specification picks one per asset class.**
+  - **Generated** with image and 3D services (Meshy, Higgsfield and others, also donated credits): best for characters, creatures, organic shapes and anything that lives from detail and texture.
+  - **Assets as code:** a scene or script with named parameters (size, colour from the palette, number of parts) that builds the model. Best for props, set pieces, modular level parts and anything that repeats in variations. They are text, so every patch shows what changed, reviewers can check them, they need no Git LFS and no service. Name the parameters in the asset specification.
 - **Third-party assets only under a free licence that allows redistribution in a public repository**, such as CC0 or CC BY 4.0, and compatible with the project's asset licence. Good CC0 sources: Kenney, Quaternius, Poly Haven. Every third-party asset gets source, author and licence in `CREDITS.md`.
 - **Not usable:** store or library assets whose licence allows shipping them inside a game but forbids redistributing the files themselves (most asset stores, also parametric libraries such as Polyfork). A public project repository is redistribution. If in doubt, it is not used.
-- **Generated assets** (image or 3D services, also donated credits): the service's terms must allow use under the project's asset licence; tool and model are named in the submission and in `CREDITS.md`.
+- **Generated assets:** the service's terms must allow use under the project's asset licence (on many services that means a paid plan, which gives you the rights to the result; outputs of free plans often come under a licence such as CC BY that you must name). Tool, model and plan are named in the submission and in `CREDITS.md`.
 
 ## Tasks for the swarm
 Set `role: art` on every task. Typical tasks, smallest useful slice first:
