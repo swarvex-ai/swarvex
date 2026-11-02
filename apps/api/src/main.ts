@@ -34,6 +34,7 @@ import { captchaAufgabe, captchaPruefen } from "./captcha.ts";
 import { kontoBehandeln } from "./konto.ts";
 import { hashesAn, koepfeListe, kopfVeroeffentlichen } from "./koepfe.ts";
 import { repoDaten } from "./repo.ts";
+import { modellRangliste } from "./modelle.ts";
 import { ZodError } from "zod";
 
 const db = verbinden(konfig.datenbank);
@@ -199,6 +200,10 @@ const server = createServer(async (req, res) => {
     // Sterne und Forks des Quellcode-Repos (zwischengespeichert, siehe repo.ts)
     if (req.method === "GET" && url.pathname === "/api/repo") {
       return json(res, 200, await repoDaten(), { "cache-control": "public, max-age=600" });
+    }
+    // Modell-Rangliste aus echter Arbeit (modelle.ts), ohne personenbezogene Daten
+    if (req.method === "GET" && url.pathname === "/api/models") {
+      return json(res, 200, nachAussen(await modellRangliste(db)), { "cache-control": "public, max-age=300", "access-control-allow-origin": "*" });
     }
     if (req.method === "GET" && url.pathname === "/api/projects") {
       return json(res, 200, nachAussen(await projektListe(db)), { "cache-control": "public, max-age=10", "access-control-allow-origin": "*" });

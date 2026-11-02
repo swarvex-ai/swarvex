@@ -21,7 +21,11 @@ export const FELDER: Record<string, string> = {
   gemerged: "merged", plus: "added", minus: "removed", sorte: "kind", sorten: "kinds", dateien_gesamt: "files_total", commit_url: "commit_url", zeilen_code: "lines_of_code",
   bilder: "images", audio: "audio", modelle_3d: "models_3d", videos: "videos", texte: "texts", reviews: "reviews", modelle: "models", agent_programm: "agent_program",
   modell: "model", tokens_je_annahme: "tokens_per_accepted", pfad: "path", lfs: "lfs", binaer: "binary", vorschau: "preview",
-  verfahren: "procedure", vorbild: "original", forschung: "research", forschung_regeln: "research_rules", weiterfuehren_regeln: "continuation_rules", deine_rollen: "your_roles", regeln: "rules", clean_room_regeln: "clean_room_rules",
+  verfahren: "procedure", vorbild: "original", forschung: "research", forschung_regeln: "research_rules",
+  // model ranking (modelle.ts)
+  nacharbeit: "rework", abgelehnt: "rejected", untere_grenze_prozent: "lower_bound_percent", pruefung_ok_prozent: "check_passed_percent", tokens_median_je_annahme: "median_tokens_per_accepted",
+  familien: "kinds", familie: "kind", programme: "programs", programm: "program", anteil_prozent: "share_percent", ausgeblendet: "hidden", methode: "method",
+  zeitraum_tage: "window_days", mindestens_bewertet: "min_reviewed", mindestens_mitstreiter: "min_contributors", mindestens_je_zeile: "min_per_row", schluessel: "key", weiterfuehren_regeln: "continuation_rules", deine_rollen: "your_roles", regeln: "rules", clean_room_regeln: "clean_room_rules",
   menschen_je_raum: "people_per_room", trennung_eingehalten: "separation_kept", verletzungen: "violations",
   aufgaben: "tasks", beitragende: "contributors", ereignisse: "events", protokoll: "log", eintraege: "entries", kopf: "head",
   veroeffentlicht: "published", ok: "ok",
@@ -99,6 +103,9 @@ export const WERTE: Record<string, Record<string, string>> = {
 };
 WERTE.sorte = { code: "code", test: "test", bild: "image", audio: "audio", video: "video", "3d": "3d", text: "text", daten: "data", sonstiges: "other" };
 WERTE.sorten = WERTE.sorte;
+// Fähigkeitsfamilie (analytik.familie): erster Teil der Fähigkeit, mehrere Familien = gemischt
+WERTE.familie = { daten: "data", gemischt: "mixed", keine: "none" };
+WERTE.programm = { unbekannt: "unknown" };
 WERTE.rollen = WERTE.rolle;
 WERTE.deine_rollen = WERTE.rolle;
 

@@ -681,6 +681,38 @@ describe("Kopf-Hash veröffentlichen (#31)", () => {
   });
 });
 
+describe("Modell-Rangliste", () => {
+  it("zeigt Modelle erst ab Mindestzahlen, führt Schreibweisen zusammen und sortiert nach der Wilson-Untergrenze", async () => {
+    const { modellRangliste, modellCacheLeeren, wilsonUnten } = await import("../src/modelle.ts");
+    const { nachAussen } = await import("../src/aussen.ts");
+    expect(wilsonUnten(5, 5)).toBe(56.6);
+    expect(wilsonUnten(0, 0)).toBe(0);
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Rangliste"), faehigkeiten: ["daten"] });
+    const menschen = [];
+    for (const n of ["rang-a", "rang-b", "rang-c"]) {
+      const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea',$1,$1) returning id", [n])).rows[0].id);
+      menschen.push(Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'x',$2) returning id", [m, n])).rows[0].id));
+    }
+    // Modell X: 6 Bewertungen von 3 Menschen in zwei Schreibweisen, 5 angenommen; Modell Y: nur ein Mensch, bleibt ausgeblendet
+    const einreichen = async (agent: number, modell: string, urteil: string) => {
+      const l = Number((await db.query("insert into leases(aufgabe_id, agent_id, laeuft_ab, beendet) values ($1,$2,now(),now()) returning id", [a.id, agent])).rows[0].id);
+      const e = Number((await db.query(`insert into einreichungen(aufgabe_id, lease_id, agent_id, patch, patch_sha256, zusammenfassung, verbrauch, modell)
+        values ($1,$2,$3,'p','s','z','{"tokens": 1000}',$4) returning id`, [a.id, l, agent, modell])).rows[0].id);
+      await db.query("insert into bewertungen(einreichung_id, agent_id, urteil, begruendung) values ($1,$2,$3,'b')", [e, lead.agentId, urteil]);
+    };
+    for (const [i, u] of ["annehmen", "annehmen", "annehmen", "annehmen", "annehmen", "nacharbeit"].entries()) await einreichen(menschen[i % 3], i % 2 ? "Modell X 1.0" : "modell-x-1.0", u);
+    for (let i = 0; i < 6; i++) await einreichen(menschen[0], "Modell Y", "annehmen");
+    modellCacheLeeren();
+    const r = nachAussen(await modellRangliste(db)) as { models: Record<string, unknown>[]; hidden: number };
+    const x = r.models.find((m) => m.key === "modell-x-1-0")!;
+    expect(x).toMatchObject({ reviewed: 6, accepted: 5, rework: 1, acceptance_percent: 83, people: 3, median_tokens_per_accepted: 1000 });
+    expect((x.kinds as Record<string, unknown>[])[0]).toMatchObject({ kind: "data", reviewed: 6 });
+    expect(r.models.some((m) => m.key === "modell-y")).toBe(false);
+    expect(r.hidden).toBeGreaterThanOrEqual(1);
+    expect(JSON.stringify(r)).not.toMatch(/rang-[abc]/);
+  });
+});
+
 describe("Englische Schnittstelle", () => {
   it("lässt keine deutschen Feldnamen nach außen", async () => {
     const { nachAussen, FELDER } = await import("../src/aussen.ts");
@@ -689,7 +721,8 @@ describe("Englische Schnittstelle", () => {
     const { koepfeListe } = await import("../src/koepfe.ts");
     const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Schnittstelle"));
     const proben = [a, await k.aufgabenPassend(db, mit, "test"), await k.details(db, mit, a.id), await k.reservieren(db, mit, a.id),
-      await kennzahlen(db, "test"), await projektListe(db), await projektDetail(db, "test"), await kontoDaten(db, mit.menschId), await koepfeListe(db)];
+      await kennzahlen(db, "test"), await projektListe(db), await projektDetail(db, "test"), await kontoDaten(db, mit.menschId), await koepfeListe(db),
+      await (await import("../src/modelle.ts")).modellRangliste(db)];
     // Erlaubt: englische Zielnamen und Felder, die in beiden Sprachen gleich sind
     const erlaubt = new Set([...Object.values(FELDER), "id", "slug", "name", "engine", "patch", "email", "commit", "code", "other"]);
     const fremd = new Set<string>();

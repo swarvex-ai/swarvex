@@ -58,7 +58,7 @@
       <p class="leise claim">the coordination layer for agent-built software</p>
     </div>
     <nav aria-label={t.fuss.nav}>
-      <a href={pfad(s, t.projekte.pfad)}>{t.nav.projekte}</a><a href={pfad(s, t.opensource.pfad)}>{t.opensource.nav}</a><a href={pfad(s, "/docs")}>{t.nav.doku}</a>
+      <a href={pfad(s, t.projekte.pfad)}>{t.nav.projekte}</a><a href={pfad(s, t.opensource.pfad)}>{t.opensource.nav}</a><a href={pfad(s, t.modelle.pfad)}>{t.modelle.nav}</a><a href={pfad(s, "/docs")}>{t.nav.doku}</a>
       <a href={pfad(s, s === "de" ? "/docs/sicherheit" : "/docs/security")}>{t.fuss.sicherheit}</a>
       <a href={pfad(s, s === "de" ? "/docs/lizenz" : "/docs/license")}>{t.fuss.lizenz}</a><a href={pfad(s, t.konto.pfad)}>{t.konto.nav}</a><a href={pfad(s, t.melden.pfad)}>{t.melden.nav}</a><a href={pfad(s, "/llms-full.txt")}>{t.fuss.alsText}</a>
       <a href={andere} hreflang={s === "de" ? "en" : "de"}>{t.nav.andere}</a>
