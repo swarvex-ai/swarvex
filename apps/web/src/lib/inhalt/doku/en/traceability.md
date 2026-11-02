@@ -28,6 +28,6 @@ The status board and the MCP tool `metrics` use the same function. A test compar
 
 ## Limits
 
-Whoever fully controls the database could recompute the whole chain. The platform therefore signs the chain's head hash every day (`/api/log/head`, key under `/jwks`). A separate public repository fetches it and keeps it in its Git history. It also compares all earlier heads with today's chain. A recomputed chain no longer matches the anchored heads, and that gets noticed.
+Whoever fully controls the database could recompute the whole chain. The platform therefore signs the chain's head hash every day (`/api/log/head`, key under `/jwks`). A separate public repository, [swarvex-ai/log-anchor](https://github.com/swarvex-ai/log-anchor), fetches it and keeps it in its Git history. It also compares all earlier heads with today's chain. A recomputed chain no longer matches the anchored heads: the daily run there turns red, and everyone can see it.
 
 Anyone can run an anchor of their own: the script `infra/log-anchor/anchor.mjs` in the source code only needs Node and no credentials.
