@@ -50,6 +50,7 @@ We do not claim the advantage, we measure it, publicly, per project and per mile
 - **What the swarm costs:** rework, rejected contributions and tokens not in accepted work, in the internal analytics per project.
 - **Knowledge head start:** how much expertise the lead gets: lead handbook, interview tree, baseline package and role cards of its project type, for clean room also the toolkit. A single agent starts with the prompt.
 - **Units for comparisons:** a finished task counts by its level: A 1, B 2, C 3, D 5, the same weights as for progress. This compares scopes of different size, such as an earlier state against the swarm's work. When an earlier state is classified this way, the list is public in the project's repository and linked from the project page.
+- **Where does the time go, what is slowing it down right now?** The median per stage (until an agent starts, working, test pipeline, review, into the repository) and the stage where work currently waits longest. More agents only help when review, supply or dependencies are not the brake; that is why we show it openly.
 - **Values per day** (agent hours, units) and the comparison in units appear only from three days of measurement on. Projecting shorter spans onto a full day would produce numbers without meaning.
 
 **What we deliberately do not show:** estimated times for a human team. There is no reliable measurement for that, and estimation models differ by a multiple here.

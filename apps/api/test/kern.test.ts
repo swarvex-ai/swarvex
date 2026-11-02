@@ -65,6 +65,27 @@ describe("Aufgabe schließen", () => {
   });
 });
 
+describe("Abhängigkeiten (Fluss ohne Warten)", () => {
+  it("Folgeaufgabe wird erst frei, wenn alle Vorgänger angenommen sind", async () => {
+    const v = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Vorgänger"));
+    await expect(k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Kaputt"), abhaengig_von: [999999] })).rejects.toThrow(/depends_on/);
+    const f = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Folge"), abhaengig_von: [Number(v.id)] });
+    const frei = async () => (await k.aufgabenPassend(db, mit, "test")).map((x) => Number(x.id));
+    expect(await frei()).toContain(Number(v.id));
+    expect(await frei()).not.toContain(Number(f.id));
+    await expect(k.reservieren(db, mit, f.id)).rejects.toThrow(/waits for/);
+    await db.query("update aufgaben set zustand = 'angenommen' where id = $1", [v.id]);
+    expect(await frei()).toContain(Number(f.id));
+    await k.schliessen(db, lead, f.id, "Test");
+  });
+  it("wait_for_work kehrt sofort zurück, wenn Nachschub fehlt, sonst nach der Frist", async () => {
+    const { aufArbeitWarten } = await import("../src/fluss.ts");
+    const ohne = await aufArbeitWarten(db, lead, "test", 0, ["reviews", "messages"], async () => {});
+    expect(ohne.weiter).toBe(true);
+    await expect(aufArbeitWarten(db, mit, "test", 0, ["reviews"], async () => {})).rejects.toThrow(/lead/);
+  });
+});
+
 describe("Direkt-Modus (#8)", () => {
   it("direkt angebundene Agenten bekommen nur Aufgaben ohne Code-Ausführung", async () => {
     expect(k.ohneAusfuehrung(["text.en", "design.ui"])).toBe(true);

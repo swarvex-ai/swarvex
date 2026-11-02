@@ -8,6 +8,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import type { Db } from "./db.ts";
 import * as k from "./aufgaben.ts";
+import { aufArbeitWarten, WECKEN } from "./fluss.ts";
 import { kennzahlen } from "./kennzahlen.ts";
 import { gegenpruefungMelden, naechsteGegenpruefung } from "./gegenpruefung.ts";
 import type { Zugang } from "./auth/zugang.ts";
@@ -126,17 +127,24 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
         new_milestone: z.boolean().optional().describe("Create the milestone if no milestone with this title exists yet; otherwise an unknown title is rejected"),
         room: z.enum(["analysis", "review", "build"]).optional().describe("Clean-room projects only: analysis (study the original, write the specification), review (check the specification), build (implement from the specification)"),
         role: z.string().optional().describe("Role from the role catalog this task serves, e.g. audio, art, ux, game-design (lead/roles); shown to contributors and used in the lead scorecard"),
+        depends_on: z.array(z.number().int()).max(20).optional().describe("Task numbers of this project that must be accepted first. The task is created now and offered automatically as soon as all of them are accepted: cut follow-up work in advance instead of waiting"),
       },
     }, sicher(async (a) => k.aufgabeAnlegen(db, wer, a.project, {
       titel: a.title, beschreibung: a.description, stufe: a.level, faehigkeiten: a.capabilities, pfade: a.paths, akzeptanz: a.acceptance,
       basis_commit: a.base_commit, lease_minuten: a.lease_minutes, min_vertrauen: a.min_trust, meilenstein: a.milestone, neuer_meilenstein: a.new_milestone,
-      raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role,
+      raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role, abhaengig_von: a.depends_on,
     })));
 
     s.registerTool("close_task", {
       description: "(Lead, officer) Closes an open task of your project with a reason (outdated, duplicate, moved to a later milestone). Logged publicly. Reserved or submitted tasks cannot be closed. Officers: tasks in their area only.",
       inputSchema: { task_id: z.number().int(), reason: z.string().min(1) },
     }, sicher(async ({ task_id, reason }) => { await k.schliessen(db, wer, task_id, reason); return "closed"; }));
+
+    s.registerTool("wait_for_work", {
+      description: "(Lead, officer) Waits until there is something for you and returns at once: checked submissions to review (officers: in their area), open messages, and with wake_on including backlog: fewer free tasks than active agents. Returns after max_seconds otherwise (continue: true). Use it as your work loop instead of polling.",
+      inputSchema: { project: z.string(), max_seconds: z.number().int().min(0).max(600).default(300),
+        wake_on: z.array(z.enum(WECKEN)).min(1).default(["reviews", "messages"]) },
+    }, sicher(async ({ project, max_seconds, wake_on }) => aufArbeitWarten(db, wer, project, max_seconds, wake_on)));
 
     s.registerTool("pending_submissions", {
       description: "(Lead, officer) A project's submissions with their check results, waiting for your review. Officers see their area only.",

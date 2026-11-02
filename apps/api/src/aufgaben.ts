@@ -111,6 +111,8 @@ export type NeueAufgabe = {
   neuer_meilenstein?: boolean;
   /** Nur in Clean-Room-Projekten: analyse, pruefung oder bau (cleanroom.ts). */
   raum?: Raum;
+  /** Vorgänger im selben Projekt: die Aufgabe wird erst frei, wenn alle angenommen sind (kein Nachlegen, kein Warten). */
+  abhaengig_von?: number[];
   /** Rolle aus dem Rollenkatalog (lead/roles), z. B. audio, ux, art; bei Officers immer ihr Bereich. */
   rolle?: string;
 };
@@ -137,10 +139,18 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
         meilensteinId = (await tx.query("insert into meilensteine(projekt_id, titel) values ($1,$2) returning id", [p.id, a.meilenstein])).rows[0].id;
       }
     }
+    // Vorgänger: nur Aufgaben desselben Projekts, höchstens 20; neue Aufgaben können so keinen Kreis bilden
+    const vorgaenger = [...new Set((a.abhaengig_von ?? []).map(Number))];
+    if (vorgaenger.length > 20 || vorgaenger.some((v) => !Number.isInteger(v))) throw new Abgelehnt("depends_on: at most 20 task numbers");
+    if (vorgaenger.length) {
+      const da = (await tx.query("select id from aufgaben where projekt_id = $1 and id = any($2::bigint[]) and zustand <> 'geschlossen'", [p.id, vorgaenger])).rows.map((r) => Number(r.id));
+      const fehlt = vorgaenger.filter((v) => !da.includes(v));
+      if (fehlt.length) throw new Abgelehnt(`depends_on: no open or finished task ${fehlt.map((x) => `#${x}`).join(", ")} in this project`);
+    }
     const r = await tx.query(
-      `insert into aufgaben(projekt_id, meilenstein_id, titel, beschreibung, stufe, faehigkeiten, pfade, akzeptanz, basis_commit, lease_minuten, min_vertrauen, raum, rolle)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning *`,
-      [p.id, meilensteinId, a.titel, a.beschreibung, a.stufe, a.faehigkeiten, a.pfade, a.akzeptanz, a.basis_commit ?? null, a.lease_minuten ?? 60, a.min_vertrauen ?? 0, a.raum ?? null, rolle],
+      `insert into aufgaben(projekt_id, meilenstein_id, titel, beschreibung, stufe, faehigkeiten, pfade, akzeptanz, basis_commit, lease_minuten, min_vertrauen, raum, rolle, abhaengig_von)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning *`,
+      [p.id, meilensteinId, a.titel, a.beschreibung, a.stufe, a.faehigkeiten, a.pfade, a.akzeptanz, a.basis_commit ?? null, a.lease_minuten ?? 60, a.min_vertrauen ?? 0, a.raum ?? null, rolle, vorgaenger],
     );
     const aufgabe = r.rows[0];
     // Die erste Aufgabe macht aus dem Entwurf ein öffentlich gelistetes Projekt
@@ -157,7 +167,8 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
   if (wer.runner === true && !p.repo_git) return [];
   const m = (await db.query("select vertrauensstufe from menschen where id = $1", [wer.menschId])).rows[0];
   const r = await db.query(
-    "select id, titel, stufe, faehigkeiten, pfade, lease_minuten, raum from aufgaben where projekt_id = $1 and zustand = 'offen' and min_vertrauen <= $2 order by id",
+    `select id, titel, stufe, faehigkeiten, pfade, lease_minuten, raum from aufgaben a where projekt_id = $1 and zustand = 'offen' and min_vertrauen <= $2
+       and not exists (select 1 from aufgaben v where v.id = any(a.abhaengig_von) and v.zustand not in ('angenommen', 'gemerged')) order by id`,
     [p.id, m.vertrauensstufe],
   );
   // Clean Room: Aufgaben auf der anderen Seite der Trennwand gar nicht erst anbieten.
@@ -188,6 +199,13 @@ export async function reservieren(db: Db, wer: Wer, aufgabeId: number) {
   }
 }
 
+/** Vorgänger einer Aufgabe, die noch nicht angenommen sind. */
+export async function wartetAuf(db: Db | Tx, a: { abhaengig_von?: (number | string)[] | null }): Promise<number[]> {
+  const v = (a.abhaengig_von ?? []).map(Number);
+  if (!v.length) return [];
+  return (await db.query("select id from aufgaben where id = any($1::bigint[]) and zustand not in ('angenommen', 'gemerged') order by id", [v])).rows.map((r) => Number(r.id));
+}
+
 async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
   return transaktion(db, async (tx) => {
     const a = await aufgabeSperren(tx, aufgabeId);
@@ -196,6 +214,8 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
     if ((await tx.query("select gesperrt from projekte where id = $1", [a.projekt_id])).rows[0]?.gesperrt) throw new Abgelehnt("project is blocked");
     if (m.vertrauensstufe < a.min_vertrauen) throw new Abgelehnt(`trust level ${a.min_vertrauen} required`);
     if (a.zustand !== "offen") throw new Abgelehnt(`task is ${en(a.zustand)}`);
+    const wartet = await wartetAuf(tx, a);
+    if (wartet.length) throw new Abgelehnt(`task waits for ${wartet.map((x) => `#${x}`).join(", ")} to be accepted first`);
     if (wer.runner === false && !ohneAusfuehrung(a.faehigkeiten)) throw new Abgelehnt(NUR_RUNNER);
     if (a.raum) {
       const grund = trennwand(await raeumeVon(tx, wer.menschId, Number(a.projekt_id)), a.raum);

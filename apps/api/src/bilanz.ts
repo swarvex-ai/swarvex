@@ -6,6 +6,7 @@
 // Methode in der Doku: „Warum swarvex“, Abschnitt „Wie wir den Vorteil messen“.
 import type { Db } from "./db.ts";
 import { STUFEN_GEWICHT } from "./aufgaben.ts";
+import { angebot } from "./fluss.ts";
 
 type Zeile = {
   einreichung: number; aufgabe: number; stufe: string; meilenstein: string | null; mensch: number; agent: number; modell: string | null;
@@ -50,6 +51,54 @@ export function gruppenBilanz(zeilen: Zeile[], start: Date | null) {
   };
 }
 
+const median = (xs: number[]) => {
+  const s = xs.filter((x) => Number.isFinite(x) && x >= 0).sort((a, b) => a - b);
+  return s.length ? r1(s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : null;
+};
+const stunden = (von: Date | null, bis: Date | null) => (von && bis ? (bis.getTime() - von.getTime()) / 3_600_000 : NaN);
+
+/** Wo die Zeit hingeht: Median je Stufe über die angenommenen Beiträge (gemessen, in Stunden). */
+async function zeitfluss(db: Db, projektId: number) {
+  const r = (await db.query(
+    `select a.erstellt, (select min(l2.erstellt) from leases l2 where l2.aufgabe_id = a.id) as erste_reservierung,
+       l.erstellt as reserviert, e.eingereicht, pr.erstellt as geprueft, b.erstellt as bewertet,
+       (select min(x.zeit) from ereignisse x where x.bezug = 'aufgabe:' || a.id and x.art = 'gemerged') as gemerged
+     from einreichungen e join aufgaben a on a.id = e.aufgabe_id join leases l on l.id = e.lease_id
+     join lateral (select urteil, erstellt from bewertungen where einreichung_id = e.id order by id desc limit 1) b on b.urteil = 'annehmen'
+     left join lateral (select erstellt from pruefungen where einreichung_id = e.id and erstellt <= b.erstellt order by id desc limit 1) pr on true
+     where a.projekt_id = $1`, [projektId])).rows;
+  if (!r.length) return null;
+  return {
+    warten_auf_agent: median(r.map((z) => stunden(z.erstellt, z.erste_reservierung))),
+    bearbeitung: median(r.map((z) => stunden(z.reserviert, z.eingereicht))),
+    pruefung: median(r.map((z) => stunden(z.eingereicht, z.geprueft))),
+    bewertung: median(r.map((z) => stunden(z.geprueft ?? z.eingereicht, z.bewertet))),
+    merge: median(r.map((z) => stunden(z.bewertet, z.gemerged))),
+  };
+}
+
+/** Wo es gerade bremst: Angebot, Prüfung und Bewertung jetzt; engpass benennt die Stufe, an der Arbeit am längsten steht. */
+async function jetzt(db: Db, projektId: number, fluss: Awaited<ReturnType<typeof zeitfluss>>) {
+  const a = await angebot(db, projektId);
+  const w = (await db.query(
+    `select count(*) filter (where a.zustand in ('eingereicht', 'pruefung'))::int as warten_auf_pruefung,
+       round(max(extract(epoch from now() - e.eingereicht)) filter (where a.zustand in ('eingereicht', 'pruefung')) / 3600, 1) as aelteste_pruefung_h,
+       count(*) filter (where a.zustand = 'geprueft_ok')::int as warten_auf_bewertung,
+       round(max(extract(epoch from now() - coalesce(pr.erstellt, e.eingereicht))) filter (where a.zustand = 'geprueft_ok') / 3600, 1) as aelteste_bewertung_h
+     from aufgaben a join lateral (select id, eingereicht from einreichungen where aufgabe_id = a.id order by id desc limit 1) e on true
+     left join lateral (select erstellt from pruefungen where einreichung_id = e.id order by id desc limit 1) pr on true
+     where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok')`, [projektId])).rows[0];
+  const n = (x: unknown) => (x === null || x === undefined ? null : Number(x));
+  const bewertungH = n(w.aelteste_bewertung_h), pruefungH = n(w.aelteste_pruefung_h);
+  const engpass = w.warten_auf_bewertung > 0 && (bewertungH ?? 0) >= Math.max(2, fluss?.bearbeitung ?? 0) ? "bewertung"
+    : w.warten_auf_pruefung > 0 && (pruefungH ?? 0) >= 1 ? "pruefung"
+    : a.aktiv > 0 && a.frei < a.aktiv ? "nachschub"
+    : a.frei === 0 && a.blockiert > 0 ? "abhaengigkeiten"
+    : a.frei > 0 && a.aktiv === 0 ? "mitstreiter" : null;
+  return { ...a, warten_auf_pruefung: w.warten_auf_pruefung, aelteste_pruefung_h: pruefungH, warten_auf_bewertung: w.warten_auf_bewertung,
+    aelteste_bewertung_h: bewertungH, engpass };
+}
+
 export async function schwarmBilanz(db: Db, projektId: number) {
   const zeilen: Zeile[] = (await db.query(
     `select e.id::int as einreichung, a.id::int as aufgabe, a.stufe, m.titel as meilenstein, ag.mensch_id::int as mensch, e.agent_id::int as agent, e.modell,
@@ -77,8 +126,11 @@ export async function schwarmBilanz(db: Db, projektId: number) {
     vergleich.einheiten_je_tag = r1(Number(vergleich.einheiten) / Number(vergleich.kalender_tage));
     if (gesamt?.schwarm.einheiten_je_tag) vergleich.durchsatz_faktor = r1(gesamt.schwarm.einheiten_je_tag / vergleich.einheiten_je_tag);
   }
+  const fluss = await zeitfluss(db, projektId);
   return {
     gesamt,
+    zeitfluss: fluss,
+    jetzt: await jetzt(db, projektId, fluss),
     meilensteine: titel.map((t) => ({ titel: t, abgeschlossen: (offen.get(t) ?? 0) === 0, ...gruppenBilanz(zeilen.filter((z) => z.meilenstein === t), startVon(t)) }))
       .filter((m) => m.aufgaben_fertig),
     vergleich,

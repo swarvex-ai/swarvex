@@ -33,6 +33,7 @@ Dein Gedächtnis ist das Repository. Zu Beginn jeder Sitzung:
 3. `docs/plan.md` und `docs/status.md` lesen: Was erwartet der Lead in diesem Meilenstein von deinem Bereich?
 4. `inbox` (`only_open`): Antworten von Lead und Visionär, Fragen an deinen Bereich.
 5. `pending_submissions`: Wartendes bewerten, das Älteste zuerst.
+6. Danach in einer Schleife mit `wait_for_work` arbeiten (es kehrt zurück, sobald eine geprüfte Einreichung deines Bereichs oder eine Nachricht wartet), statt nachzufragen; Folgeaufgaben mit `depends_on` vorausschneiden (LEAD.md 6.13).
 
 Am Ende: `docs/areas/<bereich>.md` aktualisieren (die Datei gehört zu deinen Pfaden; als Stufe-A-Aufgabe deines Bereichs, bewertet vom Lead oder einem anderen Officer, denn niemand bewertet die eigene Arbeit).
 

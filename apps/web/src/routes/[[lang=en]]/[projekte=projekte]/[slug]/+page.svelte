@@ -23,7 +23,7 @@
   // Aufgaben-Filter: offen / in Arbeit (reserviert bis Prüfung) / fertig (angenommen, übernommen)
   const gruppe = (z: string) => (z === "open" ? "offen" : ["accepted", "merged"].includes(z) ? "fertig" : "arbeit");
   let filter = $state<"alle" | "offen" | "arbeit" | "fertig">("alle");
-  const aufgaben = $derived((p.tasks as { id: number; title: string; level: string; state: string; milestone: string | null; role: string | null; working: string | null; contribution_by: string | null }[])
+  const aufgaben = $derived((p.tasks as { id: number; title: string; level: string; state: string; milestone: string | null; role: string | null; working: string | null; contribution_by: string | null; waiting_for: number[] }[])
     .filter((a) => filter === "alle" || gruppe(a.state) === filter));
   const ton = (z: string) => (z === "check_failed" ? "rot" : ["submitted", "checking"].includes(z) ? "bernstein" : z === "open" ? "leise" : "akzent");
   const mitmachen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
@@ -34,7 +34,8 @@
     swarm: { calendar_hours: number; agent_hours: number; agents: number; people: number; models: number; concurrent: number | null; agent_hours_per_day: number | null; units_per_day: number | null };
     single_agent: { hours: number }; speedup: number | null; four_eyes_percent: number | null; pipeline_passed_percent: number | null };
   const b = $derived(t.detail.bilanz);
-  const bilanz = $derived(p.swarm_balance as { total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; units?: number; evidence?: string; units_per_day?: number; throughput_factor?: number } | null } | undefined);
+  type Jetzt = { available: number; blocked: number; active: number; waiting_for_check: number; oldest_check_hours: number | null; awaiting_review: number; oldest_review_hours: number | null; bottleneck: string | null };
+  const bilanz = $derived(p.swarm_balance as { time_flow: Record<string, number | null> | null; now: Jetzt; total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; units?: number; evidence?: string; units_per_day?: number; throughput_factor?: number } | null } | undefined);
   const paket = $derived((p.project_type ? data.pakete?.[`${p.project_type}${p.procedure === "clean_room" ? "-cleanroom" : ""}`] : undefined) as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
   const methode = $derived(pfad(s, s === "de" ? "/docs/warum-swarvex#wie-wir-den-vorteil-messen" : "/docs/why-swarvex#how-we-measure-the-advantage"));
 </script>
@@ -138,6 +139,15 @@
         </div>
       </div>
       {#if g.four_eyes_percent !== null}<p class="leise klein">{b.qualitaet(g.four_eyes_percent, g.pipeline_passed_percent ?? 0)}</p>{/if}
+      {#if bilanz.time_flow}
+        <h3 class="unterkopf">{b.zeitH3}</h3>
+        <ol class="fluss">
+          {#each Object.entries(b.stufen) as [k, name]}
+            <li><span class="leise klein">{name}</span><strong>{bilanz.time_flow[k] === null || bilanz.time_flow[k] === undefined ? "–" : b.dauer(bilanz.time_flow[k] as number)}</strong></li>
+          {/each}
+        </ol>
+        <p class="leise klein">{b.zeitText}</p>
+      {/if}
       {#if bilanz.milestones.length > 1}
         <details class="klein">
           <summary>{b.meilensteine}</summary>
@@ -156,6 +166,18 @@
       {/if}
     {:else}
       <p class="leise">{b.leer}</p>
+    {/if}
+    {#if bilanz?.now}
+      {@const j = bilanz.now}
+      <h3 class="unterkopf">{b.bremstH3}</h3>
+      <p class="bremst klein" class:frei={!j.bottleneck}>
+        {#if j.bottleneck === "review"}{b.engpass.review(j.awaiting_review, j.oldest_review_hours ?? 0)}
+        {:else if j.bottleneck === "check"}{b.engpass.check(j.waiting_for_check, j.oldest_check_hours ?? 0)}
+        {:else if j.bottleneck === "backlog"}{b.engpass.backlog(j.available, j.active)}
+        {:else if j.bottleneck === "dependencies"}{b.engpass.dependencies(j.blocked)}
+        {:else if j.bottleneck === "contributors"}{b.engpass.contributors(j.available)}
+        {:else}{b.engpass.keiner}{/if}
+      </p>
     {/if}
     {#if bilanz?.comparison}
       {@const v = bilanz.comparison}
@@ -183,7 +205,7 @@
             {#each aufgaben as a (a.id)}
               <tr>
                 <td class="zahl leise">{a.id}</td>
-                <td>{a.title}{#if a.milestone || a.role}<span class="unter leise">{[a.milestone, a.role].filter(Boolean).join(" · ")}</span>{/if}</td>
+                <td>{a.title}{#if a.milestone || a.role}<span class="unter leise">{[a.milestone, a.role].filter(Boolean).join(" · ")}</span>{/if}{#if a.waiting_for?.length}<span class="unter wartet">{t.detail.bilanz.wartetAuf(a.waiting_for)}</span>{/if}</td>
                 <td class="zahl">{a.level}</td>
                 <td><span class="zustand {ton(a.state)}">{t.zustand[a.state] ?? a.state}</span></td>
                 <td class="leise">{a.working ?? a.contribution_by ?? ""}</td>
@@ -322,4 +344,11 @@
   .bilanz .tabelle-bilanz { overflow-x: auto; }
   .bilanz table { border-collapse: collapse; width: 100%; margin-top: 8px; }
   .bilanz th, .bilanz td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--linie); }
+  .bilanz .unterkopf { font-size: 1rem; margin: 16px 0 6px; }
+  .bilanz .fluss { list-style: none; padding: 0; margin: 0 0 4px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); gap: 8px; }
+  .bilanz .fluss li { border: 1px solid var(--linie); border-radius: var(--radius-klein); padding: 8px 10px; display: grid; gap: 2px; }
+  .bilanz .fluss strong { font: 600 1.02rem var(--mono); }
+  .bilanz .bremst { margin: 0; border-left: 3px solid var(--bernstein); padding-left: 10px; }
+  .bilanz .bremst.frei { border-left-color: var(--akzent); }
+  .wartet { color: var(--bernstein); }
 </style>

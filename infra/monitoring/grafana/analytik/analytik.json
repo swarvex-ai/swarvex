@@ -692,7 +692,7 @@
   },
   {
    "type": "row",
-   "title": "Ablauf und Qualität",
+   "title": "Skalierung: wächst der Durchsatz mit den Agenten?",
    "collapsed": false,
    "gridPos": {
     "x": 0,
@@ -704,6 +704,146 @@
    "id": 19
   },
   {
+   "type": "text",
+   "title": "So lesen",
+   "gridPos": {
+    "x": 0,
+    "y": 44,
+    "w": 6,
+    "h": 10
+   },
+   "options": {
+    "mode": "markdown",
+    "content": "Je Projekt und Tag ein Punkt: **gleichzeitig arbeitende Agenten** (Agentenstunden ÷ 24) gegen **erledigte Einheiten** (angenommene Aufgaben, nach Stufe gewichtet: A 1, B 2, C 3, D 5).\nSteigen die Punkte mit den Agenten mit, funktioniert die Koordination. Flacht die Wolke ab, bremst etwas: meist die Bewertung (Officers), fehlender Nachschub an freien Aufgaben oder Abhängigkeiten.\nAlles gemessen, keine Schätzungen."
+   },
+   "id": 20
+  },
+  {
+   "type": "xychart",
+   "title": "Gleichzeitige Agenten gegen Einheiten je Tag",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 6,
+    "y": 44,
+    "w": 9,
+    "h": 10
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select gleichzeitig as \"gleichzeitig\", einheiten as \"Einheiten\" from analytik.tageswerte where $__timeFilter(tag) and projektart in ($projektart) and projekt in ($projekt) order by 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Ein Punkt je Projekt und Tag",
+   "options": {
+    "mapping": "auto",
+    "series": [
+     {}
+    ],
+    "legend": {
+     "showLegend": false
+    }
+   },
+   "id": 21
+  },
+  {
+   "type": "timeseries",
+   "title": "Agenten und Einheiten je Tag",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 15,
+    "y": 44,
+    "w": 9,
+    "h": 10
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "time_series",
+     "rawSql": "select tag as time, sum(gleichzeitig) as \"gleichzeitig (Ø Agenten)\", sum(einheiten) as \"Einheiten\" from analytik.tageswerte where $__timeFilter(tag) and projektart in ($projektart) and projekt in ($projekt) group by 1 order by 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "drawStyle": "bars",
+      "fillOpacity": 60
+     }
+    },
+    "overrides": []
+   },
+   "id": 22
+  },
+  {
+   "type": "table",
+   "title": "Wo geht die Zeit hin? (Median je Woche, Stunden)",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 54,
+    "w": 24,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select to_char(date_trunc('week', a.angenommen), 'YYYY-MM-DD') as \"Woche\", count(*) as \"angenommen\", round(extract(epoch from percentile_cont(0.5) within group (order by a.erste_reservierung - a.erstellt)) / 3600, 1) as \"bis ein Agent anfängt\", round(extract(epoch from percentile_cont(0.5) within group (order by a.erste_einreichung - a.erste_reservierung)) / 3600, 1) as \"Bearbeitung\", round((percentile_cont(0.5) within group (order by e.pruefung_s) / 3600)::numeric, 1) as \"Prüfstraße\", round((percentile_cont(0.5) within group (order by e.lead_reaktion_s) / 3600)::numeric, 1) as \"Bewertung\", round(extract(epoch from percentile_cont(0.5) within group (order by a.gemerged - a.angenommen)) / 3600, 1) as \"bis ins Repo\" from analytik.aufgaben a join analytik.einreichungen e on e.aufgabe = a.aufgabe and e.urteil = 'annehmen' where a.angenommen is not null and $__timeFilter(a.angenommen) and a.projektart in ($projektart) and a.projekt in ($projekt) group by 1 order by 1 desc"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Die größte Zahl zeigt, wo Arbeit steht. Bewertung hoch: Officers; bis ein Agent anfängt hoch: zu wenige Mitstreiter mit passenden Fähigkeiten.",
+   "id": 23
+  },
+  {
+   "type": "row",
+   "title": "Ablauf und Qualität",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 62,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [],
+   "id": 24
+  },
+  {
    "type": "table",
    "title": "Durchlauf je Stufe und Fähigkeit",
    "datasource": {
@@ -712,7 +852,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 44,
+    "y": 63,
     "w": 14,
     "h": 9
    },
@@ -734,7 +874,7 @@
     "overrides": []
    },
    "description": "Reservierungen ohne Ergebnis: abgebrochen oder abgelaufen. Viele davon sprechen für unklare Aufgabentexte.",
-   "id": 20
+   "id": 25
   },
   {
    "type": "table",
@@ -745,7 +885,7 @@
    },
    "gridPos": {
     "x": 14,
-    "y": 44,
+    "y": 63,
     "w": 10,
     "h": 9
    },
@@ -767,7 +907,7 @@
     "overrides": []
    },
    "description": "Prüfung: von der Einreichung bis zum Ergebnis, inklusive Wartezeit in der Warteschlange. Lead-Antwort: vom Prüfergebnis bis zur Bewertung.",
-   "id": 21
+   "id": 26
   },
   {
    "type": "table",
@@ -778,7 +918,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 53,
+    "y": 72,
     "w": 12,
     "h": 7
    },
@@ -800,7 +940,7 @@
     "overrides": []
    },
    "description": "Unberührte Aufgaben: zu schwer, zu unklar oder keine passenden Agenten. Unabhängig vom Zeitraum.",
-   "id": 22
+   "id": 27
   },
   {
    "type": "table",
@@ -811,7 +951,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 53,
+    "y": 72,
     "w": 12,
     "h": 7
    },
@@ -833,7 +973,7 @@
     "overrides": []
    },
    "description": "Seit Beginn, unabhängig vom Zeitraum und den Filtern.",
-   "id": 23
+   "id": 28
   },
   {
    "type": "row",
@@ -841,12 +981,12 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 60,
+    "y": 79,
     "w": 24,
     "h": 1
    },
    "panels": [],
-   "id": 24
+   "id": 29
   },
   {
    "type": "timeseries",
@@ -857,7 +997,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 61,
+    "y": 80,
     "w": 14,
     "h": 8
    },
@@ -878,7 +1018,7 @@
     "defaults": {},
     "overrides": []
    },
-   "id": 25
+   "id": 30
   },
   {
    "type": "barchart",
@@ -889,7 +1029,7 @@
    },
    "gridPos": {
     "x": 14,
-    "y": 61,
+    "y": 80,
     "w": 10,
     "h": 8
    },
@@ -914,7 +1054,7 @@
    "options": {
     "xField": "stunde"
    },
-   "id": 26
+   "id": 31
   }
  ]
 }

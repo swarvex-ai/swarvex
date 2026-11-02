@@ -128,6 +128,34 @@ panel("table", "Schwarm je Projekt",
           from analytik.schwarm where projektart in ($projektart) and projekt in ($projekt) order by agenten_stunden desc""", 8, 16, 10)
 weiter(10)
 
+# ---------- Skalierung ----------
+zeile("Skalierung: wächst der Durchsatz mit den Agenten?")
+text("So lesen", """Je Projekt und Tag ein Punkt: **gleichzeitig arbeitende Agenten** (Agentenstunden ÷ 24) gegen **erledigte Einheiten** (angenommene Aufgaben, nach Stufe gewichtet: A 1, B 2, C 3, D 5).
+Steigen die Punkte mit den Agenten mit, funktioniert die Koordination. Flacht die Wolke ab, bremst etwas: meist die Bewertung (Officers), fehlender Nachschub an freien Aufgaben oder Abhängigkeiten.
+Alles gemessen, keine Schätzungen.""", 0, 6, 10)
+panel("xychart", "Gleichzeitige Agenten gegen Einheiten je Tag",
+      """select gleichzeitig as "gleichzeitig", einheiten as "Einheiten" from analytik.tageswerte
+         where $__timeFilter(tag) and projektart in ($projektart) and projekt in ($projekt) order by 1""", 6, 9, 10,
+      optionen={"mapping": "auto", "series": [{}], "legend": {"showLegend": False}},
+      beschreibung="Ein Punkt je Projekt und Tag")
+panel("timeseries", "Agenten und Einheiten je Tag",
+      """select tag as time, sum(gleichzeitig) as "gleichzeitig (Ø Agenten)", sum(einheiten) as "Einheiten"
+         from analytik.tageswerte where $__timeFilter(tag) and projektart in ($projektart) and projekt in ($projekt) group by 1 order by 1""",
+      15, 9, 10, fmt="time_series", felder={"custom": {"drawStyle": "bars", "fillOpacity": 60}})
+weiter(10)
+panel("table", "Wo geht die Zeit hin? (Median je Woche, Stunden)",
+      f"""select to_char(date_trunc('week', a.angenommen), 'YYYY-MM-DD') as "Woche", count(*) as "angenommen",
+          round(extract(epoch from percentile_cont(0.5) within group (order by a.erste_reservierung - a.erstellt)) / 3600, 1) as "bis ein Agent anfängt",
+          round(extract(epoch from percentile_cont(0.5) within group (order by a.erste_einreichung - a.erste_reservierung)) / 3600, 1) as "Bearbeitung",
+          round((percentile_cont(0.5) within group (order by e.pruefung_s) / 3600)::numeric, 1) as "Prüfstraße",
+          round((percentile_cont(0.5) within group (order by e.lead_reaktion_s) / 3600)::numeric, 1) as "Bewertung",
+          round(extract(epoch from percentile_cont(0.5) within group (order by a.gemerged - a.angenommen)) / 3600, 1) as "bis ins Repo"
+          from analytik.aufgaben a join analytik.einreichungen e on e.aufgabe = a.aufgabe and e.urteil = 'annehmen'
+          where a.angenommen is not null and $__timeFilter(a.angenommen) and a.projektart in ($projektart) and a.projekt in ($projekt)
+          group by 1 order by 1 desc""", 0, 24, 8,
+      beschreibung="Die größte Zahl zeigt, wo Arbeit steht. Bewertung hoch: Officers; bis ein Agent anfängt hoch: zu wenige Mitstreiter mit passenden Fähigkeiten.")
+weiter(8)
+
 # ---------- Lead ----------
 bereich("betrieb")
 zeile("Lead-Bilanz und Officers (letzte 30 Tage)")
