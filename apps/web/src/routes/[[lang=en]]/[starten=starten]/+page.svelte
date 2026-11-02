@@ -248,7 +248,7 @@
   .leiste .jetzt { color: var(--text); font-weight: 500; }
   .leiste .jetzt span { background: var(--vision); border-color: var(--vision); color: var(--auf-vision); }
   .leiste .erledigt span { border-color: var(--vision); color: var(--vision); }
-  .karte { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: clamp(20px, 4vw, 32px); display: grid; gap: 16px; }
+  .karte { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: clamp(20px, 4vw, 32px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .karte p { margin: 0; }
   .wahl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
   .wahl button { text-align: left; display: grid; gap: 6px; padding: 14px 16px; border-radius: var(--radius-klein); border: 1px solid var(--linie-hell);
@@ -273,8 +273,8 @@
   .uebersicht dt { color: var(--leise); font-size: .88rem; }
   .uebersicht dd { margin: 0; overflow-wrap: anywhere; }
   .link { background: none; border: 0; padding: 0; color: var(--vision); font: inherit; font-size: .85rem; cursor: pointer; text-decoration: underline; margin-left: 6px; }
-  .befehle { margin: 0; padding-left: 22px; display: grid; gap: 14px; }
-  .befehle li { display: grid; gap: 6px; min-width: 0; }
+  .befehle { margin: 0; padding-left: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .befehle li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
   .auftrag { display: grid; gap: 8px; justify-items: start; }
   .auftrag pre { margin: 0; white-space: pre-wrap; font: .85rem/1.5 var(--mono); border: 1px solid var(--linie-hell); border-radius: var(--radius-klein); background: var(--graphit-2); padding: 12px 14px; width: 100%; box-sizing: border-box; }
   .knoepfe { display: flex; flex-wrap: wrap; gap: 10px; }
