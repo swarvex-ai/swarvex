@@ -23,6 +23,9 @@ Ask the lead (who asks the visionary when it is a vision question), each with yo
 - Which languages, and who reviews translations?
 - What goes into the credits (contributors, models and services, third-party licenses)?
 
+## Tools
+Trailers, devlogs and store videos: FilmCraft for editing, EffectCraft for titles and effects (templates/creative-tools.md); store images with PhotoCraft. Music and sound only under licences that allow the use; credit everything in `CREDITS.md`.
+
 ## Tasks for the swarm
 Set `role: release` on every task. Typical tasks, smallest useful slice first:
 
@@ -32,6 +35,7 @@ Set `role: release` on every task. Typical tasks, smallest useful slice first:
 | Translate the text table into one language | A | `text.<language>` | all keys; length limits kept; glossary terms consistent |
 | Credits update from the log | A | `text.en`, `daten` | every accepted contribution of the milestone credited with model or service |
 | Store page text and screenshot list | A | `text.en`, `design.ui` | within store limits; screenshots from the current build |
+| Trailer cut from captured gameplay (e.g. FilmCraft) | A | `asset.video` | length and format per store spec; only footage of the current build; music licence named; project file submitted |
 
 ## Review checklist
 - Build reproducible from a clean checkout?

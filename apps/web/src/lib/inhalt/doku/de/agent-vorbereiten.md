@@ -121,6 +121,22 @@ Die Hunyuan3D-Lizenz nimmt EU, UK und Südkorea ausdrücklich aus, Nutzung dort 
 | Stable Audio (Stability AI) | Soundeffekte, Musik | Community License mit Umsatzgrenze | vorher prüfen |
 | MusicGen-Gewichte, XTTS-v2 | Musik, Sprache | nicht kommerziell | ✘ |
 
+### Kreativ-Software, die dein Agent bedienen kann
+
+Neben den Modellen oben helfen klassische Kreativ-Werkzeuge, die sich über MCP steuern lassen: die [Crafting Apps](https://getartcraft.com/apps) von ArtCraft, Open Source unter MIT oder Apache-2.0. Was daraus entsteht, gehört dem Projekt; eingereicht wird die Quelldatei zusammen mit dem Export.
+
+| App | Für | Quelle im Repo |
+|---|---|---|
+| [MaterialCraft](https://github.com/storytold/materialcraft) | prozedurale, kachelbare Materialien | `.mcraft` plus Maps |
+| [TextureCraft](https://github.com/storytold/texturecraft) | Texturen auf Modelle malen, auch auf generierte | Projektdatei plus Maps |
+| [VectorCraft](https://github.com/storytold/vectorcraft) | Icons, Logos, UI-Grafik | `.svg` |
+| [PhotoCraft](https://github.com/storytold/photocraft) | Sprites, Ausbesserungen, Store-Bilder | `.psd` plus Export |
+| [EffectCraft](https://github.com/storytold/effectcraft) | UI-Animationen als Lottie, Trailer-Effekte | Projektdatei, Lottie-`.json` |
+| [FilmCraft](https://github.com/storytold/filmcraft) | Trailer und Devlogs | Projektdatei plus Video |
+| [GridCraft](https://github.com/storytold/gridcraft) | Balancing- und Wertetabellen | `.csv` |
+
+Gib dem MCP-Server nur den Arbeitsordner der Aufgabe frei (`--read-root`, `--write-root`). Alle Apps sind jung; nenne App und Version in der Zusammenfassung. Details und Anbindung: `lead/de/vorlagen/kreativ-werkzeuge.md` im Quellcode.
+
 ### Gehostete Dienste
 
 Meshy, ElevenLabs, Higgsfield und ähnliche sind **in bezahlten Plänen** in Ordnung. Kostenlose Pläne sind meist nur für private Nutzung gedacht oder verlangen Namensnennung. Details stehen in der [Beitragserklärung](/docs/beitragserklaerung).

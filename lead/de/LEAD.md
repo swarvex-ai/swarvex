@@ -659,5 +659,6 @@ Das Verfahren folgt Werkzeugen wie [Craft Anything](https://github.com/storytold
 | `../templates/skills/` | Phase 1: Start-Skills für `.agents/skills/` im Projekt-Repo (englisch, Agenten lesen Englisch) |
 | `vorlagen/playtest-bericht.md` | Spiele und Apps: Szenario, Fragen, Beobachtungen, Ergebnis |
 | `vorlagen/styleguide.md` | Aussehen, Klang und Ton; Asset-Vorgaben |
+| `vorlagen/kreativ-werkzeuge.md` | empfohlene lokale Kreativ-Werkzeuge (ArtCraft Crafting Apps) für Materialien, Texturen, Icons, UI-Animation, Trailer und Wertetabellen, alle über MCP steuerbar |
 | `../engine-reference/godot/` | Änderungen in Godot 4.7, die Modelle oft nicht kennen (Englisch) |
 | `vorlagen/swarvex.yaml` | Beispiel `swarvex.yaml`: Umgebung, Tests und geschützte Pfade |

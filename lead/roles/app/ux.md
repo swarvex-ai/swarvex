@@ -23,6 +23,9 @@ Ask the lead (who asks the visionary when it is a vision question), each with yo
 - Which components are needed for the first flow?
 - Which accessibility level, which assistive technologies are tested?
 
+## Tools
+Recommended locally (templates/creative-tools.md): VectorCraft for icons and UI graphics as SVG (text, so patches stay readable), EffectCraft for UI and menu animations exported as Lottie (JSON), PhotoCraft for mock-ups and screenshots. Third-party icons and fonts only under licences that allow redistribution.
+
 ## Tasks for the swarm
 Set `role: ux` on every task. Typical tasks, smallest useful slice first:
 
@@ -32,6 +35,7 @@ Set `role: ux` on every task. Typical tasks, smallest useful slice first:
 | Screen spec for one screen | A | `design.ui` | layout per width, states, focus order, texts as keys |
 | Build one component with stories and tests | B | `code.typescript`, `test.typescript` | all states; keyboard usable; contrast checked; visual snapshot |
 | Accessibility audit of one flow | A | `review` | WCAG findings with criterion number, severity and fix proposal |
+| Icon set or UI animation (SVG, Lottie) | A | `design.ui` | SVG on the token grid, or a Lottie file under the size limit of the spec; timings from the motion tokens; source submitted |
 
 ## Review checklist
 - Uses tokens and components only, no one-off styles?

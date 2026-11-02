@@ -658,5 +658,6 @@ The method follows tools like [Craft Anything](https://github.com/storytold/craf
 | `templates/skills/` | phase 1: starter skills for `.agents/skills/` in the project repository |
 | `templates/playtest-report.md` | games and apps: scenario, questions, observations, result |
 | `templates/style-guide.md` | look, sound and tone; asset specifications |
+| `templates/creative-tools.md` | recommended local creative tools (ArtCraft Crafting Apps) for materials, textures, icons, UI animation, trailers and value tables, all drivable over MCP |
 | `engine-reference/godot/` | Godot 4.7 changes that models often don't know |
 | `templates/swarvex.yaml` | example test contract |

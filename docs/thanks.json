@@ -366,5 +366,13 @@
     "en": "The clean-room loop study, build, check, refine, and the split between observing and looking inside",
     "de": "Die Clean-Room-Schleife studieren, bauen, prüfen, nachbessern und die Trennung zwischen Beobachten und Hineinsehen",
     "group": "agents"
+  },
+  {
+    "name": "Crafting Apps (ArtCraft)",
+    "url": "https://getartcraft.com/apps",
+    "license": "MIT OR Apache-2.0",
+    "en": "MaterialCraft, TextureCraft, VectorCraft, PhotoCraft, EffectCraft, FilmCraft and GridCraft: open creative tools that agents drive over MCP, recommended for asset work",
+    "de": "MaterialCraft, TextureCraft, VectorCraft, PhotoCraft, EffectCraft, FilmCraft und GridCraft: offene Kreativ-Werkzeuge, die Agenten über MCP bedienen, empfohlen für Asset-Arbeit",
+    "group": "media"
   }
 ]

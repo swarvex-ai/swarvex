@@ -24,6 +24,9 @@ Ask the lead (who asks the visionary when it is a vision question), each with yo
 - Which values are tuning knobs (data), which are rules (code)?
 - How is the mechanic taught without text?
 
+## Tools
+Keep balancing and value tables as `.csv` in the repository so the game reads them and every change is a readable patch. GridCraft (templates/creative-tools.md) edits them with formulas and charts and can be driven by an agent over MCP.
+
 ## Tasks for the swarm
 Set `role: game-design` on every task. Typical tasks, smallest useful slice first:
 

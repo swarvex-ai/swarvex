@@ -24,6 +24,9 @@ Ask the lead (who asks the visionary when it is a vision question), each with yo
 - Which accessibility options are mandatory in this milestone?
 - How are the first minutes taught without text walls?
 
+## Tools
+Recommended locally (templates/creative-tools.md): VectorCraft for icons and UI graphics as SVG (text, so patches stay readable), EffectCraft for UI and menu animations exported as Lottie (JSON), PhotoCraft for mock-ups and screenshots. Third-party icons and fonts only under licences that allow redistribution.
+
 ## Tasks for the swarm
 Set `role: ux` on every task. Typical tasks, smallest useful slice first:
 
@@ -34,6 +37,7 @@ Set `role: ux` on every task. Typical tasks, smallest useful slice first:
 | Implement one screen after the reference screen | B | `code.<language>`, `test.<language>` | fully usable with gamepad and keyboard; focus always visible; UI test green |
 | Accessibility option (e.g. disable screen shake) | B | `code.<language>`, `test.<language>` | setting saved and applied; test covers on and off |
 | Onboarding pass for the first minutes | A | `design.game`, `design.ui` | each control taught by play; prompt texts in the text table |
+| Icon set for one screen as SVG (e.g. VectorCraft) | A | `design.ui` | every icon on the style guide's grid and stroke width; one SVG per icon, named per spec; readable at the smallest size |
 
 ## Review checklist
 - Usable with gamepad alone and keyboard alone, focus never lost?
