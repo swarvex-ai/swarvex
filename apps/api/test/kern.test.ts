@@ -4,7 +4,7 @@ import { migrieren, verbinden, type Db } from "../src/db.ts";
 import { ketteVerifizieren } from "../src/ereignisse.ts";
 import * as k from "../src/aufgaben.ts";
 import { kennzahlen, projektListe } from "../src/kennzahlen.ts";
-import { projektAnlegen, repoVerbinden, type NeuesProjekt } from "../src/projekte.ts";
+import { projektAnlegen, projektPruefen, repoVerbinden, type NeuesProjekt } from "../src/projekte.ts";
 import * as g from "../src/gegenpruefung.ts";
 
 let db: Db;
@@ -256,7 +256,11 @@ describe("Projekt starten (Assistent)", () => {
     await expect(projektAnlegen(db, { ...neu, license_code: "proprietary" }, m)).rejects.toThrow(/OSI/);
     await expect(projektAnlegen(db, { ...neu, slug: "A" }, m)).rejects.toThrow(/slug/);
     await expect(projektAnlegen(db, { ...neu, procedure: "clean_room", original: { name: "X" } }, m)).rejects.toThrow(/clean-room/);
+    await expect(projektAnlegen(db, { ...neu, procedure: "clean_room", original: { name: "X", acquisition: "gekauft", depth: "inspect" } }, m)).rejects.toThrow(/legal_basis/);
+    await expect(projektAnlegen(db, { ...neu, procedure: "clean_room", original: { name: "X", acquisition: "gekauft", target: "amiga" } }, m)).rejects.toThrow(/target/);
     await expect(projektAnlegen(db, { ...neu, slug: "test" }, m)).rejects.toThrow(/taken/);
+    // nur beobachten: ohne Rechtsgrundlage und ohne Umfang zulässig
+    expect(projektPruefen({ ...neu, procedure: "clean_room", original: { name: "X", acquisition: "gekauft", target: "windows", depth: "observe" } })).toEqual([]);
     const r = await projektAnlegen(db, neu, m);
     const rollen = (await db.query("select rolle from projekt_rollen where projekt_id = $1 and mensch_id = $2 order by rolle", [r.projekt_id, m])).rows.map((x) => x.rolle);
     expect(rollen).toEqual(["lead", "visionaer"]);

@@ -7,7 +7,7 @@ A swarm is only better than a single agent when its work is divided sensibly. Re
 | Game | [game/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/game): game design, tech, art, audio, narrative, UX, QA, release |
 | App (web, mobile, desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): product, UX, frontend, backend, privacy and security, QA and release |
 | Tool, library, web service | [software/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/software): interface, core, platform, docs, quality |
-| Clean-room rebuild | [cleanroom/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/cleanroom): analyst, specification reviewer, builder, verifier, compliance (each officer bound to one room) |
+| Clean-room rebuild | [cleanroom/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/cleanroom): analyst, specification reviewer, builder, verifier, compliance (each officer bound to one room), plus the analysis toolkit (tools by kind of original and depth; advice, not an officer area) |
 
 A hybrid project takes the cards of both types. Add roles the project needs (e.g. `economy` for a game with trading, `ml` for an app with a model); keep the card format.
 

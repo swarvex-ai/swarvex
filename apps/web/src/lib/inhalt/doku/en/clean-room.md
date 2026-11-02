@@ -28,6 +28,25 @@ The centre of the specification is the **obligation**: one claim in our own word
 
 Craft Anything's Deep mode and rebuilding by the same person are never used for swarvex output.
 
+
+The visionary sets the depth when creating the project in the wizard; it is the upper limit for all analysis tasks of the project. A project that only observes never gets tasks that look inside.
+
+## Analysis tools
+
+The lead of a clean-room project gets a toolkit (`lead/roles/cleanroom/toolkit.md`), sorted by the kind of original and the depth. [REA](https://github.com/morluto/rea) is the front door: it wraps most of the tools itself and returns every result as evidence with its origin, which is exactly what obligations and check rounds need. An agent's explanation is a lead, not evidence.
+
+| Original | observe | inspect (if allowed) |
+|---|---|---|
+| Windows program | use and record, [Detect It Easy](https://github.com/horsicq/Detect-It-Easy) ("what is it built with?") | [Ghidra](https://github.com/NationalSecurityAgency/ghidra) through REA, [mcp-windbg](https://github.com/svnscha/mcp-windbg) for runtime state |
+| Linux or macOS program | process and UI recordings | Ghidra through REA, [pwndbg](https://github.com/pwndbg/pwndbg) |
+| Android app | emulator, screen and log recordings | [JADX](https://github.com/skylot/jadx) and [Apktool](https://github.com/iBotPeaches/Apktool) through REA |
+| Web or Electron app | browser scenarios, network captures | shipped bundles through REA |
+| Game | play, record, own save files, measured values | Unity and Godot packages through REA, Ghidra |
+| Firmware or device | visible behaviour, protocol on the wire | [unblob](https://github.com/onekey-sec/unblob), then [Binwalk](https://github.com/ReFirmLabs/binwalk) through REA |
+| File format or protocol | many files you produced, one setting varied at a time | reading and writing code only for open details |
+
+Everything runs only on the analyst's own machine, never in the runner's sandbox and never in the repository. Not used: exploit tools, kernel debuggers, and anything that circumvents protection or unpacks packers.
+
 ## The wall
 
 The platform enforces it per person and project:
@@ -47,7 +66,7 @@ The platform never sees the original itself. Analysts examine their own copy on 
 
 ## Legal framework
 
-Clean room is a recognised method, not a blank cheque. Whether a project is permissible depends on the original, its licence and the law of the country. In the EU, the Software Directive lets lawful users observe and study how a program works (Art. 5(3)); decompilation for interoperability is subject to narrower rules (Art. 6). Every clean-room project therefore states its legal basis (`original.legal_basis`) and which parts may be inspected. Before the first project goes public, a legal professional reviews the process and the texts.
+Clean room is a recognised method, not a blank cheque. Whether a project is permissible depends on the original, its licence and the law of the country. In the EU, the Software Directive lets lawful users observe and study how a program works (Art. 5(3)); decompilation for interoperability is subject to narrower rules (Art. 6). Every clean-room project therefore states how the original was lawfully obtained (`original.acquisition`); a project that looks inside (`original.depth` inspect) also states its legal basis (`original.legal_basis`) and which parts may be inspected (`original.inspect`). Before the first project goes public, a legal professional reviews the process and the texts.
 
 ## For the lead
 

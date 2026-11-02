@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Assistent „Projekt starten“: Lead wählen, Projektart, Eckdaten, mit GitHub anmelden, anlegen (POST /api/account/projects, apps/api/src/projekte.ts),
+  // Assistent „Projekt starten“: Lead wählen, Weg (neu oder Clean-Room-Nachbau) und Projektart, bei Clean Room das Original,
+  // Eckdaten, mit GitHub anmelden, anlegen (POST /api/account/projects, apps/api/src/projekte.ts),
   // dann die Befehle für genau dieses Lead-Paket (/lead/<paket>.md). Eingaben überleben die Anmeldung in sessionStorage.
   import { onMount } from "svelte";
   import Seo from "$lib/components/Seo.svelte";
@@ -10,6 +11,8 @@
   const s = $derived(sprache());
   const t = $derived(tx().starten);
   const ARTEN = ["game", "app", "website", "service", "tool", "library", "plugin"];
+  // Art des Originals: wählt den Werkzeug-Pfad im Lead-Paket (lead/roles/cleanroom/toolkit.md)
+  const VORBILDER = ["windows", "linux_macos", "android", "web", "game", "firmware", "format_protocol"];
   const MODELL: Record<string, string> = { claude: "Claude Opus 5.5", codex: "", andere: "" };
   const STACKS: Record<string, string[]> = {
     game: ["godot-4", "unity-6", "bevy", "phaser", "love2d"], app: ["sveltekit", "react", "flutter", "tauri", "react-native"],
@@ -25,23 +28,24 @@
   const ASSETS = ["CC BY-SA 4.0", "CC BY 4.0", "CC0 1.0", "OFL-1.1"];
   const SPEICHER = "swarvex-starten";
 
-  type Daten = { agent: string; modell: string; type: string; cleanroom: boolean;
-                 original: { name: string; version: string; acquisition: string; goal: string; legal_basis: string; inspect: string };
+  type Daten = { agent: string; modell: string; type: string; cleanroom: boolean; weg: "" | "neu" | "nachbau";
+                 original: { name: string; version: string; acquisition: string; target: string; depth: "observe" | "inspect"; goal: string; legal_basis: string; inspect: string };
                  name: string; slug: string; slugFrei: boolean; vision_short: string; vision_md: string; engine: string;
                  license_code: string; license_assets: string; goal: string; repo_url: string };
-  let d = $state<Daten>({ agent: "claude", modell: MODELL.claude, type: "", cleanroom: false,
-    original: { name: "", version: "", acquisition: "", goal: "", legal_basis: "", inspect: "" },
+  let d = $state<Daten>({ agent: "claude", modell: MODELL.claude, type: "", cleanroom: false, weg: "",
+    original: { name: "", version: "", acquisition: "", target: "", depth: "observe", goal: "", legal_basis: "", inspect: "" },
     name: "", slug: "", slugFrei: false, vision_short: "", vision_md: "", engine: "open", license_code: "", license_assets: "", goal: "", repo_url: "" });
   let schritt = $state(0);
   let angemeldet = $state<boolean | null>(null);
   let arbeitet = $state(false);
   let fehler = $state("");
-  let ergebnis = $state<{ slug: string; name: string; paket: string; type: string; cleanroom: boolean; agent: string } | null>(null);
+  // cleanroom: kurze Beschreibung des Originals für den Startauftrag, leer bei neuen Projekten
+  let ergebnis = $state<{ slug: string; name: string; paket: string; type: string; cleanroom: string; agent: string } | null>(null);
 
   onMount(async () => {
     try {
       const alt = JSON.parse(sessionStorage.getItem(SPEICHER) ?? "null");
-      if (alt?.d) { d = { ...d, ...alt.d }; schritt = alt.schritt ?? 0; ergebnis = alt.ergebnis ?? null; }
+      if (alt?.d) { d = { ...d, ...alt.d, original: { ...d.original, ...alt.d.original } }; schritt = alt.schritt ?? 0; ergebnis = alt.ergebnis ?? null; }
     } catch { /* ohne Speicher beginnt der Assistent von vorn */ }
     try { const r = await fetch("/api/account", { cache: "no-store" }); r.body?.cancel(); angemeldet = r.ok; } catch { angemeldet = false; }
   });
@@ -55,6 +59,7 @@
     .normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
   function nameGeaendert() { if (!d.slugFrei) d.slug = ausName(d.name); }
   function agentWaehlen(a: string) { d.agent = a; if (!d.modell || Object.values(MODELL).includes(d.modell)) d.modell = MODELL[a]; }
+  function wegWaehlen(w: "neu" | "nachbau") { d.weg = w; d.cleanroom = w === "nachbau"; }
   function artWaehlen(a: string) {
     if (!d.license_code || d.license_code === LIZENZ[d.type]?.[0]) d.license_code = LIZENZ[a][0];
     if (!d.license_assets || d.license_assets === LIZENZ[d.type]?.[1]) d.license_assets = LIZENZ[a][1];
@@ -65,29 +70,38 @@
   const leadModell = $derived([AGENT_NAME[d.agent], d.modell.trim()].filter(Boolean).join(" · "));
   const slugOk = $derived(/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(d.slug));
   const repoOk = $derived(!d.repo_url || /^https:\/\/(github\.com|codeberg\.org|gitlab\.com)\/[\w.-]+\/[\w.-]+\/?$/.test(d.repo_url.trim()));
-  const fertig = $derived([
-    leadModell.length > 0 && d.modell.trim().length > 0,
-    !!d.type && (!d.cleanroom || !!(d.original.name.trim() && d.original.acquisition.trim() && d.original.legal_basis.trim())),
-    !!d.name.trim() && slugOk && !!d.vision_short.trim() && !!d.engine.trim() && !!d.goal.trim() && repoOk,
-  ]);
+  // Schrittfolge: Clean Room bekommt einen eigenen Schritt „Original“
+  type Schritt = "lead" | "art" | "original" | "projekt" | "anlegen" | "los";
+  const folge = $derived<Schritt[]>(["lead", "art", ...(d.cleanroom ? ["original" as const] : []), "projekt", "anlegen", "los"]);
+  const id = $derived(folge[Math.min(schritt, folge.length - 1)]);
+  const o = $derived(d.original);
+  const fertig = $derived<Partial<Record<Schritt, boolean>>>({
+    lead: leadModell.length > 0 && d.modell.trim().length > 0,
+    art: !!d.weg && !!d.type,
+    original: !!(o.name.trim() && o.acquisition.trim() && o.target) && (o.depth === "observe" || !!(o.inspect.trim() && o.legal_basis.trim())),
+    projekt: !!d.name.trim() && slugOk && !!d.vision_short.trim() && !!d.engine.trim() && !!d.goal.trim() && repoOk,
+  });
+  const zu = (x: Schritt) => (schritt = folge.indexOf(x));
 
-  function weiter() { fehler = ""; if (fertig[schritt] === false) { fehler = t.anlegen.pruefen; return; } schritt += 1; scrollTo({ top: 0 }); }
+  function weiter() { fehler = ""; if (fertig[id] === false) { fehler = t.anlegen.pruefen; return; } schritt += 1; scrollTo({ top: 0 }); }
   function zurueck() { fehler = ""; schritt = Math.max(0, schritt - 1); }
 
   async function anlegen() {
     arbeitet = true; fehler = "";
-    const o = d.original;
     const body = { slug: d.slug, name: d.name.trim(), vision_short: d.vision_short.trim(), vision_md: d.vision_md.trim(), engine: d.engine.trim(),
       license_code: d.license_code, license_assets: d.license_assets, repo_url: d.repo_url.trim().replace(/\/$/, "") || null, lead_model: leadModell,
       goal: d.goal.trim(), type: d.type, procedure: d.cleanroom ? "clean_room" : "standard",
-      original: d.cleanroom ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v)) : null };
+      // Bei „nur beobachten“ gehen Umfang und Rechtsgrundlage nicht mit, auch wenn vorher etwas eingetragen war
+      original: d.cleanroom ? Object.fromEntries(Object.entries(d.original).map(([k, v]) => [k, v.trim()])
+        .filter(([k, v]) => v && (d.original.depth === "inspect" || !["inspect", "legal_basis"].includes(k)))) : null };
     try {
       const r = await fetch("/api/account/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       const j = await r.json().catch(() => ({}));
       if (r.status === 401) { angemeldet = false; return; }
       if (!r.ok) { fehler = j.error ?? t.anlegen.fehler; return; }
-      ergebnis = { slug: j.slug, name: body.name, paket: `${d.type}${d.cleanroom ? "-cleanroom" : ""}`, type: d.type, cleanroom: d.cleanroom, agent: d.agent };
-      schritt = 4;
+      ergebnis = { slug: j.slug, name: body.name, paket: `${d.type}${d.cleanroom ? "-cleanroom" : ""}`, type: d.type, agent: d.agent,
+        cleanroom: d.cleanroom ? `${d.original.name}, ${t.original.arten[d.original.target][0]}, ${t.original.tiefe[d.original.depth][0]}` : "" };
+      zu("los");
     } catch { fehler = t.anlegen.fehler; } finally { arbeitet = false; }
   }
   function neuesProjekt() { ergebnis = null; schritt = 0; d = { ...d, name: "", slug: "", slugFrei: false, vision_short: "", vision_md: "", goal: "", repo_url: "" }; }
@@ -112,13 +126,13 @@
   </header>
 
   <ol class="leiste" aria-label={t.h1}>
-    {#each t.schritte as name, i}
-      <li class:jetzt={i === schritt} class:erledigt={i < schritt} aria-current={i === schritt ? "step" : undefined}><span>{i + 1}</span>{name}</li>
+    {#each folge as x, i}
+      <li class:jetzt={i === schritt} class:erledigt={i < schritt} aria-current={i === schritt ? "step" : undefined}><span>{i + 1}</span>{t.schritte[x]}</li>
     {/each}
   </ol>
 
   <div class="karte">
-    {#if schritt === 0}
+    {#if id === "lead"}
       <h2>{t.lead.h2}</h2>
       <p class="leise">{t.lead.text}</p>
       <div class="wahl" role="radiogroup" aria-label={t.lead.h2}>
@@ -131,9 +145,18 @@
       <label>{t.lead.modell}<input type="text" maxlength="80" bind:value={d.modell} placeholder={t.lead.modellHilfe} /></label>
       <p class="tipp">{t.lead.frontier}</p>
 
-    {:else if schritt === 1}
+    {:else if id === "art"}
       <h2>{t.art.h2}</h2>
-      <div class="wahl arten" role="radiogroup" aria-label={t.art.h2}>
+      <div class="wahl wege" role="radiogroup" aria-label={t.art.h2}>
+        {#each ["neu", "nachbau"] as const as w}
+          <button type="button" role="radio" aria-checked={d.weg === w} class:an={d.weg === w} onclick={() => wegWaehlen(w)}>
+            <strong>{t.art.wege[w][0]}</strong><small>{t.art.wege[w][1]}</small>
+          </button>
+        {/each}
+      </div>
+      {#if d.weg === "nachbau"}<p class="leise klein">{t.art.cleanroomText} <a href={doku("clean-room", "clean-room")}>{t.art.cleanroomMehr}</a></p>{/if}
+      <h3>{d.weg === "nachbau" ? t.art.entstehtNachbau : t.art.entsteht}</h3>
+      <div class="wahl arten" role="radiogroup" aria-label={t.art.entsteht}>
         {#each ARTEN as a}
           <button type="button" role="radio" aria-checked={d.type === a} class:an={d.type === a} onclick={() => artWaehlen(a)}>
             <strong>{t.art.arten[a][0]}</strong><small>{t.art.arten[a][1]}</small>
@@ -141,20 +164,42 @@
         {/each}
       </div>
       <p class="leise klein">{t.art.grundpaket}</p>
-      <label class="schalter"><input type="checkbox" bind:checked={d.cleanroom} /> <strong>{t.art.cleanroom}</strong></label>
-      <p class="leise klein">{t.art.cleanroomText} <a href={doku("clean-room", "clean-room")}>{t.art.cleanroomMehr}</a></p>
-      {#if d.cleanroom}
+
+    {:else if id === "original"}
+      <h2>{t.original.h2}</h2>
+      <p class="leise">{t.original.text}</p>
+      <div class="felder">
+        <label>{t.original.name}<input type="text" maxlength="120" bind:value={d.original.name} placeholder={t.original.nameHilfe} required /></label>
+        <label>{t.original.version}<input type="text" maxlength="60" bind:value={d.original.version} /></label>
+        <label class="breit">{t.original.erwerb}<input type="text" maxlength="300" bind:value={d.original.acquisition} placeholder={t.original.erwerbHilfe} required /></label>
+        <label class="breit">{t.original.ziel}<input type="text" maxlength="300" bind:value={d.original.goal} placeholder={t.original.zielHilfe} /></label>
+      </div>
+      <h3>{t.original.artH3}</h3>
+      <div class="wahl vorbilder" role="radiogroup" aria-label={t.original.artH3}>
+        {#each VORBILDER as v}
+          <button type="button" role="radio" aria-checked={d.original.target === v} class:an={d.original.target === v} onclick={() => (d.original.target = v)}>
+            <strong>{t.original.arten[v][0]}</strong><small>{t.original.arten[v][1]}</small>
+          </button>
+        {/each}
+      </div>
+      <h3>{t.original.tiefeH3}</h3>
+      <div class="wahl wege" role="radiogroup" aria-label={t.original.tiefeH3}>
+        {#each ["observe", "inspect"] as const as tf}
+          <button type="button" role="radio" aria-checked={d.original.depth === tf} class:an={d.original.depth === tf} onclick={() => (d.original.depth = tf)}>
+            <strong>{t.original.tiefe[tf][0]}{#if tf === "observe"} <span class="marke">{t.lead.empfohlen}</span>{/if}</strong><small>{t.original.tiefe[tf][1]}</small>
+          </button>
+        {/each}
+      </div>
+      {#if d.original.depth === "inspect"}
         <div class="felder">
-          <label>{t.art.original.name}<input type="text" maxlength="120" bind:value={d.original.name} required /></label>
-          <label>{t.art.original.version}<input type="text" maxlength="60" bind:value={d.original.version} /></label>
-          <label class="breit">{t.art.original.erwerb}<input type="text" maxlength="300" bind:value={d.original.acquisition} placeholder={t.art.original.erwerbHilfe} required /></label>
-          <label class="breit">{t.art.original.rechtsgrundlage}<input type="text" maxlength="300" bind:value={d.original.legal_basis} placeholder={t.art.original.rechtsgrundlageHilfe} required /></label>
-          <label class="breit">{t.art.original.ziel}<input type="text" maxlength="300" bind:value={d.original.goal} /></label>
-          <label class="breit">{t.art.original.inspizieren}<input type="text" maxlength="300" bind:value={d.original.inspect} placeholder={t.art.original.inspizierenHilfe} /></label>
+          <label class="breit">{t.original.inspizieren}<input type="text" maxlength="300" bind:value={d.original.inspect} placeholder={t.original.inspizierenHilfe} required /></label>
+          <label class="breit">{t.original.rechtsgrundlage}<input type="text" maxlength="300" bind:value={d.original.legal_basis} placeholder={t.original.rechtsgrundlageHilfe} required /></label>
         </div>
       {/if}
+      <p class="tipp">{t.original.schutz}</p>
+      <p class="leise klein">{t.original.werkzeuge}</p>
 
-    {:else if schritt === 2}
+    {:else if id === "projekt"}
       <h2>{t.projekt.h2}</h2>
       <div class="felder">
         <label>{t.projekt.name}<input type="text" maxlength="80" bind:value={d.name} oninput={nameGeaendert} required /></label>
@@ -172,12 +217,15 @@
         <label class="breit">{t.projekt.repo}<input type="url" maxlength="200" bind:value={d.repo_url} class:falsch={!repoOk} placeholder="https://github.com/…" /><small class="leise">{t.projekt.repoHilfe}</small></label>
       </div>
 
-    {:else if schritt === 3}
+    {:else if id === "anlegen"}
       <h2>{t.anlegen.h2}</h2>
       <dl class="uebersicht">
-        <div><dt>{t.anlegen.lead}</dt><dd>{leadModell} <button class="link" onclick={() => (schritt = 0)}>{t.anlegen.aendern}</button></dd></div>
-        <div><dt>{t.anlegen.art}</dt><dd>{t.art.arten[d.type][0]}{#if d.cleanroom} · {t.anlegen.cleanroom} ({d.original.name}){/if} <button class="link" onclick={() => (schritt = 1)}>{t.anlegen.aendern}</button></dd></div>
-        <div><dt>{t.projekt.name}</dt><dd><strong>{d.name}</strong> · {d.vision_short} <button class="link" onclick={() => (schritt = 2)}>{t.anlegen.aendern}</button></dd></div>
+        <div><dt>{t.anlegen.lead}</dt><dd>{leadModell} <button class="link" onclick={() => zu("lead")}>{t.anlegen.aendern}</button></dd></div>
+        <div><dt>{t.anlegen.art}</dt><dd>{t.art.arten[d.type][0]}{#if d.cleanroom} · {t.anlegen.cleanroom}{/if} <button class="link" onclick={() => zu("art")}>{t.anlegen.aendern}</button></dd></div>
+        {#if d.cleanroom}
+          <div><dt>{t.original.h2}</dt><dd>{d.original.name}{#if d.original.version} {d.original.version}{/if} · {t.original.arten[d.original.target]?.[0]} · {t.original.tiefe[d.original.depth][0]} <button class="link" onclick={() => zu("original")}>{t.anlegen.aendern}</button></dd></div>
+        {/if}
+        <div><dt>{t.projekt.name}</dt><dd><strong>{d.name}</strong> · {d.vision_short} <button class="link" onclick={() => zu("projekt")}>{t.anlegen.aendern}</button></dd></div>
         <div><dt>{t.anlegen.adresse}</dt><dd><code>swarvex.ai{pfad(s, tx().projekte.pfad)}/{d.slug}</code></dd></div>
         <div><dt>{t.anlegen.engine}</dt><dd>{d.engine}</dd></div>
         <div><dt>{t.anlegen.lizenzen}</dt><dd>{d.license_code} · {d.license_assets}</dd></div>
@@ -192,7 +240,7 @@
         <button class="knopf visionaer" disabled={arbeitet} onclick={anlegen}>{arbeitet ? t.anlegen.legtAn : t.anlegen.anlegen}</button>
       {/if}
 
-    {:else if schritt === 4 && ergebnis}
+    {:else if id === "los" && ergebnis}
       <h2>{t.los.h2(ergebnis.name)}</h2>
       <p>{t.los.text}</p>
       <ol class="befehle">
@@ -224,12 +272,12 @@
     {/if}
 
     <p class="fehler" role="alert">{fehler}</p>
-    {#if schritt < 3}
+    {#if id !== "anlegen" && id !== "los"}
       <div class="knoepfe">
         {#if schritt > 0}<button class="knopf" onclick={zurueck}>{t.zurueck}</button>{/if}
-        <button class="knopf visionaer" onclick={weiter} disabled={!fertig[schritt]}>{t.weiter}</button>
+        <button class="knopf visionaer" onclick={weiter} disabled={!fertig[id]}>{t.weiter}</button>
       </div>
-    {:else if schritt === 3}
+    {:else if id === "anlegen"}
       <div class="knoepfe"><button class="knopf" onclick={zurueck}>{t.zurueck}</button></div>
     {/if}
   </div>
@@ -252,6 +300,8 @@
   .karte { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: clamp(20px, 4vw, 32px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .karte p { margin: 0; }
   .wahl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+  .wahl.wege { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+  .wahl.wege strong { font-size: 1.05rem; }
   .wahl button { text-align: left; display: grid; gap: 6px; padding: 14px 16px; border-radius: var(--radius-klein); border: 1px solid var(--linie-hell);
                  background: var(--graphit-2); color: var(--text); font: inherit; cursor: pointer; }
   .wahl button:hover { border-color: var(--stahl); }
@@ -260,7 +310,6 @@
   .marke { font: 500 .72rem var(--mono); border: 1px solid var(--vision); color: var(--vision); border-radius: 5px; padding: 1px 6px; margin-left: 4px; vertical-align: 1px; }
   .tipp { border-left: 3px solid var(--vision); padding: 4px 0 4px 12px; color: var(--stahl); font-size: .93rem; }
   label { display: grid; gap: 4px; font-size: .92rem; }
-  .schalter { display: flex; align-items: center; gap: 10px; font-size: 1rem; margin-top: 8px; }
   .felder { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px 18px; }
   .breit { grid-column: 1 / -1; }
   input[type="text"], input[type="url"], select, textarea { min-height: 40px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--linie-hell);

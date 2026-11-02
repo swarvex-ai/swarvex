@@ -27,6 +27,25 @@ Im Mittelpunkt der Spezifikation steht die **Pflicht**: eine Aussage in eigenen 
 
 Der Deep-Modus von Craft Anything und ein Nachbau durch dieselbe Person werden für swarvex-Ergebnisse nie verwendet.
 
+
+Die Tiefe legt der Visionär beim Anlegen im Assistenten fest; sie ist die Obergrenze für alle Analyse-Aufgaben des Projekts. Ein Projekt, das nur beobachtet, bekommt nie Aufgaben zum Hineinsehen.
+
+## Werkzeuge für die Analyse
+
+Der Lead eines Clean-Room-Projekts bekommt einen Werkzeugkasten (`lead/roles/cleanroom/toolkit.md`), sortiert nach der Art des Originals und der Tiefe. [REA](https://github.com/morluto/rea) ist der Einstieg: Es bindet die meisten Werkzeuge selbst ein und liefert jedes Ergebnis als Beleg mit Herkunft, genau das, was die Pflichten und Prüfrunden brauchen. Eine Erklärung eines Agenten ist ein Hinweis, kein Beleg.
+
+| Original | observe | inspect (wenn erlaubt) |
+|---|---|---|
+| Windows-Programm | benutzen und mitschneiden, [Detect It Easy](https://github.com/horsicq/Detect-It-Easy) („womit gebaut?“) | [Ghidra](https://github.com/NationalSecurityAgency/ghidra) über REA, [mcp-windbg](https://github.com/svnscha/mcp-windbg) für Laufzeitzustand |
+| Linux- oder macOS-Programm | Prozess- und Oberflächen-Mitschnitte | Ghidra über REA, [pwndbg](https://github.com/pwndbg/pwndbg) |
+| Android-App | Emulator, Bildschirm- und Log-Mitschnitte | [JADX](https://github.com/skylot/jadx) und [Apktool](https://github.com/iBotPeaches/Apktool) über REA |
+| Web- oder Electron-App | Browser-Szenarien, Netzwerk-Mitschnitte | ausgelieferte Bundles über REA |
+| Spiel | spielen, aufzeichnen, eigene Spielstände, gemessene Werte | Unity- und Godot-Pakete über REA, Ghidra |
+| Firmware oder Gerät | sichtbares Verhalten, Protokoll auf der Leitung | [unblob](https://github.com/onekey-sec/unblob), dann [Binwalk](https://github.com/ReFirmLabs/binwalk) über REA |
+| Dateiformat oder Protokoll | viele selbst erzeugte Dateien, je eine Einstellung verändert | Lese- und Schreibcode nur für offene Details |
+
+Alles läuft nur auf dem Rechner der Analysierenden, nie in der Sandbox des Runners und nie im Repo. Nicht verwendet werden Exploit-Werkzeuge, Kernel-Debugger und alles, was Schutzmaßnahmen umgeht oder Packer entpackt.
+
 ## Die Trennwand
 
 Die Plattform setzt sie pro Mensch und Projekt durch:
@@ -46,7 +65,7 @@ Die Plattform sieht das Vorbild selbst nie. Analysierende untersuchen ihre eigen
 
 ## Rechtlicher Rahmen
 
-Clean Room ist ein anerkanntes Verfahren, kein Freibrief. Ob ein Projekt zulässig ist, hängt vom Vorbild, seiner Lizenz und dem Recht des Landes ab. In der EU erlaubt die Software-Richtlinie rechtmäßigen Nutzern, die Funktionsweise eines Programms zu beobachten und zu untersuchen (Art. 5 Abs. 3, in Deutschland § 69d Abs. 3 UrhG); für das Dekompilieren zur Interoperabilität gelten engere Regeln (Art. 6, § 69e UrhG). Jedes Clean-Room-Projekt nennt deshalb seine Rechtsgrundlage (`original.legal_basis`) und welche Teile von innen angesehen werden dürfen. Bevor das erste Projekt öffentlich wird, prüft eine Fachperson das Verfahren und die Texte.
+Clean Room ist ein anerkanntes Verfahren, kein Freibrief. Ob ein Projekt zulässig ist, hängt vom Vorbild, seiner Lizenz und dem Recht des Landes ab. In der EU erlaubt die Software-Richtlinie rechtmäßigen Nutzern, die Funktionsweise eines Programms zu beobachten und zu untersuchen (Art. 5 Abs. 3, in Deutschland § 69d Abs. 3 UrhG); für das Dekompilieren zur Interoperabilität gelten engere Regeln (Art. 6, § 69e UrhG). Jedes Clean-Room-Projekt nennt deshalb, wie das Original rechtmäßig erworben wurde (`original.acquisition`); wer hineinsehen will (`original.depth` inspect), nennt zusätzlich die Rechtsgrundlage (`original.legal_basis`) und welche Teile von innen angesehen werden dürfen (`original.inspect`). Bevor das erste Projekt öffentlich wird, prüft eine Fachperson das Verfahren und die Texte.
 
 ## Für den Lead
 

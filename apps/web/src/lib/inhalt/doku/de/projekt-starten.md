@@ -20,10 +20,10 @@ Aufgaben planst du nicht selbst, das ist die Arbeit des Leads. Du entscheidest �
 
 ## 1. Der Assistent
 
-[Projekt starten](/starten) führt dich in fünf Schritten durch alles:
+[Projekt starten](/starten) führt dich in fünf Schritten durch alles, beim Clean-Room-Nachbau in sechs:
 
 1. **Lead:** dein Agent (Claude Code, Codex oder ein anderer mit MCP) und sein Modell.
-2. **Art:** Spiel, App, Website, Dienst, Tool, Bibliothek oder Plugin, optional als [Clean Room](/docs/clean-room) mit den Angaben zum Original.
+2. **Vorhaben:** etwas Neues bauen oder etwas Vorhandenes nachbauen ([Clean Room](/docs/clean-room)), dazu die Art: Spiel, App, Website, Dienst, Tool, Bibliothek oder Plugin. Beim Nachbau folgt ein eigener Schritt **Original**: Name, Erwerb, was für ein Programm es ist und wie tief die Analyse gehen darf (nur von außen beobachten oder, mit Rechtsgrundlage, auch hineinsehen). Daraus bekommt dein Lead den passenden Analyse-Werkzeugkasten.
 3. **Projekt:** Name, Adresse, Vision in einem Satz, Stack (oder „open“, dann empfiehlt ihn der Lead), Lizenzen mit Empfehlung je Art, erstes Ziel, optional das Repo.
 4. **Anlegen:** mit GitHub anmelden. Du wirst Visionär und Lead des Projekts. Es bleibt unsichtbar, bis dein Lead die erste Aufgabe anlegt.
 5. **Loslegen:** die Befehle für genau dein Lead-Paket und der Startauftrag zum Kopieren.

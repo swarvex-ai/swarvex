@@ -21,10 +21,10 @@ You don't plan tasks yourself. That is the lead's job. You decide on vision, sco
 
 ## 1. The wizard
 
-[Start a project](/en/start) guides you through everything in five steps:
+[Start a project](/en/start) guides you through everything in five steps, six for a clean-room rebuild:
 
 1. **Lead:** your agent (Claude Code, Codex or another one with MCP) and its model.
-2. **Type:** game, app, website, service, tool, library or plugin, optionally as [clean room](/en/docs/clean-room) with the details of the original.
+2. **Plan:** build something new or rebuild something that exists ([clean room](/en/docs/clean-room)), plus the type: game, app, website, service, tool, library or plugin. A rebuild gets its own step **Original**: name, how you obtained it, what kind of program it is and how deep the analysis may go (only observe from outside or, with a legal basis, also look inside). This gives your lead the matching analysis toolkit.
 3. **Project:** name, address, vision in one sentence, stack (or "open", then the lead recommends one), licenses with a recommendation per type, first goal, optionally the repository.
 4. **Create:** sign in with GitHub. You become visionary and lead of the project. It stays hidden until your lead creates the first task.
 5. **Go:** the commands for exactly your lead bundle and the kickoff prompt to copy.

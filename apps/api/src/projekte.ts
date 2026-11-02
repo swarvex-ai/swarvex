@@ -10,11 +10,14 @@ export const OSI_LIZENZEN = new Set(["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3
 export const FREIE_ASSET_LIZENZEN = new Set(["CC BY 4.0", "CC BY-SA 4.0", "CC0 1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "CC0-1.0", "OFL-1.1"]);
 export const PROJEKTARTEN: Record<string, string> = { game: "spiel", app: "app", website: "website", service: "dienst", tool: "tool", library: "bibliothek", plugin: "plugin", other: "sonstiges" };
 export const PROJEKTE_JE_MENSCH = 3;
+/** Art des Originals bei Clean Room: wählt den Werkzeug-Pfad (lead/roles/cleanroom/toolkit.md). */
+export const VORBILD_ARTEN = ["windows", "linux_macos", "android", "web", "game", "firmware", "format_protocol"];
+const VORBILD_FELDER = ["name", "version", "acquisition", "target", "depth", "inspect", "legal_basis", "goal"] as const;
 
 export type NeuesProjekt = {
   slug: string; name: string; vision_md: string; vision_short: string; engine: string; license_code: string; license_assets: string;
   repo_url?: string | null; lead_model: string; goal: string; type?: string; procedure?: string;
-  original?: { name?: string; version?: string; acquisition?: string; goal?: string; legal_basis?: string; inspect?: string } | null;
+  original?: { name?: string; version?: string; acquisition?: string; target?: string; depth?: string; inspect?: string; legal_basis?: string; goal?: string } | null;
 };
 
 /** Prüft ein neues Projekt; liefert die Fehler (leer = in Ordnung). */
@@ -33,9 +36,23 @@ export function projektPruefen(p: NeuesProjekt): string[] {
   if (!p.goal?.trim() || p.goal.length > 200) f.push("goal: the first goal in one sentence");
   const verfahren = p.procedure ?? "standard";
   if (!["standard", "clean_room"].includes(verfahren)) f.push("procedure: standard or clean_room");
-  if (verfahren === "clean_room" && !(p.original?.name?.trim() && p.original?.legal_basis?.trim() && p.original?.acquisition?.trim()))
-    f.push("a clean-room project needs original.name, original.acquisition (how you lawfully obtained it) and original.legal_basis");
+  if (verfahren === "clean_room") {
+    const o = p.original ?? {};
+    if (!(o.name?.trim() && o.acquisition?.trim())) f.push("a clean-room project needs original.name and original.acquisition (how you lawfully obtained it)");
+    if (o.target && !VORBILD_ARTEN.includes(o.target)) f.push(`original.target: ${VORBILD_ARTEN.join(" | ")}`);
+    if (o.depth && !["observe", "inspect"].includes(o.depth)) f.push("original.depth: observe (only from outside, default) or inspect");
+    if (o.depth === "inspect" && !(o.legal_basis?.trim() && o.inspect?.trim()))
+      f.push("looking inside (original.depth inspect) needs original.inspect (which parts) and original.legal_basis");
+    if (VORBILD_FELDER.some((k) => String(o[k] ?? "").length > 300)) f.push("original: at most 300 characters per field");
+  }
   return f;
+}
+
+/** Nur bekannte Felder, getrimmt; ohne Angabe gilt die Tiefe observe (nur von außen). */
+function vorbildNormal(o: NeuesProjekt["original"]) {
+  const r: Record<string, string> = { depth: "observe" };
+  for (const k of VORBILD_FELDER) { const v = String(o?.[k] ?? "").trim(); if (v) r[k] = v; }
+  return r;
 }
 
 export async function projektAnlegen(db: Db, p: NeuesProjekt, von: number | "betrieb") {
@@ -54,13 +71,13 @@ export async function projektAnlegen(db: Db, p: NeuesProjekt, von: number | "bet
       `insert into projekte(slug, name, vision_md, vision_kurz, engine, lizenz_code, lizenz_assets, repo_url, lead_modell, ziel, verfahren, vorbild, projektart, entwurf, angelegt_von)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning id`,
       [p.slug, p.name.trim(), p.vision_md?.trim() || p.vision_short.trim(), p.vision_short.trim(), p.engine.trim(), p.license_code, p.license_assets, p.repo_url ?? null,
-       p.lead_model.trim(), p.goal.trim(), verfahren, verfahren === "clean_room" ? p.original : null, p.type ? PROJEKTARTEN[p.type] : null,
+       p.lead_model.trim(), p.goal.trim(), verfahren, verfahren === "clean_room" ? vorbildNormal(p.original) : null, p.type ? PROJEKTARTEN[p.type] : null,
        von !== "betrieb", von === "betrieb" ? null : von])).rows[0].id);
     if (von !== "betrieb") {
       await tx.query("insert into projekt_rollen(projekt_id, mensch_id, rolle) values ($1,$2,'visionaer'), ($1,$2,'lead')", [id, von]);
     }
     await protokollieren(tx, { projekt_id: id, akteur: von === "betrieb" ? "system" : `mensch:${von}`, art: "vision_veroeffentlicht", bezug: `projekt:${id}`,
-      daten: { slug: p.slug, name: p.name.trim(), lead_modell: p.lead_model.trim(), verfahren, ...(p.type ? { projektart: PROJEKTARTEN[p.type] } : {}), ...(verfahren === "clean_room" ? { vorbild: p.original } : {}) } });
+      daten: { slug: p.slug, name: p.name.trim(), lead_modell: p.lead_model.trim(), verfahren, ...(p.type ? { projektart: PROJEKTARTEN[p.type] } : {}), ...(verfahren === "clean_room" ? { vorbild: vorbildNormal(p.original) } : {}) } });
     return { projekt_id: id, slug: p.slug };
   });
 }

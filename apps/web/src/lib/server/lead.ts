@@ -68,7 +68,9 @@ export function paket(name: string): string {
     "## Roles, gates and officers (section 9a)",
     tiefer(lies("roles/README.md").replace(/^# .*\n/, "")),
     `### Your role cards\n\n${ordner.map((o) => karten(o).map((k) => `- \`${k}\` (${o}): ${ROH}/roles/${o}/${k}.md`).join("\n")).join("\n")}\n\nIn Claude Code they are installed as subagents with the setup script from the project wizard (\`.claude/agents/\`). Other agents read a card when they work on that role.`,
-    ...(cleanroom ? ["## Clean-room specification format", tiefer(lies("templates/clean-room-specification.md").replace(/^# .*\n/, ""))] : []),
+    ...(cleanroom ? ["## Clean-room specification format", tiefer(lies("templates/clean-room-specification.md").replace(/^# .*\n/, "")),
+      // Werkzeuge je Art des Originals und Tiefe: der Lead braucht sie schon beim Schneiden der ersten Analyse-Aufgaben
+      "## Analysis toolkit", tiefer(karte("cleanroom", "toolkit").replace(/^---\n[\s\S]*?\n---\n/, "").replace(/^\s*# .*\n/, ""))] : []),
   ];
   return teile.join("\n\n") + "\n";
 }
