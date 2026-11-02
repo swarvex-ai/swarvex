@@ -34,7 +34,7 @@
     single_agent: { hours: number }; speedup: number | null; four_eyes_percent: number | null; pipeline_passed_percent: number | null;
     human_team: { estimated_hours: number | null; tasks_estimated: number; team: number; weeks: number | null; throughput_per_day: number | null; cocomo: { months: number; people: number; person_months: number } | null } };
   const b = $derived(t.detail.bilanz);
-  const bilanz = $derived(p.swarm_balance as { total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; human_hours?: number; throughput_per_day?: number; throughput_factor?: number } | null } | undefined);
+  const bilanz = $derived(p.swarm_balance as { total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; estimate_human_hours?: number; throughput_per_day?: number; throughput_factor?: number } | null } | undefined);
   const paket = $derived((p.project_type ? data.pakete?.[`${p.project_type}${p.procedure === "clean_room" ? "-cleanroom" : ""}`] : undefined) as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
   const methode = $derived(pfad(s, s === "de" ? "/docs/warum-swarvex#wie-wir-den-vorteil-messen" : "/docs/why-swarvex#how-we-measure-the-advantage"));
 </script>
@@ -164,7 +164,7 @@
     {/if}
     {#if bilanz?.comparison}
       {@const v = bilanz.comparison}
-      <p class="vergleich klein"><strong>{b.vergleich}:</strong> {s === "en" ? v.description_en : v.description}: {b.tage(v.calendar_days)}{#if v.human_hours && v.throughput_per_day}{b.vergleichUmfang(v.human_hours, v.throughput_per_day)}{/if}.
+      <p class="vergleich klein"><strong>{b.vergleich}:</strong> {s === "en" ? v.description_en : v.description}: {b.tage(v.calendar_days)}{#if v.estimate_human_hours && v.throughput_per_day}{b.vergleichUmfang(v.estimate_human_hours, v.throughput_per_day)}{/if}.
         {#if v.throughput_factor}<strong class="faktor-satz">{b.durchsatzFaktor(v.throughput_factor)}</strong>{/if}</p>
     {/if}
     {#if paket}<p class="wissen klein">{b.wissen(paket.kb, paket.bausteine, paket.rollenkarten, paket.werkzeugkasten)}</p>{/if}
