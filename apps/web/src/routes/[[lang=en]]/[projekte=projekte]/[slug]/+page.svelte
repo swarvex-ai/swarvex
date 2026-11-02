@@ -35,7 +35,7 @@
     human_team: { estimated_hours: number | null; tasks_estimated: number; team: number; weeks: number | null; cocomo: { months: number; people: number; person_months: number } | null } };
   const b = $derived(t.detail.bilanz);
   const bilanz = $derived(p.swarm_balance as { total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string } | null } | undefined);
-  const paket = $derived(data.pakete?.[`${p.project_type ?? "app"}${p.procedure === "clean_room" ? "-cleanroom" : ""}`] as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
+  const paket = $derived((p.project_type ? data.pakete?.[`${p.project_type}${p.procedure === "clean_room" ? "-cleanroom" : ""}`] : undefined) as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
   const methode = $derived(pfad(s, s === "de" ? "/docs/warum-swarvex#wie-wir-den-vorteil-messen" : "/docs/why-swarvex#how-we-measure-the-advantage"));
 </script>
 
