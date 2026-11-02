@@ -42,7 +42,7 @@
     })
     .sort((a, b) => ordnungen[ordnung](b) - ordnungen[ordnung](a)));
   const projektPfad = (slug: string) => pfad(s, `${t.pfad}/${slug}`);
-  const starten = $derived(pfad(s, s === "de" ? "/docs/projekt-starten" : "/docs/start-a-project"));
+  const starten = $derived(pfad(s, tx().starten.pfad));
   const anschliessen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
   const anzahl = (k: string) => projekte.filter((p) => inKategorie(p, k)).length;
 </script>

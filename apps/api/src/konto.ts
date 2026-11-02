@@ -13,6 +13,7 @@ import { CALLBACK, englisch, esc, KONTO_PRAEFIX, pruefen, seite, signieren } fro
 import type { KontoAnbieter } from "./auth/konten.ts";
 import { nachrichtBeantworten, offeneFreigaben } from "./nachrichten.ts";
 import { hochladen, meineZusagen, zusageAnlegen, zusageBeenden } from "./spenden.ts";
+import { projektAnlegen, type NeuesProjekt } from "./projekte.ts";
 
 const SITZUNG = "swarvex_account";
 const ANMELDUNG = "swarvex_login";
@@ -102,6 +103,8 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
     res.end(JSON.stringify(wert));
   };
   const zurSeite = (en: boolean) => (en ? "/en/account" : "/konto");
+  // Nach der Anmeldung zurück in den Assistenten „Projekt starten“, sonst auf die Kontoseite (feste Liste, kein offener Redirect)
+  const ZIELE: Record<string, string> = { starten: "/starten", start: "/en/start" };
   // Zustandsändernde Aufrufe nur von der eigenen Website (zusätzlich zu SameSite=Lax)
   const eigeneHerkunft = (req: IncomingMessage) => req.headers.origin === new URL(konfig.basis).origin;
 
@@ -114,14 +117,14 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
       const gewaehlt = konten.length === 1 ? konten[0] : konten.find((k) => k.name === url.searchParams.get("provider"));
       if (!gewaehlt) {
         return seite(res, 200, en ? "Sign in to swarvex.ai" : "Bei swarvex.ai anmelden",
-          `${konten.map((k) => `<a class="k" href="/api/account/login?lang=${sprache}&amp;provider=${k.name}">${en ? "Continue with" : "Weiter mit"} ${esc(k.titel)}</a>`).join("")}
+          `${konten.map((k) => `<a class="k" href="/api/account/login?lang=${sprache}&amp;provider=${k.name}${ZIELE[url.searchParams.get("next") ?? ""] ? `&amp;next=${url.searchParams.get("next")}` : ""}">${en ? "Continue with" : "Weiter mit"} ${esc(k.titel)}</a>`).join("")}
            <p class="l">${en ? "We only read your public profile (name and account ID)." : "Wir lesen nur dein öffentliches Profil (Name und Konto-ID)."}</p>`, en);
       }
       const nonce = randomBytes(16).toString("base64url");
       const uid = KONTO_PRAEFIX + nonce;
       res.writeHead(303, {
         location: gewaehlt.anmelden(CALLBACK(), `${uid}.${gewaehlt.name}.${signieren(geheimnis, `state:${uid}:${gewaehlt.name}`)}`),
-        "set-cookie": cookieSetzen(ANMELDUNG, `${nonce}.${sprache}`, "/api/account", 900), "cache-control": "no-store",
+        "set-cookie": cookieSetzen(ANMELDUNG, `${nonce}.${sprache}${ZIELE[url.searchParams.get("next") ?? ""] ? `.${url.searchParams.get("next")}` : ""}`, "/api/account", 900), "cache-control": "no-store",
       });
       res.end();
       return;
@@ -129,7 +132,7 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
 
     if (pfad === "/api/account/done" && req.method === "GET") {
       // Hierher leitet /interaction/callback mit einer eigenen Seite weiter (same-site), deshalb ist das Anmelde-Cookie dabei.
-      const [nonce, sprache] = (cookie(req, ANMELDUNG) ?? "").split(".");
+      const [nonce, sprache, ziel] = (cookie(req, ANMELDUNG) ?? "").split(".");
       const en = sprache === "en";
       const m = url.searchParams.get("m") ?? "", t = url.searchParams.get("t") ?? "", s = url.searchParams.get("s") ?? "";
       if (!nonce || Number(t) < Date.now() || !pruefen(geheimnis, `konto:${KONTO_PRAEFIX}${nonce}:${m}:${t}`, s)) {
@@ -139,7 +142,7 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
       const gesperrt = (await db.query("select gesperrt from menschen where id = $1", [m])).rows[0]?.gesperrt;
       if (gesperrt) return seite(res, 403, en ? "Account blocked" : "Konto gesperrt", `<p>${en ? "This account is blocked." : "Dieses Konto ist gesperrt."}</p>`, en);
       res.writeHead(303, {
-        location: zurSeite(en), "cache-control": "no-store",
+        location: ZIELE[ziel ?? ""] ?? zurSeite(en), "cache-control": "no-store",
         "set-cookie": [cookieSetzen(SITZUNG, sitzungAusstellen(geheimnis, Number(m)), "/", SITZUNG_TAGE * 86400), cookieSetzen(ANMELDUNG, "", "/api/account", 0)],
       });
       res.end();
@@ -181,6 +184,20 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
       if (!entscheidung || !eingabe.reason?.trim()) return json(res, 400, { error: "decision (approve or decline) and reason are required" });
       try {
         return json(res, 200, nachAussen(await nachrichtBeantworten(db, menschId, null, Number(freigabe[1]), eingabe.reason, entscheidung)));
+      } catch (e) {
+        if (e instanceof Abgelehnt) return json(res, 409, { error: e.message });
+        throw e;
+      }
+    }
+
+    // Projekt anlegen (Assistent „Projekt starten“): der angemeldete Mensch wird Visionär und Lead; Entwurf bis zur ersten Aufgabe
+    if (req.method === "POST" && pfad === "/api/account/projects") {
+      if (!eigeneHerkunft(req)) return json(res, 403, { error: "foreign_origin" });
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
+      let p: NeuesProjekt;
+      try { p = JSON.parse(await textLesen(req, 40_000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
+      try {
+        return json(res, 200, nachAussen(await projektAnlegen(db, p, menschId)));
       } catch (e) {
         if (e instanceof Abgelehnt) return json(res, 409, { error: e.message });
         throw e;

@@ -43,7 +43,7 @@
       {/each}
       <li><RepoLink text={t.nav.quellcode} /></li>
       <li><a class="sprache" href={andere} hreflang={s === "de" ? "en" : "de"} lang={s === "de" ? "en" : "de"} aria-label={t.nav.andere}>{t.nav.andereKurz}</a></li>
-      <li><a class="knopf visionaer" href={pfad(s, s === "de" ? "/docs/projekt-starten" : "/docs/start-a-project")} onclick={() => (menueOffen = false)}>{t.nav.starten}</a></li>
+      <li><a class="knopf visionaer" href={pfad(s, t.starten.pfad)} onclick={() => (menueOffen = false)}>{t.nav.starten}</a></li>
       <li><a class="knopf primaer" href={pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent")} onclick={() => (menueOffen = false)}>{t.nav.anschliessen}</a></li>
     </ul>
   </nav>

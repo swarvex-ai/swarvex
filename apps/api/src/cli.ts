@@ -40,10 +40,7 @@ async function projektId(slug: string): Promise<number> {
 const db = verbinden(process.env.DATABASE_URL ?? "");
 
 /** Common OSI-approved licenses (SPDX); add more when needed. */
-const OSI_LIZENZEN = new Set(["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MPL-2.0", "LGPL-2.1-or-later", "LGPL-3.0-or-later",
-  "GPL-2.0-or-later", "GPL-3.0-only", "GPL-3.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later", "EUPL-1.2", "0BSD", "Zlib", "Unlicense"]);
-const FREIE_ASSET_LIZENZEN = new Set(["CC BY 4.0", "CC BY-SA 4.0", "CC0 1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "CC0-1.0", "OFL-1.1"]);
-const PROJEKTARTEN: Record<string, string> = { game: "spiel", app: "app", website: "website", service: "dienst", tool: "tool", library: "bibliothek", plugin: "plugin", other: "sonstiges" };
+import { FREIE_ASSET_LIZENZEN, OSI_LIZENZEN, PROJEKTARTEN, projektAnlegen } from "./projekte.ts";
 
 const [befehl, ...args] = process.argv.slice(2);
 
@@ -55,20 +52,8 @@ try {
     case "create-project": {
       const [slug, datei] = args;
       const p = JSON.parse(await readFile(datei, "utf8"));
-      // E-27: swarvex only has open projects: code under an OSI license, assets under a free license.
-      if (!OSI_LIZENZEN.has(p.license_code)) throw new Error(`license_code ${p.license_code} is not an OSI license (e.g. MIT, Apache-2.0, GPL-3.0-or-later, AGPL-3.0-or-later, MPL-2.0)`);
-      if (!FREIE_ASSET_LIZENZEN.has(p.license_assets)) throw new Error(`license_assets ${p.license_assets} is not a free license (e.g. CC BY 4.0, CC BY-SA 4.0, CC0 1.0)`);
-      if (p.type && !PROJEKTARTEN[p.type]) throw new Error(`type ${p.type}: ${Object.keys(PROJEKTARTEN).join(" | ")}`);
-      const verfahren = p.procedure ?? "standard";
-      if (verfahren === "clean_room" && !p.original?.legal_basis) throw new Error("a clean-room project needs original.legal_basis (how the original was acquired and the legal basis of the analysis)");
-      await transaktion(db, async (tx) => {
-        const id = Number((await tx.query(
-          `insert into projekte(slug, name, vision_md, vision_kurz, engine, lizenz_code, lizenz_assets, repo_url, lead_modell, ziel, verfahren, vorbild, projektart)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning id`,
-          [slug, p.name, p.vision_md, p.vision_short, p.engine, p.license_code, p.license_assets, p.repo_url, p.lead_model, p.goal, verfahren, p.original ?? null, p.type ? PROJEKTARTEN[p.type] ?? null : null])).rows[0].id);
-        await protokollieren(tx, { projekt_id: id, akteur: "system", art: "vision_veroeffentlicht", bezug: `projekt:${id}`, daten: { slug, name: p.name, lead_modell: p.lead_model, verfahren, ...(p.original ? { vorbild: p.original } : {}) } });
-        console.log(`project ${slug} created (id ${id})`);
-      });
+      const r = await projektAnlegen(db, { ...p, slug }, "betrieb");
+      console.log(`project ${slug} created (id ${r.projekt_id})`);
       break;
     }
     case "set-officer": {

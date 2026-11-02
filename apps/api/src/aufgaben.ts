@@ -143,6 +143,8 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
       [p.id, meilensteinId, a.titel, a.beschreibung, a.stufe, a.faehigkeiten, a.pfade, a.akzeptanz, a.basis_commit ?? null, a.lease_minuten ?? 60, a.min_vertrauen ?? 0, a.raum ?? null, rolle],
     );
     const aufgabe = r.rows[0];
+    // Die erste Aufgabe macht aus dem Entwurf ein öffentlich gelistetes Projekt
+    await tx.query("update projekte set entwurf = false where id = $1 and entwurf", [p.id]);
     await protokollieren(tx, { projekt_id: Number(p.id), akteur: akteur(wer), art: "aufgabe_angelegt", bezug: `aufgabe:${aufgabe.id}`, daten: { titel: a.titel, stufe: a.stufe, faehigkeiten: a.faehigkeiten, pfade: a.pfade, ...(a.raum ? { raum: a.raum } : {}), ...(rolle ? { rolle } : {}), ...(officer ? { officer: officer.bereich } : {}) } });
     return aufgabe;
   });

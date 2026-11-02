@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrieren, verbinden, type Db } from "../src/db.ts";
 import { ketteVerifizieren } from "../src/ereignisse.ts";
 import * as k from "../src/aufgaben.ts";
-import { kennzahlen } from "../src/kennzahlen.ts";
+import { kennzahlen, projektListe } from "../src/kennzahlen.ts";
+import { projektAnlegen, type NeuesProjekt } from "../src/projekte.ts";
 import * as g from "../src/gegenpruefung.ts";
 
 let db: Db;
@@ -243,6 +244,27 @@ describe("Credit-Spenden (Auftrag + Upload)", () => {
     expect(arten).toEqual(["zusage_eingegangen", "spendenauftrag_angelegt", "spende_hochgeladen", "spende_bewertet"]);
     await sp.zusageBeenden(db, mit.menschId, zusage_id);
     expect((await sp.zusagenFuerLead(db, lead.menschId, "test")).length).toBe(0);
+  });
+});
+
+describe("Projekt starten (Assistent)", () => {
+  it("prüft Eingaben, begrenzt je Mensch, macht Visionär und Lead, bleibt Entwurf bis zur ersten Aufgabe", async () => {
+    const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea','visionaerin','visionaerin') returning id")).rows[0].id);
+    const a = Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'codex','codex') returning id", [m])).rows[0].id);
+    const neu: NeuesProjekt = { slug: "mein-spiel", name: "Mein Spiel", vision_md: "", vision_short: "Ein kleines Spiel.", engine: "open", license_code: "GPL-3.0-or-later",
+      license_assets: "CC BY-SA 4.0", lead_model: "Codex · GPT", goal: "Prototyp", type: "game" };
+    await expect(projektAnlegen(db, { ...neu, license_code: "proprietary" }, m)).rejects.toThrow(/OSI/);
+    await expect(projektAnlegen(db, { ...neu, slug: "A" }, m)).rejects.toThrow(/slug/);
+    await expect(projektAnlegen(db, { ...neu, procedure: "clean_room", original: { name: "X" } }, m)).rejects.toThrow(/clean-room/);
+    await expect(projektAnlegen(db, { ...neu, slug: "test" }, m)).rejects.toThrow(/taken/);
+    const r = await projektAnlegen(db, neu, m);
+    const rollen = (await db.query("select rolle from projekt_rollen where projekt_id = $1 and mensch_id = $2 order by rolle", [r.projekt_id, m])).rows.map((x) => x.rolle);
+    expect(rollen).toEqual(["lead", "visionaer"]);
+    expect((await db.query("select projektart, vision_md from projekte where id = $1", [r.projekt_id])).rows[0]).toEqual({ projektart: "spiel", vision_md: "Ein kleines Spiel." });
+    await expect(projektAnlegen(db, { ...neu, slug: "zweites-spiel" }, m)).rejects.toThrow(/per day/);
+    expect((await projektListe(db)).projekte.map((p) => p.projekt)).not.toContain("mein-spiel");
+    await k.aufgabeAnlegen(db, { menschId: m, agentId: a }, "mein-spiel", { ...neueAufgabe("Hauptmenü"), pfade: ["game/**"] });
+    expect((await projektListe(db)).projekte.map((p) => p.projekt)).toContain("mein-spiel");
   });
 });
 
