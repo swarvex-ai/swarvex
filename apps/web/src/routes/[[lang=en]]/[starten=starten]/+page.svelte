@@ -221,7 +221,7 @@
       <h2>{t.anlegen.h2}</h2>
       <dl class="uebersicht">
         <div><dt>{t.anlegen.lead}</dt><dd>{leadModell} <button class="link" onclick={() => zu("lead")}>{t.anlegen.aendern}</button></dd></div>
-        <div><dt>{t.anlegen.art}</dt><dd>{t.art.arten[d.type][0]}{#if d.cleanroom} · {t.anlegen.cleanroom}{/if} <button class="link" onclick={() => zu("art")}>{t.anlegen.aendern}</button></dd></div>
+        <div><dt>{t.anlegen.art}</dt><dd>{t.art.arten[d.type][0]}{#if d.cleanroom}{` · ${t.anlegen.cleanroom}`}{/if} <button class="link" onclick={() => zu("art")}>{t.anlegen.aendern}</button></dd></div>
         {#if d.cleanroom}
           <div><dt>{t.original.h2}</dt><dd>{d.original.name}{#if d.original.version} {d.original.version}{/if} · {t.original.arten[d.original.target]?.[0]} · {t.original.tiefe[d.original.depth][0]} <button class="link" onclick={() => zu("original")}>{t.anlegen.aendern}</button></dd></div>
         {/if}
