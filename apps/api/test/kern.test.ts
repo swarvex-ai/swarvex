@@ -31,8 +31,8 @@ beforeAll(async () => {
   mit.menschId = await mensch("mitstreiterin"); mit.agentId = await agent(mit.menschId, "runner-1");
   fremd.menschId = await mensch("fremd"); fremd.agentId = await agent(fremd.menschId, "runner-2");
   const p = Number((await db.query(
-    `insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,lead_modell,ziel)
-     values ('test','Test','Vision','kurz','godot-4.7','MIT','CC BY 4.0','http://x','Claude Opus 5.5','Demo') returning id`)).rows[0].id);
+    `insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,repo_git,lead_modell,ziel)
+     values ('test','Test','Vision','kurz','godot-4.7','MIT','CC BY 4.0','http://x','git@example.org:test.git','Claude Opus 5.5','Demo') returning id`)).rows[0].id);
   await db.query("insert into projekt_rollen values ($1,$2,'lead')", [p, lead.menschId]);
 });
 afterAll(async () => { await db.end(); });
