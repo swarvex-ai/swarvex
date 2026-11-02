@@ -135,6 +135,7 @@
   const status = (a: Agent) => (a.signed_in ? "an" : a.signed_out ? "ab" : "aus");
   // Beitragsübersicht: Karten mit Dateien und Vorschau; Filter „nur angenommene“
   let nurAngenommen = $state(false);
+  let offeneBegruendung = $state<Record<number, boolean>>({});
   const sichtbar = $derived((konto?.contributions ?? []).filter((b) => !nurAngenommen || b.verdict === "accept"));
   const vorschau = (b: Beitrag, f: Datei) => `/api/account/contributions/${b.submission}/preview?path=${encodeURIComponent(f.path)}`;
   const istBild = (f: Datei) => f.kind === "image";
@@ -328,8 +329,8 @@
                 </div>
                 <div class="marken">
                   {#each b.kinds as k}<span class="marke">{g.sorte[k] ?? k}</span>{/each}
-                  <span class="ton {b.check ?? 'leer'}">{b.check ? t.pruefung[b.check] : t.offen}</span>
-                  <span class="urteil {b.verdict ?? 'leer'}">{b.verdict ? t.urteil[b.verdict] : t.offen}</span>
+                  <span class="ton {b.check ?? 'leer'}">{`${t.spalten.pruefung} ${b.check ? t.pruefung[b.check] : t.offen}`}</span>
+                  <span class="urteil {b.verdict ?? 'leer'}">{b.verdict ? t.urteil[b.verdict] : `${t.spalten.urteil} ${t.offen}`}</span>
                 </div>
               </div>
               {#if b.files.some((f) => f.preview)}
@@ -344,16 +345,19 @@
                 </div>
               {/if}
               <details>
-                <summary class="klein">{g.dateien(b.files_total)}{#if b.added || b.removed} · <span class="plus">+{zahl(b.added)}</span> <span class="minus">−{zahl(b.removed)}</span>{/if} · {zahl(b.tokens)} {t.spalten.tokens}</summary>
+                <summary class="klein">{g.dateien(b.files_total)}{#if b.added || b.removed}{" · "}<span class="plus">+{zahl(b.added)}</span>{" "}<span class="minus">−{zahl(b.removed)}</span>{/if}{` · ${zahl(b.tokens)} ${t.spalten.tokens}`}</summary>
                 <ul class="dateien">
                   {#each b.files as f (f.path)}
-                    <li><code>{f.path}</code> <span class="leise klein">{g.sorte[f.kind] ?? f.kind}{#if f.lfs} · {g.lfs}{:else if f.added || f.removed} · <span class="plus">+{f.added}</span> <span class="minus">−{f.removed}</span>{/if}</span></li>
+                    <li><code>{f.path}</code> <span class="leise klein">{g.sorte[f.kind] ?? f.kind}{#if f.lfs}{` · ${g.lfs}`}{:else if f.added || f.removed}{" · "}<span class="plus">+{f.added}</span>{" "}<span class="minus">−{f.removed}</span>{/if}</span></li>
                   {/each}
                   {#if b.files_total > b.files.length}<li class="leise klein">{g.weitere(b.files_total - b.files.length)}</li>{/if}
                 </ul>
                 {#if b.summary}<p class="klein"><span class="leise">{g.zusammenfassung}:</span> {b.summary}</p>{/if}
               </details>
-              {#if b.reason}<p class="begruendung klein"><span class="leise">{g.lead}</span> {b.reason}</p>{/if}
+              {#if b.reason}
+                <button type="button" class="begruendung klein" class:offen={offeneBegruendung[b.submission]} onclick={() => (offeneBegruendung[b.submission] = !offeneBegruendung[b.submission])}
+                  aria-expanded={!!offeneBegruendung[b.submission]}><span class="leise">{g.lead}</span> {b.reason}</button>
+              {/if}
               {#if b.commit_url}<p class="klein"><a href={b.commit_url} rel="noopener">{g.commit} <code>{b.commit?.slice(0, 7)}</code></a></p>{/if}
             </li>
           {/each}
@@ -456,7 +460,9 @@
   .dateien code { font-size: .82rem; overflow-wrap: anywhere; }
   .plus { color: var(--akzent); }
   .minus { color: var(--rot); }
-  .begruendung { border-left: 3px solid var(--linie-hell); padding-left: 10px; }
+  .begruendung { border: 0; border-left: 3px solid var(--linie-hell); padding: 0 0 0 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+                 display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+  .begruendung.offen { display: block; }
   .modelle-h3 { margin: 8px 0 4px; font-size: 1.1rem; }
   @media (max-width: 760px) {
     .kopf { grid-template-columns: 1fr; }
