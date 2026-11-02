@@ -69,6 +69,8 @@ A="admin:$(cat /run/secrets/grafana_admin)"
 for i in $(seq 1 60); do curl -fs $G/api/health >/dev/null 2>&1 && break; sleep 2; done
 # Bereich 1 heißt „Betrieb“ (Grafana nennt ihn „Main Org.“); die GitHub-Zuordnung nutzt die Nummer 1, nicht den Namen
 curl -fs -u "$A" -H 'content-type: application/json' -X PUT $G/api/orgs/1 -d '{"name":"Betrieb"}' >/dev/null
+# Startseite im Bereich „Betrieb“: das Server-Dashboard statt der Grafana-Willkommensseite
+curl -fs -u "$A" -H 'X-Grafana-Org-Id: 1' -H 'content-type: application/json' -X PUT $G/api/org/preferences -d '{"homeDashboardUID":"swarvex-server","timezone":"Europe/Berlin"}' >/dev/null
 code=$(curl -s -o /dev/null -w '%{http_code}' -u "$A" $G/api/orgs/name/Auswertung)
 [ "$code" = 200 ] || curl -fs -u "$A" -H 'content-type: application/json' -X POST $G/api/orgs -d '{"name":"Auswertung"}' >/dev/null
 org=$(curl -fs -u "$A" $G/api/orgs/name/Auswertung | sed 's/.*"id":\([0-9]*\).*/\1/')
