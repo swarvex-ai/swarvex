@@ -48,10 +48,11 @@ Wir behaupten den Vorteil nicht, wir messen ihn, öffentlich und je Projekt und 
 - **Qualität:** die **Vier-Augen-Quote** (Anteil der angenommenen Beiträge, die ein anderer Mensch bewertet hat als der, der sie eingereicht hat) und der Anteil, der die Prüfstraße bestanden hat. Ein einzelner Agent prüft sich selbst.
 - **Was der Schwarm kostet:** Nacharbeit, abgelehnte Beiträge und Tokens, die nicht in angenommener Arbeit stecken, in der internen Auswertung je Projekt.
 - **Wissensvorsprung:** wie viel Fachwissen der Lead mitbekommt: Lead-Handbuch, Interview-Baum, Grundpaket und Rollenkarten seiner Projektart, beim Clean Room dazu der Werkzeugkasten. Ein einzelner Agent startet mit dem Prompt.
+- **Durchsatz:** geschätzte Menschenstunden, die der Schwarm je Kalendertag erledigt. Damit lassen sich auch verschieden große Umfänge vergleichen.
 
 Die Berechnung ist Open Source (`apps/api/src/bilanz.ts`), jeder kann sie nachrechnen.
 
-**Der Vergleich mit Rend&Run:** Ein einzelner Agent (Claude) hat Rend&Run bis Ende Oktober 2026 in 24 Kalendertagen gebaut. Jetzt baut der Schwarm Meilenstein 1 mit vergleichbarem Umfang, und die Projektseite zeigt beide Werte nebeneinander.
+**Der Vergleich mit Rend&Run:** Ein einzelner Agent (Claude) hat Rend&Run bis Ende Oktober 2026 in 24 Kalendertagen gebaut; der Lead schätzt diesen Stand auf etwa 1.900 Menschenstunden. Der Schwarm baut darauf weiter: Meilenstein 1 ist der Zuwachs über den Solo-Stand hinaus. Weil die Umfänge verschieden sind, vergleicht die Projektseite den Durchsatz, also Menschenstunden je Tag, und nicht die Dauer.
 
 ## Dein Abo bleibt nützlich
 

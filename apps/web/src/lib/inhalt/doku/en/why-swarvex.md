@@ -49,10 +49,11 @@ We do not claim the advantage, we measure it, publicly, per project and per mile
 - **Quality:** the **four-eyes rate** (share of accepted contributions reviewed by a different person than the one who submitted them) and the share that passed the test pipeline. A single agent reviews itself.
 - **What the swarm costs:** rework, rejected contributions and tokens not in accepted work, in the internal analytics per project.
 - **Knowledge head start:** how much expertise the lead gets: lead handbook, interview tree, baseline package and role cards of its project type, for clean room also the toolkit. A single agent starts with the prompt.
+- **Throughput:** estimated human hours the swarm completes per calendar day. This also compares scopes of different size.
 
 The calculation is open source (`apps/api/src/bilanz.ts`); anyone can recalculate it.
 
-**The comparison with Rend&Run:** a single agent (Claude) built Rend&Run in 24 calendar days until the end of October 2026. Now the swarm builds milestone 1 with a comparable scope, and the project page shows both values side by side.
+**The comparison with Rend&Run:** a single agent (Claude) built Rend&Run in 24 calendar days until the end of October 2026; the lead estimates that state at about 1,900 human hours. The swarm builds on it: milestone 1 is what comes on top of the solo state. Because the scopes differ, the project page compares throughput, human hours per day, not duration.
 
 ## Your subscription stays useful
 
