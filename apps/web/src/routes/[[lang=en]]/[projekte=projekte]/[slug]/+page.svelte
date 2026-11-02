@@ -35,7 +35,7 @@
   beschreibung={p.vision_short}
   pfad={pfad(s, `${t.pfad}/${p.project}`)}
   alternativen={{ de: `/projekte/${p.project}`, en: `/en/projects/${p.project}` }}
-  daten={[{ "@type": "SoftwareSourceCode", name: p.name, description: p.vision_short, codeRepository: p.repo_url, programmingLanguage: p.engine,
+  daten={[{ "@type": "SoftwareSourceCode", name: p.name, description: p.vision_short, codeRepository: p.repo_url ?? undefined, programmingLanguage: p.engine,
             url: SEITE + pfad(s, `${t.pfad}/${p.project}`) }]}
 />
 
