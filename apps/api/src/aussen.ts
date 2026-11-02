@@ -18,7 +18,7 @@ export const FELDER: Record<string, string> = {
   ein_agent: "single_agent", stunden: "hours", beschleunigung: "speedup", menschen_team: "human_team", geschaetzte_stunden: "estimated_hours",
   aufgaben_geschaetzt: "tasks_estimated", team: "team", wochen: "weeks", cocomo: "cocomo", personenmonate: "person_months", monate: "months",
   vier_augen_prozent: "four_eyes_percent", pruefstrasse_prozent: "pipeline_passed_percent", abgeschlossen: "completed", vergleich: "comparison",
-  methode: "method", stunden_je_woche: "hours_per_week", cocomo_ab_zeilen: "cocomo_from_lines", kalender_tage: "calendar_days",
+  methode: "method", stunden_je_woche: "hours_per_week", cocomo_ab_zeilen: "cocomo_from_lines", kalender_tage: "calendar_days", beschreibung_en: "description_en",
   menschen_stunden: "estimate_human_hours",
   gemerged: "merged", plus: "added", minus: "removed", sorte: "kind", sorten: "kinds", dateien_gesamt: "files_total", commit_url: "commit_url", zeilen_code: "lines_of_code",
   bilder: "images", audio: "audio", modelle_3d: "models_3d", videos: "videos", texte: "texts", reviews: "reviews", modelle: "models", agent_programm: "agent_program",

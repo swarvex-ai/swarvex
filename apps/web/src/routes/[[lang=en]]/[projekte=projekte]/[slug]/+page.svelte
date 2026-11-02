@@ -34,7 +34,7 @@
     single_agent: { hours: number }; speedup: number | null; four_eyes_percent: number | null; pipeline_passed_percent: number | null;
     human_team: { estimated_hours: number | null; tasks_estimated: number; team: number; weeks: number | null; cocomo: { months: number; people: number; person_months: number } | null } };
   const b = $derived(t.detail.bilanz);
-  const bilanz = $derived(p.swarm_balance as { total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string } | null } | undefined);
+  const bilanz = $derived(p.swarm_balance as { total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string } | null } | undefined);
   const paket = $derived(data.pakete?.[`${p.project_type ?? "app"}${p.procedure === "clean_room" ? "-cleanroom" : ""}`] as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
   const methode = $derived(pfad(s, s === "de" ? "/docs/warum-swarvex#wie-wir-den-vorteil-messen" : "/docs/why-swarvex#how-we-measure-the-advantage"));
 </script>
@@ -161,7 +161,7 @@
     {:else}
       <p class="leise">{b.leer}</p>
     {/if}
-    {#if bilanz?.comparison}<p class="vergleich klein"><strong>{b.vergleich}:</strong> {bilanz.comparison.description}: {b.tage(bilanz.comparison.calendar_days)}.</p>{/if}
+    {#if bilanz?.comparison}<p class="vergleich klein"><strong>{b.vergleich}:</strong> {s === "en" ? bilanz.comparison.description_en : bilanz.comparison.description}: {b.tage(bilanz.comparison.calendar_days)}.</p>{/if}
     {#if paket}<p class="wissen klein">{b.wissen(paket.kb, paket.bausteine, paket.rollenkarten, paket.werkzeugkasten)}</p>{/if}
   </section>
 
