@@ -17,6 +17,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -306,6 +307,15 @@ func mergen() {
 			continue
 		}
 		commit, err := einMerge(e)
+		var k *konflikt
+		if errors.As(err, &k) {
+			// Passt nicht mehr auf den neuen Stand: die Aufgabe geht mit diesem Stand als Basis zurück in den Pool
+			if err := signiert("POST", fmt.Sprintf("/pipeline/%d/conflict", e.EinreichungID), map[string]any{"head": k.kopf, "report": k.bericht}, nil); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+			fmt.Printf("submission %d conflicts with %s, back to the pool\n", e.EinreichungID, k.kopf)
+			continue
+		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "merge %d: %v\n", e.EinreichungID, err)
 			continue
@@ -317,6 +327,11 @@ func mergen() {
 	}
 }
 
+// konflikt: der Patch lässt sich auf den aktuellen Stand (kopf) nicht mehr anwenden.
+type konflikt struct{ kopf, bericht string }
+
+func (k *konflikt) Error() string { return "conflict with " + k.kopf + ": " + k.bericht }
+
 func einMerge(e einreichung) (string, error) {
 	dir, _ := os.MkdirTemp(filepath.Join(arbeit), "merge-")
 	defer os.RemoveAll(dir)
@@ -327,7 +342,12 @@ func einMerge(e einreichung) (string, error) {
 	patchDatei := filepath.Join(dir, ".git", "contribution.patch")
 	os.WriteFile(patchDatei, []byte(e.Patch), 0o644)
 	if aus, err := befehl(dir, env, "git", "apply", "--index", "--3way", patchDatei); err != nil {
-		return "", fmt.Errorf("apply: %s", aus)
+		kopf, _ := befehl(dir, nil, "git", "rev-parse", "HEAD")
+		bericht := aus
+		if len(bericht) > 2000 {
+			bericht = bericht[:2000]
+		}
+		return "", &konflikt{kopf: strings.TrimSpace(kopf), bericht: strings.TrimSpace(bericht)}
 	}
 	nachricht := fmt.Sprintf("%s\n\nContributed through swarvex.ai.\n\nTask: %s#%d\nContributed-by: %s (%s)\nCheck: pass (submission %d)\nReviewed-by: %s — %s\nRights-confirmed-by: %s (contribution statement with submission %d)\n",
 		e.Titel, e.Slug, e.AufgabeID, e.Mensch, e.Agent, e.EinreichungID, e.LeadAgent, e.Begruendung, e.Mensch, e.EinreichungID)

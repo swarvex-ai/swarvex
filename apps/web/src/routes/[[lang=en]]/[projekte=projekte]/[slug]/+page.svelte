@@ -23,7 +23,7 @@
   // Aufgaben-Filter: offen / in Arbeit (reserviert bis Prüfung) / fertig (angenommen, übernommen)
   const gruppe = (z: string) => (z === "open" ? "offen" : ["accepted", "merged"].includes(z) ? "fertig" : "arbeit");
   let filter = $state<"alle" | "offen" | "arbeit" | "fertig">("alle");
-  const aufgaben = $derived((p.tasks as { id: number; title: string; level: string; state: string; milestone: string | null; role: string | null; working: string | null; contribution_by: string | null; waiting_for: number[][] }[])
+  const aufgaben = $derived((p.tasks as { id: number; title: string; level: string; state: string; milestone: string | null; role: string | null; working: string | null; contribution_by: string | null; waiting_for: number[][]; without_peer_review: boolean }[])
     .filter((a) => filter === "alle" || gruppe(a.state) === filter));
   const ton = (z: string) => (z === "check_failed" ? "rot" : ["submitted", "checking"].includes(z) ? "bernstein" : z === "open" ? "leise" : "akzent");
   const mitmachen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
@@ -205,7 +205,7 @@
             {#each aufgaben as a (a.id)}
               <tr>
                 <td class="zahl leise">{a.id}</td>
-                <td>{a.title}{#if a.milestone || a.role}<span class="unter leise">{[a.milestone, a.role].filter(Boolean).join(" · ")}</span>{/if}{#if a.waiting_for?.length}<span class="unter wartet">{t.detail.bilanz.wartetAuf(a.waiting_for)}</span>{/if}</td>
+                <td>{a.title}{#if a.milestone || a.role}<span class="unter leise">{[a.milestone, a.role].filter(Boolean).join(" · ")}</span>{/if}{#if a.waiting_for?.length}<span class="unter wartet">{t.detail.bilanz.wartetAuf(a.waiting_for)}</span>{/if}{#if a.without_peer_review}<span class="unter leise">{t.detail.bilanz.vomLead}</span>{/if}</td>
                 <td class="zahl">{a.level}</td>
                 <td><span class="zustand {ton(a.state)}">{t.zustand[a.state] ?? a.state}</span></td>
                 <td class="leise">{a.working ?? a.contribution_by ?? ""}</td>

@@ -16,14 +16,14 @@ export type Zustand = (typeof ZUSTAENDE)[number];
 
 /** Erlaubte Übergänge; alles andere ist ein Fehler. */
 export const UEBERGAENGE: Record<Zustand, Zustand[]> = {
-  offen: ["reserviert", "geschlossen"],
+  offen: ["reserviert", "geschlossen", "gemerged"],   // gemerged direkt: eigene D-Arbeit des Leads (leadErledigt)
   reserviert: ["in_arbeit", "eingereicht", "offen", "geschlossen"],
   in_arbeit: ["eingereicht", "offen", "geschlossen"],
   eingereicht: ["pruefung", "geschlossen"],
   pruefung: ["geprueft_ok", "geprueft_fehler"],
   geprueft_ok: ["angenommen", "offen", "geschlossen"],
   geprueft_fehler: ["offen", "geschlossen"],
-  angenommen: ["gemerged"],
+  angenommen: ["gemerged", "offen"],   // offen: Merge-Konflikt, zurück in den Pool mit neuem Basis-Commit
   gemerged: [],
   geschlossen: [],
 };
@@ -49,7 +49,7 @@ async function aufgabeSperren(tx: Tx, id: number) {
   return r.rows[0];
 }
 
-async function wechseln(tx: Tx, aufgabe: any, nach: Zustand, wer: string, art: string, daten: Record<string, unknown> = {}) {
+export async function wechseln(tx: Tx, aufgabe: any, nach: Zustand, wer: string, art: string, daten: Record<string, unknown> = {}) {
   const von = aufgabe.zustand as Zustand;
   if (!UEBERGAENGE[von].includes(nach)) throw new Abgelehnt(`transition ${en(von)} → ${en(nach)} is not allowed`);
   await tx.query("update aufgaben set zustand = $2 where id = $1", [aufgabe.id, nach]);
@@ -180,7 +180,11 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
   // Clean Room: Aufgaben auf der anderen Seite der Trennwand gar nicht erst anbieten.
   const bisher = p.verfahren === "clean_room" ? await raeumeVon(db, wer.menschId, p.id) : [];
   const erlaubt = r.rows.filter((a) => (!a.raum || !trennwand(bisher, a.raum)) && (wer.runner !== false || ohneAusfuehrung(a.faehigkeiten)));
-  return faehigkeiten?.length ? erlaubt.filter((a) => a.faehigkeiten.every((f: string) => faehigkeiten.includes(f))) : erlaubt;
+  const passend = faehigkeiten?.length ? erlaubt.filter((a) => a.faehigkeiten.every((f: string) => faehigkeiten.includes(f))) : erlaubt;
+  // Kritischer Pfad zuerst: was die meisten Folgeaufgaben (auch über mehrere Stufen) freischaltet, wird zuerst angeboten
+  const folge = await folgeaufgaben(db, Number(p.id));
+  return passend.map((a) => ({ ...a, folgeaufgaben: folge.get(Number(a.id)) ?? 0 }))
+    .sort((x, y) => y.folgeaufgaben - x.folgeaufgaben || Number(x.id) - Number(y.id));
 }
 
 class TrennwandVerletzt extends Abgelehnt {
@@ -203,6 +207,22 @@ export async function reservieren(db: Db, wer: Wer, aufgabeId: number) {
     }
     throw e;
   }
+}
+
+/** Je Aufgabe: wie viele noch nicht erledigte Aufgaben direkt oder über weitere Stufen auf sie warten. */
+export async function folgeaufgaben(db: Db | Tx, projektId: number): Promise<Map<number, number>> {
+  const r = await db.query(
+    `with recursive kante(vor, nach) as (
+       select unnest(a.abhaengig_von), a.id from aufgaben a where a.projekt_id = $1 and a.zustand not in ('angenommen', 'gemerged', 'geschlossen')
+       union
+       select x::bigint, a.id from aufgaben a cross join lateral jsonb_array_elements(a.abhaengig_eins_von) g cross join lateral jsonb_array_elements_text(g) x
+       where a.projekt_id = $1 and a.zustand not in ('angenommen', 'gemerged', 'geschlossen')),
+     erreicht(start, ziel) as (
+       select vor, nach from kante
+       union
+       select e.start, k.nach from erreicht e join kante k on k.vor = e.ziel)
+     select start::int as id, count(distinct ziel)::int as n from erreicht group by start`, [projektId]);
+  return new Map(r.rows.map((z) => [z.id, z.n]));
 }
 
 /** Was einer Aufgabe noch fehlt, als Alternativen: [[12], [45, 46]] heißt „#12 und (#45 oder #46)“. */
@@ -399,6 +419,35 @@ export async function bewerten(db: Db, wer: Wer, einreichungId: number, urteil: 
   });
 }
 
+/** Eigene Arbeit des Leads (Stufe D), ohne Einreichung und ohne Fremdbewertung erledigt: schaltet Folgeaufgaben frei. */
+export async function leadErledigt(db: Db, wer: Wer, aufgabeId: number, commit: string, notiz: string) {
+  if (!/^[0-9a-f]{7,40}$/.test(commit)) throw new Abgelehnt("commit: the commit hash (7 to 40 hex characters) that contains the work");
+  if (notiz.trim().length < 10) throw new Abgelehnt("note: one sentence on what was done");
+  return transaktion(db, async (tx) => {
+    const a = await aufgabeSperren(tx, aufgabeId);
+    if (!(await rollenVon(tx, wer.menschId, a.projekt_id)).includes("lead")) throw new Abgelehnt("only the project's lead marks its own work as done");
+    if (a.stufe !== "D") throw new Abgelehnt("only level D tasks (the lead's own work) can be marked done without review");
+    if (a.zustand !== "offen") throw new Abgelehnt(`task ${aufgabeId} is ${en(a.zustand)}`);
+    if ((await tx.query("select 1 from einreichungen where aufgabe_id = $1", [aufgabeId])).rowCount) throw new Abgelehnt("this task has submissions; review them instead");
+    await tx.query("update aufgaben set ohne_fremdbewertung = true where id = $1", [aufgabeId]);
+    await wechseln(tx, a, "gemerged", akteur(wer), "vom_lead_erledigt", { commit, notiz: notiz.trim().slice(0, 500) });
+    return { aufgabe: aufgabeId, zustand: "gemerged", commit };
+  });
+}
+
+/** Merge-Konflikt: Die angenommene Einreichung passt nicht mehr auf den neuen Stand; die Aufgabe geht mit neuem Basis-Commit zurück in den Pool. */
+export async function konfliktMelden(db: Db, einreichungId: number, kopf: string, bericht: string) {
+  if (!/^[0-9a-f]{40}$/.test(kopf)) throw new Abgelehnt("head: a full commit hash");
+  return transaktion(db, async (tx) => {
+    const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];
+    if (!e) throw new Abgelehnt("unknown submission");
+    const a = await aufgabeSperren(tx, e.aufgabe_id);
+    if (a.zustand !== "angenommen") throw new Abgelehnt(`task is ${en(a.zustand)}`);
+    await tx.query("update aufgaben set basis_commit = $2 where id = $1", [a.id, kopf]);
+    await wechseln(tx, a, "offen", "pruefstrasse", "merge_konflikt", { einreichung: einreichungId, neue_basis: kopf, bericht: bericht.slice(0, 2000) });
+  });
+}
+
 export async function gemergedMelden(db: Db, einreichungId: number, commit: string) {
   return transaktion(db, async (tx) => {
     const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];
@@ -414,7 +463,9 @@ export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: strin
   const officers = rollen.includes("lead") || rollen.includes("visionaer") ? null : await officersVon(db, wer.menschId, Number(p.id));
   if (officers && !officers.length) throw new Abgelehnt("only the project's lead or one of its officers may do this");
   const r = await db.query(
-    `select e.id as einreichung_id, a.id as aufgabe_id, a.titel, a.zustand, a.stufe, a.rolle, a.raum, a.pfade, a.faehigkeiten, e.zusammenfassung, e.patch, p.ergebnis as pruefung, p.bericht
+    `select e.id as einreichung_id, a.id as aufgabe_id, a.titel, a.zustand, a.stufe, a.rolle, a.raum, a.pfade, a.faehigkeiten, e.zusammenfassung, e.patch, p.ergebnis as pruefung, p.bericht,
+       (select coalesce(jsonb_agg(jsonb_build_object('urteil', f.urteil, 'begruendung', f.begruendung, 'von', m.login) order by f.id), '[]')
+          from fremdpruefungen f join menschen m on m.id = f.mensch_id where f.einreichung_id = e.id) as fremdpruefungen
      from einreichungen e join aufgaben a on a.id = e.aufgabe_id
      left join lateral (select ergebnis, bericht from pruefungen where einreichung_id = e.id order by id desc limit 1) p on true
      where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok') order by e.id`, [p.id]);

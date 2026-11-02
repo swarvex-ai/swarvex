@@ -17,7 +17,7 @@ export const FELDER: Record<string, string> = {
   bilanz: "swarm_balance", gesamt: "total", aufgaben_fertig: "tasks_done",
   ein_agent: "single_agent", stunden: "hours", beschleunigung: "speedup", 
   vier_augen_prozent: "four_eyes_percent", pruefstrasse_prozent: "pipeline_passed_percent", abgeschlossen: "completed", vergleich: "comparison",
-  kalender_tage: "calendar_days", beschreibung_en: "description_en", einheiten: "units", einheiten_je_tag: "units_per_day", gleichzeitig: "concurrent", agentenstunden_je_tag: "agent_hours_per_day", durchsatz_faktor: "throughput_factor", beleg: "evidence", abhaengig_von: "depends_on", abhaengig_eins_von: "depends_on_any", wartet_auf: "waiting_for", zum_bewerten: "to_review", angebot: "supply", blockiert: "blocked", aktiv: "active", nachschub_noetig: "backlog_low", zeitfluss: "time_flow", jetzt: "now", warten_auf_agent: "waiting_for_agent", bearbeitung: "working", bewertung: "review", merge: "merge", warten_auf_pruefung: "waiting_for_check", aelteste_pruefung_h: "oldest_check_hours", aelteste_bewertung_h: "oldest_review_hours", weiter: "continue",
+  kalender_tage: "calendar_days", beschreibung_en: "description_en", einheiten: "units", einheiten_je_tag: "units_per_day", gleichzeitig: "concurrent", agentenstunden_je_tag: "agent_hours_per_day", durchsatz_faktor: "throughput_factor", beleg: "evidence", abhaengig_von: "depends_on", abhaengig_eins_von: "depends_on_any", folgeaufgaben: "unlocks", fremdpruefungen: "peer_reviews", zustimmungen: "approvals", automatisch_ab: "automatic_from", automatisch_angenommen: "accepted_automatically", automatisch: "automatic", fremdpruefer: "peer_reviewers", ohne_fremdbewertung: "without_peer_review", neue_basis: "new_base", wartet_auf: "waiting_for", zum_bewerten: "to_review", angebot: "supply", blockiert: "blocked", aktiv: "active", nachschub_noetig: "backlog_low", zeitfluss: "time_flow", jetzt: "now", warten_auf_agent: "waiting_for_agent", bearbeitung: "working", bewertung: "review", merge: "merge", warten_auf_pruefung: "waiting_for_check", aelteste_pruefung_h: "oldest_check_hours", aelteste_bewertung_h: "oldest_review_hours", weiter: "continue",
   gemerged: "merged", plus: "added", minus: "removed", sorte: "kind", sorten: "kinds", dateien_gesamt: "files_total", commit_url: "commit_url", zeilen_code: "lines_of_code",
   bilder: "images", audio: "audio", modelle_3d: "models_3d", videos: "videos", texte: "texts", reviews: "reviews", modelle: "models", agent_programm: "agent_program",
   modell: "model", tokens_je_annahme: "tokens_per_accepted", pfad: "path", lfs: "lfs", binaer: "binary", vorschau: "preview",
@@ -71,7 +71,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     beantwortet: "answered", erledigt: "done", hochgeladen: "uploaded", nacharbeit: "rework", abgelehnt: "rejected", zurueckgezogen: "withdrawn", beendet: "ended",
   },
   rolle: { visionaer: "visionary", lead: "lead", mitstreiter: "contributor" },
-  urteil: { annehmen: "accept", nacharbeit: "rework", ablehnen: "reject" },
+  urteil: { annehmen: "accept", nacharbeit: "rework", ablehnen: "reject", zustimmen: "approve", aenderungen: "request_changes" },
   ergebnis: { ok: "pass", fehler: "fail", nicht_moeglich: "unable" },
   quelle: { projekt: "pipeline", stichprobe: "sample", selbst: "own_run", gegenpruefung: "cross_check" },
   pruefung: { ok: "pass", fehler: "fail" },
@@ -94,7 +94,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     gegenpruefung_reserviert: "cross_check_reserved", gegenpruefung_zurueckgegeben: "cross_check_returned", rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
     officer_ernannt: "officer_appointed", officer_beendet: "officer_ended", freigabe_angefragt: "approval_requested", freigabe_entschieden: "approval_decided",
     zusage_eingegangen: "pledge_received", zusage_beendet: "pledge_ended", spendenauftrag_angelegt: "donation_brief_created", spende_hochgeladen: "donation_uploaded", spende_bewertet: "donation_reviewed",
-    mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
+    fremdpruefung: "peer_review", vom_lead_erledigt: "done_by_lead", merge_konflikt: "merge_conflict", mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
   },
 };
 WERTE.sorte = { code: "code", test: "test", bild: "image", audio: "audio", video: "video", "3d": "3d", text: "text", daten: "data", sonstiges: "other" };

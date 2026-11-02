@@ -310,6 +310,69 @@ describe("Projekt starten (Assistent)", () => {
   });
 });
 
+describe("Bewertung durch den Schwarm", () => {
+  const geprueft = async (titel: string, stufe: "A" | "B") => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe(titel), stufe });
+    await k.reservieren(db, mit, a.id);
+    const e: any = await k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "fertig", eigene_tests: "ok", verbrauch: { tokens: 10 } });
+    await k.pruefungStarten(db, e.einreichung_id);
+    await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
+    return { a, eid: Number(e.einreichung_id) };
+  };
+  const pruefer = async (login: string, stufe = 1) => {
+    const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login, vertrauensstufe) values ('gitea',$1,$1,$2) returning id", [login, stufe])).rows[0].id);
+    const ag = Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,$2,$2) returning id", [m, `${login}-agent`])).rows[0].id);
+    return { menschId: m, agentId: ag };
+  };
+  it("Stufe A: nach zwei unabhängigen Zustimmungen automatisch angenommen; Selbst, Lead und Neulinge prüfen nicht", async () => {
+    const { fremdPruefen, offeneFremdpruefungen } = await import("../src/schwarmpruefung.ts");
+    const { a, eid } = await geprueft("Fremd geprüft", "A");
+    const p1 = await pruefer("pruefer-1"), p2 = await pruefer("pruefer-2"), neu = await pruefer("neuling", 0);
+    expect((await offeneFremdpruefungen(db, p1, "test")).map((x) => x.einreichung_id)).toContain(eid);
+    expect((await offeneFremdpruefungen(db, mit, "test")).map((x) => x.einreichung_id)).not.toContain(eid);
+    await expect(fremdPruefen(db, mit, eid, "zustimmen", "ich finde meine Arbeit gut genug")).rejects.toThrow(/own submission/);
+    await expect(fremdPruefen(db, lead, eid, "zustimmen", "als Lead prüfe ich anders, nicht so")).rejects.toThrow(/review_submission/);
+    await expect(fremdPruefen(db, neu, eid, "zustimmen", "sieht für mich vollkommen gut aus")).rejects.toThrow(/trust level/);
+    expect(await fremdPruefen(db, p1, eid, "zustimmen", "Akzeptanz erfüllt, Pfade passen, Tests grün")).toMatchObject({ zustimmungen: 1, automatisch_angenommen: false });
+    await expect(fremdPruefen(db, p1, eid, "zustimmen", "noch einmal dieselbe Zustimmung")).rejects.toThrow(/already reviewed/);
+    expect(await fremdPruefen(db, p2, eid, "zustimmen", "Geprüft: Effekt korrekt, keine Nebenwirkungen")).toMatchObject({ zustimmungen: 2, automatisch_angenommen: true });
+    expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("angenommen");
+    const b = (await db.query("select b.urteil, ag.mensch_id::int as m from bewertungen b join agenten ag on ag.id = b.agent_id where b.einreichung_id = $1", [eid])).rows[0];
+    expect(b).toEqual({ urteil: "annehmen", m: p2.menschId });   // vier Augen: ein anderer Mensch als der Einreicher
+  });
+  it("ab Stufe B und bei Einwänden entscheidet der Lead; Merge-Konflikt schickt zurück in den Pool", async () => {
+    const { fremdPruefen } = await import("../src/schwarmpruefung.ts");
+    const { a, eid } = await geprueft("Stufe B", "B");
+    const p3 = await pruefer("pruefer-3"), p4 = await pruefer("pruefer-4");
+    await fremdPruefen(db, p3, eid, "zustimmen", "Akzeptanz erfüllt und sauber umgesetzt");
+    expect(await fremdPruefen(db, p4, eid, "zustimmen", "Auch von mir: passt genau zur Aufgabe")).toMatchObject({ automatisch_angenommen: false });
+    const wartend = (await k.wartendeEinreichungen(db, lead, "test")).find((x) => Number(x.einreichung_id) === eid);
+    expect(wartend.fremdpruefungen.map((f: { von: string }) => f.von)).toEqual(["pruefer-3", "pruefer-4"]);
+    await k.bewerten(db, lead, eid, "annehmen", "mit den Fremdprüfungen bestätigt");
+    const kopf = "a".repeat(40);
+    await k.konfliktMelden(db, eid, kopf, "patch does not apply");
+    expect((await db.query("select zustand, basis_commit from aufgaben where id = $1", [a.id])).rows[0]).toEqual({ zustand: "offen", basis_commit: kopf });
+    await k.schliessen(db, lead, a.id, "Test");
+  });
+  it("eigene D-Arbeit des Leads: nur Lead, nur Stufe D, mit Commit; schaltet Folgeaufgaben frei; kritischer Pfad zuerst", async () => {
+    const d = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Eigene Architektur"), stufe: "D" });
+    const f1 = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Folge 1"), abhaengig_von: [Number(d.id)] });
+    await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Folge 2"), abhaengig_von: [Number(f1.id)] });
+    const einzeln = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Ohne Folgen"));
+    await expect(k.leadErledigt(db, mit, d.id, "abc1234", "habe das selbst gebaut")).rejects.toThrow(/only the project's lead/);
+    await expect(k.leadErledigt(db, lead, einzeln.id, "abc1234", "keine D-Aufgabe, nicht so")).rejects.toThrow(/level D/);
+    await expect(k.leadErledigt(db, lead, d.id, "kein-hash", "Architektur steht jetzt")).rejects.toThrow(/commit/);
+    // vorher: D schaltet zwei Aufgaben frei und steht vor der Aufgabe ohne Folgen
+    const vorher = await k.aufgabenPassend(db, mit, "test");
+    const dZeile = vorher.find((x) => Number(x.id) === Number(d.id))!;
+    expect(dZeile.folgeaufgaben).toBe(2);
+    expect(vorher.findIndex((x) => Number(x.id) === Number(d.id))).toBeLessThan(vorher.findIndex((x) => Number(x.id) === Number(einzeln.id)));
+    await k.leadErledigt(db, lead, d.id, "abc1234", "Architektur steht in docs/architektur.md");
+    expect((await db.query("select zustand, ohne_fremdbewertung from aufgaben where id = $1", [d.id])).rows[0]).toEqual({ zustand: "gemerged", ohne_fremdbewertung: true });
+    expect((await k.aufgabenPassend(db, mit, "test")).map((x) => Number(x.id))).toContain(Number(f1.id));
+  });
+});
+
 describe("Zustandsmaschine", () => {
   it("läuft einmal komplett durch und protokolliert jeden Schritt", async () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Durchlauf"));
