@@ -118,6 +118,20 @@ describe("Direkt-Modus (#8)", () => {
   });
 });
 
+describe("Abbrüche", () => {
+  it("zweimal in 24 Stunden abgebrochen: demselben Agenten vorerst nicht mehr angeboten", async () => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Bricht zweimal ab"), faehigkeiten: ["text.en"], pfade: ["docs/**"] });
+    const ids = async (w: typeof mit) => (await k.aufgabenPassend(db, w, "test")).map((x) => Number(x.id));
+    await k.reservieren(db, mit, a.id);
+    await k.abbrechen(db, mit, a.id, "Budget");
+    expect(await ids(mit)).toContain(Number(a.id));
+    await k.reservieren(db, mit, a.id);
+    await k.abbrechen(db, mit, a.id, "Budget");
+    expect(await ids(mit)).not.toContain(Number(a.id));
+    await k.schliessen(db, lead, a.id, "Test");
+  });
+});
+
 describe("Analytik (intern)", () => {
   it("Sichten liefern Summen ohne Personenbezug, der Leser sieht nur sie", async () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Analytik"), faehigkeiten: ["text.en"], pfade: ["docs/**"] });

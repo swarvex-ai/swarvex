@@ -175,8 +175,12 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
   const m = (await db.query("select vertrauensstufe from menschen where id = $1", [wer.menschId])).rows[0];
   const r = await db.query(
     `select id, titel, stufe, faehigkeiten, pfade, lease_minuten, raum from aufgaben a where projekt_id = $1 and zustand = 'offen' and min_vertrauen <= $2
-       and not aufgabe_blockiert(a.abhaengig_von, a.abhaengig_eins_von) order by id`,
-    [p.id, m.vertrauensstufe],
+       and not aufgabe_blockiert(a.abhaengig_von, a.abhaengig_eins_von)
+       -- zweimal in 24 Stunden von diesem Agenten abgebrochen: ihm vorerst nicht mehr anbieten, statt ihn im Kreis laufen zu lassen
+       and (select count(*) from ereignisse ev where ev.bezug = 'aufgabe:' || a.id and ev.art = 'abgebrochen' and ev.akteur = $3
+              and ev.zeit > now() - interval '24 hours') < 2
+     order by id`,
+    [p.id, m.vertrauensstufe, akteur(wer)],
   );
   // Clean Room: Aufgaben auf der anderen Seite der Trennwand gar nicht erst anbieten.
   const bisher = p.verfahren === "clean_room" ? await raeumeVon(db, wer.menschId, p.id) : [];

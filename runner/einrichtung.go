@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -583,6 +584,12 @@ func setupDialog(ausfuehren bool) []string {
 			}
 		}
 	}
+	// Agenten schicken ihren Kontext bei jedem Schritt erneut; eine Textaufgabe braucht so leicht mehrere 100.000 Tokens
+	aufgabenBudget := f.frage("Tokens per task at most (agents resend their context with every step)", "1000000")
+	for n, err := strconv.Atoi(aufgabenBudget); err != nil || n < 50000; n, err = strconv.Atoi(aufgabenBudget) {
+		aufgabenBudget = f.frage("Tokens per task at most (a number, at least 50000)", "1000000")
+	}
+	args = append(args, "--budget-tokens", aufgabenBudget)
 	pruefen(argsSpeichern(args))
 	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
 

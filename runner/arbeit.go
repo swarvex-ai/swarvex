@@ -290,7 +290,12 @@ func arbeitenBefehl(args []string) {
 		fmt.Fprintln(os.Stderr, "recording usage:", err)
 	}
 	gestoppt()
-	if err != nil {
+	// Token-Budget erreicht: was der Agent bis dahin erarbeitet hat, geht als Einreichung weiter (Prüfung und Bewertung
+	// entscheiden), statt verworfen zu werden; ohne Ergebnis wird die Aufgabe mit klarem Grund zurückgegeben.
+	amBudget := tokensAus(verbrauch) >= int64(*budget)
+	if amBudget {
+		fmt.Printf("Token budget reached (%d of %d tokens). Submitting what the agent produced so far; raise the budget with `swarvex setup`.\n", tokensAus(verbrauch), *budget)
+	} else if err != nil {
 		abbrechen("sandbox: " + err.Error())
 	}
 
@@ -300,6 +305,9 @@ func arbeitenBefehl(args []string) {
 		fmt.Printf("Discarded %d side changes outside the allowed paths (e.g. dependencies, build or import files); they never leave this machine.\n", verworfen)
 	}
 	if err != nil || strings.TrimSpace(patch) == "" {
+		if amBudget {
+			abbrechen(fmt.Sprintf("token budget used up (%d of %d tokens) before a result; raise it with `swarvex setup`", tokensAus(verbrauch), *budget))
+		}
 		abbrechen("no usable result from the sandbox")
 	}
 	if fehler := patchVorpruefen(patch, a.Pfade, u); len(fehler) > 0 {
@@ -319,7 +327,7 @@ func arbeitenBefehl(args []string) {
 		m.token = neu
 	}
 	einreichung := map[string]any{
-		"task_id": id, "patch": patch, "summary": zusammenfassungAus(protokoll),
+		"task_id": id, "patch": patch, "summary": budgetHinweis(amBudget, *budget) + zusammenfassungAus(protokoll),
 		"own_tests": kuerzen(testBericht, 19000), "usage": verbrauch, "rights_confirmed": true,
 		"agent_program": agent.Name, "model": *modell,
 	}
@@ -776,4 +784,12 @@ func verbrauchAusProxy(protokoll string) map[string]float64 {
 		}
 	}
 	return verbrauch
+}
+
+// budgetHinweis stellt einer Einreichung voran, dass der Agent am Token-Budget gestoppt wurde.
+func budgetHinweis(amBudget bool, budget int) string {
+	if !amBudget {
+		return ""
+	}
+	return fmt.Sprintf("Note: the agent was stopped at the token budget (%d tokens); the result may be incomplete.\n\n", budget)
 }
