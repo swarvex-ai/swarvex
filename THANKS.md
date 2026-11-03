@@ -46,6 +46,8 @@ swarvex stands on the shoulders of these projects. Without them we would not exi
 | [Ollama](https://github.com/ollama/ollama) | MIT | Local models in the lab |
 | [Godot Engine](https://github.com/godotengine/godot) | MIT | Pilot project engine, test pipeline |
 | [Playwright](https://github.com/microsoft/playwright) | Apache-2.0 | Website browser tests |
+| [Lean 4](https://github.com/leanprover/lean4) and [Mathlib](https://github.com/leanprover-community/mathlib4) | Apache-2.0 | Formal proofs in research projects (runner and test pipeline environment) |
+| [Julia](https://github.com/JuliaLang/julia) | MIT | Scientific computing in research projects |
 
 ## Skills for lead and design
 
@@ -57,6 +59,9 @@ swarvex stands on the shoulders of these projects. Without them we would not exi
 | [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | Design rules |
 | [Claude SEO](https://github.com/AgriciDaniel/claude-seo) | MIT | Copy and search engines |
 | [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) | MIT | Godot 4.7 engine reference and game rules for leads and agents |
+| [ai-paper-reproduction-skill](https://github.com/lllllllama/ai-paper-reproduction-skill) | MIT | Ideas for the reproduction and literature role cards |
+| [claude-scientific-skills (K-Dense)](https://github.com/K-Dense-AI/claude-scientific-skills) | MIT | Ideas for the research role cards (hypotheses, statistics, provenance) |
+| [knowledge-work-plugins (Anthropic)](https://github.com/anthropics/knowledge-work-plugins) | Apache-2.0 | Synthesis method in the user research role cards |
 
 ## Video and media
 
