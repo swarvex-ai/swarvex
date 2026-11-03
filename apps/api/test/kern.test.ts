@@ -815,6 +815,12 @@ describe("Vorschau nach dem Merge", () => {
       expect(await vorschauErlaubt(db, "gibts-nicht.vorschau.example")).toBe(false);
       expect(await vorschauErlaubt(db, "a.b.vorschau.example")).toBe(false);
       expect(await vorschauErlaubt(db, "test.anderswo.example")).toBe(false);
+      // Abzeichen und Kurzlink
+      const { abzeichen, kurzlinkZiel } = await import("../src/kennzahlen.ts");
+      expect(await abzeichen(db, "test")).toContain("▶ play");
+      expect(await abzeichen(db, "gibts-nicht")).toContain("unknown");
+      expect(await kurzlinkZiel(db, "test", true)).toBe("https://test.vorschau.example/");
+      expect(await kurzlinkZiel(db, "gibts-nicht", false)).toMatch(/\/projekte$/);
       // Rückmeldungen zur Vorschau: angemeldete Besucher geben sie, nur Lead und Officers lesen sie
       const { feedbackGeben, feedbackListe, feedbackMarkieren } = await import("../src/feedback.ts");
       await expect(feedbackGeben(db, mit.menschId, "test", {})).rejects.toThrow(/good or what/);

@@ -6,7 +6,7 @@ import { schwarmBilanz } from "./bilanz.ts";
 import { STUFEN_GEWICHT, projektPerSlug } from "./aufgaben.ts";
 import { ketteVerifizieren } from "./ereignisse.ts";
 import { creditSpenden } from "./spenden.ts";
-import { vorschauUrl } from "./konfig.ts";
+import { konfig, vorschauUrl } from "./konfig.ts";
 import { feedbackZahlen } from "./feedback.ts";
 
 const ERLEDIGT = new Set(["angenommen", "gemerged"]);
@@ -199,4 +199,25 @@ export async function schwarmLive(db: Db) {
      from ereignisse e join projekte p on p.id = e.projekt_id
      where e.art = any($1) and not p.gesperrt and not p.entwurf and e.zeit > now() - interval '7 days'
      order by e.seq desc limit 12`, [LIVE_ARTEN])).rows;
+}
+
+/** Abzeichen für die README eines Projekts: „▶ play“, wenn es eine Vorschau gibt, sonst der Fortschritt. */
+export async function abzeichen(db: Db, slug: string) {
+  const p = (await db.query("select id, vorschau from projekte where slug = $1 and not gesperrt and not entwurf", [slug])).rows[0];
+  const rechts = !p ? "unknown" : p.vorschau?.ok_commit && vorschauUrl(slug) ? "▶ play" : `${(await kennzahlen(db, slug)).fortschritt_prozent} %`;
+  const farbe = rechts === "▶ play" ? "#047857" : rechts === "unknown" ? "#6b7280" : "#0369a1";
+  const breite = (t: string) => Math.round([...t].length * 6.6 + 12);
+  const l = "swarvex", bl = breite(l), br = breite(rechts);
+  const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${bl + br}" height="20" role="img" aria-label="swarvex: ${esc(rechts)}">
+<title>swarvex: ${esc(rechts)}</title><linearGradient id="g" x2="0" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity=".12"/><stop offset="1" stop-opacity=".1"/></linearGradient>
+<clipPath id="r"><rect width="${bl + br}" height="20" rx="3"/></clipPath><g clip-path="url(#r)"><rect width="${bl}" height="20" fill="#1f2937"/><rect x="${bl}" width="${br}" height="20" fill="${farbe}"/><rect width="${bl + br}" height="20" fill="url(#g)"/></g>
+<g fill="#fff" text-anchor="middle" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11"><text x="${bl / 2}" y="14">${l}</text><text x="${bl + br / 2}" y="14">${esc(rechts)}</text></g></svg>`;
+}
+
+/** Kurzlink swarvex.run/<slug>: zur Vorschau, wenn es eine gibt, sonst zur Projektseite. */
+export async function kurzlinkZiel(db: Db, slug: string, en: boolean) {
+  const p = (await db.query("select vorschau from projekte where slug = $1 and not gesperrt and not entwurf", [slug])).rows[0];
+  if (!p) return `${konfig.basis}${en ? "/en/projects" : "/projekte"}`;
+  return p.vorschau?.ok_commit && vorschauUrl(slug) ? vorschauUrl(slug) : `${konfig.basis}${en ? "/en/projects" : "/projekte"}/${slug}`;
 }

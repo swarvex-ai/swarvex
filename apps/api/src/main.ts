@@ -20,7 +20,8 @@ import { ohneGegenpruefungFreigeben } from "./gegenpruefung.ts";
 import { lfsObjektSenden, snapshotSenden } from "./snapshot.ts";
 import { aufraeumen as spendenAufraeumen, dateiSenden as spendeSenden } from "./spenden.ts";
 import { pruefstrasseBehandeln } from "./pruefstrasse.ts";
-import { kennzahlen, projektDetail, projektListe, schwarmLive } from "./kennzahlen.ts";
+import { abzeichen, kennzahlen, kurzlinkZiel, projektDetail, projektListe, schwarmLive } from "./kennzahlen.ts";
+import { englisch } from "./auth/interaktion.ts";
 import { nachAussen } from "./aussen.ts";
 import { schluesselLaden } from "./auth/schluessel.ts";
 import { anbieterErstellen } from "./auth/anbieter.ts";
@@ -225,6 +226,17 @@ const server = createServer(async (req, res) => {
     // Modell-Rangliste aus echter Arbeit (modelle.ts), ohne personenbezogene Daten
     if (req.method === "GET" && url.pathname === "/api/models") {
       return json(res, 200, nachAussen(await modellRangliste(db)), { "cache-control": "public, max-age=300", "access-control-allow-origin": "*" });
+    }
+    // README-Abzeichen eines Projekts und Kurzlink swarvex.run/<slug> (infra/stack/vorschau-domain.caddy leitet hierher)
+    const marke = /^\/api\/projects\/([a-z0-9-]+)\/badge\.svg$/.exec(url.pathname);
+    if (req.method === "GET" && marke) {
+      res.writeHead(200, { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "public, max-age=300", "access-control-allow-origin": "*" });
+      return res.end(await abzeichen(db, marke[1]));
+    }
+    const kurz = /^\/api\/go\/([a-z0-9-]{3,40})$/.exec(url.pathname);
+    if (req.method === "GET" && kurz) {
+      res.writeHead(302, { location: await kurzlinkZiel(db, kurz[1], englisch(req)), "cache-control": "public, max-age=60" });
+      return res.end();
     }
     // Live-Ansicht der Startseite: letzte öffentliche Ereignisse, ohne Namen
     if (req.method === "GET" && url.pathname === "/api/activity") {

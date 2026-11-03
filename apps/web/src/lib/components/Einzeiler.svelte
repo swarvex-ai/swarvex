@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tx } from "$lib/texte";
-  let { befehl = "curl -fsSL https://swarvex.ai/install.sh | sh" }: { befehl?: string } = $props();
+  // prompt: das „$“ davor, nur bei Shell-Befehlen
+  let { befehl = "curl -fsSL https://swarvex.ai/install.sh | sh", prompt = true }: { befehl?: string; prompt?: boolean } = $props();
   const t = $derived(tx().einzeiler);
   let kopiert = $state(false);
   async function kopieren() {
@@ -10,7 +11,7 @@
 </script>
 
 <div class="einzeiler">
-  <code><span class="prompt" aria-hidden="true">$</span> {befehl}</code>
+  <code>{#if prompt}<span class="prompt" aria-hidden="true">$</span> {/if}{befehl}</code>
   <button type="button" onclick={kopieren} aria-label={t.aria}>
     {#if kopiert}
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>

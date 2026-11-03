@@ -25,7 +25,14 @@
 	file_server
 }
 
-# Die Domain selbst zeigt nichts, sie führt zu swarvex.ai
+# Die Domain selbst: Kurzlinks <Domain>/<slug> führen zur Vorschau (sonst zur Projektseite), alles andere zu swarvex.ai
 {$VORSCHAU_DOMAIN} {
-	redir https://swarvex.ai/ 302
+	@kurz path_regexp kurz ^/([a-z0-9][a-z0-9-]{1,38}[a-z0-9])/?$
+	handle @kurz {
+		rewrite * /api/go/{re.kurz.1}
+		reverse_proxy api:3000
+	}
+	handle {
+		redir https://swarvex.ai/ 302
+	}
 }

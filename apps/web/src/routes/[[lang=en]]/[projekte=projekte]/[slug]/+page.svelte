@@ -4,6 +4,7 @@
   import Seo from "$lib/components/Seo.svelte";
   import Zaehler from "$lib/components/Zaehler.svelte";
   import VorschauFeedback from "$lib/components/VorschauFeedback.svelte";
+  import Einzeiler from "$lib/components/Einzeiler.svelte";
   import { SEITE } from "$lib/seo";
   import { pfad, sprache, tx } from "$lib/texte";
 
@@ -130,6 +131,13 @@
           {/if}
         </dd>
       </dl>
+      <!-- Abzeichen für die README des Projekts: führt zur Vorschau, sonst zur Projektseite -->
+      <details class="klein readme">
+        <summary>{d.abzeichen}</summary>
+        <p><img src={`/api/projects/${p.project}/badge.svg`} alt="swarvex" height="20" /></p>
+        <Einzeiler prompt={false} befehl={`[![swarvex](${SEITE}/api/projects/${p.project}/badge.svg)](${p.preview?.url ?? SEITE + pfad("en", `/projects/${p.project}`)})`} />
+        <p class="leise">{d.abzeichenText}</p>
+      </details>
     </section>
   </div>
 
