@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
+    <script>
+      // Farbschema vor dem ersten Bild: dunkel, außer jemand hat „hell“ gewählt (Schalter in der Kopfzeile)
+      try { if (localStorage.getItem("swarvex-thema") === "hell") document.documentElement.dataset.thema = "hell"; } catch {}
+    </script>
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
     %sveltekit.head%
   </head>

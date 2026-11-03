@@ -45,6 +45,16 @@
 		root * /srv
 		file_server
 	}
+	# Neue Besucher, deren Browser nicht Deutsch an erster Stelle nennt, landen auf der englischen Startseite.
+	# Wer die Sprache selbst umschaltet, bekommt das Cookie swarvex_sprache und bleibt dort; ohne Accept-Language
+	# (Suchmaschinen) bleibt / deutsch, beide Fassungen sind über hreflang verknüpft.
+	@englisch {
+		path /
+		header Accept-Language *
+		not header Accept-Language de*
+		not header Cookie *swarvex_sprache=*
+	}
+	redir @englisch /en 302
 	# Website (apps/web): Startseite, Projekte, Doku, Assets
 	@web path / /en /en/* /projekte /projekte/* /modelle /mitstreiter /mitstreiter/* /starten /lead/* /open-source /melden /report /konto /kontakt /contact /datenschutz /nutzungsbedingungen /privacy /terms /docs /docs/* /_app/* /favicon.svg /llms-full.txt /robots.txt /sitemap.xml /og.png /og-en.png /logo-512.png
 	handle @web {

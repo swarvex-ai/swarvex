@@ -6,6 +6,16 @@
   import { pfad, sprache, tx } from "$lib/texte";
   let { children } = $props();
   let menueOffen = $state(false);
+  // Sprache gewählt: Caddy leitet neue Besucher ohne Deutsch im Browser von / nach /en, außer mit diesem Cookie
+  const spracheMerken = (ziel: string) => { document.cookie = `swarvex_sprache=${ziel}; path=/; max-age=31536000; SameSite=Lax; Secure`; };
+  // Farbschema: dunkel ist Standard, hell auf Wunsch (app.html liest die Wahl vor dem ersten Bild)
+  let hell = $state(false);
+  $effect(() => { hell = document.documentElement.dataset.thema === "hell"; });
+  function themaWechseln() {
+    hell = !hell;
+    if (hell) document.documentElement.dataset.thema = "hell"; else delete document.documentElement.dataset.thema;
+    try { localStorage.setItem("swarvex-thema", hell ? "hell" : "dunkel"); } catch { /* ohne Speicher gilt die Wahl nur bis zum Neuladen */ }
+  }
   const s = $derived(sprache());
   const t = $derived(tx());
   const links = $derived([
@@ -42,7 +52,11 @@
                onclick={() => (menueOffen = false)}>{l.text}</a></li>
       {/each}
       <li><RepoLink text={t.nav.quellcode} /></li>
-      <li><a class="sprache" href={andere} hreflang={s === "de" ? "en" : "de"} lang={s === "de" ? "en" : "de"} aria-label={t.nav.andere}>{t.nav.andereKurz}</a></li>
+      <li><button type="button" class="thema" onclick={themaWechseln} aria-pressed={hell} aria-label={hell ? t.nav.dunkel : t.nav.hell} title={hell ? t.nav.dunkel : t.nav.hell}>
+        {#if hell}<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        {:else}<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>{/if}
+      </button></li>
+      <li><a class="sprache" href={andere} hreflang={s === "de" ? "en" : "de"} lang={s === "de" ? "en" : "de"} aria-label={t.nav.andere} onclick={() => spracheMerken(s === "de" ? "en" : "de")}>{t.nav.andereKurz}</a></li>
       <li><a class="knopf visionaer" href={pfad(s, t.starten.pfad)} onclick={() => (menueOffen = false)}>{t.nav.starten}</a></li>
       <li><a class="knopf primaer" href={pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent")} onclick={() => (menueOffen = false)}>{t.nav.anschliessen}</a></li>
     </ul>
@@ -61,7 +75,7 @@
       <a href={pfad(s, t.projekte.pfad)}>{t.nav.projekte}</a><a href={pfad(s, t.opensource.pfad)}>{t.opensource.nav}</a><a href={pfad(s, t.modelle.pfad)}>{t.modelle.nav}</a><a href={pfad(s, "/docs")}>{t.nav.doku}</a>
       <a href={pfad(s, s === "de" ? "/docs/sicherheit" : "/docs/security")}>{t.fuss.sicherheit}</a>
       <a href={pfad(s, s === "de" ? "/docs/lizenz" : "/docs/license")}>{t.fuss.lizenz}</a><a href={pfad(s, t.konto.pfad)}>{t.konto.nav}</a><a href={pfad(s, t.melden.pfad)}>{t.melden.nav}</a><a href={pfad(s, "/llms-full.txt")}>{t.fuss.alsText}</a>
-      <a href={andere} hreflang={s === "de" ? "en" : "de"}>{t.nav.andere}</a>
+      <a href={andere} hreflang={s === "de" ? "en" : "de"} onclick={() => spracheMerken(s === "de" ? "en" : "de")}>{t.nav.andere}</a>
       <RepoLink text="GitHub" />
     </nav>
     <p class="leise klein">{t.fuss.lizenzSatz}
@@ -87,6 +101,9 @@
   .fuss nav :global(a.repo) { color: var(--stahl); text-decoration: none; }
   .fuss nav :global(a.repo:hover) { color: var(--text); }
   .sprache { font: 500 .85rem var(--mono); border: 1px solid var(--linie-hell); border-radius: 5px; padding: 3px 7px; }
+  .thema { display: inline-grid; place-items: center; width: 32px; height: 30px; padding: 0; border: 1px solid var(--linie-hell); border-radius: 5px;
+           background: none; color: var(--stahl); cursor: pointer; }
+  .thema:hover { color: var(--text); border-color: var(--stahl); }
   .menue { display: none; background: none; border: 0; color: var(--text); min-width: 44px; min-height: 44px; cursor: pointer; }
   @media (max-width: 820px) {
     .menue { display: inline-flex; align-items: center; justify-content: center; }

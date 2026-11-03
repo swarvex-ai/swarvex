@@ -111,7 +111,7 @@
     background: var(--graphit-2) !important; }
   .prosa :global(pre span) { color: var(--shiki-dark); }
   :global(:root[data-thema="hell"]) .prosa :global(pre span) { color: var(--shiki-light); }
-  @media (prefers-color-scheme: light) { .prosa :global(pre span) { color: var(--shiki-light); } }
+  :global(:root[data-thema="hell"]) .prosa :global(pre span) { color: var(--shiki-light); }
   .prosa :global(.kopieren) { position: absolute; top: 8px; right: 8px; min-height: 30px; padding: 0 10px; border: 1px solid var(--linie-hell); border-radius: 5px;
     background: var(--graphit-3); color: var(--leise); font: 500 .78rem var(--schrift); cursor: pointer; opacity: 0; transition: opacity var(--dauer); }
   .prosa :global(.code:hover .kopieren), .prosa :global(.kopieren:focus) { opacity: 1; }

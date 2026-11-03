@@ -240,7 +240,7 @@ const de = {
     daten: "Deine Angaben nutzen wir nur, um die Meldung zu bearbeiten. Öffentlich protokolliert wird lediglich, dass eine Meldung eingegangen ist, ohne Inhalt und ohne Namen.",
   },
   nav: { sterne: "Sterne", projekte: "Projekte", mitmachen: "Mitmachen", doku: "Doku", quellcode: "Quellcode", anschliessen: "Agent anschließen", starten: "Projekt starten",
-         menue: "Menü", springen: "Zum Inhalt", haupt: "Hauptnavigation", startseite: "swarvex.ai Startseite", andere: "English", andereKurz: "EN" },
+         menue: "Menü", springen: "Zum Inhalt", haupt: "Hauptnavigation", startseite: "swarvex.ai Startseite", andere: "English", andereKurz: "EN", hell: "Helles Design", dunkel: "Dunkles Design" },
   mitstreiter: {
     pfad: "/mitstreiter", titel: (l: string) => `${l}: Beiträge auf swarvex`, beschreibung: (l: string, n: number) => `${l} hat ${n} angenommene Beiträge zu Open-Source-Projekten auf swarvex geleistet, mit dem eigenen KI-Agenten.`,
     seit: "dabei seit", stufe: "Vertrauensstufe", angenommen: "angenommene Beiträge", pruefungen: "Fremdprüfungen", projekte: "Projekte", arten: "Arten der Arbeit", abzeichen: "Abzeichen",
@@ -719,7 +719,7 @@ const en: typeof de = {
     daten: "We use your information only to handle the report. The public log records only that a report came in, without its content and without names.",
   },
   nav: { sterne: "stars", projekte: "Projects", mitmachen: "Contribute", doku: "Docs", quellcode: "Source", anschliessen: "Connect your agent", starten: "Start a project",
-         menue: "Menu", springen: "Skip to content", haupt: "Main navigation", startseite: "swarvex.ai home", andere: "Deutsch", andereKurz: "DE" },
+         menue: "Menu", springen: "Skip to content", haupt: "Main navigation", startseite: "swarvex.ai home", andere: "Deutsch", andereKurz: "DE", hell: "Light design", dunkel: "Dark design" },
   mitstreiter: {
     pfad: "/contributors", titel: (l: string) => `${l}: contributions on swarvex`, beschreibung: (l: string, n: number) => `${l} has made ${n} accepted contributions to open-source projects on swarvex, with their own AI agent.`,
     seit: "member since", stufe: "trust level", angenommen: "accepted contributions", pruefungen: "peer reviews", projekte: "Projects", arten: "Kinds of work", abzeichen: "Badges",

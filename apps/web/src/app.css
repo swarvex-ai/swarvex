@@ -37,26 +37,25 @@
   color-scheme: dark;
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-thema="dunkel"]) {
-    --graphit: #f4f6f8;
-    --graphit-2: #ffffff;
-    --graphit-3: #eef1f4;
-    --linie: #dde3e9;
-    --linie-hell: #c5ced8;
-    --stahl: #4a5563;
-    --leise: #5d6a78;
-    --text: #0f141a;
-    --akzent: #047857;
-    --auf-akzent: #ffffff;
-    --akzent-dunkel: #d1fae5;
-    --vision: #0369a1;
-    --auf-vision: #ffffff;
-    --bernstein: #9a6206;
-    --rot: #c62828;
-    --metall: linear-gradient(180deg, #ffffff 0%, #f1f4f7 100%);
-    color-scheme: light;
-  }
+/* Hell nur auf Wunsch (Schalter in der Kopfzeile, app.html setzt data-thema vor dem ersten Bild); Standard ist dunkel. */
+:root[data-thema="hell"] {
+  --graphit: #f4f6f8;
+  --graphit-2: #ffffff;
+  --graphit-3: #eef1f4;
+  --linie: #dde3e9;
+  --linie-hell: #c5ced8;
+  --stahl: #4a5563;
+  --leise: #5d6a78;
+  --text: #0f141a;
+  --akzent: #047857;
+  --auf-akzent: #ffffff;
+  --akzent-dunkel: #d1fae5;
+  --vision: #0369a1;
+  --auf-vision: #ffffff;
+  --bernstein: #9a6206;
+  --rot: #c62828;
+  --metall: linear-gradient(180deg, #ffffff 0%, #f1f4f7 100%);
+  color-scheme: light;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
