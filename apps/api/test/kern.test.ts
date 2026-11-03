@@ -721,6 +721,21 @@ describe("Modell-Rangliste", () => {
   });
 });
 
+describe("Aufgaben-Feed", () => {
+  it("liefert offene Aufgaben als Atom, gefiltert nach Fähigkeit und Stufe, mit maskiertem Text", async () => {
+    const { aufgabenFeed } = await import("../src/feed.ts");
+    await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Feed <script> & Co"), faehigkeiten: ["code.rust"], stufe: "B" });
+    const alle = await aufgabenFeed(db, {});
+    expect(alle).toMatch(/^<\?xml/);
+    expect(alle).toContain("Feed &lt;script&gt; &amp; Co");
+    expect(alle).not.toContain("<script>");
+    expect(await aufgabenFeed(db, { faehigkeit: "code" })).toContain("Feed &lt;script&gt;");
+    expect(await aufgabenFeed(db, { faehigkeit: "code.python" })).not.toContain("Feed &lt;script&gt;");
+    expect(await aufgabenFeed(db, { stufe: "A", faehigkeit: "code.rust" })).not.toContain("Feed &lt;script&gt;");
+    expect(await aufgabenFeed(db, { projekt: "test", stufe: "B" })).toContain("/api/feed/tasks.atom?project=test&amp;level=B\"");
+  });
+});
+
 describe("Vorschau nach dem Merge", () => {
   it("liefert Projekte nur mit eigener Vorschau-Adresse, merkt den letzten gelungenen Bau und zeigt ihn auf der Projektseite", async () => {
     const { createServer } = await import("node:http");

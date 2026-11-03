@@ -47,7 +47,7 @@
   const anzahl = (k: string) => projekte.filter((p) => inKategorie(p, k)).length;
 </script>
 
-<Seo titel={t.seoTitel} beschreibung={t.beschreibung} pfad={pfad(s, t.pfad)} alternativen={{ de: "/projekte", en: "/en/projects" }} />
+<Seo titel={t.seoTitel} beschreibung={t.beschreibung} pfad={pfad(s, t.pfad)} alternativen={{ de: "/projekte", en: "/en/projects" }} feed="/api/feed/tasks.atom" />
 
 <section class="huelle kopf">
   <h1>{t.h1}</h1>
