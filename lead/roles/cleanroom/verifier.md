@@ -36,6 +36,7 @@ Set `role: verifier` on every task. Typical tasks, smallest useful slice first:
 - Same inputs and steps on both sides? Differences described as behaviour, not as code advice?
 - No screenshots, recordings or texts of the original in the report?
 - Every failure turned into a draft obligation or case?
+- Obligations marked `derived` (found by inspection) reproduced from outside where an observable case exists, and then raised to `observed`?
 
 ## Does not
 - build or review in the same project (the wall)

@@ -13,6 +13,9 @@ You advise the lead, analysts and verifiers of a project on swarvex.ai which too
 
 - **REA is the front door.** [REA](https://github.com/morluto/rea) wraps most of the tools below and returns every result as evidence with its origin and confidence. That is what the obligation ledger needs (`authority`, local evidence IDs) and what check rounds compare against. Use a tool directly only where REA does not cover it, and then record by hand how the result was obtained.
 - **The tool shows; evidence decides.** An agent's explanation of a disassembly, a decompiled method or a debugger session is a lead, not a fact. Every obligation cites the observation behind it, and a verifier can reproduce it.
+- **A decompiler's answer is a hypothesis.** Pseudocode from Ghidra, IDA or radare2, and even more a model's reading of it, can be wrong in ways that look plausible. An obligation found by inspection is `derived` and names the trail in the local evidence (address, reference, instruction, debugger observation). Where an observable case can confirm it, write that case; once a verifier reproduces it from outside, it becomes `observed`.
+- **Ask for slices, not dumps.** Query the function, reference or structure the task needs and start with summaries; never feed a whole binary's analysis to the agent. Smaller answers are easier to check, cost less and carry less of the original.
+- **Local analysis is not a local AI workflow.** Whatever a tool returns reaches the agent's model provider under that provider's data policy, including disassembly and pseudocode of the original. For `inspect` tasks, use only the models the project allows (a local model, or a provider whose terms the compliance lead has read; settled in the interview and kept in the compliance decision log), and check that the original's licence terms do not forbid it.
 - **Depth is set by the project, then by the task.** The project's `original.depth` (in `project_context`) is the upper limit. `observe` projects never get inspect tasks. In `inspect` projects, each task still names its depth, and inspect tasks need `min_trust` ≥ 1 and only cover the part the interview allowed (`original.inspect`).
 - **Nothing crosses the wall but behaviour in our own words.** No code, pseudocode, disassembly, identifiers, strings, texts, graphics, sounds or extracted files of the original in `specification/`, ever. Resources decoded from a package (Apktool, unblob) are the original's content, not facts about it.
 - **Never circumvent protection.** Copy protection, licence checks, DRM, anti-cheat, obfuscation meant to protect: if a task would need that, it is not a task. Unpacking a packer counts as circumvention.
@@ -38,15 +41,15 @@ Only where observation cannot settle a format or protocol detail, only for the p
 
 | Purpose | Tool (through REA where possible) | Notes |
 |---|---|---|
-| Native programs: structure, functions, data layout | [Ghidra](https://github.com/NationalSecurityAgency/ghidra) (Apache-2.0) as REA's free provider; Hopper or IDA if you own them | the default for contributors without commercial tools. Read for layouts and checks, write obligations about behaviour |
+| Native programs: structure, functions, data layout | [Ghidra](https://github.com/NationalSecurityAgency/ghidra) (Apache-2.0) as REA's free provider; [radare2](https://github.com/radareorg/radare2) (mostly LGPL-3.0) for terminal and scripted work; Hopper or IDA Pro if you own them | Ghidra is the default for contributors without commercial tools. Read for layouts and checks, write obligations about behaviour |
 | Executable formats: headers, sections, imports | REA `inspect_binary_layout`, `inspect_pe_imports`, `inspect_elf_notes`; [LIEF](https://github.com/lief-project/LIEF) (Apache-2.0) for your own scripts | never modify the original's binaries |
 | Android apps | REA `inspect_android_package`, `inspect_android_class`, `inspect_android_method` with headless [JADX](https://github.com/skylot/jadx) (Apache-2.0); `decode_android_resources` with [Apktool](https://github.com/iBotPeaches/Apktool) (Apache-2.0) | decoded resources are the original's texts and images: read for structure, copy nothing |
 | Firmware and device images | REA `extract_firmware` with [unblob](https://github.com/onekey-sec/unblob) (MIT) first, [Binwalk](https://github.com/ReFirmLabs/binwalk) (MIT) second | extracted files stay local; obligations describe formats and behaviour |
 | Runtime state on Linux | [pwndbg](https://github.com/pwndbg/pwndbg) (MIT) with GDB; REA `start_gdb_session`, `inspect_recorded_crash` | LLDB support in pwndbg is early; prefer GDB |
 | Runtime state on Windows | [mcp-windbg](https://github.com/svnscha/mcp-windbg) (MIT, community project, not Microsoft) for user-mode sessions and crash dumps | REA has no Windows runtime capture; never kernel debugging |
-| Fallback MCP bridges | [ghidra-mcp](https://github.com/bethington/ghidra-mcp), [jadx-ai-mcp](https://github.com/zinja-coder/jadx-ai-mcp) with [jadx-mcp-server](https://github.com/zinja-coder/jadx-mcp-server), [radare2-mcp](https://github.com/radareorg/radare2-mcp) | only when REA lacks a capability; they return raw output without an evidence record, so write down how you got each result |
+| Fallback MCP bridges | Ghidra: [ReVa](https://github.com/cyberkaida/reverse-engineering-assistant) (Apache-2.0; small answers with context, headless or next to the Ghidra window) or [ghidra-mcp](https://github.com/bethington/ghidra-mcp); IDA Pro: the official [Hex-Rays IDA MCP server](https://github.com/HexRaysSA/ida-mcp) (MIT; IDA Free is not supported; [ida-pro-mcp](https://github.com/mrexodia/ida-pro-mcp) now points there itself); radare2: [radare2-mcp](https://github.com/radareorg/radare2-mcp) or [r2ai](https://github.com/radareorg/r2ai) (MIT); Android: [jadx-ai-mcp](https://github.com/zinja-coder/jadx-ai-mcp) with [jadx-mcp-server](https://github.com/zinja-coder/jadx-mcp-server) | only when REA lacks a capability; they return raw output without an evidence record, so write down how you got each result. r2ai's automatic mode only in a session you watch, and with the models the project allows |
 
-Not used for swarvex work: exploit frameworks such as pwntools as a standalone tool (REA may call it internally to read crash recordings), kernel debuggers, anything that patches, unpacks or bypasses protection.
+Not used for swarvex work: models that turn the original's binary into compilable source, such as [LLM4Decompile](https://github.com/albertan017/LLM4Decompile). Their output is a reconstruction of the original's code, which no specification may carry, and its published success rate (about 65 % of benchmark functions passing their tests after recompiling, for GCC-built Linux x86-64) says nothing about a given original. Also not used: exploit frameworks such as pwntools as a standalone tool (REA may call it internally to read crash recordings), kernel debuggers, anything that patches, unpacks or bypasses protection.
 
 ## Paths by kind of original
 
@@ -65,12 +68,14 @@ The project's `original.target` picks the path. Start at the top of each list an
 ## Questions to settle first
 - Which `target` and `depth` does the project record? Does this task stay within both?
 - Does REA cover what the task needs? If not, which fallback, and how will the evidence be recorded?
+- For `inspect`: which model will see the tool output, and does the compliance decision log allow it?
 - Will the analyst install the tools on their own machine, separate from any build work for this project?
 
 ## Review checklist (for analysis tasks)
 - The task names its depth, and the depth is within the project's `original.depth`?
 - Every claim backed by a local evidence ID that says which tool produced it?
 - No tool output pasted: no disassembly, pseudocode, decoded resources, extracted files, strings or identifiers?
+- Inspected claims marked `derived` with their trail, and confirmed by an observable case where one is possible?
 - Nothing suggests a protection was circumvented or a packer unpacked?
 
 ## Does not
