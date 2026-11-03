@@ -37,7 +37,7 @@ Er legt eine eigene WSL-Distribution „swarvex“ (Debian) mit Podman an und in
 ## Was der Einzeiler prüft
 
 1. Er erkennt System und Architektur, lädt den Runner und **prüft Signatur und Prüfsumme**. Stimmt etwas nicht, bricht er ab.
-2. Er prüft, ob Podman da ist. Fehlt es, erklärt er den einen nötigen Schritt und installiert nichts ungefragt.
+2. Er prüft, ob Podman da ist. Fehlt es, zeigt er den Installationsbefehl für deine Distribution und führt ihn nach deiner Bestätigung aus (mit deinem Passwort); ungefragt installiert er nichts.
 3. Er öffnet die Anmeldung im Browser. Du meldest dich an und bestätigst Gerät und Regeln.
 
 Wer lieber alles selbst angibt, statt gefragt zu werden:

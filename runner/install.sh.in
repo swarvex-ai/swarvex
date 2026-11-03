@@ -28,14 +28,35 @@ for tool in curl tar sha256sum ssh-keygen; do
   command -v "$tool" >/dev/null 2>&1 || fail "Missing: $tool"
 done
 if ! command -v podman >/dev/null 2>&1 || ! command -v newuidmap >/dev/null 2>&1; then
-  hint="sudo apt install podman uidmap slirp4netns"
-  # passt exists from Ubuntu 24.04 / Debian 12 on; older releases have no such package
-  command -v apt-cache >/dev/null 2>&1 && apt-cache show passt >/dev/null 2>&1 && hint="$hint passt"
-  command -v dnf >/dev/null 2>&1 && hint="sudo dnf install podman"
-  command -v pacman >/dev/null 2>&1 && hint="sudo pacman -S podman"
-  fail "The runner needs rootless Podman (a sandbox for third-party project code).
+  hint="" install=""
+  if command -v apt-get >/dev/null 2>&1; then
+    pkgs="podman uidmap slirp4netns"
+    # passt exists from Ubuntu 24.04 / Debian 12 on; older releases have no such package
+    apt-cache show passt >/dev/null 2>&1 && pkgs="$pkgs passt"
+    hint="sudo apt install $pkgs"
+    install="sudo apt-get update && sudo apt-get install -y $pkgs"
+  elif command -v dnf >/dev/null 2>&1; then hint="sudo dnf install podman"; install="sudo dnf install -y podman"
+  elif command -v zypper >/dev/null 2>&1; then hint="sudo zypper install podman"; install="sudo zypper --non-interactive install podman"
+  elif command -v pacman >/dev/null 2>&1; then hint="sudo pacman -S podman"; install="sudo pacman -S --needed --noconfirm podman"
+  fi
+  # Ask on the terminal (stdin is this script with curl | sh); sudo only after an explicit yes, never silently
+  answer=""
+  if [ -n "$install" ] && command -v sudo >/dev/null 2>&1 && ( : </dev/tty ) 2>/dev/null; then
+    printf '\nThe runner needs rootless Podman (a sandbox for third-party project code). It is missing.\n'
+    printf 'Install it now? This runs, with your password:\n    %s\n[Y/n] ' "$install"
+    read -r answer </dev/tty || answer="n"
+    case "$answer" in
+      ""|[yYjJ]*) sh -c "$install" </dev/tty || fail "Installing Podman failed. Please install it yourself and run the one-liner again:
+      $hint" ;;
+    esac
+  fi
+  if ! command -v podman >/dev/null 2>&1 || ! command -v newuidmap >/dev/null 2>&1; then
+    [ -n "$hint" ] || hint="install podman and uidmap (newuidmap) with your package manager"
+    fail "The runner needs rootless Podman (a sandbox for third-party project code).
   Please install it once and run the one-liner again:
       $hint"
+  fi
+  echo "   Podman installed"
 fi
 [ "$(podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null)" = "true" ] \
   || fail "Podman is not running rootless for this user (check podman info)."

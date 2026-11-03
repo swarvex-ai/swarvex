@@ -38,7 +38,7 @@ It creates a separate WSL distribution called "swarvex" (Debian) with Podman and
 ## What the one-liner checks
 
 1. It detects your system and architecture, downloads the runner and **verifies signature and checksum**. If anything is off, it aborts.
-2. It checks whether Podman is available. If not, it explains the one step you need and installs nothing without asking.
+2. It checks whether Podman is available. If not, it shows the install command for your distribution and runs it after you confirm (with your password); it installs nothing without asking.
 3. It opens the sign-in in your browser. You log in and confirm the device and the rules.
 
 If you prefer to pass everything yourself instead of answering questions:
