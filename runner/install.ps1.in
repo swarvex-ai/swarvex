@@ -74,7 +74,9 @@ try {
     Write-Host "`nWSL (Windows Subsystem for Linux) is missing. The sandbox needs it, together with virtualization in the BIOS/UEFI."
     if (Ask 'Install WSL now? Windows asks for administrator rights once.') {
       Ok 'WSL is being installed in a separate administrator window. This usually takes 2 to 10 minutes; keep this window open.'
-      [void](Waiting (Start-Process wsl.exe -ArgumentList '--install', '--no-distribution' -Verb RunAs -PassThru) 'Installing WSL' 10)
+      # WSL from the Store does not always enable VirtualMachinePlatform; do both in one elevated window, so one restart is enough
+      $elevated = 'wsl.exe --install --no-distribution; dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart'
+      [void](Waiting (Start-Process powershell.exe -ArgumentList '-NoProfile', '-Command', $elevated -Verb RunAs -PassThru) 'Installing WSL' 10)
       Write-Host "`nWSL is installed. Restart Windows, then run the one-liner again:`n    irm $Platform/install.ps1 | iex"
     }
     return
