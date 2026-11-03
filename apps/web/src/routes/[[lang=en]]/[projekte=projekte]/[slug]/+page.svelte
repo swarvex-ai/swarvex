@@ -63,18 +63,16 @@
     </div>
     <div class="aktionen">
       <a class="knopf primaer" href={mitmachen}>{d.mitmachen}</a>
-      {#if p.preview?.url}
-        <!-- Projektcode auf eigener Adresse (infra/stack/Caddyfile): neues Fenster, ohne Verweis auf diese Seite -->
-        <a class="knopf" href={p.preview.url} target="_blank" rel="noopener noreferrer">{d.vorschau} ↗</a>
+      {#if p.preview?.url || p.preview?.docs_url}
+        <!-- Projektcode auf eigener Adresse (infra/stack/vorschau-domain.caddy): neues Fenster, ohne Verweis auf diese Seite -->
+        <div class="vorschau-knoepfe">
+          {#if p.preview.url}<a class="knopf" href={p.preview.url} target="_blank" rel="noopener noreferrer">{d.vorschau} ↗</a>{/if}
+          {#if p.preview.docs_url}<a class="knopf" href={p.preview.docs_url} target="_blank" rel="noopener noreferrer">{d.doku} ↗</a>{/if}
+        </div>
         <span class="leise klein">{d.vorschauStand(String(p.preview.playable_commit).slice(0, 7), datum(p.preview.playable_since))}{#if p.preview.status === "failed"}<br />{d.vorschauFehler}{/if}</span>
-        <VorschauFeedback slug={p.project} commit={String(p.preview.playable_commit)} anzahl={p.preview.feedback?.total ?? 0} />
-      {:else if p.preview && !p.preview.docs_url}
+        {#if p.preview.url}<VorschauFeedback slug={p.project} commit={String(p.preview.playable_commit)} anzahl={p.preview.feedback?.total ?? 0} />{/if}
+      {:else if p.preview}
         <span class="leise klein">{p.preview.status === "failed" ? d.vorschauNochNicht : d.vorschauWird}</span>
-      {/if}
-      {#if p.preview?.docs_url}
-        <!-- Doku, Blueprint oder Bericht aus dem Projekt (swarvex.yaml docs), ebenfalls auf der Vorschau-Adresse -->
-        <a class="knopf" href={p.preview.docs_url} target="_blank" rel="noopener noreferrer">{d.doku} ↗</a>
-        {#if !p.preview.url}<span class="leise klein">{d.vorschauStand(String(p.preview.playable_commit).slice(0, 7), datum(p.preview.playable_since))}</span>{/if}
       {/if}
       <a class="melden leise" href={`${pfad(s, tx().melden.pfad)}?project=${encodeURIComponent(p.project)}`}>{d.melden}</a>
     </div>
@@ -280,7 +278,8 @@
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .pfad { padding-top: 32px; font-size: .9rem; }
   .pfad a { color: var(--stahl); }
-  .kopf { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; margin: 12px 0 28px; }
+  .kopf { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; margin: 12px 0 28px; }
+  .vorschau-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
   .kopf h1 { font-size: clamp(2.1rem, 4.5vw, 3.2rem); margin-bottom: 10px; }
   .aktionen { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
   .melden { font-size: .88rem; }
@@ -354,6 +353,8 @@
   @media (max-width: 900px) {
     .kopf, .zwei { grid-template-columns: 1fr; }
     .aktionen { align-items: flex-start; }
+    .vorschau-knoepfe { justify-content: flex-start; }
+    .aktionen :global(.feedback summary) { text-align: left; }
     .kennzahlen { grid-template-columns: 1fr 1fr; }
     .gross { grid-column: 1 / -1; }
     .steckbrief { margin-top: 24px; }
