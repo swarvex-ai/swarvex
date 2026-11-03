@@ -28,7 +28,9 @@ for tool in curl tar sha256sum ssh-keygen; do
   command -v "$tool" >/dev/null 2>&1 || fail "Missing: $tool"
 done
 if ! command -v podman >/dev/null 2>&1 || ! command -v newuidmap >/dev/null 2>&1; then
-  hint="sudo apt install podman uidmap slirp4netns passt"
+  hint="sudo apt install podman uidmap slirp4netns"
+  # passt exists from Ubuntu 24.04 / Debian 12 on; older releases have no such package
+  command -v apt-cache >/dev/null 2>&1 && apt-cache show passt >/dev/null 2>&1 && hint="$hint passt"
   command -v dnf >/dev/null 2>&1 && hint="sudo dnf install podman"
   command -v pacman >/dev/null 2>&1 && hint="sudo pacman -S podman"
   fail "The runner needs rootless Podman (a sandbox for third-party project code).
@@ -37,7 +39,18 @@ if ! command -v podman >/dev/null 2>&1 || ! command -v newuidmap >/dev/null 2>&1
 fi
 [ "$(podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null)" = "true" ] \
   || fail "Podman is not running rootless for this user (check podman info)."
-echo "   ok: Linux/$ARCH, rootless Podman, curl, tar, ssh-keygen"
+# The sandbox reaches its key proxy by name on an internal network. Only Podman 4+
+# with netavark offers DNS there; Podman 3 (Ubuntu 22.04, Linux Mint 21) does not.
+PODMAN_VERSION="$(podman version --format '{{.Client.Version}}' 2>/dev/null || echo 0)"
+[ "${PODMAN_VERSION%%.*}" -ge 4 ] 2>/dev/null \
+  || fail "Podman $PODMAN_VERSION is too old; the runner needs Podman 4 or newer.
+  Ubuntu 22.04 and Linux Mint 21 only ship Podman 3. Ubuntu 24.04, Linux Mint 22,
+  Debian 12, Fedora and Arch are fine."
+[ "$(podman info --format '{{.Host.NetworkBackend}}' 2>/dev/null)" = "netavark" ] \
+  || fail "Podman uses the old CNI network backend; the runner needs netavark.
+  Install netavark and aardvark-dns, then run 'podman system reset' (removes local
+  containers and images) and the one-liner again."
+echo "   ok: Linux/$ARCH, rootless Podman $PODMAN_VERSION, curl, tar, ssh-keygen"
 
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/swarvex"
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}/swarvex"
