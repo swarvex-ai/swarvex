@@ -27,6 +27,7 @@
     { "@type": "SoftwareApplication", name: "swarvex", applicationCategory: "DeveloperApplication", operatingSystem: "Linux, macOS, Windows",
       description: t.jsonld.software, license: "https://www.gnu.org/licenses/agpl-3.0.html", offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
       publisher: { "@id": `${SEITE}/#organisation` } },
+    { "@type": "FAQPage", mainEntity: t.fragen.liste.map(([frage, antwort]) => ({ "@type": "Question", name: frage, acceptedAnswer: { "@type": "Answer", text: antwort } })) },
     { "@type": "VideoObject", name: t.jsonld.videoName, description: t.jsonld.videoText,
       thumbnailUrl: `${SEITE}${video.datei}.jpg`, contentUrl: `${SEITE}${video.datei}.mp4`, uploadDate: STAND, duration: video.dauer, inLanguage: s },
   ]);
@@ -88,6 +89,21 @@
   </ul>
   <p class="leise warum-ehrlich">{t.warum.ehrlich}</p>
   <a class="knopf" href={doku("warum-swarvex", "why-swarvex")}>{t.warum.mehr}</a>
+</section>
+
+<section class="huelle abschnitt" aria-labelledby="t-vorhaben">
+  <h2 id="t-vorhaben">{t.vorhaben.h2}</h2>
+  <p class="einleitung leise">{t.vorhaben.text}</p>
+  <div class="vorhaben">
+    {#each t.vorhaben.karten as k}
+      <div class="vorhaben-karte">
+        <h3>{k.h3}</h3>
+        <p>{k.p}</p>
+        <a href={k.ziel === "starten" || k.ziel === "start" ? pfad(s, tx().starten.pfad) : pfad(s, `/docs/${k.ziel}`)}>{k.link} →</a>
+      </div>
+    {/each}
+  </div>
+  <p class="leise vorhaben-modelle">{t.vorhaben.modelle} <a href={pfad(s, tx().modelle.pfad)}>{t.vorhaben.modelleLink}</a></p>
 </section>
 
 <section class="huelle abschnitt" aria-labelledby="t-rangliste">
@@ -207,6 +223,12 @@
   .video { margin: 0; border: 1px solid var(--linie-hell); border-radius: var(--radius); overflow: hidden; background: #000; aspect-ratio: 16 / 9; }
   .video video { width: 100%; height: 100%; display: block; }
 
+  .vorhaben { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; margin-top: 8px; }
+  .vorhaben-karte { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: 20px 22px; display: grid; gap: 10px; align-content: start; }
+  .vorhaben-karte h3 { margin: 0; font-size: 1.08rem; }
+  .vorhaben-karte p { margin: 0; color: var(--stahl); font-size: .95rem; }
+  .vorhaben-karte a { font-size: .92rem; }
+  .vorhaben-modelle { margin-top: 18px; font-size: .95rem; }
   .wege { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); }
   .weg { padding: 28px; }
   .weg + .weg { border-left: 1px solid var(--linie); }
