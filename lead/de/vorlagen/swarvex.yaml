@@ -15,6 +15,9 @@ note: Szenen nur über den Editor-Import anlegen; Konstanten stehen in src/konst
 # Andere Projekte nennen den Befehl und den Ordner mit der index.html, die er erzeugt:
 #   preview: npm run build
 #   preview_dir: dist
+# Doku, Blueprint oder Ergebnisbericht, nach jedem Merge unter /docs/ veröffentlicht:
+#   docs: cargo doc --no-deps
+#   docs_dir: target/doc
 protected: |
   - project.godot
   - tools/**

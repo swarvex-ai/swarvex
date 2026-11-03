@@ -46,6 +46,8 @@ type Umgebung struct {
 	Engine     *Engine  // proprietäre Engine vom Rechner des Mitstreiters (Unity, Unreal), sonst nil
 	Vorschau   string   // Shell: spielbare Web-Vorschau bauen (ohne Netz, nach jedem Merge, Prüfstraße), optional
 	VorschauIn string   // Ordner mit index.html, den Vorschau erzeugt (relativ zum Arbeitsordner)
+	Doku       string   // Shell: Doku, Blueprint oder Bericht als statische Seiten bauen (ohne Netz, nach jedem Merge), optional
+	DokuIn     string   // Ordner mit index.html, den Doku erzeugt (relativ zum Arbeitsordner); erscheint unter /docs/
 	Godot      string   // volle Godot-Version (Export-Vorlagen für die Vorschau), sonst leer
 	Einbinden  []string // nur zur Laufzeit: zusätzliche Podman-Argumente (Runner: Engine und Lizenz, nur lesend)
 }
@@ -183,6 +185,10 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 			u.Vorschau = v
 		case "preview_dir":
 			u.VorschauIn = strings.Trim(v, "/")
+		case "docs":
+			u.Doku = v
+		case "docs_dir":
+			u.DokuIn = strings.Trim(v, "/")
 		case "protected":
 			for _, g := range strings.FieldsFunc(v, func(r rune) bool { return r == ',' || r == '\n' }) {
 				if g = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(g), "- ")); g != "" {
@@ -190,7 +196,7 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 				}
 			}
 		default:
-			return u, fmt.Errorf("swarvex.yaml: unknown key %q (allowed: template, image, dir, setup, build, test, note, protected, preview, preview_dir)", k)
+			return u, fmt.Errorf("swarvex.yaml: unknown key %q (allowed: template, image, dir, setup, build, test, note, protected, preview, preview_dir, docs, docs_dir)", k)
 		}
 	}
 	if u.Image == "" && u.Basis == "" && u.Dockerfile == "" {
@@ -201,6 +207,12 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 	}
 	if strings.Contains(u.VorschauIn, "..") || strings.HasPrefix(u.VorschauIn, "/") {
 		return u, fmt.Errorf("swarvex.yaml: preview_dir must be a folder inside the project")
+	}
+	if (u.Doku == "") != (u.DokuIn == "") {
+		return u, fmt.Errorf("swarvex.yaml: docs and docs_dir belong together (the command and the folder with index.html it creates)")
+	}
+	if strings.Contains(u.DokuIn, "..") || strings.HasPrefix(u.DokuIn, "/") {
+		return u, fmt.Errorf("swarvex.yaml: docs_dir must be a folder inside the project")
 	}
 	return u, nil
 }

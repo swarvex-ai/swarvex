@@ -68,8 +68,13 @@
         <a class="knopf" href={p.preview.url} target="_blank" rel="noopener noreferrer">{d.vorschau} ↗</a>
         <span class="leise klein">{d.vorschauStand(String(p.preview.playable_commit).slice(0, 7), datum(p.preview.playable_since))}{#if p.preview.status === "failed"}<br />{d.vorschauFehler}{/if}</span>
         <VorschauFeedback slug={p.project} commit={String(p.preview.playable_commit)} anzahl={p.preview.feedback?.total ?? 0} />
-      {:else if p.preview}
+      {:else if p.preview && !p.preview.docs_url}
         <span class="leise klein">{p.preview.status === "failed" ? d.vorschauNochNicht : d.vorschauWird}</span>
+      {/if}
+      {#if p.preview?.docs_url}
+        <!-- Doku, Blueprint oder Bericht aus dem Projekt (swarvex.yaml docs), ebenfalls auf der Vorschau-Adresse -->
+        <a class="knopf" href={p.preview.docs_url} target="_blank" rel="noopener noreferrer">{d.doku} ↗</a>
+        {#if !p.preview.url}<span class="leise klein">{d.vorschauStand(String(p.preview.playable_commit).slice(0, 7), datum(p.preview.playable_since))}</span>{/if}
       {/if}
       <a class="melden leise" href={`${pfad(s, tx().melden.pfad)}?project=${encodeURIComponent(p.project)}`}>{d.melden}</a>
     </div>
@@ -135,7 +140,7 @@
       <details class="klein readme">
         <summary>{d.abzeichen}</summary>
         <p><img src={`/api/projects/${p.project}/badge.svg`} alt="swarvex" height="20" /></p>
-        <Einzeiler prompt={false} befehl={`[![swarvex](${SEITE}/api/projects/${p.project}/badge.svg)](${p.preview?.url ?? SEITE + pfad("en", `/projects/${p.project}`)})`} />
+        <Einzeiler prompt={false} befehl={`[![swarvex](${SEITE}/api/projects/${p.project}/badge.svg)](${p.preview?.url ?? p.preview?.docs_url ?? SEITE + pfad("en", `/projects/${p.project}`)})`} />
         <p class="leise">{d.abzeichenText}</p>
       </details>
     </section>

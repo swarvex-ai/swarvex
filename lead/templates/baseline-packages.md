@@ -143,7 +143,7 @@ B6 and B7 are already covered for repositories in the `swarvex-ai` organization:
 
 | ID | Building block | Done when | Default |
 |---|---|---|---|
-| L-1 | **Public interface** | clearly separated from internals, every public element documented, reference generated | first |
+| L-1 | **Public interface** | clearly separated from internals, every public element documented, reference generated and published after every merge (`docs` and `docs_dir` in `swarvex.yaml`) | first |
 | L-2 | **Quickstart** | from installation to the first working call in under 5 minutes | first |
 | L-3 | **Examples** | an examples folder that runs in the test pipeline | v1 |
 | L-4 | **Versioning and deprecation** | SemVer, changelog, deprecation warnings at least one minor version before removal | v1 |
@@ -184,3 +184,4 @@ B6 and B7 are already covered for repositories in the `swarvex-ai` organization:
 | R-11 | **Archived release** | a release with a DOI (e.g. Zenodo) at every milestone | release |
 | R-12 | **Contact with the source** | original authors or maintainers informed and invited to review before results are published | release |
 | R-13 | **Ethics check** | dual use and personal data checked and recorded (interview F8) | first |
+| R-14 | **Results online** | results report (claims, table, deviations) and, for proofs, the blueprint with its dependency graph are built after every merge and linked on the project page (`docs` and `docs_dir` in `swarvex.yaml`) | first |

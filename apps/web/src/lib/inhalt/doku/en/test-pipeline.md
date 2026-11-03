@@ -46,6 +46,22 @@ When the main branch has changed, the test pipeline builds a **web preview**, wi
 
 - **Unity, Unreal and native programs** get no preview on the platform: their editors and licences stay on contributors' machines.
 
+**Docs and reports** are built the same way when `swarvex.yaml` names them; they appear under `/docs/` of the same address, and the project page links them:
+
+| Project | `docs` | `docs_dir` |
+|---|---|---|
+| Rust library | `cargo doc --no-deps` | `target/doc` |
+| TypeScript library | `npx typedoc --out api-docs src` | `api-docs` |
+| Python (Sphinx or MkDocs) | `sphinx-build docs _build/html` or `mkdocs build` | `_build/html` or `site` |
+| Handbook with mdBook | `mdbook build` | `book` |
+| UI library | `npx storybook build` | `storybook-static` |
+| Lean proof: blueprint | `leanblueprint web` | `blueprint/web` |
+| Lean proof: API docs | `lake build Project:docs` | `.lake/build/doc` |
+| Reproduction with Quarto | `quarto render` | `_site` |
+| Julia notebook (Pluto) | a script that exports the notebooks as HTML | its output folder |
+
+The tools are installed in `setup` (with network); the build runs without network.
+
 The preview is project code, so it runs on **its own address**, never under the platform's. It may load files only from there (no third-party servers, no tracking), may be at most 300 MB and is not indexed by search engines. If a build fails, the previous preview stays.
 
 A detailed example is in the [lead handbook](/en/docs/lead-handbook) among the templates.

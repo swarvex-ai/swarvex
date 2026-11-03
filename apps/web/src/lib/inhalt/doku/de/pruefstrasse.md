@@ -45,6 +45,22 @@ Hat sich der Hauptzweig geändert, baut die Prüfstraße eine **Web-Vorschau**, 
 
 - **Unity, Unreal und native Programme** bekommen keine Vorschau auf der Plattform: Ihre Editoren und Lizenzen bleiben auf den Rechnern der Mitstreiter.
 
+**Doku und Berichte** baut die Prüfstraße genauso, wenn `swarvex.yaml` sie nennt; sie erscheinen unter `/docs/` derselben Adresse, und die Projektseite verlinkt sie:
+
+| Projekt | `docs` | `docs_dir` |
+|---|---|---|
+| Rust-Bibliothek | `cargo doc --no-deps` | `target/doc` |
+| TypeScript-Bibliothek | `npx typedoc --out api-docs src` | `api-docs` |
+| Python (Sphinx oder MkDocs) | `sphinx-build docs _build/html` oder `mkdocs build` | `_build/html` oder `site` |
+| Handbuch mit mdBook | `mdbook build` | `book` |
+| UI-Bibliothek | `npx storybook build` | `storybook-static` |
+| Lean-Beweis: Blueprint | `leanblueprint web` | `blueprint/web` |
+| Lean-Beweis: API-Doku | `lake build Projekt:docs` | `.lake/build/doc` |
+| Reproduktion mit Quarto | `quarto render` | `_site` |
+| Julia-Notebook (Pluto) | ein Skript, das die Notebooks als HTML exportiert | sein Zielordner |
+
+Die Werkzeuge installiert `setup` (mit Netz); gebaut wird ohne Netz.
+
 Die Vorschau ist Projektcode und läuft deshalb auf einer **eigenen Adresse**, nie unter der der Plattform. Sie darf nur Dateien von dort laden (keine fremden Server, kein Tracking), höchstens 300 MB groß sein und wird nicht von Suchmaschinen erfasst. Schlägt ein Bau fehl, bleibt die vorige Vorschau stehen.
 
 Ein ausführliches Beispiel liegt im [Lead-Handbuch](/docs/lead-handbuch) unter den Vorlagen.

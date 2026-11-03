@@ -183,7 +183,7 @@ export async function projektDetail(db: Db, slug: string) {
   // Spielbare Vorschau: die zuletzt gelungene, dazu der Stand des letzten Baus (z. B. fehlgeschlagen)
   const v = p.vorschau;
   const vorschau = vorschauUrl(slug) && v && v.status !== "none"
-    ? { url: v.ok_commit ? vorschauUrl(slug) : null, ok_commit: v.ok_commit, ok_zeit: v.ok_zeit, commit: v.commit, status: v.status, zeit: v.zeit,
+    ? { url: v.ok_commit && v.hat_vorschau !== false ? vorschauUrl(slug) : null, docs_url: v.ok_commit && v.hat_doku ? `${vorschauUrl(slug)}docs/` : null, ok_commit: v.ok_commit, ok_zeit: v.ok_zeit, commit: v.commit, status: v.status, zeit: v.zeit,
         rueckmeldungen: await feedbackZahlen(db, Number(p.id)) } : null;
   return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, vorschau, aufgaben, beitragende, ereignisse, bilanz: await schwarmBilanz(db, Number(p.id)),
            protokoll: { ok: kette.ok, eintraege: kette.anzahl, kopf: kette.kopf,
@@ -204,8 +204,9 @@ export async function schwarmLive(db: Db) {
 /** Abzeichen für die README eines Projekts: „▶ play“, wenn es eine Vorschau gibt, sonst der Fortschritt. */
 export async function abzeichen(db: Db, slug: string) {
   const p = (await db.query("select id, vorschau from projekte where slug = $1 and not gesperrt and not entwurf", [slug])).rows[0];
-  const rechts = !p ? "unknown" : p.vorschau?.ok_commit && vorschauUrl(slug) ? "▶ play" : `${(await kennzahlen(db, slug)).fortschritt_prozent} %`;
-  const farbe = rechts === "▶ play" ? "#047857" : rechts === "unknown" ? "#6b7280" : "#0369a1";
+  const v = p?.vorschau, da = Boolean(v?.ok_commit && vorschauUrl(slug));
+  const rechts = !p ? "unknown" : da && v.hat_vorschau !== false ? "▶ play" : da && v.hat_doku ? "docs" : `${(await kennzahlen(db, slug)).fortschritt_prozent} %`;
+  const farbe = rechts === "▶ play" || rechts === "docs" ? "#047857" : rechts === "unknown" ? "#6b7280" : "#0369a1";
   const breite = (t: string) => Math.round([...t].length * 6.6 + 12);
   const l = "swarvex", bl = breite(l), br = breite(rechts);
   const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
@@ -219,5 +220,7 @@ export async function abzeichen(db: Db, slug: string) {
 export async function kurzlinkZiel(db: Db, slug: string, en: boolean) {
   const p = (await db.query("select vorschau from projekte where slug = $1 and not gesperrt and not entwurf", [slug])).rows[0];
   if (!p) return `${konfig.basis}${en ? "/en/projects" : "/projekte"}`;
-  return p.vorschau?.ok_commit && vorschauUrl(slug) ? vorschauUrl(slug) : `${konfig.basis}${en ? "/en/projects" : "/projekte"}/${slug}`;
+  const v = p.vorschau;
+  if (v?.ok_commit && vorschauUrl(slug)) return v.hat_vorschau !== false ? vorschauUrl(slug) : `${vorschauUrl(slug)}docs/`;
+  return `${konfig.basis}${en ? "/en/projects" : "/projekte"}/${slug}`;
 }

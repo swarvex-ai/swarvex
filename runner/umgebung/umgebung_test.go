@@ -188,7 +188,11 @@ func TestVorschau(t *testing.T) {
 	if err != nil || u.Vorschau != "npm run build" || u.VorschauIn != "dist" {
 		t.Errorf("Web-App: %+v %v", u, err)
 	}
-	for _, kaputt := range []string{"preview: npm run build\n", "preview: x\npreview_dir: ../etc\n"} {
+	u, err = Ermitteln(projekt(t, map[string]string{"Cargo.toml": "[package]\nname=\"x\"\n", "swarvex.yaml": "docs: cargo doc --no-deps\ndocs_dir: target/doc\n"}))
+	if err != nil || u.Doku != "cargo doc --no-deps" || u.DokuIn != "target/doc" || u.Vorschau != "" {
+		t.Errorf("Doku: %+v %v", u, err)
+	}
+	for _, kaputt := range []string{"preview: npm run build\n", "preview: x\npreview_dir: ../etc\n", "docs: mkdocs build\n", "docs: x\ndocs_dir: build/../../etc\n"} {
 		if _, err := Ermitteln(projekt(t, map[string]string{"package.json": `{}`, "swarvex.yaml": kaputt})); err == nil {
 			t.Errorf("%q hätte abgelehnt werden müssen", kaputt)
 		}

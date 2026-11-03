@@ -15,6 +15,9 @@ note: Create scenes only through the editor import; constants live in src/konsta
 # Other projects name the command and the folder with the index.html it creates:
 #   preview: npm run build
 #   preview_dir: dist
+# Docs, blueprint or results report, published under /docs/ after every merge:
+#   docs: cargo doc --no-deps
+#   docs_dir: target/doc
 protected: |
   - project.godot
   - tools/**

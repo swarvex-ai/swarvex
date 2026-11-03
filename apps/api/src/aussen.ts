@@ -23,7 +23,7 @@ export const FELDER: Record<string, string> = {
   modell: "model", tokens_je_annahme: "tokens_per_accepted", pfad: "path", lfs: "lfs", binaer: "binary", vorschau: "preview",
   verfahren: "procedure", vorbild: "original", forschung: "research", forschung_regeln: "research_rules",
   // model ranking (modelle.ts)
-  ok_commit: "playable_commit", ok_zeit: "playable_since", letzter_commit: "last_commit", autor_modell: "author_model", anderes_modell: "different_model",
+  ok_commit: "playable_commit", ok_zeit: "playable_since", letzter_commit: "last_commit", hat_vorschau: "has_preview", hat_doku: "has_docs", autor_modell: "author_model", anderes_modell: "different_model",
   // weekly report (wochenbericht.ts)
   bis: "until", vorwoche: "previous_week", angelegt: "created", neue_menschen: "new_people", offene_freigaben: "open_approvals", hinweise: "hints", wochenberichte: "weekly_reports",
   // public profile (profil.ts)

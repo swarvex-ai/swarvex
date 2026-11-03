@@ -91,8 +91,11 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
           const p = (await tx.query("select id, vorschau from projekte where slug = $1 for update", [v[1]])).rows[0];
           if (!p) throw new k.Abgelehnt("unknown project");
           const alt = p.vorschau ?? {};
+          const ok = status === "ok";
+          // was der gelungene Stand enthält: Vorschau (Wurzel) und/oder Doku (/docs/); ältere Meldungen ohne Angabe sind Vorschauen
           const neu = { commit, status, zeit: new Date().toISOString(), bytes: Number(daten.bytes ?? 0), bericht: String(daten.report ?? "").slice(-4000),
-            ok_commit: status === "ok" ? commit : alt.ok_commit ?? null, ok_zeit: status === "ok" ? new Date().toISOString() : alt.ok_zeit ?? null };
+            ok_commit: ok ? commit : alt.ok_commit ?? null, ok_zeit: ok ? new Date().toISOString() : alt.ok_zeit ?? null,
+            hat_vorschau: ok ? daten.preview !== false : alt.hat_vorschau ?? true, hat_doku: ok ? daten.docs === true : alt.hat_doku ?? false };
           await tx.query("update projekte set vorschau = $2 where id = $1", [p.id, neu]);
           if (status !== "none") await protokollieren(tx, { projekt_id: Number(p.id), akteur: "system", art: "vorschau_gebaut", bezug: `projekt:${p.id}`, daten: { commit, status } });
         });

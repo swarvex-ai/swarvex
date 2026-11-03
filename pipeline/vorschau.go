@@ -1,8 +1,9 @@
 package main
 
 // Vorschau nach jedem Merge: Für Projekte mit Web-Vorschau (Godot mit Web-Export-Preset, oder preview und preview_dir
-// in swarvex.yaml) baut die Prüfstraße den aktuellen Stand des Hauptzweigs ohne Netz und legt das Ergebnis unter
-// <arbeit>/vorschau/<slug>/ ab. Caddy liefert es auf einer eigenen Adresse aus (infra/stack/Caddyfile), nie unter der
+// in swarvex.yaml) und mit Doku oder Bericht (docs und docs_dir: API-Doku, Blueprint, Ergebnisbericht, Storybook) baut die
+// Prüfstraße den aktuellen Stand des Hauptzweigs ohne Netz und legt das Ergebnis unter <arbeit>/vorschau/<slug>/ ab,
+// die Doku unter docs/. Caddy liefert es auf einer eigenen Adresse aus (infra/stack/Caddyfile), nie unter der
 // Adresse der Plattform. Unity, Unreal und native Builds gibt es hier nicht: Ihre Editoren und Lizenzen bleiben auf den
 // Rechnern der Mitstreiter.
 
@@ -45,27 +46,35 @@ func vorschauen() {
 		if kopf = strings.TrimSpace(kopf); err != nil || kopf == p.Commit {
 			continue
 		}
-		status, bericht, groesse := eineVorschau(e, sp, kopf)
-		if len(bericht) > 4000 {
-			bericht = bericht[len(bericht)-4000:]
+		st := eineVorschau(e, sp, kopf)
+		if len(st.bericht) > 4000 {
+			st.bericht = st.bericht[len(st.bericht)-4000:]
 		}
-		if err := signiert("POST", "/pipeline/previews/"+p.Slug, map[string]any{"commit": kopf, "status": status, "report": bericht, "bytes": groesse}, nil); err != nil {
+		if err := signiert("POST", "/pipeline/previews/"+p.Slug, map[string]any{"commit": kopf, "status": st.status, "report": st.bericht, "bytes": st.groesse,
+			"preview": st.spiel, "docs": st.doku}, nil); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
-		fmt.Printf("preview %s at %.12s: %s\n", p.Slug, kopf, status)
+		fmt.Printf("preview %s at %.12s: %s (preview %v, docs %v)\n", p.Slug, kopf, st.status, st.spiel, st.doku)
 	}
 }
 
-// eineVorschau liefert den Status (ok, failed, none), den Bericht und die Größe in Bytes.
-func eineVorschau(e einreichung, sp, kopf string) (string, string, int64) {
+// vorschauStand: Ergebnis eines Baus; Spiel und Doku sagen, was die Projektseite verlinkt.
+type vorschauStand struct {
+	status, bericht string
+	groesse         int64
+	spiel, doku     bool
+}
+
+// eineVorschau baut Vorschau (Wurzel) und Doku (/docs/) des Stands kopf und tauscht sie zusammen ein.
+func eineVorschau(e einreichung, sp, kopf string) vorschauStand {
 	dir, _ := os.MkdirTemp(arbeit, "preview-")
 	defer os.RemoveAll(dir)
 	baum := filepath.Join(dir, "tree")
 	if aus, err := befehl(sp, gitEnv(leseKey, e), "git", "lfs", "fetch", "origin", kopf); err != nil {
-		return "failed", "LFS: " + aus, 0
+		return vorschauStand{status: "failed", bericht: "LFS: " + aus}
 	}
 	if aus, err := befehl(sp, nil, "git", "worktree", "add", "--detach", "--force", baum, kopf); err != nil {
-		return "failed", "checkout: " + aus, 0
+		return vorschauStand{status: "failed", bericht: "checkout: " + aus}
 	}
 	defer befehl(sp, nil, "git", "worktree", "remove", "--force", baum)
 	os.Chmod(baum, 0o777)
@@ -74,21 +83,21 @@ func eineVorschau(e einreichung, sp, kopf string) (string, string, int64) {
 	u, err := umgebung.Ermitteln(baum)
 	switch {
 	case err != nil:
-		return "failed", "environment: " + err.Error(), 0
+		return vorschauStand{status: "failed", bericht: "environment: " + err.Error()}
 	case u.Engine != nil:
-		return "none", fmt.Sprintf("%s projects get no preview on the platform: the editor and its licence stay on contributors' machines.", u.Engine), 0
-	case u.Vorschau == "":
-		return "none", "", 0
+		return vorschauStand{status: "none", bericht: fmt.Sprintf("%s projects get no preview on the platform: the editor and its licence stay on contributors' machines.", u.Engine)}
+	case u.Vorschau == "" && u.Doku == "":
+		return vorschauStand{status: "none"}
 	}
 	image, err := pruefImage(u, baum)
 	if err != nil {
-		return "failed", err.Error(), 0
+		return vorschauStand{status: "failed", bericht: err.Error()}
 	}
 	var extra []string
-	if u.Godot != "" {
+	if u.Godot != "" && u.Vorschau != "" {
 		vorlagen, err := godotVorlagen(u.Godot)
 		if err != nil {
-			return "failed", "Godot export templates: " + err.Error(), 0
+			return vorschauStand{status: "failed", bericht: "Godot export templates: " + err.Error()}
 		}
 		extra = []string{"-v", vorlagen + ":/home/agent/.local/share/godot/export_templates/" + u.Godot + ".stable:ro"}
 	}
@@ -98,40 +107,60 @@ func eineVorschau(e einreichung, sp, kopf string) (string, string, int64) {
 	var b strings.Builder
 	if strings.TrimSpace(u.Einrichten) != "" {
 		if aus, err := imContainer(image, baum, cache, u, u.Einrichten, true, 1200); err != nil {
-			return "failed", "setup failed:\n" + aus, 0
+			return vorschauStand{status: "failed", bericht: "setup failed:\n" + aus}
 		}
-	}
-	aus, err := imContainer(image, baum, cache, u, u.Vorschau, false, 1800, extra...)
-	fmt.Fprintf(&b, "=== Preview build\n%s\n", aus)
-	if err != nil {
-		return "failed", b.String() + "preview build failed", 0
-	}
-	quelle := filepath.Join(baum, u.Ordner, u.VorschauIn)
-	if st, err := os.Stat(filepath.Join(quelle, "index.html")); err != nil || !st.Mode().IsRegular() {
-		return "failed", b.String() + fmt.Sprintf("%s/index.html was not created", u.VorschauIn), 0
 	}
 	ziel := filepath.Join(arbeit, "vorschau", e.Slug)
 	neu, alt := ziel+".neu", ziel+".alt"
 	os.RemoveAll(neu)
-	groesse, err := vorschauKopieren(quelle, neu)
-	if err != nil {
-		os.RemoveAll(neu)
-		return "failed", b.String() + err.Error(), 0
+	defer os.RemoveAll(neu)
+	st := vorschauStand{}
+	// Teil bauen und an seinen Platz im neuen Stand kopieren
+	bauen := func(titel, skript, ordner, nach string, args []string) error {
+		aus, err := imContainer(image, baum, cache, u, skript, false, 1800, args...)
+		fmt.Fprintf(&b, "=== %s\n%s\n", titel, aus)
+		if err != nil {
+			return fmt.Errorf("%s failed", strings.ToLower(titel))
+		}
+		quelle := filepath.Join(baum, u.Ordner, ordner)
+		if s, err := os.Stat(filepath.Join(quelle, "index.html")); err != nil || !s.Mode().IsRegular() {
+			return fmt.Errorf("%s/index.html was not created", ordner)
+		}
+		n, err := vorschauKopieren(quelle, nach, vorschauMaxBytes-st.groesse)
+		st.groesse += n
+		return err
 	}
-	// Tauschen statt überschreiben: Wer gerade spielt, bekommt nie eine halbe Vorschau.
+	if u.Vorschau != "" {
+		if err := bauen("Preview build", u.Vorschau, u.VorschauIn, neu, extra); err != nil {
+			return vorschauStand{status: "failed", bericht: b.String() + err.Error()}
+		}
+		st.spiel = true
+	}
+	if u.Doku != "" {
+		os.RemoveAll(filepath.Join(neu, "docs")) // /docs/ gehört der Doku
+		if err := bauen("Docs build", u.Doku, u.DokuIn, filepath.Join(neu, "docs"), nil); err != nil {
+			return vorschauStand{status: "failed", bericht: b.String() + err.Error()}
+		}
+		st.doku = true
+		if !st.spiel { // nur Doku: die Wurzel führt dorthin
+			os.WriteFile(filepath.Join(neu, "index.html"), []byte(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=docs/"><a href="docs/">docs</a>`+"\n"), 0o644)
+		}
+	}
+	// Tauschen statt überschreiben: Wer gerade spielt oder liest, bekommt nie einen halben Stand.
 	os.RemoveAll(alt)
 	os.Rename(ziel, alt)
 	if err := os.Rename(neu, ziel); err != nil {
 		os.Rename(alt, ziel)
-		return "failed", b.String() + err.Error(), 0
+		return vorschauStand{status: "failed", bericht: b.String() + err.Error()}
 	}
 	os.RemoveAll(alt)
-	return "ok", b.String(), groesse
+	st.status, st.bericht = "ok", b.String()
+	return st
 }
 
 // vorschauKopieren übernimmt nur gewöhnliche Dateien und Ordner (keine Links, die aus der Vorschau hinauszeigen könnten)
 // und bricht ab, wenn die Vorschau zu groß wird.
-func vorschauKopieren(quelle, ziel string) (int64, error) {
+func vorschauKopieren(quelle, ziel string, rest int64) (int64, error) {
 	var summe int64
 	err := filepath.WalkDir(quelle, func(pfad string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -149,7 +178,7 @@ func vorschauKopieren(quelle, ziel string) (int64, error) {
 		if err != nil {
 			return err
 		}
-		if summe += info.Size(); summe > vorschauMaxBytes {
+		if summe += info.Size(); summe > rest {
 			return fmt.Errorf("the preview is larger than %d MB", vorschauMaxBytes>>20)
 		}
 		von, err := os.Open(pfad)

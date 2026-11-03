@@ -821,12 +821,18 @@ describe("Vorschau nach dem Merge", () => {
       expect(await abzeichen(db, "gibts-nicht")).toContain("unknown");
       expect(await kurzlinkZiel(db, "test", true)).toBe("https://test.vorschau.example/");
       expect(await kurzlinkZiel(db, "gibts-nicht", false)).toMatch(/\/projekte$/);
+      // nur Doku (z. B. eine Bibliothek): kein „Vorschau spielen“, aber der Link zur Doku
+      await senden("POST", "/pipeline/previews/test", { commit: "ccc333", status: "ok", report: "", bytes: 10, preview: false, docs: true });
+      const nurDoku = (nachAussen(await projektDetail(db, "test")) as { preview: { url: string | null; docs_url: string } }).preview;
+      expect(nurDoku).toMatchObject({ url: null, docs_url: "https://test.vorschau.example/docs/" });
+      expect(await abzeichen(db, "test")).toContain(">docs<");
+      expect(await kurzlinkZiel(db, "test", true)).toBe("https://test.vorschau.example/docs/");
       // Rückmeldungen zur Vorschau: angemeldete Besucher geben sie, nur Lead und Officers lesen sie
       const { feedbackGeben, feedbackListe, feedbackMarkieren } = await import("../src/feedback.ts");
       await expect(feedbackGeben(db, mit.menschId, "test", {})).rejects.toThrow(/good or what/);
       const { feedback_id } = await feedbackGeben(db, mit.menschId, "test", { gut: "Steuerung fühlt sich gut an", hakt: "Sprung zu kurz", geraet: "Firefox" });
       await expect(feedbackListe(db, mit, "test")).rejects.toThrow(/only the project's lead/);
-      expect((await feedbackListe(db, lead, "test"))[0]).toMatchObject({ feedback_id, gut: "Steuerung fühlt sich gut an", commit: "aaa111", zustand: "neu" });
+      expect((await feedbackListe(db, lead, "test"))[0]).toMatchObject({ feedback_id, gut: "Steuerung fühlt sich gut an", commit: "ccc333", zustand: "neu" });
       expect((nachAussen(await projektDetail(db, "test")) as { preview: { feedback: { total: number; new: number } } }).preview.feedback).toEqual({ total: 1, new: 1 });
       await expect(feedbackMarkieren(db, lead, feedback_id, "aufgabe")).rejects.toThrow(/task_id/);
       await feedbackMarkieren(db, lead, feedback_id, "gesehen");
