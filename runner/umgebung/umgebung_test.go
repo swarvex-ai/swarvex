@@ -174,3 +174,23 @@ func TestProprietaereEngines(t *testing.T) {
 		t.Error("IstProprietaer")
 	}
 }
+
+func TestVorschau(t *testing.T) {
+	presets := "[preset.0]\n\nname=\"Linux\"\nplatform=\"Linux\"\n\n[preset.1]\n\nname=\"Web\"\nplatform=\"Web\"\nrunnable=true\n"
+	u, err := Ermitteln(projekt(t, map[string]string{"project.godot": "config/features=PackedStringArray(\"4.7\")\n", "export_presets.cfg": presets}))
+	if err != nil || u.VorschauIn != ".swarvex-preview" || !strings.Contains(u.Vorschau, "--export-release 'Web' .swarvex-preview/index.html") || u.Godot != "4.7.2" {
+		t.Errorf("Godot mit Web-Preset: %+v %v", u, err)
+	}
+	if u, _ := Ermitteln(projekt(t, map[string]string{"project.godot": "", "export_presets.cfg": strings.ReplaceAll(presets, "\"Web\"", "\"Android\"")})); u.Vorschau != "" {
+		t.Errorf("ohne Web-Preset keine Vorschau: %q", u.Vorschau)
+	}
+	u, err = Ermitteln(projekt(t, map[string]string{"package.json": `{}`, "swarvex.yaml": "preview: npm run build\npreview_dir: dist/\n"}))
+	if err != nil || u.Vorschau != "npm run build" || u.VorschauIn != "dist" {
+		t.Errorf("Web-App: %+v %v", u, err)
+	}
+	for _, kaputt := range []string{"preview: npm run build\n", "preview: x\npreview_dir: ../etc\n"} {
+		if _, err := Ermitteln(projekt(t, map[string]string{"package.json": `{}`, "swarvex.yaml": kaputt})); err == nil {
+			t.Errorf("%q hätte abgelehnt werden müssen", kaputt)
+		}
+	}
+}

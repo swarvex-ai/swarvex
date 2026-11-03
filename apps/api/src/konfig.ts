@@ -14,6 +14,8 @@ export const konfig = {
   kontoMindestalterTage: Number(process.env.ACCOUNT_MIN_AGE_DAYS ?? 0),
   /** Gemeinsames Geheimnis der Prüfstraße (HMAC über Prüfergebnisse, P5). */
   pruefstrasseGeheimnis: process.env.PIPELINE_SECRET ?? "",
+  /** Eigene Adresse der Projekt-Vorschauen (infra/stack/Caddyfile), leer = keine Vorschauen. */
+  vorschau: /^https:\/\//.test(process.env.VORSCHAU_ADRESSE ?? "") ? process.env.VORSCHAU_ADRESSE!.replace(/\/$/, "") : "",
 };
 
 export const RESSOURCE = () => `${konfig.basis}/mcp`;

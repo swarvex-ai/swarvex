@@ -60,6 +60,13 @@
     </div>
     <div class="aktionen">
       <a class="knopf primaer" href={mitmachen}>{d.mitmachen}</a>
+      {#if p.preview?.url}
+        <!-- Projektcode auf eigener Adresse (infra/stack/Caddyfile): neues Fenster, ohne Verweis auf diese Seite -->
+        <a class="knopf" href={p.preview.url} target="_blank" rel="noopener noreferrer">{d.vorschau} ↗</a>
+        <span class="leise klein">{d.vorschauStand(String(p.preview.playable_commit).slice(0, 7), datum(p.preview.playable_since))}{#if p.preview.status === "failed"}<br />{d.vorschauFehler}{/if}</span>
+      {:else if p.preview}
+        <span class="leise klein">{p.preview.status === "failed" ? d.vorschauNochNicht : d.vorschauWird}</span>
+      {/if}
       <a class="melden leise" href={`${pfad(s, tx().melden.pfad)}?project=${encodeURIComponent(p.project)}`}>{d.melden}</a>
     </div>
   </header>

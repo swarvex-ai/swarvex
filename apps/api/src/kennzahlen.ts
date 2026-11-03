@@ -6,6 +6,7 @@ import { schwarmBilanz } from "./bilanz.ts";
 import { STUFEN_GEWICHT, projektPerSlug } from "./aufgaben.ts";
 import { ketteVerifizieren } from "./ereignisse.ts";
 import { creditSpenden } from "./spenden.ts";
+import { konfig } from "./konfig.ts";
 
 const ERLEDIGT = new Set(["angenommen", "gemerged"]);
 
@@ -153,7 +154,7 @@ export async function projektListe(db: Db) {
 /** Alles für die Projektseite der Website: Kennzahlen, Vision, Aufgaben, Beitragende, Protokoll. */
 export async function projektDetail(db: Db, slug: string) {
   const k = await kennzahlen(db, slug);
-  const p = (await db.query("select id, vision_md, repo_url, verfahren, vorbild from projekte where slug = $1", [slug])).rows[0];
+  const p = (await db.query("select id, vision_md, repo_url, verfahren, vorbild, vorschau from projekte where slug = $1", [slug])).rows[0];
   const aufgaben = (await db.query(
     `select a.id, a.titel, a.stufe, a.zustand, a.faehigkeiten, a.raum, a.rolle, m.titel as meilenstein,
             aufgabe_wartet_auf(a.abhaengig_von, a.abhaengig_eins_von) as wartet_auf, a.ohne_fremdbewertung,
@@ -178,7 +179,11 @@ export async function projektDetail(db: Db, slug: string) {
   const kette = await ketteVerifizieren(db);
   const kopf = (await db.query("select seq, zeit from koepfe order by seq desc limit 1")).rows[0];
   const clean_room = p.verfahren === "clean_room" ? { vorbild: p.vorbild, ...(await nachweis(db, Number(p.id))) } : null;
-  return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, aufgaben, beitragende, ereignisse, bilanz: await schwarmBilanz(db, Number(p.id)),
+  // Spielbare Vorschau: die zuletzt gelungene, dazu der Stand des letzten Baus (z. B. fehlgeschlagen)
+  const v = p.vorschau;
+  const vorschau = konfig.vorschau && v && v.status !== "none"
+    ? { url: v.ok_commit ? `${konfig.vorschau}/${slug}/` : null, ok_commit: v.ok_commit, ok_zeit: v.ok_zeit, commit: v.commit, status: v.status, zeit: v.zeit } : null;
+  return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, vorschau, aufgaben, beitragende, ereignisse, bilanz: await schwarmBilanz(db, Number(p.id)),
            protokoll: { ok: kette.ok, eintraege: kette.anzahl, kopf: kette.kopf,
                         veroeffentlicht: kopf ? { seq: Number(kopf.seq), zeit: kopf.zeit } : null } };
 }

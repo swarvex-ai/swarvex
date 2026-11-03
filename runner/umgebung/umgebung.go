@@ -44,6 +44,9 @@ type Umgebung struct {
 	Hinweis    string   // kurzer Satz für den Auftrag an den Agenten
 	Geschuetzt []string // zusätzliche, projekteigene geschützte Pfade (z. B. tests/vertraege/**)
 	Engine     *Engine  // proprietäre Engine vom Rechner des Mitstreiters (Unity, Unreal), sonst nil
+	Vorschau   string   // Shell: spielbare Web-Vorschau bauen (ohne Netz, nach jedem Merge, Prüfstraße), optional
+	VorschauIn string   // Ordner mit index.html, den Vorschau erzeugt (relativ zum Arbeitsordner)
+	Godot      string   // volle Godot-Version (Export-Vorlagen für die Vorschau), sonst leer
 	Einbinden  []string // nur zur Laufzeit: zusätzliche Podman-Argumente (Runner: Engine und Lizenz, nur lesend)
 }
 
@@ -176,6 +179,10 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 			u.Testen = v
 		case "note":
 			u.Hinweis = v
+		case "preview":
+			u.Vorschau = v
+		case "preview_dir":
+			u.VorschauIn = strings.Trim(v, "/")
 		case "protected":
 			for _, g := range strings.FieldsFunc(v, func(r rune) bool { return r == ',' || r == '\n' }) {
 				if g = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(g), "- ")); g != "" {
@@ -183,11 +190,17 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 				}
 			}
 		default:
-			return u, fmt.Errorf("swarvex.yaml: unknown key %q (allowed: template, image, dir, setup, build, test, note, protected)", k)
+			return u, fmt.Errorf("swarvex.yaml: unknown key %q (allowed: template, image, dir, setup, build, test, note, protected, preview, preview_dir)", k)
 		}
 	}
 	if u.Image == "" && u.Basis == "" && u.Dockerfile == "" {
 		return u, fmt.Errorf("swarvex.yaml: neither template nor image given and no project type detected")
+	}
+	if (u.Vorschau == "") != (u.VorschauIn == "") {
+		return u, fmt.Errorf("swarvex.yaml: preview and preview_dir belong together (the command and the folder with index.html it creates)")
+	}
+	if strings.Contains(u.VorschauIn, "..") || strings.HasPrefix(u.VorschauIn, "/") {
+		return u, fmt.Errorf("swarvex.yaml: preview_dir must be a folder inside the project")
 	}
 	return u, nil
 }
@@ -431,6 +444,9 @@ var godotVersionen = map[string]string{"4.7": "4.7.2", "4.4": "4.4.1", "4.2": "4
 
 var godotFeature = regexp.MustCompile(`config/features=PackedStringArray\("(\d+\.\d+)"`)
 
+// Web-Export-Preset in export_presets.cfg: daraus entsteht ohne weitere Angabe die Vorschau nach jedem Merge.
+var godotWebPreset = regexp.MustCompile(`(?m)^\[preset\.\d+\]\s*\nname="([^"\n]+)"\s*\nplatform="Web"`)
+
 func godot(w, ordner string) Umgebung {
 	if ordner == "." {
 		ordner = ""
@@ -449,7 +465,7 @@ func godot(w, ordner string) Umgebung {
 	basis := "FROM docker.io/library/debian:trixie-slim\n" +
 		"RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip git fontconfig libfontconfig1 && rm -rf /var/lib/apt/lists/*\n" +
 		fmt.Sprintf("RUN curl -fsSL -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/%s-stable/%s.zip && unzip -q /tmp/godot.zip -d /opt && rm /tmp/godot.zip && ln -s /opt/%s /usr/local/bin/godot", voll, datei, datei)
-	return Umgebung{
+	u := Umgebung{
 		Vorlage: "godot-" + version, Quelle: "detected", Basis: basis, Ordner: ordner,
 		Einrichten: "godot --headless --import >/dev/null 2>&1 || true",
 		// Jede Testdatei tests/*_test.gd läuft als eigenes Skript; ein Fehler macht die Prüfung rot.
@@ -458,7 +474,15 @@ func godot(w, ordner string) Umgebung {
 			`if [ $code -ne 0 ] || echo "$aus" | grep -qE ' FAIL |SCRIPT ERROR|Parse Error'; then ok=1; fi; done; ` +
 			`[ $n -gt 0 ] || { echo "No tests (tests/*_test.gd) found."; exit 3; }; exit $ok`,
 		Hinweis: fmt.Sprintf("Godot %s project, `godot` is installed; tests are tests/*_test.gd and run with `godot --headless -s res://tests/…`.", version),
+		Godot:   voll,
 	}
+	if roh, err := os.ReadFile(filepath.Join(w, ordner, "export_presets.cfg")); err == nil {
+		if m := godotWebPreset.FindSubmatch(roh); m != nil && !strings.ContainsAny(string(m[1]), "'\\$`") {
+			u.Vorschau = fmt.Sprintf("mkdir -p .swarvex-preview && godot --headless --export-release '%s' .swarvex-preview/index.html", m[1])
+			u.VorschauIn = ".swarvex-preview"
+		}
+	}
+	return u
 }
 
 func node(w string) Umgebung {

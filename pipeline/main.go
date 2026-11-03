@@ -3,6 +3,7 @@
 //
 //	swarvex-pipeline check   offene Einreichungen prüfen (Patch auf Basis-Commit, Tests im Container ohne Netz)
 //	swarvex-pipeline merge   angenommene Einreichungen mit Herkunfts-Trailern in den Hauptzweig übernehmen
+//	swarvex-pipeline preview spielbare Web-Vorschau des Hauptzweigs bauen, wenn er sich geändert hat (vorschau.go)
 //
 // Getrennte Schlüssel: Der Prüfdienst liest nur (Deploy-Key read-only); allein der Merge-Bot
 // darf schreiben. Alle Meldungen an die Plattform sind HMAC-signiert.
@@ -42,7 +43,7 @@ var (
 
 func main() {
 	if len(os.Args) < 2 || plattform == "" || geheimnis == "" {
-		fmt.Fprintln(os.Stderr, "usage: swarvex-pipeline check|merge  (requires SWARVEX_PLATFORM, SWARVEX_PIPELINE_SECRET)")
+		fmt.Fprintln(os.Stderr, "usage: swarvex-pipeline check|merge|preview  (requires SWARVEX_PLATFORM, SWARVEX_PIPELINE_SECRET)")
 		os.Exit(2)
 	}
 	switch os.Args[1] {
@@ -50,6 +51,8 @@ func main() {
 		pruefen()
 	case "merge":
 		mergen()
+	case "preview":
+		vorschauen()
 	default:
 		os.Exit(2)
 	}
@@ -280,7 +283,7 @@ func pruefImage(u umgebung.Umgebung, baum string) (string, error) {
 }
 
 // imContainer führt einen Befehl der Umgebung aus: mit Netz nur zum Einrichten, sonst ohne.
-func imContainer(image, baum, cache string, u umgebung.Umgebung, skript string, mitNetz bool, sekunden int) (string, error) {
+func imContainer(image, baum, cache string, u umgebung.Umgebung, skript string, mitNetz bool, sekunden int, extra ...string) (string, error) {
 	netz := "none"
 	if mitNetz {
 		netz = "bridge"
@@ -291,7 +294,7 @@ func imContainer(image, baum, cache string, u umgebung.Umgebung, skript string, 
 	for _, v := range umgebung.CacheVariablen {
 		args = append(args, "-e", v)
 	}
-	args = append(args, image, "timeout", fmt.Sprint(sekunden), "sh", "-ec", skript)
+	args = append(append(args, extra...), image, "timeout", fmt.Sprint(sekunden), "sh", "-ec", skript)
 	return befehl("", nil, "docker", args...)
 }
 

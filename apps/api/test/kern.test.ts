@@ -713,6 +713,42 @@ describe("Modell-Rangliste", () => {
   });
 });
 
+describe("Vorschau nach dem Merge", () => {
+  it("liefert Projekte nur mit eigener Vorschau-Adresse, merkt den letzten gelungenen Bau und zeigt ihn auf der Projektseite", async () => {
+    const { createServer } = await import("node:http");
+    const { pruefstrasseBehandeln, signatur } = await import("../src/pruefstrasse.ts");
+    const { konfig } = await import("../src/konfig.ts");
+    const { projektDetail } = await import("../src/kennzahlen.ts");
+    const { nachAussen } = await import("../src/aussen.ts");
+    const geheim = "vorschau-test-geheimnis";
+    const h = pruefstrasseBehandeln(db, geheim);
+    const server = createServer((req, res) => h(req, res, new URL(req.url!, "http://x")));
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const basis = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    const senden = async (methode: string, pfad: string, koerper?: unknown) => {
+      const text = koerper ? JSON.stringify(koerper) : "", zeit = String(Date.now());
+      const r = await fetch(basis + pfad, { method: methode, body: text || undefined, headers: { "x-time": zeit, "x-signature": signatur(geheim, zeit, methode, pfad, text) } });
+      return r.json();
+    };
+    try {
+      await db.query("update projekte set repo_git = 'https://github.com/x/test.git' where slug = 'test'");
+      konfig.vorschau = "";
+      expect(await senden("GET", "/pipeline/previews")).toEqual([]);
+      konfig.vorschau = "https://play.example";
+      expect((await senden("GET", "/pipeline/previews") as { slug: string }[]).map((p) => p.slug)).toContain("test");
+      await senden("POST", "/pipeline/previews/test", { commit: "aaa111", status: "ok", report: "fertig", bytes: 1234 });
+      await senden("POST", "/pipeline/previews/test", { commit: "bbb222", status: "failed", report: "kaputt" });
+      const d = nachAussen(await projektDetail(db, "test")) as { preview: Record<string, unknown> };
+      expect(d.preview).toMatchObject({ url: "https://play.example/test/", playable_commit: "aaa111", commit: "bbb222", status: "failed" });
+      const p = (await senden("GET", "/pipeline/previews") as { slug: string; last_commit: string }[]).find((x) => x.slug === "test");
+      expect(p?.last_commit).toBe("bbb222");
+    } finally {
+      konfig.vorschau = "";
+      server.close();
+    }
+  });
+});
+
 describe("Englische Schnittstelle", () => {
   it("lässt keine deutschen Feldnamen nach außen", async () => {
     const { nachAussen, FELDER } = await import("../src/aussen.ts");

@@ -9,6 +9,7 @@ import { protokollieren } from "./ereignisse.ts";
 import * as k from "./aufgaben.ts";
 import { nachAussen } from "./aussen.ts";
 import { repoToken } from "./github.ts";
+import { konfig } from "./konfig.ts";
 
 /** Projekte über die GitHub App: die Prüfstraße bekommt je Repo einen Token (lesend; schreibend nur für den Merge-Bot). */
 async function mitToken(zeilen: Record<string, unknown>[], schreiben: boolean) {
@@ -65,6 +66,29 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
            join bewertungen b on b.einreichung_id = e.id and b.urteil = 'annehmen' join agenten la on la.id = b.agent_id
            where a.zustand = 'angenommen' order by e.id`);
         return json(res, 200, nachAussen(await mitToken(r.rows, true)));
+      }
+      // Vorschauen (pipeline/vorschau.go): nur wenn eine eigene Adresse dafür eingerichtet ist; Unity und Unreal baut die Plattform nicht
+      if (req.method === "GET" && url.pathname === "/pipeline/previews") {
+        if (!konfig.vorschau) return json(res, 200, []);
+        const r = await db.query(
+          `select slug, repo_git, github_installation, vorschau->>'commit' as letzter_commit from projekte
+           where repo_git is not null and not gesperrt and not entwurf and engine !~* '(unity|unreal)' order by slug`);
+        return json(res, 200, nachAussen(await mitToken(r.rows, false)));
+      }
+      const v = /^\/pipeline\/previews\/([a-z0-9-]+)$/.exec(url.pathname);
+      if (req.method === "POST" && v) {
+        const status = ["ok", "failed", "none"].includes(daten.status) ? daten.status : "failed";
+        const commit = String(daten.commit ?? "").slice(0, 64);
+        await transaktion(db, async (tx) => {
+          const p = (await tx.query("select id, vorschau from projekte where slug = $1 for update", [v[1]])).rows[0];
+          if (!p) throw new k.Abgelehnt("unknown project");
+          const alt = p.vorschau ?? {};
+          const neu = { commit, status, zeit: new Date().toISOString(), bytes: Number(daten.bytes ?? 0), bericht: String(daten.report ?? "").slice(-4000),
+            ok_commit: status === "ok" ? commit : alt.ok_commit ?? null, ok_zeit: status === "ok" ? new Date().toISOString() : alt.ok_zeit ?? null };
+          await tx.query("update projekte set vorschau = $2 where id = $1", [p.id, neu]);
+          if (status !== "none") await protokollieren(tx, { projekt_id: Number(p.id), akteur: "system", art: "vorschau_gebaut", bezug: `projekt:${p.id}`, daten: { commit, status } });
+        });
+        return json(res, 200, { ok: true });
       }
       const m = /^\/pipeline\/(\d+)\/(start|result|merged|conflict)$/.exec(url.pathname);
       if (req.method === "POST" && m) {

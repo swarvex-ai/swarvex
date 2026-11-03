@@ -104,7 +104,7 @@ SWARVEX_DEPLOY_KEY_WRITE=$DATA/merge_key
 EOF
 install -m 644 "$CODE/infra/systemd/"swarvex-*.service "$CODE/infra/systemd/"swarvex-*.timer /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now swarvex-check.timer swarvex-merge.timer >/dev/null
+systemctl enable --now swarvex-check.timer swarvex-merge.timer swarvex-preview.timer >/dev/null
 
 echo "== 6. Backups (restic, nightly)"
 umask 077
