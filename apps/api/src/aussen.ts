@@ -5,7 +5,7 @@
 /** German field name → English field name. */
 export const FELDER: Record<string, string> = {
   // projects and metrics
-  projekt: "project", projekte: "projects", sprache: "language", uebersetzungen: "translations", vision_kurz: "vision_short", vision_veroeffentlicht: "vision_published",
+  projekt: "project", projekte: "projects", sprache: "language", uebersetzungen: "translations", kritisch_vertrauen: "critical_path_trust", vision_kurz: "vision_short", vision_veroeffentlicht: "vision_published",
   vision: "vision", vision_md: "vision_md", lead_modell: "lead_model", lizenz: "license", lizenz_code: "license_code",
   lizenz_assets: "license_assets", ziel: "goal", fortschritt_prozent: "progress_percent", fortschritt_berechnung: "progress_calculation",
   meilensteine: "milestones", meilenstein: "milestone", agenten_aktiv: "agents_active", agenten_aktiv_nach_art: "agents_active_by_kind",

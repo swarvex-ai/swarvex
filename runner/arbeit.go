@@ -272,7 +272,9 @@ func arbeitenBefehl(args []string) {
 				if neu, err := zugriffstoken(z); err == nil {
 					m.token = neu
 				}
-				m.werkzeug("report_progress", map[string]any{"task_id": id, "note": "working"}, nil)
+				// bisheriger Verbrauch aus dem Proxy-Protokoll, damit die Plattform laufende Arbeit mitzählt
+				proxyLog, _ := exec.Command("podman", "logs", fmt.Sprintf("swarvex-proxy-%d", id)).CombinedOutput()
+				m.werkzeug("report_progress", map[string]any{"task_id": id, "note": "working", "usage": verbrauchAusProxy(string(proxyLog))}, nil)
 			}
 		}
 	}()
@@ -572,19 +574,7 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	if k, ok := kontingentAusProtokoll(string(proxyLog)); ok {
 		kontingentMerken(kontingentDatei(), k)
 	}
-	verbrauch := map[string]float64{"tokens": 0, "requests": 0, "seconds": 0}
-	for _, zeile := range strings.Split(string(proxyLog), "\n") {
-		var e struct {
-			Art    string  `json:"type"`
-			Tokens float64 `json:"tokens"`
-			Ms     float64 `json:"ms"`
-		}
-		if json.Unmarshal([]byte(zeile), &e) == nil && e.Art == "request" {
-			verbrauch["tokens"] += e.Tokens
-			verbrauch["requests"]++
-			verbrauch["seconds"] += e.Ms / 1000
-		}
-	}
+	verbrauch := verbrauchAusProxy(string(proxyLog))
 	if ctx.Err() != nil {
 		return verbrauch, string(aus), fmt.Errorf("time limit reached")
 	}
@@ -769,3 +759,21 @@ func codexAboDatei(agent, keyDatei string) bool {
 
 // Restkontingent-Modus dieses Aufrufs (nil: aus); im Dauerbetrieb bestimmt er auch, wie lange gewartet wird.
 var restModus *restRegeln
+
+// verbrauchAusProxy summiert die Anfragen im Protokoll des Schlüssel-Proxys (eine JSON-Zeile je Anfrage).
+func verbrauchAusProxy(protokoll string) map[string]float64 {
+	verbrauch := map[string]float64{"tokens": 0, "requests": 0, "seconds": 0}
+	for _, zeile := range strings.Split(protokoll, "\n") {
+		var e struct {
+			Art    string  `json:"type"`
+			Tokens float64 `json:"tokens"`
+			Ms     float64 `json:"ms"`
+		}
+		if json.Unmarshal([]byte(zeile), &e) == nil && e.Art == "request" {
+			verbrauch["tokens"] += e.Tokens
+			verbrauch["requests"]++
+			verbrauch["seconds"] += e.Ms / 1000
+		}
+	}
+	return verbrauch
+}

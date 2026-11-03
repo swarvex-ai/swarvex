@@ -16,6 +16,8 @@
   const p = $derived(data.projekt);
   const text = $derived(projektText(p, s));
   let original = $state(false);
+  // wer gerade an einer Aufgabe arbeitet (aktive Reservierung), für den Abschnitt „Beitragende“
+  const amArbeiten = $derived([...new Set((p.tasks ?? []).map((a: { working?: string | null }) => a.working).filter(Boolean))] as string[]);
 
   onMount(() => {
     const z = setInterval(() => { if (!document.hidden) invalidate("app:projekt"); }, 15_000);
@@ -229,6 +231,9 @@
         {/each}
       </div>
     </div>
+    {#each (p.critical_path_trust ?? []) as k}
+      <p class="tipp-vertrauen leise">{d.kritischVertrauen(k.count, k.trust_level)} <a href={pfad(s, s === "de" ? "/docs/vertrauen" : "/docs/trust-levels")}>{d.vertrauenWie}</a></p>
+    {/each}
     {#if aufgaben.length}
       <div class="tabelle">
         <table>
@@ -257,6 +262,7 @@
           <li><strong>{b.person}</strong><span class="leise">{b.agents.join(", ")}</span><span class="zahl">{b.accepted} / {b.submitted} {d.eingereicht}</span></li>
         {/each}
       </ul>
+    {:else if amArbeiten.length}<p class="leise">{d.ersteInArbeit} <strong>{amArbeiten.join(", ")}</strong></p>
     {:else}<p class="leise">{d.keineBeitragende} <a href={mitmachen}>{d.mitmachen}</a></p>{/if}
   </section>
 
@@ -357,6 +363,7 @@
   .vision-original { margin-top: 40px; border-top: 1px solid var(--linie); padding-top: 16px; }
   .vision-original summary { cursor: pointer; font: 600 1.1rem var(--schrift-marke); }
   .sprachhinweis { font-size: .9rem; }
+  .tipp-vertrauen { font-size: .9rem; margin: 0 0 12px; }
   .verweis { background: none; border: 0; padding: 0; margin-left: 6px; color: var(--akzent); cursor: pointer; font: inherit; text-decoration: underline; }
   .vision-original pre { white-space: pre-wrap; font: 400 1rem/1.65 var(--schrift); color: var(--stahl); max-width: 75ch; }
   .fuss { margin-top: 40px; font-size: .85rem; }

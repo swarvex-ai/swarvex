@@ -3,7 +3,7 @@
 import { nachweis } from "./cleanroom.ts";
 import type { Db } from "./db.ts";
 import { schwarmBilanz } from "./bilanz.ts";
-import { STUFEN_GEWICHT, projektPerSlug } from "./aufgaben.ts";
+import { STUFEN_GEWICHT, folgeaufgaben, projektPerSlug } from "./aufgaben.ts";
 import { ketteVerifizieren } from "./ereignisse.ts";
 import { creditSpenden } from "./spenden.ts";
 import { einreichungsVorschauUrl, konfig, vorschauUrl } from "./konfig.ts";
@@ -126,7 +126,14 @@ export async function projektListe(db: Db) {
     const woche = (await db.query(
       `select
          (select coalesce(sum((e.verbrauch->>'tokens')::numeric), 0)::bigint from einreichungen e join aufgaben a on a.id = e.aufgabe_id
-            where a.projekt_id = p.id and e.eingereicht >= now() - interval '7 days') as tokens,
+            where a.projekt_id = p.id and e.eingereicht >= now() - interval '7 days')
+         -- dazu laufende Arbeit: der zuletzt gemeldete Verbrauch jeder aktiven Reservierung (report_progress)
+         + (select coalesce(sum(t.tokens), 0)::bigint from (
+              select (select (ev.daten->'verbrauch'->>'tokens')::numeric from ereignisse ev
+                       where ev.art = 'fortschritt' and ev.bezug = 'aufgabe:' || l.aufgabe_id and ev.akteur = 'agent:' || l.agent_id and ev.zeit >= l.erstellt
+                       order by ev.seq desc limit 1) as tokens
+              from leases l join aufgaben a on a.id = l.aufgabe_id
+              where a.projekt_id = p.id and l.beendet is null and l.laeuft_ab > now()) t) as tokens,
          (select count(*)::int from einreichungen e join aufgaben a on a.id = e.aufgabe_id
             where a.projekt_id = p.id and e.eingereicht >= now() - interval '7 days') as einreichungen,
          (select count(*)::int from bewertungen b join einreichungen e on e.id = b.einreichung_id join aufgaben a on a.id = e.aufgabe_id
@@ -160,9 +167,9 @@ export async function projektDetail(db: Db, slug: string) {
     `select a.id, a.titel, a.stufe, a.zustand, a.faehigkeiten, a.raum, a.rolle, m.titel as meilenstein,
             aufgabe_wartet_auf(a.abhaengig_von, a.abhaengig_eins_von) as wartet_auf, a.ohne_fremdbewertung,
             (select e.id::int from einreichungen e where e.aufgabe_id = a.id and a.zustand = 'geprueft_ok' and e.vorschau->>'status' = 'ok' order by e.id desc limit 1) as vorschau_einreichung,
-            (select ag.name || ' · ' || m2.login from leases l join agenten ag on ag.id = l.agent_id join menschen m2 on m2.id = ag.mensch_id
+            (select agent_oeffentlich(ag.name) || ' · ' || m2.login from leases l join agenten ag on ag.id = l.agent_id join menschen m2 on m2.id = ag.mensch_id
                where l.aufgabe_id = a.id and l.beendet is null and l.laeuft_ab > now() limit 1) as arbeitet,
-            (select ag.name || ' · ' || m3.login from einreichungen e join agenten ag on ag.id = e.agent_id join menschen m3 on m3.id = ag.mensch_id
+            (select agent_oeffentlich(ag.name) || ' · ' || m3.login from einreichungen e join agenten ag on ag.id = e.agent_id join menschen m3 on m3.id = ag.mensch_id
                where e.aufgabe_id = a.id and a.zustand in ('angenommen', 'gemerged') order by e.id desc limit 1) as beitrag_von
      from aufgaben a left join meilensteine m on m.id = a.meilenstein_id
      where a.projekt_id = $1 and a.zustand <> 'geschlossen' order by a.id desc limit 50`, [p.id])).rows
@@ -171,14 +178,23 @@ export async function projektDetail(db: Db, slug: string) {
   const beitragende = (await db.query(
     `select m.login as mensch, count(e.id)::int as eingereicht,
             count(b.id) filter (where b.urteil = 'annehmen')::int as angenommen,
-            array_agg(distinct ag.name) as agenten
+            array_agg(distinct agent_oeffentlich(ag.name)) as agenten
      from einreichungen e join aufgaben a on a.id = e.aufgabe_id join agenten ag on ag.id = e.agent_id join menschen m on m.id = ag.mensch_id
      left join bewertungen b on b.einreichung_id = e.id
      where a.projekt_id = $1 group by m.login order by angenommen desc, eingereicht desc`, [p.id])).rows;
   const namen = new Map<string, string>();
-  for (const z of (await db.query("select 'agent:' || a.id as k, a.name || ' · ' || m.login as v from agenten a join menschen m on m.id = a.mensch_id union all select 'mensch:' || id, login from menschen")).rows) namen.set(z.k, z.v);
+  for (const z of (await db.query("select 'agent:' || a.id as k, agent_oeffentlich(a.name) || ' · ' || m.login as v from agenten a join menschen m on m.id = a.mensch_id union all select 'mensch:' || id, login from menschen")).rows) namen.set(z.k, z.v);
   const ereignisse = (await db.query("select seq, zeit, akteur, art, bezug from ereignisse where projekt_id = $1 order by seq desc limit 20", [p.id])).rows
     .map((e) => ({ seq: Number(e.seq), zeit: e.zeit, wer: namen.get(e.akteur) ?? e.akteur, art: e.art, bezug: e.bezug }));
+  // Kritischer Pfad hinter einer Vertrauensstufe: offene, freie Aufgaben, die anderes freischalten, aber nicht für Neue sind
+  const folge = await folgeaufgaben(db, Number(p.id));
+  const gesperrt = new Map<number, number>();
+  for (const a of (await db.query(
+    `select id, min_vertrauen from aufgaben where projekt_id = $1 and zustand = 'offen' and min_vertrauen between 1 and 2
+       and not aufgabe_blockiert(abhaengig_von, abhaengig_eins_von)`, [p.id])).rows) {
+    if ((folge.get(Number(a.id)) ?? 0) > 0) gesperrt.set(Number(a.min_vertrauen), (gesperrt.get(Number(a.min_vertrauen)) ?? 0) + 1);
+  }
+  const kritisch_vertrauen = [...gesperrt].sort((x, y) => x[0] - y[0]).map(([stufe, anzahl]) => ({ vertrauensstufe: stufe, anzahl }));
   const kette = await ketteVerifizieren(db);
   const kopf = (await db.query("select seq, zeit from koepfe order by seq desc limit 1")).rows[0];
   const clean_room = p.verfahren === "clean_room" ? { vorbild: p.vorbild, ...(await nachweis(db, Number(p.id))) } : null;
@@ -187,7 +203,7 @@ export async function projektDetail(db: Db, slug: string) {
   const vorschau = vorschauUrl(slug) && v && v.status !== "none"
     ? { url: v.ok_commit && v.hat_vorschau !== false ? vorschauUrl(slug) : null, docs_url: v.ok_commit && v.hat_doku ? `${vorschauUrl(slug)}docs/` : null, ok_commit: v.ok_commit, ok_zeit: v.ok_zeit, commit: v.commit, status: v.status, zeit: v.zeit,
         rueckmeldungen: await feedbackZahlen(db, Number(p.id)) } : null;
-  return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, vorschau, aufgaben, beitragende, ereignisse, bilanz: await schwarmBilanz(db, Number(p.id)),
+  return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, vorschau, aufgaben, kritisch_vertrauen, beitragende, ereignisse, bilanz: await schwarmBilanz(db, Number(p.id)),
            protokoll: { ok: kette.ok, eintraege: kette.anzahl, kopf: kette.kopf,
                         veroeffentlicht: kopf ? { seq: Number(kopf.seq), zeit: kopf.zeit } : null } };
 }

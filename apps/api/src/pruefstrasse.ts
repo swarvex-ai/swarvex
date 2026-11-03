@@ -68,7 +68,7 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
       if (req.method === "GET" && url.pathname === "/pipeline/accepted") {
         const r = await db.query(
           `select e.id as einreichung_id, e.patch, a.id as aufgabe_id, a.titel, a.basis_commit, p.slug, p.repo_git, p.github_installation,
-                  m.login as mensch, ag.name as agent, b.begruendung, la.name as lead_agent,
+                  m.login as mensch, agent_oeffentlich(ag.name) as agent, b.begruendung, agent_oeffentlich(la.name) as lead_agent,
                   (select ergebnis from pruefungen where einreichung_id = e.id order by id desc limit 1) as pruefung
            from einreichungen e join aufgaben a on a.id = e.aufgabe_id join projekte p on p.id = a.projekt_id
            join agenten ag on ag.id = e.agent_id join menschen m on m.id = ag.mensch_id
