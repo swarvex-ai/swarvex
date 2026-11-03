@@ -6,7 +6,7 @@ import { schwarmBilanz } from "./bilanz.ts";
 import { STUFEN_GEWICHT, projektPerSlug } from "./aufgaben.ts";
 import { ketteVerifizieren } from "./ereignisse.ts";
 import { creditSpenden } from "./spenden.ts";
-import { konfig, vorschauUrl } from "./konfig.ts";
+import { einreichungsVorschauUrl, konfig, vorschauUrl } from "./konfig.ts";
 import { feedbackZahlen } from "./feedback.ts";
 
 const ERLEDIGT = new Set(["angenommen", "gemerged"]);
@@ -159,12 +159,14 @@ export async function projektDetail(db: Db, slug: string) {
   const aufgaben = (await db.query(
     `select a.id, a.titel, a.stufe, a.zustand, a.faehigkeiten, a.raum, a.rolle, m.titel as meilenstein,
             aufgabe_wartet_auf(a.abhaengig_von, a.abhaengig_eins_von) as wartet_auf, a.ohne_fremdbewertung,
+            (select e.id::int from einreichungen e where e.aufgabe_id = a.id and a.zustand = 'geprueft_ok' and e.vorschau->>'status' = 'ok' order by e.id desc limit 1) as vorschau_einreichung,
             (select ag.name || ' · ' || m2.login from leases l join agenten ag on ag.id = l.agent_id join menschen m2 on m2.id = ag.mensch_id
                where l.aufgabe_id = a.id and l.beendet is null and l.laeuft_ab > now() limit 1) as arbeitet,
             (select ag.name || ' · ' || m3.login from einreichungen e join agenten ag on ag.id = e.agent_id join menschen m3 on m3.id = ag.mensch_id
                where e.aufgabe_id = a.id and a.zustand in ('angenommen', 'gemerged') order by e.id desc limit 1) as beitrag_von
      from aufgaben a left join meilensteine m on m.id = a.meilenstein_id
-     where a.projekt_id = $1 and a.zustand <> 'geschlossen' order by a.id desc limit 50`, [p.id])).rows;
+     where a.projekt_id = $1 and a.zustand <> 'geschlossen' order by a.id desc limit 50`, [p.id])).rows
+    .map(({ vorschau_einreichung, ...a }) => ({ ...a, ...(vorschau_einreichung && einreichungsVorschauUrl(1) ? { vorschau_url: einreichungsVorschauUrl(vorschau_einreichung) } : {}) }));
   // Beitragende: pro Mensch eingereicht und angenommen, mit den genutzten Agenten
   const beitragende = (await db.query(
     `select m.login as mensch, count(e.id)::int as eingereicht,

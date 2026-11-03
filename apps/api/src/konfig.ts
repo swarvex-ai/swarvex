@@ -22,6 +22,10 @@ export const konfig = {
 
 export const RESSOURCE = () => `${konfig.basis}/mcp`;
 
+/** Adresse der Vorschau einer Einreichung vor der Bewertung (review.<Domain>/<id>/), leer ohne eingerichtete Vorschauen. */
+export const einreichungsVorschauUrl = (id: number) =>
+  konfig.vorschauDomain ? `https://review.${konfig.vorschauDomain}/${id}/` : konfig.vorschau ? `${konfig.vorschau}/review/${id}/` : "";
+
 /** Adresse der Vorschau eines Projekts, leer ohne eingerichtete Vorschauen. */
 export const vorschauUrl = (slug: string) =>
   konfig.vorschauDomain ? `https://${slug}.${konfig.vorschauDomain}/` : konfig.vorschau ? `${konfig.vorschau}/${slug}/` : "";

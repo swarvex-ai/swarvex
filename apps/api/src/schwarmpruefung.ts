@@ -10,6 +10,7 @@ import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, rollenVon, variantenSchliessen, wechseln, type Wer } from "./aufgaben.ts";
 import { raeumeVon, trennwand } from "./cleanroom.ts";
 import { modellSchluessel } from "./modelle.ts";
+import { einreichungsVorschauUrl } from "./konfig.ts";
 
 /** Zustimmungen verschiedener Menschen, nach denen eine Aufgabe der Stufe A ohne Lead angenommen wird. */
 export const AUTO_ANNAHME = { stufen: ["A"], zustimmungen: 2 };
@@ -33,7 +34,7 @@ async function darfPruefen(tx: Db | Tx, wer: Wer, a: { projekt_id: number | stri
 export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: string, modell?: string) {
   const r = (await db.query(
     `select e.id::int as einreichung_id, a.id::int as aufgabe_id, p.slug as projekt, a.titel, a.beschreibung, a.akzeptanz, a.pfade, a.stufe, a.raum,
-       a.projekt_id, ag.mensch_id::int as autor, e.modell as autor_modell, e.zusammenfassung, e.patch, pr.bericht,
+       a.projekt_id, ag.mensch_id::int as autor, e.modell as autor_modell, e.zusammenfassung, e.patch, pr.bericht, e.vorschau->>'status' as vorschau_status,
        (select count(*)::int from fremdpruefungen f where f.einreichung_id = e.id and f.urteil = 'zustimmen') as zustimmungen
      from aufgaben a join projekte p on p.id = a.projekt_id
      join lateral (select * from einreichungen where aufgabe_id = a.id order by id desc limit 1) e on true
@@ -50,7 +51,8 @@ export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: stri
     const gleich = (z: { autor_modell: string | null }) => (z.autor_modell && modellSchluessel(z.autor_modell) === eigenes ? 1 : 0);
     erlaubt.sort((x, y) => gleich(x) - gleich(y));
   }
-  return erlaubt.slice(0, 20).map(({ projekt_id, autor, raum, ...z }) => ({
+  return erlaubt.slice(0, 20).map(({ projekt_id, autor, raum, vorschau_status, ...z }) => ({
+    ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: einreichungsVorschauUrl(Number(z.einreichung_id)) } : {}),
     ...z, bericht: String(z.bericht ?? "").slice(-4000),
     automatisch_ab: AUTO_ANNAHME.stufen.includes(z.stufe) ? AUTO_ANNAHME.zustimmungen : null,
   }));

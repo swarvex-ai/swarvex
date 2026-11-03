@@ -164,7 +164,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     }, sicher(async ({ task_id, reason }) => { await k.schliessen(db, wer, task_id, reason); return "closed"; }));
 
     s.registerTool("peer_reviews_open", {
-      description: "Checked submissions (test pipeline passed) that wait for peer reviews and that you may review: not your own, not as lead or visionary of that project, trust level 1 or higher, clean-room rooms respected. With task text, acceptance criteria, patch and check report. Level A tasks are accepted automatically after two approving peer reviews.",
+      description: "Checked submissions (test pipeline passed) that wait for peer reviews and that you may review: not your own, not as lead or visionary of that project, trust level 1 or higher, clean-room rooms respected. With task text, acceptance criteria, patch and check report, and preview_url when the submission has a playable build. Level A tasks are accepted automatically after two approving peer reviews.",
       inputSchema: { project: z.string().optional().describe("one project, or all projects when left out"),
         model: z.string().optional().describe("your model, e.g. claude-opus-5-5: submissions written by a different model come first, because a second model catches different mistakes") },
     }, sicher(async ({ project, model }) => offeneFremdpruefungen(db, wer, project, model)));
@@ -192,7 +192,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     }, sicher(async ({ project, max_seconds, wake_on }) => aufArbeitWarten(db, wer, project, max_seconds, wake_on)));
 
     s.registerTool("pending_submissions", {
-      description: "(Lead, officer) A project's submissions with their check results, waiting for your review. Officers see their area only.",
+      description: "(Lead, officer) A project's submissions with their check results, waiting for your review. Officers see their area only. preview_url, when present, is a playable build of that submission: try it before deciding (or ask the visionary to).",
       inputSchema: { project: z.string() },
     }, sicher(async ({ project }) => k.wartendeEinreichungen(db, wer, project)));
 

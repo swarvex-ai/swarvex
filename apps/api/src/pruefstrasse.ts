@@ -9,12 +9,13 @@ import { protokollieren } from "./ereignisse.ts";
 import * as k from "./aufgaben.ts";
 import { nachAussen } from "./aussen.ts";
 import { repoToken } from "./github.ts";
-import { konfig, vorschauUrl } from "./konfig.ts";
+import { einreichungsVorschauUrl, konfig, vorschauUrl } from "./konfig.ts";
 
 /** On-Demand-TLS: darf Caddy für diesen Namen ein Zertifikat holen? Nur <slug>.<Vorschau-Domain> mit gebauter Vorschau. */
 export async function vorschauErlaubt(db: Db, name: string) {
   const d = konfig.vorschauDomain, n = name.toLowerCase();
   const slug = d && n.endsWith(`.${d}`) ? n.slice(0, -(d.length + 1)) : "";
+  if (slug === "review") return true; // Vorschauen der Einreichungen, ein Zertifikat für alle
   if (!/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(slug)) return false;
   return Boolean((await db.query("select 1 from projekte where slug = $1 and not gesperrt and vorschau->>'ok_commit' is not null", [slug])).rowCount);
 }
@@ -82,6 +83,27 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
           `select slug, repo_git, github_installation, vorschau->>'commit' as letzter_commit from projekte
            where repo_git is not null and not gesperrt and not entwurf and engine !~* '(unity|unreal)' order by slug`);
         return json(res, 200, nachAussen(await mitToken(r.rows, false)));
+      }
+      // Vorschau je Einreichung: geprüft, wartet auf Bewertung, Projekt hat schon eine Vorschau (also eine Vorschau-Einrichtung)
+      if (req.method === "GET" && url.pathname === "/pipeline/submission-previews") {
+        if (!einreichungsVorschauUrl(1)) return json(res, 200, { open: [], keep: [] });
+        const offen = await db.query(
+          `select e.id as einreichung_id, e.patch, e.patch_sha256, a.id as aufgabe_id, a.basis_commit, p.slug, p.repo_git, p.github_installation
+           from einreichungen e join aufgaben a on a.id = e.aufgabe_id join projekte p on p.id = a.projekt_id
+           where a.zustand = 'geprueft_ok' and e.vorschau is null and e.id = (select max(id) from einreichungen where aufgabe_id = a.id)
+             and p.vorschau->>'ok_commit' is not null and coalesce((p.vorschau->>'hat_vorschau')::boolean, true) and not p.gesperrt
+           order by e.id limit 5`);
+        const behalten = (await db.query(
+          `select e.id::int from einreichungen e join aufgaben a on a.id = e.aufgabe_id
+           where a.zustand = 'geprueft_ok' and e.vorschau->>'status' = 'ok'`)).rows.map((r) => r.id);
+        return json(res, 200, { open: nachAussen(await mitToken(offen.rows, false)), keep: behalten });
+      }
+      const ev = /^\/pipeline\/submission-previews\/(\d+)$/.exec(url.pathname);
+      if (req.method === "POST" && ev) {
+        const status = ["ok", "failed", "none"].includes(daten.status) ? daten.status : "failed";
+        await db.query("update einreichungen set vorschau = $2 where id = $1",
+          [Number(ev[1]), { status, zeit: new Date().toISOString(), bytes: Number(daten.bytes ?? 0), bericht: String(daten.report ?? "").slice(-2000) }]);
+        return json(res, 200, { ok: true });
       }
       const v = /^\/pipeline\/previews\/([a-z0-9-]+)$/.exec(url.pathname);
       if (req.method === "POST" && v) {

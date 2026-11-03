@@ -8,6 +8,7 @@ import { protokollieren } from "./ereignisse.ts";
 import { aufgabePruefen, raeumeVon, trennwand, type Raum } from "./cleanroom.ts";
 import { WERTE } from "./aussen.ts";
 import { nachEinreichen, proprietaer } from "./gegenpruefung.ts";
+import { einreichungsVorschauUrl } from "./konfig.ts";
 
 const en = (zustand: string) => WERTE.zustand[zustand] ?? zustand;
 
@@ -485,12 +486,15 @@ export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: strin
   if (officers && !officers.length) throw new Abgelehnt("only the project's lead or one of its officers may do this");
   const r = await db.query(
     `select e.id as einreichung_id, a.id as aufgabe_id, a.titel, a.zustand, a.stufe, a.rolle, a.raum, a.pfade, a.faehigkeiten, e.zusammenfassung, e.patch, p.ergebnis as pruefung, p.bericht,
+       e.vorschau->>'status' as vorschau_status,
        (select coalesce(jsonb_agg(jsonb_build_object('urteil', f.urteil, 'begruendung', f.begruendung, 'von', m.login) order by f.id), '[]')
           from fremdpruefungen f join menschen m on m.id = f.mensch_id where f.einreichung_id = e.id) as fremdpruefungen
      from einreichungen e join aufgaben a on a.id = e.aufgabe_id
      left join lateral (select ergebnis, bericht from pruefungen where einreichung_id = e.id order by id desc limit 1) p on true
      where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok') order by e.id`, [p.id]);
-  return officers ? r.rows.filter((a) => officers.some((o) => imBereich(o, a))) : r.rows;
+  // Vorschau dieser Einreichung zum Ausprobieren vor der Bewertung (pipeline/vorschau.go)
+  const zeilen = r.rows.map(({ vorschau_status, ...z }) => ({ ...z, ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: einreichungsVorschauUrl(Number(z.einreichung_id)) } : {}) }));
+  return officers ? zeilen.filter((a) => officers.some((o) => imBereich(o, a))) : zeilen;
 }
 
 /** Nur der Visionär ernennt Officers (Bereich, Pfade, Fähigkeiten); öffentlich protokolliert. */

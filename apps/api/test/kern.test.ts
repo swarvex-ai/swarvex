@@ -827,12 +827,29 @@ describe("Vorschau nach dem Merge", () => {
       expect(nurDoku).toMatchObject({ url: null, docs_url: "https://test.vorschau.example/docs/" });
       expect(await abzeichen(db, "test")).toContain(">docs<");
       expect(await kurzlinkZiel(db, "test", true)).toBe("https://test.vorschau.example/docs/");
+      // Vorschau je Einreichung: geprüfte Einreichungen vor der Bewertung, unter review.<Domain>/<id>/
+      await senden("POST", "/pipeline/previews/test", { commit: "ddd444", status: "ok", report: "", bytes: 10, preview: true, docs: true });
+      const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Mit Vorschau prüfen"));
+      await k.reservieren(db, mit, a.id);
+      const e: any = await k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "fertig", eigene_tests: "ok", verbrauch: { tokens: 10 } });
+      await k.pruefungStarten(db, e.einreichung_id);
+      await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
+      const liste = await senden("GET", "/pipeline/submission-previews") as { open: { submission_id: number }[]; keep: number[] };
+      expect(liste.open.map((x) => x.submission_id)).toContain(Number(e.einreichung_id));
+      await senden("POST", `/pipeline/submission-previews/${e.einreichung_id}`, { status: "ok", report: "", bytes: 5 });
+      const nachher = await senden("GET", "/pipeline/submission-previews") as { open: { submission_id: number }[]; keep: number[] };
+      expect(nachher.open.map((x) => x.submission_id)).not.toContain(Number(e.einreichung_id));
+      expect(nachher.keep).toContain(Number(e.einreichung_id));
+      const warten = nachAussen(await k.wartendeEinreichungen(db, lead, "test")) as { submission_id: number; preview_url?: string }[];
+      expect(warten.find((x) => x.submission_id === Number(e.einreichung_id))?.preview_url).toBe(`https://review.vorschau.example/${e.einreichung_id}/`);
+      expect(await vorschauErlaubt(db, "review.vorschau.example")).toBe(true);
+      expect(projektPruefen({ slug: "review", name: "R", vision_md: "", vision_short: "x", engine: "x", license_code: "MIT", license_assets: "CC0 1.0", lead_model: "x", goal: "x" }).join()).toMatch(/reserved/);
       // Rückmeldungen zur Vorschau: angemeldete Besucher geben sie, nur Lead und Officers lesen sie
       const { feedbackGeben, feedbackListe, feedbackMarkieren } = await import("../src/feedback.ts");
       await expect(feedbackGeben(db, mit.menschId, "test", {})).rejects.toThrow(/good or what/);
       const { feedback_id } = await feedbackGeben(db, mit.menschId, "test", { gut: "Steuerung fühlt sich gut an", hakt: "Sprung zu kurz", geraet: "Firefox" });
       await expect(feedbackListe(db, mit, "test")).rejects.toThrow(/only the project's lead/);
-      expect((await feedbackListe(db, lead, "test"))[0]).toMatchObject({ feedback_id, gut: "Steuerung fühlt sich gut an", commit: "ccc333", zustand: "neu" });
+      expect((await feedbackListe(db, lead, "test"))[0]).toMatchObject({ feedback_id, gut: "Steuerung fühlt sich gut an", commit: "ddd444", zustand: "neu" });
       expect((nachAussen(await projektDetail(db, "test")) as { preview: { feedback: { total: number; new: number } } }).preview.feedback).toEqual({ total: 1, new: 1 });
       await expect(feedbackMarkieren(db, lead, feedback_id, "aufgabe")).rejects.toThrow(/task_id/);
       await feedbackMarkieren(db, lead, feedback_id, "gesehen");

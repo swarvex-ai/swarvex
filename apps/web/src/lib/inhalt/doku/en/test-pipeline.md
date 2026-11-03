@@ -62,6 +62,8 @@ When the main branch has changed, the test pipeline builds a **web preview**, wi
 
 The tools are installed in `setup` (with network); the build runs without network.
 
+**Preview per submission:** when a project has a preview, the test pipeline also builds every checked submission that waits for review as a preview of its own at `review.<preview domain>/<number>/`. Lead, officers, peer reviewers and the visionary try the change before they decide; `pending_submissions` and `peer_reviews_open` give the address, and the project page shows "try it" next to the task. After the decision it disappears.
+
 The preview is project code, so it runs on **its own address**, never under the platform's. It may load files only from there (no third-party servers, no tracking), may be at most 300 MB and is not indexed by search engines. If a build fails, the previous preview stays.
 
 A detailed example is in the [lead handbook](/en/docs/lead-handbook) among the templates.

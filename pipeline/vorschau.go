@@ -9,6 +9,8 @@ package main
 
 import (
 	"archive/zip"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/fs"
@@ -56,6 +58,7 @@ func vorschauen() {
 		}
 		fmt.Printf("preview %s at %.12s: %s (preview %v, docs %v)\n", p.Slug, kopf, st.status, st.spiel, st.doku)
 	}
+	einreichungenVorschauen()
 }
 
 // vorschauStand: Ergebnis eines Baus; Spiel und Doku sagen, was die Projektseite verlinkt.
@@ -65,22 +68,38 @@ type vorschauStand struct {
 	spiel, doku     bool
 }
 
+// auschecken legt einen Arbeitsbaum des Stands an (mit Git-LFS); aufraeumen entfernt ihn wieder.
+func auschecken(e einreichung, sp, stand string) (baum string, aufraeumen func(), err error) {
+	dir, _ := os.MkdirTemp(arbeit, "preview-")
+	baum = filepath.Join(dir, "tree")
+	aufraeumen = func() { befehl(sp, nil, "git", "worktree", "remove", "--force", baum); os.RemoveAll(dir) }
+	if aus, err := befehl(sp, gitEnv(leseKey, e), "git", "lfs", "fetch", "origin", stand); err != nil {
+		return baum, aufraeumen, fmt.Errorf("LFS: %s", aus)
+	}
+	if aus, err := befehl(sp, nil, "git", "worktree", "add", "--detach", "--force", baum, stand); err != nil {
+		return baum, aufraeumen, fmt.Errorf("checkout: %s", aus)
+	}
+	return baum, aufraeumen, nil
+}
+
 // eineVorschau baut Vorschau (Wurzel) und Doku (/docs/) des Stands kopf und tauscht sie zusammen ein.
 func eineVorschau(e einreichung, sp, kopf string) vorschauStand {
-	dir, _ := os.MkdirTemp(arbeit, "preview-")
-	defer os.RemoveAll(dir)
-	baum := filepath.Join(dir, "tree")
-	if aus, err := befehl(sp, gitEnv(leseKey, e), "git", "lfs", "fetch", "origin", kopf); err != nil {
-		return vorschauStand{status: "failed", bericht: "LFS: " + aus}
+	baum, aufraeumen, err := auschecken(e, sp, kopf)
+	defer aufraeumen()
+	if err != nil {
+		return vorschauStand{status: "failed", bericht: err.Error()}
 	}
-	if aus, err := befehl(sp, nil, "git", "worktree", "add", "--detach", "--force", baum, kopf); err != nil {
-		return vorschauStand{status: "failed", bericht: "checkout: " + aus}
-	}
-	defer befehl(sp, nil, "git", "worktree", "remove", "--force", baum)
+	return vorschauBauen(e, baum, filepath.Join(arbeit, "vorschau", e.Slug), true)
+}
+
+// vorschauBauen baut im ausgecheckten Baum die Vorschau und, wenn gewünscht, die Doku und tauscht sie unter ziel ein.
+func vorschauBauen(e einreichung, baum, ziel string, mitDoku bool) vorschauStand {
 	os.Chmod(baum, 0o777)
 	befehl("", nil, "chmod", "-R", "a+rwX", baum)
-
 	u, err := umgebung.Ermitteln(baum)
+	if !mitDoku {
+		u.Doku = ""
+	}
 	switch {
 	case err != nil:
 		return vorschauStand{status: "failed", bericht: "environment: " + err.Error()}
@@ -110,7 +129,7 @@ func eineVorschau(e einreichung, sp, kopf string) vorschauStand {
 			return vorschauStand{status: "failed", bericht: "setup failed:\n" + aus}
 		}
 	}
-	ziel := filepath.Join(arbeit, "vorschau", e.Slug)
+	os.MkdirAll(filepath.Dir(ziel), 0o755)
 	neu, alt := ziel+".neu", ziel+".alt"
 	os.RemoveAll(neu)
 	defer os.RemoveAll(neu)
@@ -156,6 +175,66 @@ func eineVorschau(e einreichung, sp, kopf string) vorschauStand {
 	os.RemoveAll(alt)
 	st.status, st.bericht = "ok", b.String()
 	return st
+}
+
+// Vorschau je Einreichung: geprüfte Einreichungen, die auf Bewertung warten, werden auf ihrem Basis-Commit samt Patch
+// gebaut und unter vorschau/review/<id>/ abgelegt (review.<Domain>/<id>/). Der Code ist noch nicht bewertet, deshalb nur
+// auf der Vorschau-Domain und nie unter der Adresse eines Projekts. Entschiedene Einreichungen verschwinden wieder.
+func einreichungenVorschauen() {
+	var r struct {
+		Offen    []einreichung `json:"open"`
+		Behalten []int64       `json:"keep"`
+	}
+	if err := signiert("GET", "/pipeline/submission-previews", nil, &r); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	for _, e := range r.Offen {
+		st := eineEinreichungsVorschau(e)
+		if len(st.bericht) > 4000 {
+			st.bericht = st.bericht[len(st.bericht)-4000:]
+		}
+		if err := signiert("POST", fmt.Sprintf("/pipeline/submission-previews/%d", e.EinreichungID), map[string]any{"status": st.status, "report": st.bericht, "bytes": st.groesse}, nil); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		fmt.Printf("submission preview %d (%s): %s\n", e.EinreichungID, e.Slug, st.status)
+		if st.status == "ok" {
+			r.Behalten = append(r.Behalten, e.EinreichungID)
+		}
+	}
+	// aufräumen: nur Vorschauen von Einreichungen, die noch auf Bewertung warten
+	behalten := map[string]bool{}
+	for _, id := range r.Behalten {
+		behalten[fmt.Sprint(id)] = true
+	}
+	eintraege, _ := os.ReadDir(filepath.Join(arbeit, "vorschau", "review"))
+	for _, d := range eintraege {
+		if !behalten[d.Name()] {
+			os.RemoveAll(filepath.Join(arbeit, "vorschau", "review", d.Name()))
+		}
+	}
+}
+
+func eineEinreichungsVorschau(e einreichung) vorschauStand {
+	summe := sha256.Sum256([]byte(e.Patch))
+	if hex.EncodeToString(summe[:]) != e.PatchSHA {
+		return vorschauStand{status: "failed", bericht: "patch checksum does not match"}
+	}
+	sp, err := spiegel(e)
+	if err != nil {
+		return vorschauStand{status: "failed", bericht: err.Error()}
+	}
+	baum, aufraeumen, err := auschecken(e, sp, e.BasisCommit)
+	defer aufraeumen()
+	if err != nil {
+		return vorschauStand{status: "failed", bericht: err.Error()}
+	}
+	patchDatei := filepath.Join(filepath.Dir(baum), "contribution.patch")
+	os.WriteFile(patchDatei, []byte(e.Patch), 0o644)
+	if aus, err := befehl(baum, nil, "git", "apply", patchDatei); err != nil {
+		return vorschauStand{status: "failed", bericht: "patch does not apply:\n" + aus}
+	}
+	return vorschauBauen(e, baum, filepath.Join(arbeit, "vorschau", "review", fmt.Sprint(e.EinreichungID)), false)
 }
 
 // vorschauKopieren übernimmt nur gewöhnliche Dateien und Ordner (keine Links, die aus der Vorschau hinauszeigen könnten)

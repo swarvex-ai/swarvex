@@ -12,6 +12,8 @@ export const OSI_LIZENZEN = new Set(["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3
 export const FREIE_ASSET_LIZENZEN = new Set(["CC BY 4.0", "CC BY-SA 4.0", "CC0 1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "CC0-1.0", "OFL-1.1"]);
 export const PROJEKTARTEN: Record<string, string> = { game: "spiel", app: "app", website: "website", service: "dienst", tool: "tool", library: "bibliothek", plugin: "plugin", research: "forschung", other: "sonstiges" };
 export const PROJEKTE_JE_MENSCH = 3;
+/** Adressen, die keine Projekte sein können: Subdomains der Vorschau-Domain (review.<Domain> für Einreichungen) und Plattform-Namen. */
+export const RESERVIERT = new Set(["review", "www", "api", "docs", "play", "static", "assets", "mail", "admin", "swarvex"]);
 /** Art des Originals bei Clean Room: wählt den Werkzeug-Pfad (lead/roles/cleanroom/toolkit.md). */
 export const VORBILD_ARTEN = ["windows", "linux_macos", "android", "web", "game", "firmware", "format_protocol"];
 const VORBILD_FELDER = ["name", "version", "acquisition", "target", "depth", "inspect", "legal_basis", "goal"] as const;
@@ -34,6 +36,7 @@ export type NeuesProjekt = {
 export function projektPruefen(p: NeuesProjekt): string[] {
   const f: string[] = [];
   if (!/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(p.slug ?? "")) f.push("slug: 3–40 lowercase letters, digits and dashes");
+  else if (RESERVIERT.has(p.slug)) f.push(`slug: ${p.slug} is reserved`);
   if (!p.name?.trim() || p.name.length > 80) f.push("name: 1–80 characters");
   if (!p.vision_short?.trim() || p.vision_short.length > 200) f.push("vision_short: one sentence, at most 200 characters");
   if ((p.vision_md ?? "").length > 20000) f.push("vision_md: at most 20,000 characters");
