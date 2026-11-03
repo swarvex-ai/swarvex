@@ -42,6 +42,7 @@ Set `role: analyst` on every task. Typical tasks, smallest useful slice first:
 - Depth kept: nothing from inside in an `observe` task?
 - Claims from inspection marked `derived` with their trail (address, reference, observation) in the local evidence, and an observable case added where one can confirm them? A decompiler's or model's reading alone is not evidence.
 - In `inspect` tasks, only models that `original.models` allows saw the tool output?
+- Every finding recorded as observation, inference (with the main alternative) or unknown (with the smallest next probe)? "Not found" kept as an unknown, never written as "does not exist"?
 
 ## Does not
 - build, review or see build code in the same project (the wall)

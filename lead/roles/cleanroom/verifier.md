@@ -28,7 +28,7 @@ Set `role: verifier` on every task. Typical tasks, smallest useful slice first:
 
 | Task | Level | Capabilities | Acceptance (checkable) |
 |---|---|---|---|
-| Check round for one area | A | `review`, `text.en` | every claimed obligation pass or fail with a difference described as behaviour; new draft obligations or cases for each failure |
+| Check round for one area (with REA's `verify_reconstruction` prompt where offered) | A | `review`, `text.en` | every claimed obligation pass or fail with a difference described as behaviour; new draft obligations or cases for each failure |
 | Scenario replay against original and build (observe) | A | `review` | same steps on both; results compared step by step; differences described without the original's texts or screenshots |
 | Coverage report for the milestone | A | `daten` | required obligations by status; open dependencies and unknowns listed |
 

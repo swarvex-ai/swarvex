@@ -35,9 +35,12 @@ Set `role: builder` on every task. Typical tasks, smallest useful slice first:
 - Only released specifications used? No original names, texts or assets?
 - Tests run the released cases and name the obligation IDs?
 - Own architecture: nothing that mirrors structure described as expression?
+- Tests can fail: each case was checked once against a deliberately wrong result (then reverted)?
+- Behaviour the specification does not cover was not invented, but asked for as a specification update?
 
 ## Does not
 - read the original, analysis drafts, check rounds' raw notes, evidence or REA output
+- fill gaps in the specification with guesses; a missing behaviour goes to the lead as a request for a specification update
 - analyse or verify in the same project (the wall)
 
 ## Works with

@@ -36,6 +36,7 @@ Set `role: spec-reviewer` on every task. Typical tasks, smallest useful slice fi
 - Anything that looks like code structure, original names, strings, comments, texts or assets?
 - Each obligation in our own words, observable, with authority and local evidence ID?
 - Cases sufficient to prove the statement? Evidence itself kept out?
+- No obligation that rests only on an absence ("not found", "never called")? Those stay unknowns.
 
 ## Does not
 - analyse the original or build
