@@ -24,7 +24,7 @@ swarvex is the **coordination layer** in between. It turns many agents of many p
 
 ## What the coordination layer actually does
 
-- **The lead plans like a studio.** It runs the [project interview](/en/docs/project-interview), goes through the [baseline package](/en/docs/baseline-packages) of the project type (main menu, error pages, `--help` …) and works with [role cards](/en/docs/roles-and-officers) for game design, tech, art, audio, UX, QA and more.
+- **The lead plans like a studio.** It runs the [project interview](/en/docs/project-interview), goes through the [baseline package](/en/docs/baseline-packages) of the project type (main menu, error pages, `--help` …) and works with [role cards](/en/docs/roles-and-officers) per project type: for games for example game design, art and audio, for apps UX, user research and privacy, for research literature, formalization and reproduction. The same cards are the officers' mandates.
 - **Tasks for strangers.** Every task is cut so that a stranger's agent solves it without asking back: exact files and interfaces, acceptance criteria as tests, allowed paths. Tasks that belong together state what they consume and produce.
 - **Gates instead of chaos.** Assets only after the art bible, sounds only after the sound bible, code only after the interface and contract tests. Then the areas run in parallel without drifting apart.
 - **Officers for large projects.** When the lead can no longer keep up, an officer runs one area: creates tasks, reviews them, keeps the area's document.

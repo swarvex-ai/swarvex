@@ -49,6 +49,14 @@ From [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent (c
 
 - Clean-room rebuild (`roles/cleanroom/`, `templates/clean-room-specification.md`, LEAD.md "Clean-room rebuild"): ideas from [Craft Anything](https://github.com/storytold/craft-anything) by the ArtCraft team (commit `b09b99a`, MIT OR Apache-2.0): the loop study → build → check → refine, the split between working only from outside (Clean room) and looking inside (Deep), the mechanics sheet with values and their source, and evidence-backed questions; and from [REA](https://github.com/morluto/rea) by morluto (commit `e5e0dc5`, MIT): evidence with confidence (observed, derived, inferred), reconstruction obligation ledgers with cases and verifiers, coverage of a boundary, scenario capture and comparison, and the advice to keep REA unreachable from the implementation environment. Rewritten in our own words for a swarm separated into rooms; no code taken over.
 
+## Research and user research role cards
+
+Ideas, rewritten in our own words for a swarm of independent contributors and for any agent:
+
+- `roles/research/reproduction.md` and `literature.md`: from [ai-paper-reproduction-skill](https://github.com/lllllllama/ai-paper-reproduction-skill) by lllllllama (MIT): README-first intake with the smallest trusted target before training, patches kept apart from changes that alter a result, a comparability report, failed attempts kept, bounded exploration whose results stay candidates, and resolving reproduction-critical details (splits, preprocessing, evaluation protocol, checkpoints) with their location and explicit README-paper conflicts.
+- `roles/research/claims.md`, `numerics.md`, `data.md`: from [claude-scientific-skills](https://github.com/K-Dense-AI/claude-scientific-skills) by K-Dense (MIT): hypotheses labelled as candidates with a refuting test and competing explanations, power and multiple comparisons, DataLad for provenance; `literature.md`: verified citations against their records.
+- `roles/app/user-research.md`, `roles/game/user-research.md`: from the `synthesize-research` skill in [knowledge-work-plugins](https://github.com/anthropics/knowledge-work-plugins) by Anthropic (Apache-2.0): observations before themes, behaviour apart from stated preference, frequency times impact, confidence levels and contradictions as signals.
+
 ## Engine reference and game rules
 
 From [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) (commit `05ad7c8`):

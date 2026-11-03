@@ -23,6 +23,7 @@ Ask the lead (who asks the visionary when it is a question of the research goal)
 - For each numerical claim: which tolerance, decided before measuring, and why that one?
 - Which claims depend on others, so that tasks can be cut with depends_on and released automatically?
 - What would show that a claim is false, and is that outcome as welcome as a confirmation?
+- Does the project put forward claims of its own (hypotheses, not taken from a source)? Each stays labelled as a candidate until tested, with its prediction, the test that could refute it and at least one competing explanation.
 
 ## Tasks for the swarm
 Set `role: claims` on every task. Typical tasks, smallest useful slice first:
@@ -38,6 +39,7 @@ Set `role: claims` on every task. Typical tasks, smallest useful slice first:
 - Tolerances set before measuring, with a reason?
 - Source cited precisely (section, figure, equation, theorem number)?
 - Negative results allowed and recorded as such?
+- Hypotheses of our own marked as candidates, with prediction, refuting test and competing explanation?
 
 ## Does not
 - move tolerances after seeing results
@@ -45,7 +47,7 @@ Set `role: claims` on every task. Typical tasks, smallest useful slice first:
 - write proofs or experiment code
 
 ## Works with
-formalization and reproduction (tasks per claim), numerics (tolerances), scientific-review (fidelity), publication (results table).
+formalization and reproduction (tasks per claim), literature (sources), numerics (tolerances), scientific-review (fidelity), publication (results table).
 
 ## As an officer
 

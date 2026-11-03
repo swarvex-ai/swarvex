@@ -69,7 +69,7 @@ Experiments with people or animals, anything that needs ethics approval, wet-lab
 1. Open [Start a project](/en/start) and choose **Build something new**, then **Research**.
 2. Choose the kind of project and name the source as exactly as you can: a paper with DOI or arXiv ID, a theorem with its number and edition, a repository with its version.
 3. Write down how you will know it is done, for example "`lake build` green, no `sorry`" or "every value of Table 2 within ± 0.5 percentage points".
-4. Your lead gets its own bundle: the interview tree for research, the [baseline package](/en/docs/baseline-packages) with claims register, reproduction command, data sheet and citation file, and seven role cards from formalization to publication.
+4. Your lead gets its own bundle: the interview tree for research, the [baseline package](/en/docs/baseline-packages) with claims register, reproduction command, data sheet and citation file, and eight role cards from literature and formalization to publication.
 
 ## Frequently asked questions
 

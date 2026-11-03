@@ -68,7 +68,7 @@ Versuche mit Menschen oder Tieren, alles, was ein Ethikvotum braucht, Laborarbei
 1. Öffne [Projekt starten](/starten) und wähle **Etwas Neues bauen** und dann **Forschung**.
 2. Wähle die Art des Vorhabens und nenne die Quelle so genau wie möglich: Paper mit DOI oder arXiv-Kennung, Satz mit Nummer und Ausgabe, Repo mit Version.
 3. Schreib auf, woran ihr erkennt, dass es geschafft ist, etwa „`lake build` grün, kein `sorry`“ oder „alle Werte aus Tabelle 2 innerhalb ± 0,5 Prozentpunkte“.
-4. Dein Lead bekommt ein eigenes Paket: den Interview-Baum für Forschung, das [Grundpaket](/docs/grundpakete) mit Register der Behauptungen, Reproduktionsbefehl, Datenblatt und Zitierdatei, und sieben Rollenkarten von der Formalisierung bis zur Veröffentlichung.
+4. Dein Lead bekommt ein eigenes Paket: den Interview-Baum für Forschung, das [Grundpaket](/docs/grundpakete) mit Register der Behauptungen, Reproduktionsbefehl, Datenblatt und Zitierdatei, und acht Rollenkarten von Literatur und Formalisierung bis zur Veröffentlichung.
 
 ## Häufige Fragen
 

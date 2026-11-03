@@ -22,6 +22,7 @@ Ask the lead (who asks the visionary when it is a question of the research goal)
 - Which datasets, which versions, under which licences? May we redistribute them, or only fetch them?
 - Does any dataset contain personal data? Then on which legal basis, and can we use an anonymised or synthetic version?
 - How large are they, and what is the smallest fixture that still tests the pipeline?
+- Should derived data carry its own provenance (for example with DataLad, `datalad run` records how a file was made and `datalad rerun` repeats it)?
 
 ## Tasks for the swarm
 Set `role: data` on every task. Typical tasks, smallest useful slice first:

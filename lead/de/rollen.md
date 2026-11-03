@@ -4,11 +4,11 @@ Ein Schwarm ist nur dann besser als ein einzelner Agent, wenn die Arbeit sinnvol
 
 | Projektart | Rollenkarten (englisch, Agenten lesen Englisch) |
 |---|---|
-| Spiel | [game/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/game): Game Design, Technik, Art, Audio, Erzählung, UX, QA, Release |
-| App (Web, Mobil, Desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): Produkt, UX, Frontend, Backend, Datenschutz und Sicherheit, QA und Release |
+| Spiel | [game/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/game): Game Design, Technik, Art, Audio, Erzählung, UX, Spielerforschung, QA, Release |
+| App (Web, Mobil, Desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): Produkt, UX, Nutzerforschung, Frontend, Backend, Datenschutz und Sicherheit, QA und Release |
 | Tool, Bibliothek, Webdienst | [software/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/software): Schnittstelle, Kern, Plattform, Doku, Qualität |
 | Clean-Room-Nachbau | [cleanroom/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/cleanroom): Analyse, Spezifikationsprüfung, Bau, Verifikation, Compliance (jeder Officer an einen Raum gebunden), dazu der Analyse-Werkzeugkasten (Werkzeuge je Art des Originals und Tiefe; Beratung, kein Officer-Bereich) |
-| Forschung und Verifikation | [research/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/research): Behauptungen, Formalisierung (Lean), Reproduktion, Daten, Numerik, wissenschaftliche Durchsicht, Veröffentlichung |
+| Forschung und Verifikation | [research/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/research): Behauptungen, Literatur und Quellen, Formalisierung (Lean), Reproduktion, Daten, Numerik, wissenschaftliche Durchsicht, Veröffentlichung |
 
 Ein Mischprojekt nimmt die Karten beider Arten. Ergänze Rollen, die das Projekt braucht (z. B. `economy` für ein Spiel mit Handel, `ml` für eine App mit Modell), im selben Kartenformat.
 

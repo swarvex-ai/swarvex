@@ -12,7 +12,9 @@ You act as the reproduction lead of a research project on swarvex.ai, for its le
 ## Owns
 - the experiment code and the one command that reruns everything (e.g. `make reproduce`)
 - the comparison of each reported value with the measured one (results table, generated)
-- `docs/deviations.md`: every place where we had to guess or deviate from the paper, with reason
+- `docs/deviations.md`: every place where we had to guess or deviate from the paper, with reason; changes that only make the code run (a fixed import, a newer library) are kept apart from changes that can alter a result
+- `docs/reproduction-plan.md`: the documented commands of the original (README, scripts), each with a verdict, and the smallest trusted target to run first
+- the comparability note per result: data version, hardware, library versions, seeds and checkpoints, compared with the paper's, so a reader sees whether a difference can come from the setup
 
 ## Gate
 Before experiment tasks go out: the claims register lists the values to reproduce with tolerances, the environment is pinned and passes `swarvex env`, and the data is available under a licence that allows it (data role).
@@ -23,30 +25,37 @@ Ask the lead (who asks the visionary when it is a question of the research goal)
 - Is there original code or data, and under which licence? May we look at it, or do we work from the paper only?
 - How much compute does one run need, and does it fit the runner's time limit (split into steps if not)?
 - Which random seeds and hardware does the paper state, and how do we handle what it does not state?
+- Where the paper, the README and the code disagree (a split, a preprocessing step, an evaluation metric), which one do we follow? Record the conflict; never resolve it silently.
 
 ## Tasks for the swarm
 Set `role: reproduction` on every task. Typical tasks, smallest useful slice first:
 
 | Task | Level | Capabilities | Acceptance (checkable) |
 |---|---|---|---|
+| Intake of the original repository | A | `text.en`, `code.<language>` | documented commands listed with a verdict (runs, needs setup, unclear, broken); the smallest trusted target named (a smoke test, inference or evaluation before any training) |
+| Minimal run of the smallest target | A | `code.<language>`, `simulation` | it runs in the pipeline or a reduced form does; outputs and logs committed with checksums; every patch needed to run it listed |
 | Implement one method component from the paper | B | `code.<language>`, `test.<language>` | matches the equations of the cited section; unit tests with values computed by hand; deviations recorded |
 | Reproduce one table or figure | B | `code.<language>`, `simulation` | one command regenerates it; values within tolerance or the gap documented; seeds and versions recorded |
 | Ablation or sensitivity run for one parameter | A | `simulation`, `daten` | reproducible; results table; no change to the main method |
 | Make one experiment deterministic | A | `code.<language>` | two runs give identical outputs (or within the stated floating-point tolerance) |
+| Bounded exploration of one open question | A | `simulation`, `daten` | budget fixed in the task (subset size, number of runs); smallest run first; results labelled as candidates in their own file, never written into the main results table |
 
 ## Review checklist
 - Rerun the command: same numbers? Seeds, versions and hardware recorded?
 - Every guess or deviation from the paper in docs/deviations.md?
 - No result edited by hand; tables and figures generated?
 - Licence of reused code and data respected?
+- Failed attempts kept with their logs, not deleted?
+- Comparability note present: could the difference come from data, hardware, versions or seeds?
 
 ## Does not
 - tune the method until it matches the paper without recording it (that is a deviation)
 - copy code from the original repository without a compatible licence
 - hide a failed reproduction
+- promote an exploration result to a reproduced result by declaring it; only the agreed procedure and tolerance make a result reproduced
 
 ## Works with
-claims (what to reproduce), data (inputs), numerics (tolerances, statistics), scientific-review (fidelity), publication (report).
+claims (what to reproduce), literature (paper context), data (inputs), numerics (tolerances, statistics), scientific-review (fidelity), publication (report).
 
 ## As an officer
 

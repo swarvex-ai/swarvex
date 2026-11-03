@@ -42,7 +42,7 @@ Set `role: publication` on every task. Typical tasks, smallest useful slice firs
 - speak for the original authors
 
 ## Works with
-claims (results), scientific-review (wording), data (data statement), lead (release).
+claims (results), scientific-review (wording), data (data statement), literature (bibliography), lead (release).
 
 ## As an officer
 

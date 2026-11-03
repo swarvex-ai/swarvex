@@ -185,3 +185,4 @@ B6 und B7 sind für Repos in der Organisation `swarvex-ai` bereits abgedeckt: Gi
 | R-12 | **Kontakt zur Quelle** | ursprüngliche Autoren oder Betreuer informiert und vor der Veröffentlichung zur Durchsicht eingeladen | Release |
 | R-13 | **Ethik-Prüfung** | Doppelnutzung und personenbezogene Daten geprüft und festgehalten (Interview F8) | erster |
 | R-14 | **Ergebnisse online** | Ergebnisbericht (Behauptungen, Tabelle, Abweichungen) und bei Beweisen der Blueprint mit Abhängigkeitsgraph werden nach jedem Merge gebaut und auf der Projektseite verlinkt (`docs` und `docs_dir` in `swarvex.yaml`) | erster |
+| R-15 | **Quellen geprüft** | `references.bib` mit einer auflösbaren Kennung für jede Quelle, `docs/literature.md` mit der Suche und den Widersprüchen, die eine Behauptung betreffen (Rolle Literatur) | erster |

@@ -49,6 +49,14 @@ Aus [obra/superpowers](https://github.com/obra/superpowers) von Jesse Vincent (C
 
 - Clean-Room-Nachbau (`roles/cleanroom/`, `vorlagen/clean-room-spezifikation.md`, LEAD.md „Clean-Room-Nachbau“): Ideen aus [Craft Anything](https://github.com/storytold/craft-anything) vom ArtCraft-Team (Commit `b09b99a`, MIT OR Apache-2.0): die Schleife studieren → bauen → prüfen → nachbessern, die Trennung zwischen Arbeit nur von außen (Clean room) und Hineinsehen (Deep), das Werteblatt mit Werten und ihrer Herkunft und belegte Rückfragen; sowie aus [REA](https://github.com/morluto/rea) von morluto (Commit `e5e0dc5`, MIT): Belege mit Einstufung (beobachtet, abgeleitet, vermutet), Pflichtenlisten für den Nachbau mit Testfällen und Prüfern, Abdeckung einer Grenze, Aufnahme und Vergleich von Szenarien und der Rat, REA von der Umsetzungsumgebung aus unerreichbar zu halten. In eigenen Worten neu geschrieben für einen Schwarm, der in Räume getrennt ist; kein Code übernommen.
 
+## Rollenkarten für Forschung und Nutzerforschung
+
+Ideen, in eigenen Worten neu geschrieben für einen Schwarm unabhängiger Mitstreiter und für jeden Agenten:
+
+- `roles/research/reproduction.md` und `literature.md`: aus [ai-paper-reproduction-skill](https://github.com/lllllllama/ai-paper-reproduction-skill) von lllllllama (MIT): Bestandsaufnahme ab dem README mit dem kleinsten verlässlichen Ziel vor jedem Training, Patches getrennt von Änderungen, die ein Ergebnis verändern können, ein Vergleichbarkeitsbericht, gescheiterte Versuche bleiben, begrenzte Erkundung, deren Ergebnisse Kandidaten bleiben, und reproduktionskritische Angaben (Splits, Vorverarbeitung, Auswerteprotokoll, Checkpoints) mit Fundstelle und ausdrücklichen Widersprüchen zwischen README und Paper.
+- `roles/research/claims.md`, `numerics.md`, `data.md`: aus [claude-scientific-skills](https://github.com/K-Dense-AI/claude-scientific-skills) von K-Dense (MIT): eigene Hypothesen als Kandidaten mit widerlegendem Test und Gegenerklärungen, Teststärke und Mehrfachvergleiche, DataLad für die Herkunft; `literature.md`: Zitate gegen ihre Datensätze geprüft.
+- `roles/app/user-research.md`, `roles/game/user-research.md`: aus dem Skill `synthesize-research` in [knowledge-work-plugins](https://github.com/anthropics/knowledge-work-plugins) von Anthropic (Apache-2.0): Beobachtungen vor Themen, Verhalten getrennt von geäußerten Vorlieben, Häufigkeit mal Wirkung, Vertrauensstufen und Widersprüche als Signal.
+
 ## Engine-Referenz und Spielregeln
 
 Aus [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) (Commit `05ad7c8`):

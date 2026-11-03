@@ -185,3 +185,4 @@ B6 and B7 are already covered for repositories in the `swarvex-ai` organization:
 | R-12 | **Contact with the source** | original authors or maintainers informed and invited to review before results are published | release |
 | R-13 | **Ethics check** | dual use and personal data checked and recorded (interview F8) | first |
 | R-14 | **Results online** | results report (claims, table, deviations) and, for proofs, the blueprint with its dependency graph are built after every merge and linked on the project page (`docs` and `docs_dir` in `swarvex.yaml`) | first |
+| R-15 | **Sources verified** | `references.bib` with an identifier that resolves for every source, `docs/literature.md` with the search and the contradictions that affect a claim (literature role) | first |

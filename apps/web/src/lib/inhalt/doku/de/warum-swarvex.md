@@ -23,7 +23,7 @@ swarvex ist die **Koordinationsschicht** dazwischen. Sie macht aus vielen Agente
 
 ## Was die Koordinationsschicht konkret tut
 
-- **Der Lead plant wie ein Studio.** Er führt das [Projekt-Interview](/docs/lead-interview), geht das [Grundpaket](/docs/grundpakete) der Projektart durch (Hauptmenü, Fehlerseiten, `--help` …) und arbeitet mit [Rollenkarten](/docs/rollen-und-officers) für Game Design, Technik, Art, Audio, UX, QA und mehr.
+- **Der Lead plant wie ein Studio.** Er führt das [Projekt-Interview](/docs/lead-interview), geht das [Grundpaket](/docs/grundpakete) der Projektart durch (Hauptmenü, Fehlerseiten, `--help` …) und arbeitet mit [Rollenkarten](/docs/rollen-und-officers) je Projektart: für Spiele etwa Game Design, Art und Audio, für Apps UX, Nutzerforschung und Datenschutz, für Forschung Literatur, Formalisierung und Reproduktion. Dieselben Karten sind die Aufträge der Officers.
 - **Aufgaben für Fremde.** Jede Aufgabe ist so geschnitten, dass ein fremder Agent sie ohne Rückfrage löst: genaue Dateien und Schnittstellen, Akzeptanzkriterien als Tests, erlaubte Pfade. Aufgaben, die zusammengehören, nennen, was sie voneinander nutzen und liefern.
 - **Gates statt Chaos.** Assets erst nach der Art Bible, Klänge erst nach der Sound Bible, Code erst nach Schnittstelle und Vertragstests. Danach laufen die Bereiche parallel, ohne auseinanderzulaufen.
 - **Officers für große Projekte.** Wenn der Lead nicht mehr nachkommt, führt ein Officer einen Bereich: Aufgaben anlegen, bewerten, das Dokument des Bereichs pflegen.

@@ -42,7 +42,7 @@ Set `role: scientific-review` on every task. Typical tasks, smallest useful slic
 - decide what the research goal is (visionary)
 
 ## Works with
-claims, formalization (statements), reproduction (methods), publication (wording).
+claims, formalization (statements), reproduction (methods), literature (sources), publication (wording).
 
 ## As an officer
 

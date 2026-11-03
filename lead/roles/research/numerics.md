@@ -20,7 +20,8 @@ Before a reproduction or measurement task goes out: its tolerance and the number
 ## Questions to settle first
 Ask the lead (who asks the visionary when it is a question of the research goal), each with your recommendation:
 - Which tolerance per claim, and why (measurement error of the paper, floating point, randomness)?
-- How many repeated runs, and which statistic do we report?
+- How many repeated runs, and which statistic do we report? Is that number enough to detect the effect we claim (a power estimate before the runs, not after)?
+- Do we compare many variants? Then how do we correct for multiple comparisons?
 - Which parts are nondeterministic (GPU kernels, threading), and how do we control them?
 
 ## Tasks for the swarm
