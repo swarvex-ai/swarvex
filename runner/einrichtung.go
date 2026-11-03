@@ -262,6 +262,7 @@ func modellAuswahl() []modellWahl {
 		}
 	}
 	w = append(w, hermesModelle()...)
+	w = append(w, agentenSchluessel(w)...)
 	return append(w, modellWahl{Titel: "Something else (enter address, model and key yourself)"})
 }
 
@@ -327,7 +328,7 @@ func hermesModelle() []modellWahl {
 	w.Titel = "Hermes's model: " + modell + " via " + name
 	if key != "" {
 		w.Titel += " (key from Hermes " + quelle + ")"
-		w.Key = "hermes:" + key
+		w.Key = "wert:" + key
 	}
 	return []modellWahl{w}
 }
@@ -499,8 +500,15 @@ func setupDialog(ausfuehren bool) []string {
 		w.Key = schluesselDatei("claude-token", f.geheim("Token"))
 	case strings.HasPrefix(w.Key, "env:"):
 		w.Key = schluesselDatei(strings.ToLower(strings.TrimPrefix(w.Key, "env:")), os.Getenv(strings.TrimPrefix(w.Key, "env:")))
-	case strings.HasPrefix(w.Key, "hermes:"):
-		w.Key = schluesselDatei(w.Agent+"-key", strings.TrimPrefix(w.Key, "hermes:"))
+	case strings.HasPrefix(w.Key, "wert:"):
+		roh := strings.TrimPrefix(w.Key, "wert:")
+		w.Key = schluesselDatei(w.Agent+"-key", roh)
+		// Modell unbekannt: die Modellliste des Anbieters anbieten, wenn sie überschaubar ist
+		if w.Modell == "" && w.Agent == "opencode" {
+			if liste := anbieterModelle(w.URL, roh); len(liste) > 0 && len(liste) <= 25 {
+				w.Modell = liste[f.wahl("Which model?", liste)]
+			}
+		}
 	case w.Titel == optionen[len(optionen)-1].Titel:
 		if len(optionen) == 1 {
 			fmt.Println("  (Nothing found automatically: no Ollama, LM Studio, Codex, Claude Code, Hermes or API key in the environment.)")
@@ -752,4 +760,179 @@ var zeitVorschlaege = []struct{ titel, fenster string }{
 	{"Outside working hours (mon-fri 18:00-08:00, all weekend)", "mon-fri 18:00-08:00; sat,sun 00:00-24:00"},
 	{"Weekends only (sat, sun)", "sat,sun 00:00-24:00"},
 	{"My own time windows", "?"},
+}
+
+// ---- Schlüssel aus anderen Agenten ----
+
+// Anbieter, deren Schlüssel Agenten üblicherweise ablegen; URL ohne /v1 (der Agent in der Sandbox hängt es an).
+// Gemini fehlt bewusst: seine OpenAI-kompatible Adresse endet nicht auf /v1.
+var anbieterListe = []struct{ env, name, id, agent, url string }{
+	{"OPENROUTER_API_KEY", "OpenRouter", "openrouter", "opencode", "https://openrouter.ai/api"},
+	{"DEEPSEEK_API_KEY", "DeepSeek", "deepseek", "opencode", "https://api.deepseek.com"},
+	{"ANTHROPIC_API_KEY", "Anthropic", "anthropic", "claude", "https://api.anthropic.com"},
+	{"OPENAI_API_KEY", "OpenAI", "openai", "codex", "https://api.openai.com"},
+	{"MOONSHOT_API_KEY", "Moonshot (Kimi)", "moonshot", "opencode", "https://api.moonshot.ai"},
+	{"XAI_API_KEY", "xAI", "xai", "opencode", "https://api.x.ai"},
+	{"MISTRAL_API_KEY", "Mistral", "mistral", "opencode", "https://api.mistral.ai"},
+	{"GROQ_API_KEY", "Groq", "groq", "opencode", "https://api.groq.com/openai"},
+}
+
+// agentenOrte: wo installierte Agenten ihre Schlüssel ablegen (.env-Dateien, einfache api_key-Zeilen in TOML,
+// opencodes auth.json). Unter WSL auch im Windows-Benutzerordner.
+var agentenOrte = []struct {
+	agent   string
+	dateien []string
+}{
+	{"opencode", []string{".local/share/opencode/auth.json"}},
+	{"Codewhale (DeepSeek TUI)", []string{".codewhale/.env", ".codewhale/config.toml", ".deepseek/.env", ".deepseek/config.toml"}},
+	{"OpenClaw", []string{".openclaw/.env"}},
+	{"Gemini CLI", []string{".gemini/.env"}},
+	{"Qwen Code", []string{".qwen/.env"}},
+	{"Hermes", []string{".hermes/.env"}},
+	{"your ~/.env", []string{".env"}},
+}
+
+func agentenSchluessel(bisher []modellWahl) []modellWahl {
+	gesehen := map[string]bool{}
+	for _, b := range bisher {
+		switch {
+		case strings.HasPrefix(b.Key, "wert:"):
+			gesehen[strings.TrimPrefix(b.Key, "wert:")] = true
+		case strings.HasPrefix(b.Key, "env:"):
+			gesehen[os.Getenv(strings.TrimPrefix(b.Key, "env:"))] = true
+		}
+	}
+	heime := []string{heim()}
+	if wh := windowsHeim(); wh != "" {
+		heime = append(heime, wh)
+	}
+	opencodeModell := opencodeStandardModell()
+	var w []modellWahl
+	for _, h := range heime {
+		for _, ort := range agentenOrte {
+			for _, datei := range ort.dateien {
+				pfad := filepath.Join(h, datei)
+				for anbieterID, key := range schluesselIn(pfad) {
+					if key == "" || gesehen[key] {
+						continue
+					}
+					for _, a := range anbieterListe {
+						if a.id != anbieterID {
+							continue
+						}
+						gesehen[key] = true
+						modell := ""
+						if a.id == "anthropic" {
+							modell = "claude-sonnet-5-5"
+						} else if m, ok := strings.CutPrefix(opencodeModell, a.id+"/"); ok && ort.agent == "opencode" {
+							modell = m
+						}
+						w = append(w, modellWahl{Titel: fmt.Sprintf("%s key from %s (%s)", a.name, ort.agent, pfad), Agent: a.agent, Modell: modell, URL: a.url, Key: "wert:" + key})
+					}
+				}
+			}
+		}
+	}
+	return w
+}
+
+// schluesselIn liefert Anbieter-ID → Schlüssel aus einer Datei: KEY=wert (.env), api_key = "…" (TOML, Anbieter aus
+// [providers.<id>] oder provider = "<id>") oder opencodes auth.json ({"<id>": {"type": "api", "key": "…"}}).
+func schluesselIn(pfad string) map[string]string {
+	r := map[string]string{}
+	roh, err := os.ReadFile(pfad)
+	if err != nil {
+		return r
+	}
+	switch {
+	case strings.HasSuffix(pfad, ".json"):
+		var auth map[string]struct {
+			Type string `json:"type"`
+			Key  string `json:"key"`
+		}
+		if json.Unmarshal(roh, &auth) == nil {
+			for id, e := range auth {
+				if e.Type == "api" {
+					if id == "moonshotai" {
+						id = "moonshot" // opencodes ID für Moonshot
+					}
+					r[id] = e.Key
+				}
+			}
+		}
+	case strings.HasSuffix(pfad, ".toml"):
+		abschnitt, oben := "", ""
+		for _, zeile := range strings.Split(string(roh), "\n") {
+			z := strings.TrimSpace(zeile)
+			if strings.HasPrefix(z, "[") {
+				abschnitt = strings.TrimPrefix(strings.Trim(z, "[]"), "providers.")
+				continue
+			}
+			k, v, ok := strings.Cut(z, "=")
+			if !ok {
+				continue
+			}
+			k, v = strings.TrimSpace(k), yamlWert(v)
+			if k == "provider" && abschnitt == "" {
+				oben = v
+			}
+			if k == "api_key" && v != "" {
+				ziel := abschnitt
+				if ziel == "" {
+					ziel = oben
+				}
+				r[strings.TrimSuffix(ziel, "-cn")] = v
+			}
+		}
+	default:
+		for k, v := range envDatei(pfad) {
+			for _, a := range anbieterListe {
+				if k == a.env || (a.id == "moonshot" && k == "KIMI_API_KEY") {
+					r[a.id] = v
+				}
+			}
+		}
+	}
+	return r
+}
+
+// opencodeStandardModell: "model" aus ~/.config/opencode/opencode.json (z. B. "openrouter/deepseek/…").
+func opencodeStandardModell() string {
+	roh, err := os.ReadFile(heim(".config", "opencode", "opencode.json"))
+	if err != nil {
+		return ""
+	}
+	var k struct {
+		Model string `json:"model"`
+	}
+	json.Unmarshal(roh, &k)
+	return k.Model
+}
+
+// anbieterModelle fragt die Modellliste einer OpenAI-kompatiblen Schnittstelle ab (GET /v1/models).
+func anbieterModelle(adresse, key string) []string {
+	req, err := http.NewRequest("GET", strings.TrimRight(adresse, "/")+"/v1/models", nil)
+	if err != nil {
+		return nil
+	}
+	req.Header.Set("Authorization", "Bearer "+key)
+	c := &http.Client{Timeout: 8 * time.Second}
+	r, err := c.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer r.Body.Close()
+	var liste struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if r.StatusCode != 200 || json.NewDecoder(r.Body).Decode(&liste) != nil {
+		return nil
+	}
+	var ids []string
+	for _, m := range liste.Data {
+		ids = append(ids, m.ID)
+	}
+	return ids
 }

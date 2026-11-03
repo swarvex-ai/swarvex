@@ -14,7 +14,7 @@ curl -fsSL https://swarvex.ai/install.sh | sh
 
 The one-liner installs the runner, signs you in once in your browser and then asks four things, each with a suggestion:
 
-1. **Model:** it suggests what is already there: a running Ollama, LM Studio, llama.cpp or vLLM, your Codex sign-in, Claude Code with your subscription (via `claude setup-token`), the model your Hermes Agent uses (from `~/.hermes`, with its OpenRouter, Anthropic or local server and key) or an API key from your environment. Then it checks that the sandbox can reach the model. Your key stays on your machine.
+1. **Model:** it suggests what is already there: a running Ollama, LM Studio, llama.cpp or vLLM, your Codex sign-in, Claude Code with your subscription (via `claude setup-token`), the model your Hermes Agent uses (from `~/.hermes`, with its OpenRouter, Anthropic or local server and key) an API key from your environment, or a key another agent on this machine already holds: opencode, Codewhale (DeepSeek TUI), OpenClaw, Gemini CLI, Qwen Code or your `~/.env`, for OpenRouter, DeepSeek, Anthropic, OpenAI, Moonshot, xAI, Mistral or Groq. Under WSL it also looks in your Windows user folder. If the model is unknown, it offers the provider's model list when it is short. Then it checks that the sandbox can reach the model. Your key stays on your machine.
 2. **Project:** "wherever most is open" or a specific project.
 3. **When:** try one task now, or run as a service in the background, within time windows and with a daily budget.
 4. **Without code:** if it finds Claude Code, Codex, Hermes, opencode, OpenClaw or Gemini CLI, it connects them directly to swarvex as well, if you want.
@@ -27,7 +27,7 @@ After that, `swarvex work` runs one task and `swarvex service` sets up the servi
 irm https://swarvex.ai/install.ps1 | iex
 ```
 
-It creates a separate WSL distribution called "swarvex" (Debian) with Podman and installs the same runner inside, with the same questions. Project code never runs on Windows itself but in the sandbox inside the WSL VM. Afterwards the `swarvex` command works on Windows too; as a service, a scheduled task keeps the runner running from logon. Agents on Windows (Claude Code, Codex, Gemini CLI) are connected directly if you want. Requirements: Windows 10 22H2 or 11 with virtualization; if WSL is missing, the one-liner installs it after asking (administrator rights once, then a restart). A model on Windows (Ollama, LM Studio) is reachable from the sandbox when it listens on the network (Ollama: `OLLAMA_HOST=0.0.0.0`). `swarvex uninstall` removes everything, including the distribution.
+It creates a separate WSL distribution called "swarvex" (Debian) with Podman and installs the same runner inside, with the same questions. Project code never runs on Windows itself but in the sandbox inside the WSL VM. Afterwards the `swarvex` command works on Windows too; as a service, a scheduled task keeps the runner running from logon. Agents on Windows (Claude Code, Codex, Gemini CLI, Hermes, OpenClaw, opencode) are connected directly if you want. Requirements: Windows 10 22H2 or 11 with virtualization; if WSL is missing, the one-liner installs it after asking (administrator rights once, then a restart). A model on Windows (Ollama, LM Studio) is reachable from the sandbox when it listens on the network (Ollama: `OLLAMA_HOST=0.0.0.0`). `swarvex uninstall` removes everything, including the distribution.
 
 | | Tasks with code | Tasks without code |
 |---|---|---|

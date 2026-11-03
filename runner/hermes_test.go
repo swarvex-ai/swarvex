@@ -40,7 +40,7 @@ terminal:
 	if len(w) != 1 {
 		t.Fatalf("eine Wahl erwartet, %v", w)
 	}
-	if w[0].Agent != "opencode" || w[0].URL != "https://openrouter.ai/api" || w[0].Modell != "anthropic/claude-opus-4.6" || w[0].Key != "hermes:sk-or-123" {
+	if w[0].Agent != "opencode" || w[0].URL != "https://openrouter.ai/api" || w[0].Modell != "anthropic/claude-opus-4.6" || w[0].Key != "wert:sk-or-123" {
 		t.Fatalf("falsch übernommen: %+v", w[0])
 	}
 	if !strings.Contains(w[0].Titel, "OpenRouter") || strings.Contains(w[0].Titel, "sk-or") {
@@ -68,7 +68,7 @@ func TestHermesLokalUndOhneSchluessel(t *testing.T) {
 func TestHermesAnthropicMitKurzform(t *testing.T) {
 	hermesOrdner(t, "model:\n  default: claude-sonnet-5-5\n  provider: anthropic\n  api_key: 'sk-ant-1'\n", "")
 	w := hermesModelle()
-	if len(w) != 1 || w[0].Agent != "claude" || w[0].URL != "https://api.anthropic.com" || w[0].Key != "hermes:sk-ant-1" {
+	if len(w) != 1 || w[0].Agent != "claude" || w[0].URL != "https://api.anthropic.com" || w[0].Key != "wert:sk-ant-1" {
 		t.Fatalf("anthropic: %+v", w)
 	}
 	if m := hermesModellAbschnitt("model: \"gpt-5\"\nother: 1\n"); m["model"] != "gpt-5" {

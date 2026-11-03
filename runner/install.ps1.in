@@ -177,13 +177,31 @@ if (`$was -eq 'uninstall') {
   $agenten = @(@(
     @{ Titel = 'Claude Code'; Programm = 'claude'; Befehl = @('mcp', 'add', '--scope', 'user', '--transport', 'http', 'swarvex', $mcp); Anmelden = 'in a session: /mcp -> swarvex -> Authenticate' },
     @{ Titel = 'Codex'; Programm = 'codex'; Befehl = @('mcp', 'add', 'swarvex', '--url', $mcp); Anmelden = 'sign-in starts right away; later: codex mcp login swarvex' },
-    @{ Titel = 'Gemini CLI'; Programm = 'gemini'; Befehl = @('mcp', 'add', '--scope', 'user', '--transport', 'http', 'swarvex', $mcp); Anmelden = 'in a session: /mcp auth swarvex' }
+    @{ Titel = 'Gemini CLI'; Programm = 'gemini'; Befehl = @('mcp', 'add', '--scope', 'user', '--transport', 'http', 'swarvex', $mcp); Anmelden = 'in a session: /mcp auth swarvex' },
+    @{ Titel = 'Hermes'; Programm = 'hermes'; Befehl = @('mcp', 'add', 'swarvex', '--url', $mcp, '--auth', 'oauth'); Anmelden = 'sign-in starts right away; later: hermes mcp login swarvex' },
+    @{ Titel = 'OpenClaw'; Programm = 'openclaw'; Befehl = @('mcp', 'add', 'swarvex', '--url', $mcp, '--transport', 'streamable-http', '--auth', 'oauth'); Anmelden = 'openclaw mcp login swarvex' },
+    @{ Titel = 'opencode'; Programm = 'opencode'; Befehl = $null; Anmelden = 'opencode mcp auth swarvex' }
   ) | Where-Object { Get-Command $_.Programm -ErrorAction SilentlyContinue })
   if ($agenten.Count -eq 0) {
-    Ok "No Claude Code, Codex or Gemini CLI found on Windows. Other agents: add the MCP server $mcp"
+    Ok "No Claude Code, Codex, Gemini CLI, Hermes, OpenClaw or opencode found on Windows. Other agents: add the MCP server $mcp"
   } elseif (Ask "Also connect $(($agenten | ForEach-Object { $_.Titel }) -join ', ') directly (design, texts, reviews; no code runs on your machine)?") {
     foreach ($a in $agenten) {
-      Native { & $a.Programm @($a.Befehl) 2>&1 | Out-Null }
+      if ($null -eq $a.Befehl) {
+        # opencode has no non-interactive `mcp add`: add the server to its config file (plain JSON only)
+        $datei = Join-Path $HOME '.config\opencode\opencode.json'
+        try {
+          $k = if (Test-Path $datei) { Get-Content -Raw $datei | ConvertFrom-Json } else { [pscustomobject]@{} }
+          if (-not $k.PSObject.Properties['mcp']) { $k | Add-Member -NotePropertyName mcp -NotePropertyValue ([pscustomobject]@{}) }
+          $k.mcp | Add-Member -Force -NotePropertyName swarvex -NotePropertyValue ([pscustomobject]@{ type = 'remote'; url = $mcp })
+          New-Item -ItemType Directory -Force -Path (Split-Path $datei) | Out-Null
+          [IO.File]::WriteAllText($datei, ($k | ConvertTo-Json -Depth 20))   # UTF-8 without BOM; Set-Content would add one in PowerShell 5.1
+          Ok "opencode connected. Sign in: $($a.Anmelden)"
+        } catch { Ok "opencode: $datei is not plain JSON; add {""mcp"": {""swarvex"": {""type"": ""remote"", ""url"": ""$mcp""}}} yourself" }
+        continue
+      }
+      # the agents ask their own questions (Hermes: "Enable all tools?") and start the sign-in: keep their output visible
+      Write-Host "  $($a.Titel) asks a few things itself:"
+      Native { & $a.Programm @($a.Befehl) }
       if ($LASTEXITCODE -eq 0) { Ok "$($a.Titel) connected. Sign in: $($a.Anmelden)" } else { Ok "$($a.Titel): could not add (already connected?)" }
     }
   }
