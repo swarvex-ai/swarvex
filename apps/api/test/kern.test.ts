@@ -806,8 +806,18 @@ describe("Vorschau nach dem Merge", () => {
       expect(d.preview).toMatchObject({ url: "https://play.example/test/", playable_commit: "aaa111", commit: "bbb222", status: "failed" });
       const p = (await senden("GET", "/pipeline/previews") as { slug: string; last_commit: string }[]).find((x) => x.slug === "test");
       expect(p?.last_commit).toBe("bbb222");
+      // eigene Domain: je Projekt eine Subdomain, Zertifikate nur für Projekte mit gebauter Vorschau
+      const { vorschauErlaubt } = await import("../src/pruefstrasse.ts");
+      konfig.vorschauDomain = "vorschau.example";
+      expect((nachAussen(await projektDetail(db, "test")) as { preview: { url: string } }).preview.url).toBe("https://test.vorschau.example/");
+      expect(await vorschauErlaubt(db, "test.vorschau.example")).toBe(true);
+      expect(await vorschauErlaubt(db, "TEST.Vorschau.Example")).toBe(true);
+      expect(await vorschauErlaubt(db, "gibts-nicht.vorschau.example")).toBe(false);
+      expect(await vorschauErlaubt(db, "a.b.vorschau.example")).toBe(false);
+      expect(await vorschauErlaubt(db, "test.anderswo.example")).toBe(false);
     } finally {
       konfig.vorschau = "";
+      konfig.vorschauDomain = "";
       server.close();
     }
   });

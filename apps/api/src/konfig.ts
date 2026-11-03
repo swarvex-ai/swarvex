@@ -14,8 +14,14 @@ export const konfig = {
   kontoMindestalterTage: Number(process.env.ACCOUNT_MIN_AGE_DAYS ?? 0),
   /** Gemeinsames Geheimnis der Prüfstraße (HMAC über Prüfergebnisse, P5). */
   pruefstrasseGeheimnis: process.env.PIPELINE_SECRET ?? "",
-  /** Eigene Adresse der Projekt-Vorschauen (infra/stack/Caddyfile), leer = keine Vorschauen. */
+  /** Eigene Adresse der Projekt-Vorschauen (infra/stack/vorschau.caddy), leer = keine Vorschauen. */
   vorschau: /^https:\/\//.test(process.env.VORSCHAU_ADRESSE ?? "") ? process.env.VORSCHAU_ADRESSE!.replace(/\/$/, "") : "",
+  /** Eigene Domain der Vorschauen, je Projekt eine Subdomain (infra/stack/vorschau-domain.caddy); hat Vorrang vor vorschau. */
+  vorschauDomain: /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(process.env.VORSCHAU_DOMAIN ?? "") ? process.env.VORSCHAU_DOMAIN! : "",
 };
 
 export const RESSOURCE = () => `${konfig.basis}/mcp`;
+
+/** Adresse der Vorschau eines Projekts, leer ohne eingerichtete Vorschauen. */
+export const vorschauUrl = (slug: string) =>
+  konfig.vorschauDomain ? `https://${slug}.${konfig.vorschauDomain}/` : konfig.vorschau ? `${konfig.vorschau}/${slug}/` : "";

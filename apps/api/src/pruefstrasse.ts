@@ -9,7 +9,15 @@ import { protokollieren } from "./ereignisse.ts";
 import * as k from "./aufgaben.ts";
 import { nachAussen } from "./aussen.ts";
 import { repoToken } from "./github.ts";
-import { konfig } from "./konfig.ts";
+import { konfig, vorschauUrl } from "./konfig.ts";
+
+/** On-Demand-TLS: darf Caddy für diesen Namen ein Zertifikat holen? Nur <slug>.<Vorschau-Domain> mit gebauter Vorschau. */
+export async function vorschauErlaubt(db: Db, name: string) {
+  const d = konfig.vorschauDomain, n = name.toLowerCase();
+  const slug = d && n.endsWith(`.${d}`) ? n.slice(0, -(d.length + 1)) : "";
+  if (!/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(slug)) return false;
+  return Boolean((await db.query("select 1 from projekte where slug = $1 and not gesperrt and vorschau->>'ok_commit' is not null", [slug])).rowCount);
+}
 
 /** Projekte über die GitHub App: die Prüfstraße bekommt je Repo einen Token (lesend; schreibend nur für den Merge-Bot). */
 async function mitToken(zeilen: Record<string, unknown>[], schreiben: boolean) {
@@ -69,7 +77,7 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
       }
       // Vorschauen (pipeline/vorschau.go): nur wenn eine eigene Adresse dafür eingerichtet ist; Unity und Unreal baut die Plattform nicht
       if (req.method === "GET" && url.pathname === "/pipeline/previews") {
-        if (!konfig.vorschau) return json(res, 200, []);
+        if (!vorschauUrl("x")) return json(res, 200, []);
         const r = await db.query(
           `select slug, repo_git, github_installation, vorschau->>'commit' as letzter_commit from projekte
            where repo_git is not null and not gesperrt and not entwurf and engine !~* '(unity|unreal)' order by slug`);

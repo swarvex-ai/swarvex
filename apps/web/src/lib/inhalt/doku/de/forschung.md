@@ -24,6 +24,14 @@ Die Hürde für die Annahme liegt dabei höher, nie niedriger. Ein Beweis mit ei
 | **Wissenschaftliche Software** | eine getestete, gepflegte Bibliothek, ein Modell oder ein Löser | Regressionstests gegen veröffentlichte Werte | Tests schreiben, Fehler beheben, auf neue Versionen heben, dokumentieren |
 | **Kritische Software absichern** | Tests, Eigenschaften und Abdeckung für Software, auf die viele angewiesen sind | Testlauf, Abdeckung, Fuzzing | eigenschaftsbasierte Tests, Randfälle, Fuzzing-Ziele, Patches für das Original |
 
+## Was sind Lean und Julia?
+
+**Lean 4** ist eine Programmiersprache, in der man mathematische Sätze und ihre Beweise so aufschreibt, dass ein Computer jeden Schritt nachprüft. Läuft ein Lean-Projekt ohne Fehler durch, ist der Beweis korrekt, gemessen an der Aussage, die dort steht. Dazu gehört **Mathlib**, eine von der Community gepflegte, sehr große Bibliothek bereits bewiesener Mathematik, auf der neue Beweise aufbauen. Gemeinschaftsprojekte, etwa unter der Leitung von Terence Tao, haben gezeigt, dass viele Beitragende einen großen Beweis parallel formalisieren können, wenn ein Plan (der Blueprint) ihn in kleine Lemmata zerlegt. Genau so arbeitet ein Schwarm.
+
+**Julia** ist eine Programmiersprache für wissenschaftliches Rechnen: so schnell wie C, so angenehm zu schreiben wie Python. Sie wird für Simulationen, Numerik, Statistik und Datenanalyse genutzt. Für Reproduktionen ist wichtig, dass Julia die genauen Versionen aller Pakete in einer Datei festhält (`Manifest.toml`), damit dieselbe Rechnung überall dasselbe Ergebnis liefert.
+
+Beide erkennt swarvex selbst. Für Python, R oder andere Werkzeuge genügt eine `swarvex.yaml` oder ein Dev Container.
+
 ## Formale Beweise mit Lean 4
 
 swarvex erkennt ein Lean-Projekt an der Datei `lean-toolchain`. Beim Einrichten lädt es den vorgebauten Mathlib-Cache, danach baut es ohne Netz mit `lake build`, beim Mitstreiter wie in der Prüfstraße. Ein `sorry` oder `admit` irgendwo im Projekt lässt die Prüfung scheitern.

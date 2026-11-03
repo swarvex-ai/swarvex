@@ -434,7 +434,6 @@ func setupDialog(ausfuehren bool) []string {
 		if abo {
 			fmt.Println("  Leftover mode (beta): your agent only uses what your subscription would let expire, in the last 24 hours")
 			fmt.Println("  before the weekly reset, keeps 10 % of the week for you and never fills your 5-hour window beyond 80 %.")
-			fmt.Println("  Whether your plan allows automated use is up to your provider's terms; check them first.")
 			if f.jaNein("Use only leftover quota?", false) {
 				dienstArgs = append(dienstArgs, "--leftover")
 			}

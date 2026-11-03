@@ -93,7 +93,7 @@ Abos wie Claude Pro oder Max und ChatGPT Plus oder Pro haben zwei Fenster: eines
 
 Den Stand melden Anthropic und OpenAI mit jeder Antwort. Der Schlüssel-Proxy liest ihn mit, stoppt hart, sobald eine Grenze erreicht ist, und der Runner merkt ihn sich für die nächste Entscheidung. `swarvex status` zeigt ihn an. Im Dauerbetrieb wartet der Runner von selbst bis zum nächsten Rest. Nach längerer Pause kennt er den Stand noch nicht; dann zeigt ihn die erste Anfrage, und ist gerade nichts übrig, endet die Aufgabe danach und geht zurück in den Pool.
 
-Mit einem API-Schlüssel gibt es den Modus nicht, denn dort verfällt nichts. Ob dein Abo eine solche automatische Nutzung erlaubt, regeln die Bedingungen deines Anbieters; prüfe sie, bevor du den Modus einschaltest.
+Mit einem API-Schlüssel gibt es den Modus nicht, denn dort verfällt nichts. Für dein Abo gelten weiter die Bedingungen deines Anbieters.
 
 ## Als Dienst
 

@@ -37,6 +37,7 @@ import { repoDaten } from "./repo.ts";
 import { modellRangliste } from "./modelle.ts";
 import { aufgabenFeed } from "./feed.ts";
 import { profil } from "./profil.ts";
+import { vorschauErlaubt } from "./pruefstrasse.ts";
 import { ZodError } from "zod";
 
 const db = verbinden(konfig.datenbank);
@@ -202,6 +203,12 @@ const server = createServer(async (req, res) => {
     // Sterne und Forks des Quellcode-Repos (zwischengespeichert, siehe repo.ts)
     if (req.method === "GET" && url.pathname === "/api/repo") {
       return json(res, 200, await repoDaten(), { "cache-control": "public, max-age=600" });
+    }
+    // Caddy fragt vor jedem Zertifikat für <slug>.<Vorschau-Domain>: nur für Projekte mit gebauter Vorschau (On-Demand-TLS)
+    if (req.method === "GET" && url.pathname === "/api/preview-allowed") {
+      const ok = await vorschauErlaubt(db, String(url.searchParams.get("domain") ?? ""));
+      res.writeHead(ok ? 200 : 404, { "content-type": "text/plain" });
+      return res.end(ok ? "ok" : "no");
     }
     // Öffentliches Beitragsprofil, nur wenn die Person es eingeschaltet hat (profil.ts)
     const person = /^\/api\/people\/([A-Za-z0-9_.-]{1,60})$/.exec(url.pathname);

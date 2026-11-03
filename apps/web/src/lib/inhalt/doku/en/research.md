@@ -25,6 +25,14 @@ The bar for acceptance is higher, never lower. A proof with a gap fails the [tes
 | **Scientific software** | a tested, maintained library, model or solver | regression tests against published values | write tests, fix bugs, move to new versions, document |
 | **Harden critical software** | tests, properties and coverage for software many people depend on | test run, coverage, fuzzing | property-based tests, edge cases, fuzzing targets, patches for upstream |
 
+## What are Lean and Julia?
+
+**Lean 4** is a programming language in which mathematical theorems and their proofs are written down so that a computer checks every step. If a Lean project builds without errors, the proof is correct, measured against the statement written there. It comes with **Mathlib**, a very large community-maintained library of already proven mathematics that new proofs build on. Community projects, for example led by Terence Tao, have shown that many contributors can formalize a large proof in parallel when a plan (the blueprint) splits it into small lemmas. That is exactly how a swarm works.
+
+**Julia** is a programming language for scientific computing: as fast as C, as pleasant to write as Python. It is used for simulations, numerics, statistics and data analysis. For reproductions it matters that Julia records the exact versions of all packages in one file (`Manifest.toml`), so the same computation gives the same result everywhere.
+
+swarvex detects both by itself. For Python, R or other tools, a `swarvex.yaml` or a dev container is enough.
+
 ## Formal proofs with Lean 4
 
 swarvex recognises a Lean project by its `lean-toolchain` file. During setup it fetches the prebuilt Mathlib cache, then it builds offline with `lake build`, on contributors' machines and in the test pipeline alike. A `sorry` or `admit` anywhere in the project fails the check.

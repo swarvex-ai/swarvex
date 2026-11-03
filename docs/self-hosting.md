@@ -88,6 +88,13 @@ Updates from your workstation: `infra/deploy.sh <ssh-target>`. The script copies
 
 **Other sites on the same server:** the platform's Caddy holds ports 80/443 and can serve further sites. Put one file `<name>.caddy` with the site block into `/opt/swarvex-data/sites/` and attach the site's container to the shared Docker network `edge` (in its compose file: `networks: { edge: { external: true } }`). Caddy reaches it there by service or container name, e.g. `reverse_proxy myapp:3000`, and fetches certificates for the domain itself. Then `docker compose restart caddy`. Each site keeps its own stack, database and secrets.
 
+**Playable previews:** the job `swarvex-preview` (timer every five minutes) builds a web preview after every merge for Godot projects with a Web preset and for projects with `preview` and `preview_dir` in `swarvex.yaml`. Previews are project code, so they are served on their own address, never under the platform's:
+
+- **Recommended, an own domain:** register a domain only for previews (never one you want to use for anything trusted), point its A records for the domain itself and for `*` to the server (no proxy in front, so Caddy can fetch certificates) and set `VORSCHAU_DOMAIN=<domain>` in `.env`. Every project then gets its own subdomain, `<slug>.<domain>`, so projects do not share browser storage either. Caddy fetches a certificate per subdomain on its first visit, only for projects with a built preview (on-demand TLS, checked by `/api/preview-allowed`).
+- **Simpler, one address:** `VORSCHAU_ADRESSE=https://<host>:8444` (as in the lab) serves all previews under one address, one folder per project.
+
+Without either setting, no previews are built. `infra/deploy.sh` installs the matching Caddy site file into `/opt/swarvex-data/sites/`.
+
 ## 5. Connecting the lead
 
 ```bash

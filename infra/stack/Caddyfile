@@ -4,6 +4,10 @@
 {
 	# Clients senden für IP-Adressen keinen Servernamen (SNI); bei Domains wirkungslos.
 	default_sni {$BASE_HOST}
+	# Zertifikate für Vorschau-Subdomains (vorschau-domain.caddy) nur für Projekte, die eine Vorschau haben
+	on_demand_tls {
+		ask http://api:3000/api/preview-allowed
+	}
 }
 {$BASE_HOST} {
 	tls {$TLS_MODE}

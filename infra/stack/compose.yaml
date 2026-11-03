@@ -46,6 +46,7 @@ services:
     environment:
       BASE_HOST: ${BASE_HOST}
       VORSCHAU_ADRESSE: ${VORSCHAU_ADRESSE:-}
+      VORSCHAU_DOMAIN: ${VORSCHAU_DOMAIN:-}
       TLS_MODE: ${TLS_MODE:-internal}
       X_ROBOTS_TAG: ${X_ROBOTS_TAG:-noindex, nofollow}
     volumes:

@@ -94,7 +94,7 @@ Subscriptions such as Claude Pro or Max and ChatGPT Plus or Pro have two windows
 
 Anthropic and OpenAI report the state with every response. The key proxy reads it, stops hard as soon as a limit is reached, and the runner remembers it for the next decision. `swarvex status` shows it. In continuous mode the runner waits by itself until the next leftover. After a longer break it does not know the state yet; then the first request shows it, and if nothing is left right now, the task ends after that and goes back to the pool.
 
-The mode does not exist with an API key, because nothing expires there. Whether your subscription allows such automated use is up to your provider's terms; check them before you turn the mode on.
+The mode does not exist with an API key, because nothing expires there. Your provider's terms still apply to your subscription.
 
 ## As a service
 

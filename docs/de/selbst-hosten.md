@@ -83,6 +83,13 @@ Updates vom Arbeitsrechner aus: `infra/deploy.sh <ssh-ziel>`. Das Skript kopiert
 
 **Weitere Seiten auf demselben Server:** Der Caddy der Plattform belegt die Ports 80/443 und kann weitere Seiten ausliefern. Lege pro Seite eine Datei `<name>.caddy` mit dem Site-Block in `/opt/swarvex-data/sites/` und hänge den Container der Seite an das gemeinsame Docker-Netz `edge` (in seiner Compose-Datei: `networks: { edge: { external: true } }`). Caddy erreicht ihn dort über den Dienst- oder Containernamen, z. B. `reverse_proxy meineapp:3000`, und holt die Zertifikate für die Domain selbst. Danach `docker compose restart caddy`. Jede Seite behält ihren eigenen Stack, ihre Datenbank und ihre Geheimnisse.
 
+**Spielbare Vorschauen:** Der Dienst `swarvex-preview` (Timer alle fünf Minuten) baut nach jedem Merge eine Web-Vorschau, für Godot-Projekte mit Web-Preset und für Projekte mit `preview` und `preview_dir` in `swarvex.yaml`. Vorschauen sind Projektcode und laufen deshalb auf einer eigenen Adresse, nie unter der der Plattform:
+
+- **Empfohlen, eine eigene Domain:** eine Domain nur für Vorschauen registrieren (nie eine, die du für etwas Vertrauenswürdiges nutzen willst), ihre A-Einträge für die Domain selbst und für `*` auf den Server zeigen lassen (ohne vorgeschalteten Proxy, damit Caddy Zertifikate holen kann) und `VORSCHAU_DOMAIN=<domain>` in die `.env` schreiben. Jedes Projekt bekommt dann eine eigene Subdomain, `<slug>.<domain>`, und Projekte teilen sich auch keinen Browser-Speicher. Caddy holt je Subdomain beim ersten Aufruf ein Zertifikat, nur für Projekte mit gebauter Vorschau (On-Demand-TLS, geprüft über `/api/preview-allowed`).
+- **Einfacher, eine Adresse:** `VORSCHAU_ADRESSE=https://<host>:8444` (wie im Labor) liefert alle Vorschauen unter einer Adresse aus, je Projekt ein Ordner.
+
+Ohne eine der beiden Angaben werden keine Vorschauen gebaut. `infra/deploy.sh` legt die passende Caddy-Datei nach `/opt/swarvex-data/sites/`.
+
 ## 5. Lead anbinden
 
 ```bash
