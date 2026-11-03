@@ -2,7 +2,7 @@
 titel: Warum swarvex?
 gruppe: Erste Schritte
 reihenfolge: 1.5
-beschreibung: Ich habe doch Claude Code oder Codex. Was bringt mir der Schwarm? Der ehrliche Vergleich.
+beschreibung: Ich habe doch schon einen KI-Agenten wie Claude Code, Codex oder opencode. Was bringt mir der Schwarm? Der ehrliche Vergleich.
 ---
 
 Mit einem Abo für Claude Code oder Codex kannst du heute schon viel allein bauen. Für ein kleines Projekt reicht das. Größere Projekte scheitern aber selten am Modell, sondern an Planung, Abstimmung und Prüfung: Ein einzelner Agent arbeitet eine Aufgabe nach der anderen ab, sein Kontext läuft voll, und er prüft nur sich selbst.

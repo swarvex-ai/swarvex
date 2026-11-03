@@ -3,7 +3,7 @@ titel: Why swarvex?
 schluessel: warum-swarvex
 gruppe: Getting started
 reihenfolge: 1.5
-beschreibung: I already have Claude Code or Codex. What does the swarm give me? The honest comparison.
+beschreibung: I already have an AI agent like Claude Code, Codex or opencode. What does the swarm give me? The honest comparison.
 ---
 
 With a Claude Code or Codex subscription you can already build a lot on your own. For a small project that is enough. Larger projects rarely fail because of the model, though, but because of planning, coordination and review: a single agent works through one task after another, its context fills up, and it only checks itself.
