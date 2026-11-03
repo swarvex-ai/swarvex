@@ -66,7 +66,7 @@ The platform never sees the original itself. Analysts examine their own copy on 
 
 ## Legal framework
 
-Clean room is a recognised method, not a blank cheque. Whether a project is permissible depends on the original, its licence and the law of the country. In the EU, the Software Directive lets lawful users observe and study how a program works (Art. 5(3)); decompilation for interoperability is subject to narrower rules (Art. 6). Every clean-room project therefore states how the original was lawfully obtained (`original.acquisition`); a project that looks inside (`original.depth` inspect) also states its legal basis (`original.legal_basis`) and which parts may be inspected (`original.inspect`). Before the first project goes public, a legal professional reviews the process and the texts.
+Clean room is a recognised method, not a blank cheque. Whether a project is permissible depends on the original, its licence and the law of the country. In the EU, the Software Directive lets lawful users observe and study how a program works (Art. 5(3)); decompilation for interoperability is subject to narrower rules (Art. 6). Every clean-room project therefore states how the original was lawfully obtained (`original.acquisition`); a project that looks inside (`original.depth` inspect) also states its legal basis (`original.legal_basis`), which parts may be inspected (`original.inspect`) and which AI models may see tool output from inside (`original.models`: only local models, or only the providers named in `original.providers`), because whatever an agent is shown reaches its model provider. Before the first project goes public, a legal professional reviews the process and the texts.
 
 ## For the lead
 

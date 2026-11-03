@@ -293,6 +293,13 @@ describe("Projekt starten (Assistent)", () => {
     await expect(projektAnlegen(db, { ...neu, slug: "test" }, m)).rejects.toThrow(/taken/);
     // nur beobachten: ohne Rechtsgrundlage und ohne Umfang zulässig
     expect(projektPruefen({ ...neu, procedure: "clean_room", original: { name: "X", acquisition: "gekauft", target: "windows", depth: "observe" } })).toEqual([]);
+    // hineinsehen: welche Modelle die Werkzeug-Ausgaben sehen dürfen, ist Pflicht; bei Anbietern auch welche
+    const innen = { name: "X", acquisition: "gekauft", target: "format_protocol", depth: "inspect", inspect: "nur das Dateiformat", legal_basis: "Interoperabilität" };
+    expect(projektPruefen({ ...neu, procedure: "clean_room", original: innen }).join()).toMatch(/original.models/);
+    expect(projektPruefen({ ...neu, procedure: "clean_room", original: { ...innen, models: "cloud" } }).join()).toMatch(/original.models/);
+    expect(projektPruefen({ ...neu, procedure: "clean_room", original: { ...innen, models: "providers" } }).join()).toMatch(/original.providers/);
+    expect(projektPruefen({ ...neu, procedure: "clean_room", original: { ...innen, models: "providers", providers: "Anthropic" } })).toEqual([]);
+    expect(projektPruefen({ ...neu, procedure: "clean_room", original: { ...innen, models: "local" } })).toEqual([]);
     // Forschung: Art, Quelle und Erfolgskriterium sind Pflicht, Clean Room passt nicht dazu
     const forschung: NeuesProjekt = { ...neu, type: "research", research: { kind: "formal_proof", source: "Hardy & Wright, Theorem 366", success: "lake build green without sorry" } };
     expect(projektPruefen(forschung)).toEqual([]);

@@ -16,7 +16,7 @@ export const PROJEKTE_JE_MENSCH = 3;
 export const RESERVIERT = new Set(["review", "www", "api", "docs", "play", "static", "assets", "mail", "admin", "swarvex"]);
 /** Art des Originals bei Clean Room: wählt den Werkzeug-Pfad (lead/roles/cleanroom/toolkit.md). */
 export const VORBILD_ARTEN = ["windows", "linux_macos", "android", "web", "game", "firmware", "format_protocol"];
-const VORBILD_FELDER = ["name", "version", "acquisition", "target", "depth", "inspect", "legal_basis", "goal"] as const;
+const VORBILD_FELDER = ["name", "version", "acquisition", "target", "depth", "inspect", "legal_basis", "models", "providers", "goal"] as const;
 /** Art eines Forschungsprojekts (lead/LEAD.md 9): wählt die Rollen und Prüfungen, die zuerst zählen. */
 export const FORSCHUNG_ARTEN = ["formal_proof", "reproduction", "scientific_software", "verification"];
 const FORSCHUNG_FELDER = ["kind", "source", "success"] as const;
@@ -27,7 +27,7 @@ const UPSTREAM_FELDER = ["repo", "status", "contact"] as const;
 export type NeuesProjekt = {
   slug: string; name: string; vision_md: string; vision_short: string; engine: string; license_code: string; license_assets: string;
   repo_url?: string | null; lead_model: string; goal: string; type?: string; procedure?: string;
-  original?: { name?: string; version?: string; acquisition?: string; target?: string; depth?: string; inspect?: string; legal_basis?: string; goal?: string } | null;
+  original?: { name?: string; version?: string; acquisition?: string; target?: string; depth?: string; inspect?: string; legal_basis?: string; models?: string; providers?: string; goal?: string } | null;
   research?: { kind?: string; source?: string; success?: string } | null;
   upstream?: { repo?: string; status?: string; contact?: string } | null;
 };
@@ -57,6 +57,11 @@ export function projektPruefen(p: NeuesProjekt): string[] {
     if (o.depth && !["observe", "inspect"].includes(o.depth)) f.push("original.depth: observe (only from outside, default) or inspect");
     if (o.depth === "inspect" && !(o.legal_basis?.trim() && o.inspect?.trim()))
       f.push("looking inside (original.depth inspect) needs original.inspect (which parts) and original.legal_basis");
+    // Werkzeug-Ausgaben von innen (Disassembly, Pseudocode) erreichen den Modell-Anbieter des Agenten
+    if (o.depth === "inspect" && !["local", "providers"].includes(o.models ?? ""))
+      f.push("looking inside (original.depth inspect) needs original.models: local (only models on the analyst's own machine) or providers (only the providers named in original.providers)");
+    if (o.depth === "inspect" && o.models === "providers" && !o.providers?.trim())
+      f.push("original.models providers needs original.providers (which model providers may see tool output from inside, e.g. Anthropic, OpenAI)");
     if (VORBILD_FELDER.some((k) => String(o[k] ?? "").length > 300)) f.push("original: at most 300 characters per field");
   }
   if (verfahren === "continuation") {

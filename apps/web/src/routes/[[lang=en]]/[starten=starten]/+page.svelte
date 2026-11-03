@@ -39,13 +39,13 @@
   const SPEICHER = "swarvex-starten";
 
   type Daten = { agent: string; modell: string; type: string; cleanroom: boolean; weg: "" | "neu" | "nachbau" | "weiter";
-                 original: { name: string; version: string; acquisition: string; target: string; depth: "observe" | "inspect"; goal: string; legal_basis: string; inspect: string };
+                 original: { name: string; version: string; acquisition: string; target: string; depth: "observe" | "inspect"; goal: string; legal_basis: string; inspect: string; models: "" | "local" | "providers"; providers: string };
                  research: { kind: string; source: string; success: string };
                  upstream: { repo: string; license: string; status: string; contact: string };
                  name: string; slug: string; slugFrei: boolean; vision_short: string; vision_md: string; engine: string;
                  license_code: string; license_assets: string; goal: string; repo_url: string };
   let d = $state<Daten>({ agent: "claude", modell: MODELL.claude, type: "", cleanroom: false, weg: "",
-    original: { name: "", version: "", acquisition: "", target: "", depth: "observe", goal: "", legal_basis: "", inspect: "" },
+    original: { name: "", version: "", acquisition: "", target: "", depth: "observe", goal: "", legal_basis: "", inspect: "", models: "", providers: "" },
     research: { kind: "", source: "", success: "" },
     upstream: { repo: "", license: "", status: "", contact: "" },
     name: "", slug: "", slugFrei: false, vision_short: "", vision_md: "", engine: "open", license_code: "", license_assets: "", goal: "", repo_url: "" });
@@ -104,7 +104,7 @@
   const fertig = $derived<Partial<Record<Schritt, boolean>>>({
     lead: leadModell.length > 0 && d.modell.trim().length > 0,
     art: !!d.weg && !!d.type,
-    original: !!(o.name.trim() && o.acquisition.trim() && o.target) && (o.depth === "observe" || !!(o.inspect.trim() && o.legal_basis.trim())),
+    original: !!(o.name.trim() && o.acquisition.trim() && o.target) && (o.depth === "observe" || !!(o.inspect.trim() && o.legal_basis.trim() && (o.models === "local" || (o.models === "providers" && o.providers.trim())))),
     upstream: upstreamOk && !!d.upstream.license && ZUSTAENDE.includes(d.upstream.status) && (d.upstream.status !== "no_answer" || !!d.upstream.contact.trim()),
     forschung: FORSCHUNG.includes(d.research.kind) && !!d.research.source.trim() && !!d.research.success.trim(),
     projekt: !!d.name.trim() && slugOk && !!d.vision_short.trim() && !!d.engine.trim() && !!d.goal.trim() && repoOk,
@@ -121,7 +121,8 @@
       goal: d.goal.trim(), type: d.type, procedure: d.cleanroom ? "clean_room" : fortfuehren ? "continuation" : "standard",
       // Bei „nur beobachten“ gehen Umfang und Rechtsgrundlage nicht mit, auch wenn vorher etwas eingetragen war
       original: d.cleanroom ? Object.fromEntries(Object.entries(d.original).map(([k, v]) => [k, v.trim()])
-        .filter(([k, v]) => v && (d.original.depth === "inspect" || !["inspect", "legal_basis"].includes(k)))) : null,
+        .filter(([k, v]) => v && (d.original.depth === "inspect" || !["inspect", "legal_basis", "models", "providers"].includes(k))
+          && (k !== "providers" || d.original.models === "providers"))) : null,
       research: forschung ? { kind: d.research.kind, source: d.research.source.trim(), success: d.research.success.trim() } : null,
       upstream: fortfuehren ? { repo: d.upstream.repo.trim().replace(/\/$/, ""), status: d.upstream.status, contact: d.upstream.contact.trim() } : null };
     try {
@@ -228,6 +229,20 @@
           <label class="breit">{t.original.inspizieren}<input type="text" maxlength="300" bind:value={d.original.inspect} placeholder={t.original.inspizierenHilfe} required /></label>
           <label class="breit">{t.original.rechtsgrundlage}<input type="text" maxlength="300" bind:value={d.original.legal_basis} placeholder={t.original.rechtsgrundlageHilfe} required /></label>
         </div>
+        <h3>{t.original.modelleH3}</h3>
+        <p class="leise klein">{t.original.modelleText}</p>
+        <div class="wahl wege" role="radiogroup" aria-label={t.original.modelleH3}>
+          {#each ["local", "providers"] as const as mo}
+            <button type="button" role="radio" aria-checked={d.original.models === mo} class:an={d.original.models === mo} onclick={() => (d.original.models = mo)}>
+              <strong>{t.original.modelle[mo][0]}</strong><small>{t.original.modelle[mo][1]}</small>
+            </button>
+          {/each}
+        </div>
+        {#if d.original.models === "providers"}
+          <div class="felder">
+            <label class="breit">{t.original.anbieter}<input type="text" maxlength="300" bind:value={d.original.providers} placeholder={t.original.anbieterHilfe} required /></label>
+          </div>
+        {/if}
       {/if}
       <p class="tipp">{t.original.schutz}</p>
       <p class="leise klein">{t.original.werkzeuge}</p>
