@@ -34,10 +34,28 @@ function Native([scriptblock]$command) {
   try { & $command } finally { $ErrorActionPreference = $before }
 }
 function Wsl { $a = $args; Native { & wsl.exe @a }; if ($LASTEXITCODE -ne 0) { Fail "wsl.exe $($a -join ' ') failed (exit code $LASTEXITCODE)" } }
-function InDistro($script) {
-  # runs a shell script as root inside the distribution; the script comes through stdin, so Windows quoting cannot break it
-  Native { $script -replace "`r", '' | & wsl.exe -d $Distro -u root -- sh -s }
-  if ($LASTEXITCODE -ne 0) { Fail "Setting up the distribution failed (exit code $LASTEXITCODE)." }
+# Long steps show a progress bar with the elapsed time and the usual duration, so nobody closes the window while
+# Windows works in the background (installing WSL, downloading Debian, preparing Podman). Returns the exit code.
+function Waiting($process, [string]$what, [int]$minutes) {
+  $null = $process.Handle   # otherwise Windows PowerShell cannot read the exit code later
+  $start = Get-Date
+  while (-not $process.WaitForExit(1000)) {
+    $s = [int]((Get-Date) - $start).TotalSeconds
+    $status = '{0}:{1:00} elapsed, usually up to {2} minutes. Please keep this window open.' -f [math]::Floor($s / 60), ($s % 60), $minutes
+    Write-Progress -Activity $what -Status $status -PercentComplete ([math]::Min(95, [int](100 * $s / ($minutes * 60))))
+  }
+  Write-Progress -Activity $what -Completed
+  try { return $process.ExitCode } catch { return 0 }   # an elevated process may not tell us its exit code
+}
+function InDistro($script, [string]$what, [int]$minutes) {
+  # runs a shell script as root inside the distribution; the script comes from a file on stdin, so Windows quoting cannot break it
+  $file = New-TemporaryFile
+  try {
+    [IO.File]::WriteAllText($file.FullName, ($script -replace "`r", ''))
+    $p = Start-Process wsl.exe -ArgumentList '-d', $Distro, '-u', 'root', '--', 'sh', '-s' -RedirectStandardInput $file.FullName -NoNewWindow -PassThru
+    $code = Waiting $p $what $minutes
+  } finally { Remove-Item $file.FullName -ErrorAction SilentlyContinue }
+  if ($code -ne 0) { Fail "$what failed (exit code $code)." }
 }
 
 try {
@@ -47,6 +65,7 @@ try {
   if ($env:PROCESSOR_ARCHITECTURE -notin @('AMD64', 'ARM64')) { Fail "Processor $($env:PROCESSOR_ARCHITECTURE) is not supported." }
   $wslVersion = $null
   if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
+    Ok 'checking WSL (its first start can take a minute) ...'
     # without WSL, wsl.exe only says so on stderr; that is not an error here but the answer "missing"
     $out = Native { (& wsl.exe --version 2>$null) -join "`n" }
     if ($LASTEXITCODE -eq 0 -and $out -match '(\d+)\.(\d+)\.(\d+)') { $wslVersion = [version]"$($Matches[1]).$($Matches[2]).$($Matches[3])" }
@@ -54,28 +73,32 @@ try {
   if (-not $wslVersion) {
     Write-Host "`nWSL (Windows Subsystem for Linux) is missing. The sandbox needs it, together with virtualization in the BIOS/UEFI."
     if (Ask 'Install WSL now? Windows asks for administrator rights once.') {
-      Start-Process wsl.exe -ArgumentList '--install', '--no-distribution' -Verb RunAs -Wait
+      Ok 'WSL is being installed in a separate administrator window. This usually takes 2 to 10 minutes; keep this window open.'
+      [void](Waiting (Start-Process wsl.exe -ArgumentList '--install', '--no-distribution' -Verb RunAs -PassThru) 'Installing WSL' 10)
       Write-Host "`nWSL is installed. Restart Windows, then run the one-liner again:`n    irm $Platform/install.ps1 | iex"
     }
     return
   }
   if ($wslVersion -lt [version]'2.4.4') {
-    Ok "WSL $wslVersion is too old, updating (Windows may ask for administrator rights)"
-    Start-Process wsl.exe -ArgumentList '--update' -Verb RunAs -Wait
+    Ok "WSL $wslVersion is too old, updating (Windows may ask for administrator rights; usually 1 to 5 minutes)"
+    [void](Waiting (Start-Process wsl.exe -ArgumentList '--update' -Verb RunAs -PassThru) 'Updating WSL' 5)
   }
   Ok "Windows build $build, $($env:PROCESSOR_ARCHITECTURE), WSL $wslVersion"
 
   Step "WSL distribution '$Distro' (Debian)"
   $vorhanden = @(Native { & wsl.exe --list --quiet 2>$null } | ForEach-Object { "$_".Trim() }) -contains $Distro
   if (-not $vorhanden) {
-    Wsl --install Debian --name $Distro --no-launch
+    Ok 'downloading and installing Debian, usually 2 to 5 minutes ...'
+    $code = Waiting (Start-Process wsl.exe -ArgumentList '--install', 'Debian', '--name', $Distro, '--no-launch' -NoNewWindow -PassThru) 'Installing Debian for swarvex' 5
+    if ($code -ne 0) { Fail "Installing Debian failed (exit code $code)." }
     Ok 'installed'
   } else {
     Ok 'already there, updating it'
   }
 
-  Step 'Preparing Podman inside (takes a few minutes the first time)'
-  InDistro @"
+  Step 'Preparing Podman inside'
+  Ok 'installing Podman and its tools inside the distribution, usually 2 to 6 minutes the first time ...'
+  InDistro -what 'Preparing Podman inside' -minutes 6 -script @"
 set -e
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq >/dev/null
