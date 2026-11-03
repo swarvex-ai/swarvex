@@ -30,6 +30,7 @@
 | B7 | **Weg für Fehlerberichte** | Issue-Vorlage mit Schritten, erwartetem und tatsächlichem Ergebnis, Version, System | v1 |
 | B8 | **Name, Logo, Icon** | Name auf Konflikte geprüft, Logo und Icon in den Größen, die die Plattformen brauchen | v1 |
 | B9 | **Material für die Projektseite** | Kurzbeschreibung, 3–5 Screenshots oder ein kurzer Clip für swarvex.ai und Stores | Release |
+| B10 | **Automatische Prüfungen** | der Prüfvertrag prüft die Lizenzen der Abhängigkeiten, und wo sie passen Lizenzköpfe, Barrierefreiheit und Screenshots (Rezepte in `vorlagen/automatische-pruefungen.md`); was fehlt, hat eine Begründung im Projektbrief | erster |
 
 B6 und B7 sind für Repos in der Organisation `swarvex-ai` bereits abgedeckt: GitHub nimmt die Vorgaben aus `swarvex-ai/.github`, solange ein Repo keine eigenen Dateien hat. Eine Aufgabe nur anlegen, wenn das Projekt etwas Eigenes braucht, z. B. ein Fehlerformular für ein Spiel, das nach Version, System, Eingabegerät und Speicherstand fragt.
 

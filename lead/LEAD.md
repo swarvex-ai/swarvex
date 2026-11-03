@@ -682,6 +682,7 @@ A research project produces knowledge others can check: a formal proof, a reprod
 | `templates/project-brief.md` | phase 0: result of the interview, with the decisions table |
 | `roles/` | section 9a: role cards per project type, also usable as subagents; gates and officer rules in `roles/README.md` |
 | `templates/clean-room-specification.md` | clean-room projects: layout and formats of the specification (obligations, values, scenarios, check rounds) |
+| `templates/automated-checks.md` | phase 1: ready recipes for the test contract (dependency licences, licence headers, accessibility, screenshot comparison) |
 | `templates/continuation.md` | continuing abandoned software: the first milestone (fork, licence, build, release) |
 | `templates/research-claims.md` | research projects: claims register, generated results table and deviations |
 | `templates/baseline-packages.md` | phase 2: building blocks every project of a type needs (menus, settings, error pages, help …) |

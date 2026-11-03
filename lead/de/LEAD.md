@@ -683,6 +683,7 @@ Ein Forschungsprojekt erzeugt Wissen, das andere nachprüfen können: einen form
 | `vorlagen/projektbrief.md` | Phase 0: Ergebnis des Interviews, mit Entscheidungstabelle |
 | `../roles/` | Abschnitt 9a: Rollenkarten je Projektart, auch als Unteragenten nutzbar (englisch, Agenten lesen Englisch); Gates und Officer-Regeln in `rollen.md` |
 | `vorlagen/clean-room-spezifikation.md` | Clean-Room-Projekte: Aufbau und Formate der Spezifikation (Pflichten, Werte, Szenarien, Prüfrunden) |
+| `vorlagen/automatische-pruefungen.md` | Phase 1: fertige Rezepte für den Prüfvertrag (Lizenzen der Abhängigkeiten, Lizenzköpfe, Barrierefreiheit, Screenshot-Vergleich) |
 | `vorlagen/weiterfuehren.md` | verwaiste Software weiterführen: der erste Meilenstein (Fork, Lizenz, Build, Release) |
 | `vorlagen/forschung-behauptungen.md` | Forschungsprojekte: Register der Behauptungen, erzeugte Ergebnistabelle und Abweichungen |
 | `vorlagen/grundpakete.md` | Phase 2: Bausteine, die jedes Projekt einer Art braucht (Menüs, Einstellungen, Fehlerseiten, Hilfe …) |

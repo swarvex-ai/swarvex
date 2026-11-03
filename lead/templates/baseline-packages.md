@@ -30,6 +30,7 @@
 | B7 | **Bug report path** | issue template with steps, expected and actual result, version, system | v1 |
 | B8 | **Name, logo, icon** | name checked for conflicts, logo and icon in the sizes the platforms need | v1 |
 | B9 | **Project page material** | short description, 3–5 screenshots or a short clip for swarvex.ai and stores | release |
+| B10 | **Automated checks** | the test contract checks dependency licences, and where they apply licence headers, accessibility and screenshots (recipes in `templates/automated-checks.md`); what is left out has a reason in the project brief | first |
 
 B6 and B7 are already covered for repositories in the `swarvex-ai` organization: GitHub uses the defaults from `swarvex-ai/.github` as long as a repository has no files of its own. Only create a task when the project needs something specific, e.g. a game's bug form asking for version, system, input device and save file.
 
