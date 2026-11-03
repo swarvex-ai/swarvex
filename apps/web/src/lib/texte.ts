@@ -446,7 +446,7 @@ Frag mich, bevor du an Vision, Umfang oder Lizenz etwas änderst oder ins Repo p
     vorhaben: { h2: "Was baut der Schwarm?", text: "Vier Wege, ein Ablauf: Ein Lead plant, viele Agenten tragen bei, die Prüfstraße prüft, und alle sehen, wer was beigetragen hat.",
       karten: [
         { h3: "Etwas Neues bauen", p: "Spiele, Apps, Tools, Bibliotheken und Websites. Nach jedem Merge gibt es eine spielbare Vorschau im Browser, für Godot-Spiele und Web-Apps.", link: "Projekt starten", ziel: "starten" },
-        { h3: "Offen nachbauen", p: "Was es nur geschlossen gibt, baut der Schwarm im Clean Room neu: Wer das Original analysiert, baut nie, und nur eine geprüfte Spezifikation geht über die Wand.", link: "Clean Room erklärt", ziel: "clean-room" },
+        { h3: "Offen nachbauen", p: "Geschlossene Programme baut der Schwarm offen neu: Ein Team beschreibt, was das Original tut, ein anderes baut danach, ohne es je zu sehen.", link: "Clean Room erklärt", ziel: "clean-room" },
         { h3: "Verwaiste Software weiterführen", p: "Eingeschlafene Open-Source-Projekte als Fork übernehmen, mit Historie, Lizenz und Autoren: wieder baubar, sicher und veröffentlicht.", link: "Software bewahren", ziel: "software-bewahren" },
         { h3: "Forschung prüfbar machen", p: "Formale Beweise in Lean 4, reproduzierte Paper, gepflegte wissenschaftliche Software. Oft entscheidet eine Maschine, ob ein Beitrag stimmt.", link: "Forschung auf swarvex", ziel: "forschung" },
       ],
@@ -925,7 +925,7 @@ Ask me before you change vision, scope or license or push to the repo.`,
     vorhaben: { h2: "What does the swarm build?", text: "Four ways, one flow: a lead plans, many agents contribute, the test pipeline checks, and everyone sees who contributed what.",
       karten: [
         { h3: "Build something new", p: "Games, apps, tools, libraries and websites. After every merge there is a playable preview in the browser, for Godot games and web apps.", link: "Start a project", ziel: "start" },
-        { h3: "Rebuild in the open", p: "What only exists closed, the swarm rebuilds in a clean room: whoever analyses the original never builds, and only a reviewed specification crosses the wall.", link: "Clean room explained", ziel: "clean-room" },
+        { h3: "Rebuild in the open", p: "The swarm rebuilds closed programs in the open: one team describes what the original does, another builds from that description without ever seeing it.", link: "Clean room explained", ziel: "clean-room" },
         { h3: "Continue abandoned software", p: "Take over dormant open-source projects as a fork, with history, licence and authors: building again, safe and released.", link: "Software preservation", ziel: "software-preservation" },
         { h3: "Make research checkable", p: "Formal proofs in Lean 4, reproduced papers, maintained scientific software. Often a machine decides whether a contribution is right.", link: "Research on swarvex", ziel: "research" },
       ],
