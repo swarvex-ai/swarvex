@@ -14,6 +14,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -75,8 +76,12 @@ func (f *frager) jaNein(text string, standard bool) bool {
 	return false
 }
 
-// wahl zeigt nummerierte Optionen; Enter nimmt die erste.
+// wahl zeigt nummerierte Optionen; Enter nimmt die erste. Bei nur einer Option gibt es nichts zu wählen.
 func (f *frager) wahl(text string, optionen []string) int {
+	if len(optionen) == 1 {
+		fmt.Println(text + " " + optionen[0])
+		return 0
+	}
 	fmt.Println(text)
 	for i, o := range optionen {
 		fmt.Printf("  %d) %s\n", i+1, o)
@@ -253,7 +258,137 @@ func modellAuswahl() []modellWahl {
 			w = append(w, modellWahl{Titel: e.titel, Agent: e.agent, Modell: e.modell, URL: e.adresse, Key: "env:" + e.env})
 		}
 	}
+	w = append(w, hermesModelle()...)
 	return append(w, modellWahl{Titel: "Something else (enter address, model and key yourself)"})
+}
+
+// hermesModelle übernimmt das Modell, das Hermes Agent nutzt (~/.hermes/config.yaml, Schlüssel dort oder in ~/.hermes/.env).
+// Nur Anbieter mit API-Schlüssel oder lokale Server; Anmeldungen per OAuth (Nous Portal, Codex) lassen sich nicht übertragen.
+func hermesModelle() []modellWahl {
+	ordner := os.Getenv("HERMES_HOME")
+	if ordner == "" {
+		ordner = heim(".hermes")
+	}
+	roh, err := os.ReadFile(filepath.Join(ordner, "config.yaml"))
+	if err != nil {
+		return nil
+	}
+	m := hermesModellAbschnitt(string(roh))
+	modell := m["default"]
+	if modell == "" {
+		modell = m["model"]
+	}
+	if modell == "" {
+		return nil
+	}
+	env := envDatei(filepath.Join(ordner, ".env"))
+	schluessel := func(namen ...string) (string, string) {
+		if m["api_key"] != "" {
+			return m["api_key"], "config.yaml"
+		}
+		for _, n := range namen {
+			if env[n] != "" {
+				return env[n], ".env"
+			}
+			if v := os.Getenv(n); v != "" {
+				return v, n
+			}
+		}
+		return "", ""
+	}
+	anbieter, adresse := strings.ToLower(m["provider"]), strings.TrimSuffix(strings.TrimSuffix(m["base_url"], "/"), "/v1")
+	w := modellWahl{Agent: "opencode", Modell: modell, URL: adresse}
+	var key, quelle, name string
+	cloud := false // Cloud-Anbieter ohne Schlüssel: nichts zu übernehmen
+	switch {
+	case anbieter == "anthropic" || strings.Contains(adresse, "api.anthropic.com"):
+		w.Agent, w.URL, name, cloud = "claude", "https://api.anthropic.com", "Anthropic", true
+		key, quelle = schluessel("ANTHROPIC_API_KEY")
+	case anbieter == "openrouter" || strings.Contains(adresse, "openrouter.ai") || ((anbieter == "auto" || anbieter == "") && adresse == ""):
+		w.URL, name, cloud = "https://openrouter.ai/api", "OpenRouter", true
+		key, quelle = schluessel("OPENROUTER_API_KEY", "OPENAI_API_KEY")
+	case adresse != "" && (anbieter == "custom" || anbieter == "auto" || anbieter == "" || anbieter == "ollama" || anbieter == "vllm" || anbieter == "llamacpp" || anbieter == "lmstudio"):
+		name = adresse
+		if u, err := url.Parse(adresse); err == nil && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
+			// aus der Sandbox ist der eigene Rechner host.containers.internal
+			u.Host = strings.Replace(u.Host, u.Hostname(), "host.containers.internal", 1)
+			w.URL, w.Lokal = u.String(), true
+		}
+		key, quelle = schluessel("OPENAI_API_KEY")
+	default:
+		return nil // OAuth-Anbieter oder solche, die wir nicht zuordnen können
+	}
+	if cloud && key == "" {
+		return nil
+	}
+	w.Titel = "Hermes's model: " + modell + " via " + name
+	if key != "" {
+		w.Titel += " (key from Hermes " + quelle + ")"
+		w.Key = "hermes:" + key
+	}
+	return []modellWahl{w}
+}
+
+// hermesModellAbschnitt liest die einfachen Werte unter "model:" (oder "model: <name>") aus Hermes' config.yaml.
+func hermesModellAbschnitt(yaml string) map[string]string {
+	werte := map[string]string{}
+	drin := false
+	for _, zeile := range strings.Split(yaml, "\n") {
+		ohne := strings.TrimRight(zeile, " \t\r")
+		if ohne == "" || strings.HasPrefix(strings.TrimSpace(ohne), "#") {
+			continue
+		}
+		eingerueckt := ohne[0] == ' ' || ohne[0] == '\t'
+		if !eingerueckt {
+			drin = false
+			if strings.HasPrefix(ohne, "model:") {
+				if v := yamlWert(strings.TrimPrefix(ohne, "model:")); v != "" {
+					werte["model"] = v
+				} else {
+					drin = true
+				}
+			}
+			continue
+		}
+		if drin {
+			if k, v, ok := strings.Cut(strings.TrimSpace(ohne), ":"); ok && !strings.ContainsAny(k, " \t") {
+				if wert := yamlWert(v); wert != "" {
+					werte[k] = wert
+				}
+			}
+		}
+	}
+	return werte
+}
+
+// yamlWert: Wert ohne Kommentar und Anführungszeichen.
+func yamlWert(v string) string {
+	v = strings.TrimSpace(v)
+	if len(v) > 1 && (v[0] == '"' || v[0] == '\'') {
+		if ende := strings.IndexByte(v[1:], v[0]); ende >= 0 {
+			return v[1 : ende+1]
+		}
+	}
+	if i := strings.Index(v, " #"); i >= 0 {
+		v = v[:i]
+	}
+	return strings.TrimSpace(v)
+}
+
+// envDatei liest KEY=wert-Zeilen (wie Hermes' .env).
+func envDatei(pfad string) map[string]string {
+	werte := map[string]string{}
+	roh, err := os.ReadFile(pfad)
+	if err != nil {
+		return werte
+	}
+	for _, zeile := range strings.Split(string(roh), "\n") {
+		zeile = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(zeile), "export "))
+		if k, v, ok := strings.Cut(zeile, "="); ok && !strings.HasPrefix(k, "#") {
+			werte[strings.TrimSpace(k)] = yamlWert(v)
+		}
+	}
+	return werte
 }
 
 // schluesselDatei legt einen eingegebenen oder aus der Umgebung übernommenen Schlüssel als Datei 0600 ab.
@@ -361,10 +496,19 @@ func setupDialog(ausfuehren bool) []string {
 		w.Key = schluesselDatei("claude-token", f.geheim("Token"))
 	case strings.HasPrefix(w.Key, "env:"):
 		w.Key = schluesselDatei(strings.ToLower(strings.TrimPrefix(w.Key, "env:")), os.Getenv(strings.TrimPrefix(w.Key, "env:")))
+	case strings.HasPrefix(w.Key, "hermes:"):
+		w.Key = schluesselDatei(w.Agent+"-key", strings.TrimPrefix(w.Key, "hermes:"))
 	case w.Titel == optionen[len(optionen)-1].Titel:
-		w.Agent = []string{"opencode", "claude", "codex"}[f.wahl("Which interface does your model offer?",
-			[]string{"OpenAI-compatible (Ollama, OpenRouter, most providers) → agent opencode", "Anthropic → agent Claude Code", "OpenAI Responses → agent Codex"})]
-		w.URL = f.frage("Address of the model API without /v1 (local server: http://host.containers.internal:<port>)", "")
+		if len(optionen) == 1 {
+			fmt.Println("  (Nothing found automatically: no Ollama, LM Studio, Codex, Claude Code, Hermes or API key in the environment.)")
+		}
+		i := f.wahl("Which interface does your model offer?",
+			[]string{"OpenAI-compatible (Ollama, OpenRouter, most providers) → agent opencode", "Anthropic → agent Claude Code", "OpenAI Responses → agent Codex"})
+		w.Agent = []string{"opencode", "claude", "codex"}[i]
+		vorschlag := []string{"https://openrouter.ai/api", "https://api.anthropic.com", "https://api.openai.com"}[i]
+		for w.URL == "" {
+			w.URL = strings.TrimSuffix(strings.TrimSuffix(f.frage("Address of the model API without /v1 (local server: http://host.containers.internal:<port>)", vorschlag), "/"), "/v1")
+		}
 		if k := f.geheim("API key (empty if none)"); k != "" {
 			w.Key = schluesselDatei(w.Agent+"-key", k)
 		}

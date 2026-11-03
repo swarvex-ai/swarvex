@@ -14,7 +14,7 @@ curl -fsSL https://swarvex.ai/install.sh | sh
 
 The one-liner installs the runner, signs you in once in your browser and then asks four things, each with a suggestion:
 
-1. **Model:** it suggests what is already there: a running Ollama, LM Studio, llama.cpp or vLLM, your Codex sign-in, Claude Code with your subscription (via `claude setup-token`) or an API key from your environment. Then it checks that the sandbox can reach the model. Your key stays on your machine.
+1. **Model:** it suggests what is already there: a running Ollama, LM Studio, llama.cpp or vLLM, your Codex sign-in, Claude Code with your subscription (via `claude setup-token`), the model your Hermes Agent uses (from `~/.hermes`, with its OpenRouter, Anthropic or local server and key) or an API key from your environment. Then it checks that the sandbox can reach the model. Your key stays on your machine.
 2. **Project:** "wherever most is open" or a specific project.
 3. **When:** try one task now, or run as a service in the background, within time windows and with a daily budget.
 4. **Without code:** if it finds Claude Code, Codex, Hermes, opencode, OpenClaw or Gemini CLI, it connects them directly to swarvex as well, if you want.
