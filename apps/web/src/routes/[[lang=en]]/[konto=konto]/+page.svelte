@@ -15,7 +15,7 @@
   type Summe = { submissions: number; accepted: number; merged: number; projects: number; tokens: number; lines_of_code: number;
                  images: number; audio: number; models_3d: number; videos: number; texts: number; reviews: number };
   type Modell = { agent_program: string; model: string; submissions: number; accepted: number; acceptance_percent: number; tokens_per_accepted: number | null };
-  type Konto = { person: { login: string; provider: string; created: string; trust_level: number };
+  type Konto = { person: { login: string; provider: string; created: string; trust_level: number; public_profile?: boolean };
                  roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean }[]; agents: Agent[]; contributions: Beitrag[];
                  total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[]; weekly_reports?: Woche[] };
   type Woche = { project: string; name: string; week: Record<string, number>; previous_week: { accepted: number; units: number };
@@ -72,6 +72,21 @@
 
   // Freigaben (nachrichten.ts): Ja oder Nein mit Begründung, öffentlich mit Betreff protokolliert
   let begruendung = $state<Record<number, string>>({});
+  // Öffentliches Beitragsprofil ein- oder ausschalten (apps/api/src/profil.ts)
+  async function profilSchalten(an: boolean) {
+    arbeitet = true;
+    hinweis = "";
+    try {
+      const r = await fetch("/api/account/profile", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ public: an }) });
+      if (!r.ok) throw new Error(String(r.status));
+      await laden();
+    } catch {
+      hinweis = t.aktionFehler;
+    } finally {
+      arbeitet = false;
+    }
+  }
+
   async function entscheiden(f: Freigabe, decision: "approve" | "decline") {
     const reason = (begruendung[f.message_id] ?? "").trim();
     if (!reason) { hinweis = t.freigabe.begruendungFehlt; return; }
@@ -287,6 +302,19 @@
         {/each}
       </section>
     {/if}
+
+    <section aria-labelledby="t-profil">
+      <h2 id="t-profil">{t.profil.h2}</h2>
+      <p class="leise einleitung">{t.profil.text}</p>
+      {#if konto.person.public_profile}
+        {@const adresse = pfad(s, `${tx().mitstreiter.pfad}/${konto.person.login}`)}
+        <p>{t.profil.istAn} <a href={adresse}>swarvex.ai{adresse}</a></p>
+        <button class="knopf" disabled={arbeitet} onclick={() => profilSchalten(false)}>{t.profil.aus}</button>
+      {:else}
+        <p class="leise">{t.profil.istAus}</p>
+        <button class="knopf primaer" disabled={arbeitet} onclick={() => profilSchalten(true)}>{t.profil.an}</button>
+      {/if}
+    </section>
 
     <section aria-labelledby="t-agenten">
       <h2 id="t-agenten">{t.agentenH2}</h2>

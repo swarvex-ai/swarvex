@@ -17,6 +17,7 @@ import { projektAnlegen, repoVerbinden, type NeuesProjekt } from "./projekte.ts"
 import { appBereit, installierenUrl } from "./github.ts";
 import { meineBeitraege, vorschauSenden } from "./beitraege.ts";
 import { wochenbericht } from "./wochenbericht.ts";
+import { profilSetzen } from "./profil.ts";
 
 const SITZUNG = "swarvex_account";
 const ANMELDUNG = "swarvex_login";
@@ -52,7 +53,7 @@ export function sitzungAusstellen(geheimnis: string, menschId: number, jetzt = D
 
 /** Alles, was die Konto-Seite zeigt; zugleich der Export „Meine Daten“. */
 export async function kontoDaten(db: Db, menschId: number) {
-  const mensch = (await db.query("select login, konto_provider as anbieter, erstellt, vertrauensstufe from menschen where id = $1", [menschId])).rows[0];
+  const mensch = (await db.query("select login, konto_provider as anbieter, erstellt, vertrauensstufe, profil_oeffentlich from menschen where id = $1", [menschId])).rows[0];
   const rollen = (await db.query(
     `select p.slug as projekt, p.name, r.rolle, p.repo_git is not null as repo_verbunden, p.entwurf from projekt_rollen r join projekte p on p.id = r.projekt_id
      where r.mensch_id = $1 order by p.name, r.rolle`, [menschId])).rows;
@@ -182,6 +183,16 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
         if (e instanceof Abgelehnt) return json(res, 404, { error: e.message });
         throw e;
       }
+    }
+
+    // Öffentliches Beitragsprofil ein- oder ausschalten (profil.ts)
+    if (pfad === "/api/account/profile" && req.method === "POST") {
+      if (!eigeneHerkunft(req)) return json(res, 403, { error: "foreign_origin" });
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
+      let eingabe: { public?: unknown } = {};
+      try { eingabe = JSON.parse(await textLesen(req, 1000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
+      if (typeof eingabe.public !== "boolean") return json(res, 400, { error: "public: true or false" });
+      return json(res, 200, nachAussen(await profilSetzen(db, menschId, eingabe.public)));
     }
 
     // Freigaben im Browser: der Visionär entscheidet ohne eigene Agenten-Sitzung (nachrichten.ts)

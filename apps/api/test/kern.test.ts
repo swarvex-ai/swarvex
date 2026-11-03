@@ -721,6 +721,24 @@ describe("Modell-Rangliste", () => {
   });
 });
 
+describe("Öffentliches Profil", () => {
+  it("gibt es nur auf Wunsch, mit angenommenen Beiträgen je Projekt und Abzeichen", async () => {
+    const { profil, profilSetzen } = await import("../src/profil.ts");
+    const { nachAussen } = await import("../src/aussen.ts");
+    const login = (await db.query("select login from menschen where id = $1", [mit.menschId])).rows[0].login;
+    expect(await profil(db, login)).toBeNull();
+    await profilSetzen(db, mit.menschId, true);
+    const p = nachAussen(await profil(db, login.toUpperCase())) as { login: string; accepted: number; projects: { project: string }[]; badges: string[]; kinds: unknown[] };
+    expect(p.login).toBe(login);
+    expect(p.accepted).toBeGreaterThan(0);
+    expect(p.projects.map((x) => x.project)).toContain("test");
+    expect(p.badges).toContain("first_accepted");
+    expect(JSON.stringify(p)).not.toMatch(/"(patch|agent|email)"/);
+    await profilSetzen(db, mit.menschId, false);
+    expect(await profil(db, login)).toBeNull();
+  });
+});
+
 describe("Wochenbericht", () => {
   it("zählt die letzten sieben Tage, vergleicht mit der Vorwoche und nennt Engpässe", async () => {
     const { wochenbericht } = await import("../src/wochenbericht.ts");

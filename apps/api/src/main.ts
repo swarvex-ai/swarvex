@@ -36,6 +36,7 @@ import { hashesAn, koepfeListe, kopfVeroeffentlichen } from "./koepfe.ts";
 import { repoDaten } from "./repo.ts";
 import { modellRangliste } from "./modelle.ts";
 import { aufgabenFeed } from "./feed.ts";
+import { profil } from "./profil.ts";
 import { ZodError } from "zod";
 
 const db = verbinden(konfig.datenbank);
@@ -201,6 +202,12 @@ const server = createServer(async (req, res) => {
     // Sterne und Forks des Quellcode-Repos (zwischengespeichert, siehe repo.ts)
     if (req.method === "GET" && url.pathname === "/api/repo") {
       return json(res, 200, await repoDaten(), { "cache-control": "public, max-age=600" });
+    }
+    // Öffentliches Beitragsprofil, nur wenn die Person es eingeschaltet hat (profil.ts)
+    const person = /^\/api\/people\/([A-Za-z0-9_.-]{1,60})$/.exec(url.pathname);
+    if (req.method === "GET" && person) {
+      const p = await profil(db, person[1]);
+      return p ? json(res, 200, nachAussen(p), { "cache-control": "public, max-age=60" }) : json(res, 404, { error: "no_public_profile" });
     }
     // Atom-Feed offener Aufgaben (feed.ts), gefiltert nach Projekt, Fähigkeit und Stufe
     if (req.method === "GET" && url.pathname === "/api/feed/tasks.atom") {

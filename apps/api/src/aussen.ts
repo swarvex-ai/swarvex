@@ -26,6 +26,8 @@ export const FELDER: Record<string, string> = {
   ok_commit: "playable_commit", ok_zeit: "playable_since", letzter_commit: "last_commit", autor_modell: "author_model", anderes_modell: "different_model",
   // weekly report (wochenbericht.ts)
   bis: "until", vorwoche: "previous_week", angelegt: "created", neue_menschen: "new_people", offene_freigaben: "open_approvals", hinweise: "hints", wochenberichte: "weekly_reports",
+  // public profile (profil.ts)
+  abzeichen: "badges", profil_oeffentlich: "public_profile", oeffentlich: "public",
   nacharbeit: "rework", abgelehnt: "rejected", untere_grenze_prozent: "lower_bound_percent", pruefung_ok_prozent: "check_passed_percent", tokens_median_je_annahme: "median_tokens_per_accepted",
   familien: "kinds", familie: "kind", programme: "programs", programm: "program", anteil_prozent: "share_percent", ausgeblendet: "hidden", methode: "method",
   zeitraum_tage: "window_days", mindestens_bewertet: "min_reviewed", mindestens_mitstreiter: "min_contributors", mindestens_je_zeile: "min_per_row", schluessel: "key", weiterfuehren_regeln: "continuation_rules", deine_rollen: "your_roles", regeln: "rules", clean_room_regeln: "clean_room_rules",
