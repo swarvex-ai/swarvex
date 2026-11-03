@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Schwarm from "$lib/components/Schwarm.svelte";
+  import LiveTicker from "$lib/components/LiveTicker.svelte";
   import Einzeiler from "$lib/components/Einzeiler.svelte";
   import Rangliste from "$lib/components/Rangliste.svelte";
   import Ablauf from "$lib/components/Ablauf.svelte";
@@ -20,7 +21,7 @@
   const os = $derived(tx().opensource);
   const doku = (de: string, en: string) => pfad(s, `/docs/${s === "de" ? de : en}`);
   // Erklärvideo je Sprache mit eigener Tonspur; die Untertitel gehören zur Zeitachse des jeweiligen Videos
-  const video = $derived(s === "en" ? { datei: "/media/erklaervideo-en", dauer: "PT65S" } : { datei: "/media/erklaervideo", dauer: "PT60S" });
+  const video = $derived(s === "en" ? { datei: "/media/erklaervideo-en", dauer: "PT71S" } : { datei: "/media/erklaervideo", dauer: "PT64S" });
 
   const daten = $derived([
     { "@type": "WebSite", "@id": `${SEITE}/#website`, url: SEITE, name: "swarvex.ai", inLanguage: ["de", "en"], publisher: { "@id": `${SEITE}/#organisation` } },
@@ -59,7 +60,7 @@
         {/if}
       </p>
     </div>
-    <div class="hero-bild"><Schwarm /></div>
+    <div class="hero-bild"><Schwarm /><LiveTicker /></div>
   </div>
 </section>
 
@@ -212,6 +213,8 @@
   .punkt { width: 8px; height: 8px; border-radius: 50%; background: var(--akzent); margin-right: -12px; }
   .hero-bild { align-self: stretch; min-height: 420px; position: relative; }
   .hero-bild :global(canvas) { position: absolute; inset: 0; }
+  /* Live-Ticker unten über der Grafik, damit das Sechseck frei bleibt */
+  .hero-bild :global(.ticker) { position: absolute; left: 12%; right: 12%; bottom: 16px; margin: 0; backdrop-filter: blur(2px); }
 
   .abschnitt { padding-top: clamp(72px, 10vw, 128px); }
   h2 { text-wrap: balance; }
@@ -263,6 +266,7 @@
     .hero-text { padding: 48px 0 8px; }
     .hero-logo :global(svg) { max-height: 56px; }
     .hero-bild { min-height: 320px; margin: 0 calc(var(--rand) * -1); }
+    .hero-bild :global(.ticker) { left: var(--rand); right: var(--rand); }
     .video-abschnitt, .wege, .ehrlich { grid-template-columns: 1fr; }
     .weg + .weg { border-left: 0; border-top: 1px solid var(--linie); }
   }

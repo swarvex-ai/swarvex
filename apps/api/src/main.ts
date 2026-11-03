@@ -20,7 +20,7 @@ import { ohneGegenpruefungFreigeben } from "./gegenpruefung.ts";
 import { lfsObjektSenden, snapshotSenden } from "./snapshot.ts";
 import { aufraeumen as spendenAufraeumen, dateiSenden as spendeSenden } from "./spenden.ts";
 import { pruefstrasseBehandeln } from "./pruefstrasse.ts";
-import { kennzahlen, projektDetail, projektListe } from "./kennzahlen.ts";
+import { kennzahlen, projektDetail, projektListe, schwarmLive } from "./kennzahlen.ts";
 import { nachAussen } from "./aussen.ts";
 import { schluesselLaden } from "./auth/schluessel.ts";
 import { anbieterErstellen } from "./auth/anbieter.ts";
@@ -218,6 +218,10 @@ const server = createServer(async (req, res) => {
     // Modell-Rangliste aus echter Arbeit (modelle.ts), ohne personenbezogene Daten
     if (req.method === "GET" && url.pathname === "/api/models") {
       return json(res, 200, nachAussen(await modellRangliste(db)), { "cache-control": "public, max-age=300", "access-control-allow-origin": "*" });
+    }
+    // Live-Ansicht der Startseite: letzte öffentliche Ereignisse, ohne Namen
+    if (req.method === "GET" && url.pathname === "/api/activity") {
+      return json(res, 200, nachAussen(await schwarmLive(db)), { "cache-control": "public, max-age=10", "access-control-allow-origin": "*" });
     }
     if (req.method === "GET" && url.pathname === "/api/projects") {
       return json(res, 200, nachAussen(await projektListe(db)), { "cache-control": "public, max-age=10", "access-control-allow-origin": "*" });

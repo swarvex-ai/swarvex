@@ -187,3 +187,14 @@ export async function projektDetail(db: Db, slug: string) {
            protokoll: { ok: kette.ok, eintraege: kette.anzahl, kopf: kette.kopf,
                         veroeffentlicht: kopf ? { seq: Number(kopf.seq), zeit: kopf.zeit } : null } };
 }
+
+/** Live-Ansicht der Startseite: die letzten öffentlichen Ereignisse aller Projekte, ohne Namen (nur Art, Projekt, Zeit). */
+const LIVE_ARTEN = ["aufgabe_angelegt", "aufgabe_reserviert", "ergebnis_eingereicht", "fremdpruefung", "bewertet", "gemerged", "vorschau_gebaut"];
+export async function schwarmLive(db: Db) {
+  return (await db.query(
+    `select e.seq::int, e.zeit, e.art, p.slug as projekt, p.name,
+            case when e.art = 'bewertet' then e.daten->>'urteil' when e.art in ('fremdpruefung') then e.daten->>'urteil' else null end as urteil
+     from ereignisse e join projekte p on p.id = e.projekt_id
+     where e.art = any($1) and not p.gesperrt and not p.entwurf and e.zeit > now() - interval '7 days'
+     order by e.seq desc limit 12`, [LIVE_ARTEN])).rows;
+}

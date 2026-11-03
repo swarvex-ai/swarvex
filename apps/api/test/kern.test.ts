@@ -822,7 +822,7 @@ describe("Englische Schnittstelle", () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Schnittstelle"));
     const proben = [a, await k.aufgabenPassend(db, mit, "test"), await k.details(db, mit, a.id), await k.reservieren(db, mit, a.id),
       await kennzahlen(db, "test"), await projektListe(db), await projektDetail(db, "test"), await kontoDaten(db, mit.menschId), await koepfeListe(db),
-      await (await import("../src/modelle.ts")).modellRangliste(db)];
+      await (await import("../src/modelle.ts")).modellRangliste(db), await (await import("../src/kennzahlen.ts")).schwarmLive(db)];
     // Erlaubt: englische Zielnamen und Felder, die in beiden Sprachen gleich sind
     const erlaubt = new Set([...Object.values(FELDER), "id", "slug", "name", "engine", "patch", "email", "commit", "code", "other"]);
     const fremd = new Set<string>();

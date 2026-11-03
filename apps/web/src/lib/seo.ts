@@ -2,7 +2,7 @@
 // Header X-Robots-Tag (Caddy, .env) von der Indexierung ausgeschlossen, nicht über andere Inhalte.
 export const SEITE = "https://swarvex.ai";
 export const QUELLCODE = "https://github.com/swarvex-ai/swarvex"; // öffentliches Repo (E-21)
-export const STAND = "2026-10-25";
+export const STAND = "2026-11-03";
 
 export const organisation = {
   "@type": "Organization",
