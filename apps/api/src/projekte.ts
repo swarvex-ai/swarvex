@@ -16,6 +16,7 @@ export const PROJEKTE_JE_MENSCH = 3;
 export const RESERVIERT = new Set(["review", "www", "api", "docs", "play", "static", "assets", "mail", "admin", "swarvex"]);
 /** Art des Originals bei Clean Room: wählt den Werkzeug-Pfad (lead/roles/cleanroom/toolkit.md). */
 export const VORBILD_ARTEN = ["windows", "linux_macos", "android", "web", "game", "firmware", "format_protocol"];
+export const SPRACHEN = ["de", "en"];
 const VORBILD_FELDER = ["name", "version", "acquisition", "target", "depth", "inspect", "legal_basis", "models", "providers", "goal"] as const;
 /** Art eines Forschungsprojekts (lead/LEAD.md 9): wählt die Rollen und Prüfungen, die zuerst zählen. */
 export const FORSCHUNG_ARTEN = ["formal_proof", "reproduction", "scientific_software", "verification"];
@@ -26,7 +27,7 @@ const UPSTREAM_FELDER = ["repo", "status", "contact"] as const;
 
 export type NeuesProjekt = {
   slug: string; name: string; vision_md: string; vision_short: string; engine: string; license_code: string; license_assets: string;
-  repo_url?: string | null; lead_model: string; goal: string; type?: string; procedure?: string;
+  repo_url?: string | null; lead_model: string; goal: string; type?: string; procedure?: string; language?: string;
   original?: { name?: string; version?: string; acquisition?: string; target?: string; depth?: string; inspect?: string; legal_basis?: string; models?: string; providers?: string; goal?: string } | null;
   research?: { kind?: string; source?: string; success?: string } | null;
   upstream?: { repo?: string; status?: string; contact?: string } | null;
@@ -48,6 +49,7 @@ export function projektPruefen(p: NeuesProjekt): string[] {
   if (p.repo_url && !/^https:\/\/(github\.com|codeberg\.org|gitlab\.com)\/[\w.-]+\/[\w.-]+\/?$/.test(p.repo_url)) f.push("repo_url: a public repository, e.g. https://github.com/owner/name");
   if (!p.lead_model?.trim() || p.lead_model.length > 120) f.push("lead_model: which agent and model leads the project");
   if (!p.goal?.trim() || p.goal.length > 200) f.push("goal: the first goal in one sentence");
+  if (p.language && !SPRACHEN.includes(p.language)) f.push(`language: the language of vision and goal, ${SPRACHEN.join(" or ")}`);
   const verfahren = p.procedure ?? "standard";
   if (!["standard", "clean_room", "continuation"].includes(verfahren)) f.push("procedure: standard, clean_room or continuation");
   if (verfahren === "clean_room") {
@@ -112,11 +114,11 @@ export async function projektAnlegen(db: Db, p: NeuesProjekt, von: number | "bet
     if ((await tx.query("select 1 from projekte where slug = $1", [p.slug])).rowCount) throw new Abgelehnt(`the address ${p.slug} is taken`);
     const verfahren = p.procedure ?? "standard";
     const id = Number((await tx.query(
-      `insert into projekte(slug, name, vision_md, vision_kurz, engine, lizenz_code, lizenz_assets, repo_url, lead_modell, ziel, verfahren, vorbild, projektart, forschung, upstream, entwurf, angelegt_von)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning id`,
+      `insert into projekte(slug, name, vision_md, vision_kurz, engine, lizenz_code, lizenz_assets, repo_url, lead_modell, ziel, verfahren, vorbild, projektart, forschung, upstream, entwurf, angelegt_von, sprache)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) returning id`,
       [p.slug, p.name.trim(), p.vision_md?.trim() || p.vision_short.trim(), p.vision_short.trim(), p.engine.trim(), p.license_code, p.license_assets, p.repo_url ?? null,
        p.lead_model.trim(), p.goal.trim(), verfahren, verfahren === "clean_room" ? vorbildNormal(p.original) : null, p.type ? PROJEKTARTEN[p.type] : null,
-       p.type === "research" ? forschungNormal(p.research) : null, verfahren === "continuation" ? upstreamNormal(p.upstream) : null, von !== "betrieb", von === "betrieb" ? null : von])).rows[0].id);
+       p.type === "research" ? forschungNormal(p.research) : null, verfahren === "continuation" ? upstreamNormal(p.upstream) : null, von !== "betrieb", von === "betrieb" ? null : von, p.language ?? "en"])).rows[0].id);
     if (von !== "betrieb") {
       await tx.query("insert into projekt_rollen(projekt_id, mensch_id, rolle) values ($1,$2,'visionaer'), ($1,$2,'lead')", [id, von]);
     }
@@ -143,4 +145,34 @@ export async function repoVerbinden(db: Db, slug: string, menschId: number, adre
     await protokollieren(tx, { projekt_id: Number(p.id), akteur: `mensch:${menschId}`, art: "repo_gesetzt", bezug: `projekt:${p.id}`, daten: { repo_git: r.repo_git, ueber: "github-app" } });
   });
   return { repo_url: r.repo_url };
+}
+
+export type Uebersetzung = { vision_md?: string; vision_short?: string; goal?: string };
+
+/** Übersetzung von Vision, Kurzvision und Ziel setzen: Lead oder Visionär des Projekts (oder der Betrieb).
+ *  Das Original bleibt unverändert und maßgeblich; leere Felder entfernen die Übersetzung dieses Felds. */
+export async function uebersetzungSetzen(db: Db, slug: string, von: number | "betrieb", sprache: string, u: Uebersetzung) {
+  if (!SPRACHEN.includes(sprache)) throw new Abgelehnt(`language: ${SPRACHEN.join(" or ")}`);
+  const p = (await db.query("select id, sprache, uebersetzungen from projekte where slug = $1 and not gesperrt", [slug])).rows[0];
+  if (!p) throw new Abgelehnt(`project ${slug} does not exist`);
+  if (von !== "betrieb") {
+    const r = await db.query("select 1 from projekt_rollen where projekt_id = $1 and mensch_id = $2 and rolle in ('lead', 'visionaer')", [p.id, von]);
+    if (!r.rowCount) throw new Abgelehnt("only the lead or the visionary of this project can set a translation");
+  }
+  if (sprache === p.sprache) throw new Abgelehnt(`the original is already in ${sprache}; change the original instead`);
+  const grenzen: Record<keyof Uebersetzung, number> = { vision_md: 20000, vision_short: 200, goal: 200 };
+  const alt: Uebersetzung = p.uebersetzungen?.[sprache] ?? {};
+  const neu: Uebersetzung = { ...alt };
+  for (const k of Object.keys(grenzen) as (keyof Uebersetzung)[]) {
+    if (u[k] === undefined) continue;
+    const v = u[k]!.trim();
+    if (v.length > grenzen[k]) throw new Abgelehnt(`${k}: at most ${grenzen[k]} characters`);
+    if (v) neu[k] = v; else delete neu[k];
+  }
+  await transaktion(db, async (tx) => {
+    await tx.query("update projekte set uebersetzungen = jsonb_set(uebersetzungen, $2, $3::jsonb) where id = $1", [p.id, [sprache], JSON.stringify(neu)]);
+    await protokollieren(tx, { projekt_id: Number(p.id), akteur: von === "betrieb" ? "system" : `mensch:${von}`, art: "uebersetzung_gesetzt", bezug: `projekt:${p.id}`,
+      daten: { sprache, felder: Object.keys(neu) } });
+  });
+  return { project: slug, language: sprache, fields: Object.keys(neu) };
 }

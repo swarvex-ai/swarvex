@@ -4,7 +4,7 @@ import { migrieren, verbinden, type Db } from "../src/db.ts";
 import { ketteVerifizieren } from "../src/ereignisse.ts";
 import * as k from "../src/aufgaben.ts";
 import { kennzahlen, projektListe } from "../src/kennzahlen.ts";
-import { projektAnlegen, projektPruefen, repoVerbinden, type NeuesProjekt } from "../src/projekte.ts";
+import { projektAnlegen, projektPruefen, repoVerbinden, uebersetzungSetzen, type NeuesProjekt } from "../src/projekte.ts";
 import * as g from "../src/gegenpruefung.ts";
 
 let db: Db;
@@ -276,6 +276,31 @@ describe("Credit-Spenden (Auftrag + Upload)", () => {
     expect(arten).toEqual(["zusage_eingegangen", "spendenauftrag_angelegt", "spende_hochgeladen", "spende_bewertet"]);
     await sp.zusageBeenden(db, mit.menschId, zusage_id);
     expect((await sp.zusagenFuerLead(db, lead.menschId, "test")).length).toBe(0);
+  });
+});
+
+describe("Übersetzung von Vision und Ziel", () => {
+  it("nur Lead oder Visionär, nicht in die Sprache des Originals, Original bleibt, im Protokoll", async () => {
+    const v = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea','uebersetzerin','uebersetzerin') returning id")).rows[0].id);
+    const fremd = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea','fremde','fremde') returning id")).rows[0].id);
+    await projektAnlegen(db, { slug: "deutsches-spiel", name: "Deutsches Spiel", vision_md: "# Vision\nEin Spiel.", vision_short: "Ein kleines Spiel.", engine: "open",
+      license_code: "MIT", license_assets: "CC BY 4.0", lead_model: "Codex · GPT", goal: "Erste Strecke", type: "game", language: "de" }, v);
+    await expect(uebersetzungSetzen(db, "deutsches-spiel", fremd, "en", { goal: "First route" })).rejects.toThrow(/lead or the visionary/);
+    await expect(uebersetzungSetzen(db, "deutsches-spiel", v, "de", { goal: "x" })).rejects.toThrow(/original is already/);
+    await expect(uebersetzungSetzen(db, "deutsches-spiel", v, "fr", { goal: "x" })).rejects.toThrow(/language/);
+    expect((await uebersetzungSetzen(db, "deutsches-spiel", v, "en", { vision_md: "# Vision\nA game.", vision_short: "A small game.", goal: "First route" })).fields.sort())
+      .toEqual(["goal", "vision_md", "vision_short"]);
+    // leeres Feld entfernt nur diesen Teil
+    await uebersetzungSetzen(db, "deutsches-spiel", v, "en", { goal: "" });
+    const p = (await db.query("select sprache, vision_kurz, ziel, uebersetzungen from projekte where slug = 'deutsches-spiel'")).rows[0];
+    expect(p.sprache).toBe("de");
+    expect(p.vision_kurz).toBe("Ein kleines Spiel.");
+    expect(p.ziel).toBe("Erste Strecke");
+    expect(p.uebersetzungen).toEqual({ en: { vision_md: "# Vision\nA game.", vision_short: "A small game." } });
+    const ev = (await db.query("select count(*)::int n from ereignisse where art = 'uebersetzung_gesetzt'")).rows[0].n;
+    expect(ev).toBe(2);
+    expect(projektPruefen({ slug: "x-spiel", name: "X", vision_md: "", vision_short: "X.", engine: "open", license_code: "MIT", license_assets: "CC BY 4.0",
+      lead_model: "a", goal: "b", language: "fr" }).join()).toMatch(/language/);
   });
 });
 

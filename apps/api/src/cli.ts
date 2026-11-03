@@ -5,6 +5,7 @@
 //   end-officer <slug> <area> <reason>        end an officer's term
 //   set-type <slug> <type>                    project type for the internal statistics: game | app | website | service | tool | library | plugin | other
 //   set-vision <slug> <vision.md>             replace the vision text; event "vision_updated" with its SHA-256
+//   set-translation <slug> <de|en> <file.json> translation of vision_md, vision_short, goal (original stays authoritative)
 //   set-role <slug> [provider:]<login> <role>  role: visionary | lead | contributor; e.g. github:nevs84
 //   set-repo <slug> <git-address>             SSH address for snapshots (deploy key, read-only)
 //   set-license <slug> <code-license> <asset-license>  e.g. GPL-3.0-or-later "CC BY-SA 4.0" (logged publicly)
@@ -44,7 +45,7 @@ async function projektId(slug: string): Promise<number> {
 const db = verbinden(process.env.DATABASE_URL ?? "");
 
 /** Common OSI-approved licenses (SPDX); add more when needed. */
-import { FREIE_ASSET_LIZENZEN, OSI_LIZENZEN, PROJEKTARTEN, projektAnlegen } from "./projekte.ts";
+import { FREIE_ASSET_LIZENZEN, OSI_LIZENZEN, PROJEKTARTEN, projektAnlegen, uebersetzungSetzen } from "./projekte.ts";
 
 const [befehl, ...args] = process.argv.slice(2);
 
@@ -95,6 +96,13 @@ try {
         await protokollieren(tx, { projekt_id: Number(p.id), akteur: "system", art: "vision_aktualisiert", bezug: `projekt:${p.id}`, daten: { slug, sha256: createHash("sha256").update(text).digest("hex") } });
         console.log(`vision of ${slug} updated`);
       });
+      break;
+    }
+    case "set-translation": {
+      // set-translation <slug> <de|en> <datei.json> mit {"vision_md": …, "vision_short": …, "goal": …}
+      const [slug, sprache, datei] = args;
+      const u = JSON.parse(await readFile(datei, "utf8"));
+      console.log(JSON.stringify(await uebersetzungSetzen(db, slug, "betrieb", sprache, u)));
       break;
     }
     case "set-role": {

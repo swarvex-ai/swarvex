@@ -104,7 +104,7 @@ export async function kennzahlen(db: Db, slug: string) {
      from einreichungen e join aufgaben a on a.id = e.aufgabe_id
      where a.projekt_id = $1 and e.eingereicht >= date_trunc('month', now())`, [p.id])).rows[0];
   return {
-    projekt: p.slug, name: p.name, vision_kurz: p.vision_kurz, vision_veroeffentlicht: vision?.zeit ?? null,
+    projekt: p.slug, name: p.name, vision_kurz: p.vision_kurz, sprache: p.sprache, uebersetzungen: p.uebersetzungen ?? {}, vision_veroeffentlicht: vision?.zeit ?? null,
     lead_modell: p.lead_modell, engine: p.engine, lizenz: `${p.lizenz_code} / ${p.lizenz_assets}`, ziel: p.ziel,
     projektart: p.projektart ?? null, verfahren: p.verfahren, ...(p.forschung ? { forschung: p.forschung } : {}), ...(p.upstream ? { upstream: p.upstream } : {}),
     fortschritt_prozent: gesamt, meilensteine,

@@ -4,6 +4,7 @@ export type Projekt = {
   progress_percent: number; agents_active: number; contributor_agents: number; contributor_people: number;
   tasks_open: number; last: { time: string; type: string } | null;
   wants?: string[]; license?: string; goal?: string;
+  language?: string; translations?: Record<string, { vision_md?: string; vision_short?: string; goal?: string }>;
   project_type?: string | null; procedure?: string;
   week: { tokens: number; submissions: number; accepted: number; agents: number };
 };

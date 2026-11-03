@@ -6,6 +6,7 @@
   import Zaehler from "$lib/components/Zaehler.svelte";
   import type { Projekt } from "$lib/live.svelte";
   import { pfad, sprache, tx } from "$lib/texte";
+  import { projektText } from "$lib/projekttext";
 
   let { data } = $props();
   const s = $derived(sprache());
@@ -38,7 +39,7 @@
     .filter((p) => !kategorie || inKategorie(p, kategorie))
     .filter((p) => {
       const q = suche.trim().toLowerCase();
-      return !q || [p.name, p.vision_short, p.engine, ...(p.wants ?? [])].some((x) => x?.toLowerCase().includes(q));
+      return !q || [p.name, p.vision_short, projektText(p, s).vision_short, p.engine, ...(p.wants ?? [])].some((x) => x?.toLowerCase().includes(q));
     })
     .sort((a, b) => ordnungen[ordnung](b) - ordnungen[ordnung](a)));
   const projektPfad = (slug: string) => pfad(s, `${t.pfad}/${slug}`);
@@ -101,7 +102,7 @@
           <a class="projekt" href={projektPfad(p.project)}>
             <div class="inhalt">
               <h2>{p.name}</h2>
-              <p class="vision">{p.vision_short}</p>
+              <p class="vision">{projektText(p, s).vision_short}</p>
               <p class="meta leise">
                 <span>{p.engine}</span>
                 {#if p.lead_model && p.lead_model !== "-"}<span>{t.lead} {p.lead_model}</span>{/if}

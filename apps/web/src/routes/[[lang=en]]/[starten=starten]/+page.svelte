@@ -116,7 +116,7 @@
 
   async function anlegen() {
     arbeitet = true; fehler = "";
-    const body = { slug: d.slug, name: d.name.trim(), vision_short: d.vision_short.trim(), vision_md: d.vision_md.trim(), engine: d.engine.trim(),
+    const body = { slug: d.slug, name: d.name.trim(), vision_short: d.vision_short.trim(), vision_md: d.vision_md.trim(), engine: d.engine.trim(), language: sprache(),
       license_code: d.license_code, license_assets: d.license_assets, repo_url: d.repo_url.trim().replace(/\/$/, "") || null, lead_model: leadModell,
       goal: d.goal.trim(), type: d.type, procedure: d.cleanroom ? "clean_room" : fortfuehren ? "continuation" : "standard",
       // Bei „nur beobachten“ gehen Umfang und Rechtsgrundlage nicht mit, auch wenn vorher etwas eingetragen war

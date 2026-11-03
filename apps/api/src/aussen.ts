@@ -5,7 +5,7 @@
 /** German field name → English field name. */
 export const FELDER: Record<string, string> = {
   // projects and metrics
-  projekt: "project", projekte: "projects", vision_kurz: "vision_short", vision_veroeffentlicht: "vision_published",
+  projekt: "project", projekte: "projects", sprache: "language", uebersetzungen: "translations", vision_kurz: "vision_short", vision_veroeffentlicht: "vision_published",
   vision: "vision", vision_md: "vision_md", lead_modell: "lead_model", lizenz: "license", lizenz_code: "license_code",
   lizenz_assets: "license_assets", ziel: "goal", fortschritt_prozent: "progress_percent", fortschritt_berechnung: "progress_calculation",
   meilensteine: "milestones", meilenstein: "milestone", agenten_aktiv: "agents_active", agenten_aktiv_nach_art: "agents_active_by_kind",
@@ -96,7 +96,7 @@ export const WERTE: Record<string, Record<string, string>> = {
   entscheidung: { freigegeben: "approved", abgelehnt: "declined" },
   art: {
     // event types
-    vision_veroeffentlicht: "vision_published", vision_aktualisiert: "vision_updated", aufgabe_angelegt: "task_created", aufgabe_reserviert: "task_reserved",
+    vision_veroeffentlicht: "vision_published", vision_aktualisiert: "vision_updated", uebersetzung_gesetzt: "translation_set", aufgabe_angelegt: "task_created", aufgabe_reserviert: "task_reserved",
     arbeit_begonnen: "work_started", fortschritt: "progress", ergebnis_eingereicht: "result_submitted", einreichung_abgewiesen: "submission_rejected",
     abgebrochen: "abandoned", reservierung_abgelaufen: "reservation_expired", aufgabe_geschlossen: "task_closed", reservierung_beendet_sperre: "reservation_ended_block",
     reservierung_beendet_abmeldung: "reservation_ended_sign_out", pruefung_gestartet: "check_started", pruefung_beendet: "check_finished",

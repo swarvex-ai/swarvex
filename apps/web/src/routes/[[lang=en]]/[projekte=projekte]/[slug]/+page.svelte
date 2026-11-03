@@ -7,12 +7,15 @@
   import Einzeiler from "$lib/components/Einzeiler.svelte";
   import { SEITE } from "$lib/seo";
   import { pfad, sprache, tx } from "$lib/texte";
+  import { projektText } from "$lib/projekttext";
 
   let { data } = $props();
   const s = $derived(sprache());
   const t = $derived(tx().projekte);
   const d = $derived(t.detail);
   const p = $derived(data.projekt);
+  const text = $derived(projektText(p, s));
+  let original = $state(false);
 
   onMount(() => {
     const z = setInterval(() => { if (!document.hidden) invalidate("app:projekt"); }, 15_000);
@@ -44,11 +47,11 @@
 
 <Seo
   titel={`${p.name}: ${t.titel} – swarvex`}
-  beschreibung={p.vision_short}
+  beschreibung={text.vision_short}
   pfad={pfad(s, `${t.pfad}/${p.project}`)}
   alternativen={{ de: `/projekte/${p.project}`, en: `/en/projects/${p.project}` }}
   feed={`/api/feed/tasks.atom?project=${p.project}`}
-  daten={[{ "@type": "SoftwareSourceCode", name: p.name, description: p.vision_short, codeRepository: p.repo_url ?? undefined, programmingLanguage: p.engine,
+  daten={[{ "@type": "SoftwareSourceCode", name: p.name, description: text.vision_short, codeRepository: p.repo_url ?? undefined, programmingLanguage: p.engine,
             url: SEITE + pfad(s, `${t.pfad}/${p.project}`) }]}
 />
 
@@ -58,8 +61,8 @@
   <header class="kopf">
     <div>
       <h1>{p.name}</h1>
-      <p class="vision">{p.vision_short}</p>
-      <p class="meta leise">{d.veroeffentlicht} {datum(p.vision_published)}<span>{d.ziel}: {p.goal}</span></p>
+      <p class="vision">{text.vision_short}</p>
+      <p class="meta leise">{d.veroeffentlicht} {datum(p.vision_published)}<span>{d.ziel}: {text.goal}</span></p>
     </div>
     <div class="aktionen">
       <a class="knopf primaer" href={mitmachen}>{d.mitmachen}</a>
@@ -268,7 +271,13 @@
 
   <details class="vision-original">
     <summary>{d.vision}</summary>
-    <pre>{p.vision_md}</pre>
+    {#if text.original}
+      <p class="sprachhinweis leise">
+        {text.uebersetzt ? d.uebersetzt[text.original] : d.nurOriginal[text.original]}
+        {#if text.uebersetzt}<button type="button" class="verweis" onclick={() => (original = !original)}>{original ? d.zeigeUebersetzung : d.zeigeOriginal}</button>{/if}
+      </p>
+    {/if}
+    <pre lang={original || !text.uebersetzt ? (p.language ?? s) : s}>{original ? p.vision_md : text.vision_md}</pre>
   </details>
 
   <p class="fuss leise">{d.gleich} <code>metrics</code>. <a href="/api/projects/{p.project}/metrics">{d.json}</a>. {t.stand}.</p>
@@ -347,6 +356,8 @@
   .beitragende li > * { overflow-wrap: anywhere; min-width: 0; }
   .vision-original { margin-top: 40px; border-top: 1px solid var(--linie); padding-top: 16px; }
   .vision-original summary { cursor: pointer; font: 600 1.1rem var(--schrift-marke); }
+  .sprachhinweis { font-size: .9rem; }
+  .verweis { background: none; border: 0; padding: 0; margin-left: 6px; color: var(--akzent); cursor: pointer; font: inherit; text-decoration: underline; }
   .vision-original pre { white-space: pre-wrap; font: 400 1rem/1.65 var(--schrift); color: var(--stahl); max-width: 75ch; }
   .fuss { margin-top: 40px; font-size: .85rem; }
 
