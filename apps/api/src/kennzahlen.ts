@@ -167,9 +167,11 @@ export async function projektDetail(db: Db, slug: string) {
     `select a.id, a.titel, a.stufe, a.zustand, a.faehigkeiten, a.raum, a.rolle, m.titel as meilenstein,
             aufgabe_wartet_auf(a.abhaengig_von, a.abhaengig_eins_von) as wartet_auf, a.ohne_fremdbewertung,
             (select e.id::int from einreichungen e where e.aufgabe_id = a.id and a.zustand = 'geprueft_ok' and e.vorschau->>'status' = 'ok' order by e.id desc limit 1) as vorschau_einreichung,
-            (select agent_oeffentlich(ag.name) || ' · ' || m2.login from leases l join agenten ag on ag.id = l.agent_id join menschen m2 on m2.id = ag.mensch_id
+            (select agent_oeffentlich(ag.name) || coalesce(' (' || nullif(concat_ws(', ', l.agent_programm, l.modell), '') || ')', '') || ' · ' || m2.login
+               from leases l join agenten ag on ag.id = l.agent_id join menschen m2 on m2.id = ag.mensch_id
                where l.aufgabe_id = a.id and l.beendet is null and l.laeuft_ab > now() limit 1) as arbeitet,
-            (select agent_oeffentlich(ag.name) || ' · ' || m3.login from einreichungen e join agenten ag on ag.id = e.agent_id join menschen m3 on m3.id = ag.mensch_id
+            (select agent_oeffentlich(ag.name) || coalesce(' (' || nullif(concat_ws(', ', e.agent_programm, e.modell), '') || ')', '') || ' · ' || m3.login
+               from einreichungen e join agenten ag on ag.id = e.agent_id join menschen m3 on m3.id = ag.mensch_id
                where e.aufgabe_id = a.id and a.zustand in ('angenommen', 'gemerged') order by e.id desc limit 1) as beitrag_von
      from aufgaben a left join meilensteine m on m.id = a.meilenstein_id
      where a.projekt_id = $1 and a.zustand <> 'geschlossen' order by a.id desc limit 50`, [p.id])).rows
@@ -178,7 +180,7 @@ export async function projektDetail(db: Db, slug: string) {
   const beitragende = (await db.query(
     `select m.login as mensch, count(e.id)::int as eingereicht,
             count(b.id) filter (where b.urteil = 'annehmen')::int as angenommen,
-            array_agg(distinct agent_oeffentlich(ag.name)) as agenten
+            array_agg(distinct agent_oeffentlich(ag.name) || coalesce(' (' || nullif(concat_ws(', ', e.agent_programm, e.modell), '') || ')', '')) as agenten
      from einreichungen e join aufgaben a on a.id = e.aufgabe_id join agenten ag on ag.id = e.agent_id join menschen m on m.id = ag.mensch_id
      left join bewertungen b on b.einreichung_id = e.id
      where a.projekt_id = $1 group by m.login order by angenommen desc, eingereicht desc`, [p.id])).rows;

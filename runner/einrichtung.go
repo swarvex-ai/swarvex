@@ -10,9 +10,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -561,14 +563,19 @@ func setupDialog(ausfuehren bool) []string {
 	modus := f.wahl("How should it run?", []string{"Try one task now", "As a service in the background, within time windows", "Only save, I start it myself with `swarvex work`"})
 	var dienstArgs []string
 	if modus == 1 {
-		fenster := f.frage("When may it work? (e.g. daily 18:00-23:00, mon-fri 09:00-17:00, always)", "daily 18:00-23:00")
-		if fenster != "always" {
-			_, err := zeitfensterLesen(fenster)
-			for err != nil {
+		titel := make([]string, len(zeitVorschlaege))
+		for i, v := range zeitVorschlaege {
+			titel[i] = v.titel
+		}
+		fenster := zeitVorschlaege[f.wahl("When may it work?", titel)].fenster
+		if fenster == "?" {
+			fenster = f.frage("Your time windows (e.g. mon-fri 18:00-23:00; sat,sun 09:00-24:00)", "daily 18:00-23:00")
+			for _, err := zeitfensterLesen(fenster); err != nil; _, err = zeitfensterLesen(fenster) {
 				fmt.Println("  " + err.Error())
-				fenster = f.frage("When may it work?", "daily 18:00-23:00")
-				_, err = zeitfensterLesen(fenster)
+				fenster = f.frage("Your time windows", "daily 18:00-23:00")
 			}
+		}
+		if fenster != "" {
 			dienstArgs = append(dienstArgs, "--schedule", fenster)
 		}
 		vorschlag := "2000000"
@@ -694,8 +701,14 @@ func verbinden(plattform string, agenten []mcpAgent) {
 			err = opencodeEintragen(mcpURL)
 		} else {
 			c := exec.Command(a.Programm, a.Hinzufuegen(mcpURL)...)
-			c.Stdin = os.Stdin // Codex und Hermes starten die Anmeldung gleich mit
-			aus, err = c.CombinedOutput()
+			// Codex und Hermes fragen selbst nach (Hermes: "Enable all tools?", "Overwrite?") und starten die Anmeldung:
+			// ihre Ausgabe deshalb sichtbar durchreichen und nur zusätzlich mitlesen
+			var puffer bytes.Buffer
+			c.Stdin = os.Stdin
+			c.Stdout, c.Stderr = io.MultiWriter(os.Stdout, &puffer), io.MultiWriter(os.Stderr, &puffer)
+			fmt.Printf("  %s asks a few things itself:\n", a.Titel)
+			err = c.Run()
+			aus = puffer.Bytes()
 			if err != nil && strings.Contains(strings.ToLower(string(aus)), "already exists") {
 				err = nil
 			}
@@ -729,4 +742,14 @@ func opencodeEintragen(mcpURL string) error {
 		return err
 	}
 	return os.WriteFile(pfad, append(roh, '\n'), 0o644)
+}
+
+// zeitVorschlaege für die Einrichtung; "" heißt immer, "?" eigene Angabe. Über Mitternacht endet ein Fenster am Folgetag.
+var zeitVorschlaege = []struct{ titel, fenster string }{
+	{"Always", ""},
+	{"At night (daily 00:00-06:00)", "daily 00:00-06:00"},
+	{"Evenings and nights (daily 18:00-06:00)", "daily 18:00-06:00"},
+	{"Outside working hours (mon-fri 18:00-08:00, all weekend)", "mon-fri 18:00-08:00; sat,sun 00:00-24:00"},
+	{"Weekends only (sat, sun)", "sat,sun 00:00-24:00"},
+	{"My own time windows", "?"},
 }

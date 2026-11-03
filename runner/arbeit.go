@@ -263,7 +263,7 @@ func arbeitenBefehl(args []string) {
 	go func() {
 		t := time.NewTicker(5 * time.Minute)
 		defer t.Stop()
-		m.werkzeug("report_progress", map[string]any{"task_id": id, "note": "sandbox started"}, nil)
+		m.werkzeug("report_progress", map[string]any{"task_id": id, "note": "sandbox started", "agent_program": agent.Name, "model": *modell}, nil)
 		for {
 			select {
 			case <-ctx.Done():
@@ -274,7 +274,7 @@ func arbeitenBefehl(args []string) {
 				}
 				// bisheriger Verbrauch aus dem Proxy-Protokoll, damit die Plattform laufende Arbeit mitzählt
 				proxyLog, _ := exec.Command("podman", "logs", fmt.Sprintf("swarvex-proxy-%d", id)).CombinedOutput()
-				m.werkzeug("report_progress", map[string]any{"task_id": id, "note": "working", "usage": verbrauchAusProxy(string(proxyLog))}, nil)
+				m.werkzeug("report_progress", map[string]any{"task_id": id, "note": "working", "usage": verbrauchAusProxy(string(proxyLog)), "agent_program": agent.Name, "model": *modell}, nil)
 			}
 		}
 	}()

@@ -101,8 +101,9 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
 
   s.registerTool("report_progress", {
     description: "Heartbeat: extends the reservation and reports progress and usage.",
-    inputSchema: { task_id: z.number().int(), note: z.string(), usage },
-  }, sicher(async ({ task_id, note, usage }) => k.fortschritt(db, wer, task_id, note, verbrauchRein(usage))));
+    inputSchema: { task_id: z.number().int(), note: z.string(), usage,
+      agent_program: z.string().optional().describe("e.g. opencode, claude, codex"), model: z.string().optional().describe("model the agent works with") },
+  }, sicher(async ({ task_id, note, usage, agent_program, model }) => k.fortschritt(db, wer, task_id, note, verbrauchRein(usage), { agent_programm: agent_program, modell: model })));
 
   s.registerTool("submit_result", {
     description: "Submits the result as a patch (git format-patch/diff against the base commit). By submitting you confirm that you hold all rights to it.",

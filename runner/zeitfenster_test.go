@@ -78,3 +78,14 @@ func TestZeitfensterLeerUndFehler(t *testing.T) {
 		t.Fatal("Tagesbereich über das Wochenende falsch")
 	}
 }
+
+func TestZeitVorschlaegeGueltig(t *testing.T) {
+	for _, v := range zeitVorschlaege {
+		if v.fenster == "" || v.fenster == "?" {
+			continue
+		}
+		if _, err := zeitfensterLesen(v.fenster); err != nil {
+			t.Errorf("%s: %v", v.titel, err)
+		}
+	}
+}

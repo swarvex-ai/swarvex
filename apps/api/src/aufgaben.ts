@@ -279,10 +279,14 @@ export async function details(db: Db, wer: Wer, aufgabeId: number) {
   return { ...a, projekt: p.slug, repo_url: p.repo_url, engine: p.engine, grenzen: GRENZEN };
 }
 
-export async function fortschritt(db: Db, wer: Wer, aufgabeId: number, notiz: string, verbrauch: Record<string, number>) {
+export async function fortschritt(db: Db, wer: Wer, aufgabeId: number, notiz: string, verbrauch: Record<string, number>,
+  womit: { agent_programm?: string; modell?: string } = {}) {
   return transaktion(db, async (tx) => {
     const a = await aufgabeSperren(tx, aufgabeId);
     const l = await aktiveLeaseVon(tx, aufgabeId, wer.agentId);
+    if (womit.agent_programm || womit.modell)
+      await tx.query("update leases set agent_programm = coalesce($2, agent_programm), modell = coalesce($3, modell) where id = $1",
+        [l.id, womit.agent_programm?.slice(0, 60) || null, womit.modell?.slice(0, 120) || null]);
     const neu = (await tx.query("update leases set laeuft_ab = now() + make_interval(mins => $2) where id = $1 returning laeuft_ab", [l.id, a.lease_minuten])).rows[0];
     if (a.zustand === "reserviert") await wechseln(tx, a, "in_arbeit", akteur(wer), "arbeit_begonnen", { notiz });
     else await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: akteur(wer), art: "fortschritt", bezug: `aufgabe:${a.id}`, daten: { notiz, verbrauch } });
