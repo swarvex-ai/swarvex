@@ -50,6 +50,15 @@ PODMAN_VERSION="$(podman version --format '{{.Client.Version}}' 2>/dev/null || e
   || fail "Podman uses the old CNI network backend; the runner needs netavark.
   Install netavark and aardvark-dns, then run 'podman system reset' (removes local
   containers and images) and the one-liner again."
+# Images and project environments live in Podman's storage; building the agent image alone needs about 2 GB
+STORE="$(podman info --format '{{.Store.GraphRoot}}' 2>/dev/null)"
+mkdir -p "$STORE" 2>/dev/null || true
+FREE_GB=$(( $(df -Pk "$STORE" 2>/dev/null | awk 'NR==2 {print $4}' || echo 0) / 1048576 ))
+LIVE=""
+[ -d /run/casper ] || [ -d /run/live ] || grep -qs ' / overlay .*upperdir=/cow' /proc/mounts && LIVE="
+  This looks like a live session without installation: it writes into RAM and has little space."
+[ "$FREE_GB" -ge 2 ] || fail "Only ${FREE_GB} GB free for Podman ($STORE); the runner needs at least 2 GB, better 10 GB.$LIVE"
+[ "$FREE_GB" -ge 10 ] || printf '   note: only %s GB free for Podman; project environments (such as Godot) can need several GB.%s\n' "$FREE_GB" "$LIVE"
 echo "   ok: Linux/$ARCH, rootless Podman $PODMAN_VERSION, curl, tar, ssh-keygen"
 
 CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/swarvex"
