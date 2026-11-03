@@ -12,6 +12,8 @@ export const konfig = {
   port: Number(process.env.PORT ?? 3000),
   /** Mindestalter des Kontos beim Konto-Anbieter in Tagen (Schutz vor Wegwerf-Konten; Labor 0, live z. B. 30). */
   kontoMindestalterTage: Number(process.env.ACCOUNT_MIN_AGE_DAYS ?? 0),
+  /** Ausnahmen vom Mindestalter, je Eintrag „anbieter:konto-id“ (unveränderliche ID, nicht der Name), z. B. Testkonten. */
+  kontoAlterAusnahmen: new Set((process.env.ACCOUNT_AGE_EXEMPT ?? "").split(",").map((s) => s.trim()).filter(Boolean)),
   /** Gemeinsames Geheimnis der Prüfstraße (HMAC über Prüfergebnisse, P5). */
   pruefstrasseGeheimnis: process.env.PIPELINE_SECRET ?? "",
   /** Eigene Adresse der Projekt-Vorschauen (infra/stack/vorschau.caddy), leer = keine Vorschauen. */

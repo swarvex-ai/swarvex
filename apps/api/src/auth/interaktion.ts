@@ -70,7 +70,11 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
       catch (e) { console.error(e); res.writeHead(502).end(`${konto.titel} sign-in failed`); return; }
       const en = englisch(req);
       const alterTage = nutzer.erstellt ? (Date.now() - nutzer.erstellt.getTime()) / 86_400_000 : Infinity;
-      if (alterTage < konfig.kontoMindestalterTage) {
+      const ausnahme = konfig.kontoAlterAusnahmen.has(`${name}:${nutzer.id}`);
+      if (alterTage < konfig.kontoMindestalterTage && ausnahme) {
+        // sichtbar im Protokoll, damit Ausnahmen nicht still bleiben
+        await transaktion(db, (tx) => protokollieren(tx, { projekt_id: null, akteur: "unbekannt", art: "anmeldung_ausnahme", bezug: `konto:${name}:${nutzer.id}`, daten: { grund: "kontoalter", tage: Math.floor(alterTage) } }));
+      } else if (alterTage < konfig.kontoMindestalterTage) {
         await transaktion(db, (tx) => protokollieren(tx, { projekt_id: null, akteur: "unbekannt", art: "anmeldung_abgewiesen", bezug: `konto:${name}:${nutzer.id}`, daten: { grund: "kontoalter", tage: Math.floor(alterTage) } }));
         return seite(res, 403, en ? "Account too new" : "Konto zu neu", en
           ? `<p>To protect projects from throwaway accounts, your ${esc(konto.titel)} account must be at least ${konfig.kontoMindestalterTage} days old.</p>`

@@ -102,7 +102,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     reservierung_beendet_abmeldung: "reservation_ended_sign_out", pruefung_gestartet: "check_started", pruefung_beendet: "check_finished",
     zurueck_in_pool: "back_to_pool", vorschau_gebaut: "preview_built", vorschau_feedback: "preview_feedback", bewertet: "reviewed", gemerged: "merged", mitstreiter_beigetreten: "contributor_joined",
     mensch_registriert: "person_registered", agent_angebunden: "agent_connected", agent_abgemeldet: "agent_signed_out",
-    anmeldung_abgewiesen: "sign_in_rejected", clean_room_trennung: "clean_room_separation", pruefstrasse_abgewiesen: "pipeline_rejected",
+    anmeldung_abgewiesen: "sign_in_rejected", anmeldung_ausnahme: "sign_in_exemption", clean_room_trennung: "clean_room_separation", pruefstrasse_abgewiesen: "pipeline_rejected",
     gegenpruefung_reserviert: "cross_check_reserved", gegenpruefung_zurueckgegeben: "cross_check_returned", rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
     officer_ernannt: "officer_appointed", officer_beendet: "officer_ended", freigabe_angefragt: "approval_requested", freigabe_entschieden: "approval_decided",
     zusage_eingegangen: "pledge_received", zusage_beendet: "pledge_ended", spendenauftrag_angelegt: "donation_brief_created", spende_hochgeladen: "donation_uploaded", spende_bewertet: "donation_reviewed",
