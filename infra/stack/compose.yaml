@@ -45,7 +45,7 @@ services:
     ports: ["80:80", "443:443", "8444:8444"]
     environment:
       BASE_HOST: ${BASE_HOST}
-      VORSCHAU_ADRESSE: ${VORSCHAU_ADRESSE:-http://127.0.0.1:8444}
+      VORSCHAU_ADRESSE: ${VORSCHAU_ADRESSE:-}
       TLS_MODE: ${TLS_MODE:-internal}
       X_ROBOTS_TAG: ${X_ROBOTS_TAG:-noindex, nofollow}
     volumes:
@@ -54,7 +54,7 @@ services:
       - /opt/swarvex-data/downloads:/srv:ro
       - /opt/swarvex-data/sites:/etc/caddy/sites:ro
       # Vorschauen aus der Prüfstraße (nur lesend; leer, solange keine gebaut wurde)
-      - /var/lib/swarvex-pipeline/vorschau:/srv/vorschau:ro
+      - /var/lib/swarvex-pipeline/vorschau:/vorschau:ro
     networks: [default, edge]
     depends_on: [api, web]
     restart: unless-stopped
