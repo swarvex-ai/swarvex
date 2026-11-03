@@ -147,10 +147,19 @@ func dienstBefehl(args []string) {
 	if aus, err := systemctl("enable", dienstName); err != nil {
 		fehlerAus("systemctl --user enable: " + aus)
 	}
+	start := time.Now()
 	if aus, err := systemctl("restart", dienstName); err != nil {
 		fehlerAus("starting the service: " + aus)
 	}
 	fmt.Println("Service set up and started:", datei)
+	fmt.Print("Waiting for its first step … ")
+	if meldung, ok := ersteMeldung(start, 45*time.Second); ok {
+		fmt.Println("\n\n✓ Your agent is running. " + meldung)
+	} else if meldung != "" {
+		fmt.Println("\n\n✗ The service stopped: " + meldung + "\n  Details: journalctl --user -u swarvex -n 50")
+	} else {
+		fmt.Println("no message yet; it keeps starting in the background (first start builds the agent image).")
+	}
 	fmt.Println("  State: swarvex status · Stop: swarvex stop · Log: journalctl --user -u swarvex -f")
 	if aus, _ := exec.Command("loginctl", "show-user", os.Getenv("USER"), "-p", "Linger", "--value").Output(); strings.TrimSpace(string(aus)) != "yes" && !istWSL() {
 		fmt.Println("Note: the service only runs while you are logged in. To keep it working after a reboot")
@@ -180,6 +189,31 @@ func stopBefehl() {
 		fehlerAus(aus)
 	}
 	fmt.Println("Stopped. Continue with: swarvex start")
+}
+
+// ersteMeldung wartet auf die erste aussagekräftige Zeile des Dienstes (Aufgabe reserviert, keine Aufgabe, außerhalb
+// der Zeitfenster) und übersetzt sie für den Abschluss der Einrichtung; ok=false, wenn der Dienst nicht mehr läuft.
+func ersteMeldung(seit time.Time, hoechstens time.Duration) (string, bool) {
+	bis := time.Now().Add(hoechstens)
+	for time.Now().Before(bis) {
+		time.Sleep(2 * time.Second)
+		aus, _ := exec.Command("journalctl", "--user", "-u", "swarvex", "--since", seit.Format("2006-01-02 15:04:05"), "--no-pager", "-o", "cat").Output()
+		for _, zeile := range strings.Split(string(aus), "\n") {
+			switch {
+			case strings.Contains(zeile, " reserved: "):
+				return "It took its first task: " + strings.TrimSpace(zeile) + " Results appear on the project page.", true
+			case strings.HasPrefix(zeile, "No matching task"), strings.HasPrefix(zeile, "No matching open task"):
+				return "No open task fits right now; it checks again regularly.", true
+			case strings.HasPrefix(zeile, "Outside the time windows"), strings.HasPrefix(zeile, "Daily budget used up"):
+				return strings.TrimSpace(zeile), true
+			}
+		}
+		if zustand, _ := systemctl("is-active", dienstName); zustand == "failed" || zustand == "inactive" {
+			letzte := strings.Split(strings.TrimSpace(string(aus)), "\n")
+			return letzte[len(letzte)-1], false
+		}
+	}
+	return "", false
 }
 
 func statusBefehl() {

@@ -136,7 +136,22 @@ else
   "$BIN/swarvex" login --platform "$PLATFORM" $CA_ARG
 fi
 
-case ":$PATH:" in *":$BIN:"*) ;; *) printf '\nNote: %s is not in your PATH; add it, e.g. in ~/.profile:\n  export PATH="$HOME/.local/bin:$PATH"\n' "$BIN" ;; esac
+# ~/.local/bin fehlt im PATH oft, bis man sich neu anmeldet; auf Wunsch in die Shell-Konfiguration eintragen
+case ":$PATH:" in
+  *":$BIN:"*) ;;
+  *)
+    case "${SHELL:-}" in */zsh) RC="$HOME/.zshrc" ;; */bash|"") RC="$HOME/.bashrc" ;; *) RC="" ;; esac
+    answer="n"
+    if [ -n "$RC" ] && ! grep -qs '.local/bin' "$RC" && ( : </dev/tty ) 2>/dev/null; then
+      printf '\n%s is not in your PATH, so the command `swarvex` is not found yet.\nAdd it to %s? [Y/n] ' "$BIN" "$RC"
+      read -r answer </dev/tty || answer="n"
+    fi
+    case "$answer" in
+      ""|[yYjJ]*) printf '\n# added by the swarvex installer\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$RC"
+                  printf '   added; new terminals find `swarvex`. In this terminal run once:  export PATH="$HOME/.local/bin:$PATH"\n' ;;
+      *) printf '\nNote: %s is not in your PATH; add it, e.g. in ~/.profile:\n  export PATH="$HOME/.local/bin:$PATH"\n' "$BIN" ;;
+    esac ;;
+esac
 # Einrichtung gleich anschließen: wenige Fragen, Vorschläge aus dem, was schon da ist (swarvex setup).
 # Über `curl … | sh` ist stdin das Skript, deshalb vom Terminal lesen; ohne Terminal (CI) nur der Hinweis.
 if [ -z "${SWARVEX_NO_SETUP:-}" ] && ( : </dev/tty ) 2>/dev/null; then

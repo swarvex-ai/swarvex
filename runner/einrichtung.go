@@ -645,6 +645,15 @@ func mcpAgentenGefunden() []mcpAgent {
 		// unter WSL nicht die Windows-Programme aus dem angehängten Windows-PATH (/mnt/c/…): die verbindet install.ps1
 		if pfad, err := exec.LookPath(a.Programm); err == nil && !strings.HasPrefix(pfad, "/mnt/") {
 			r = append(r, a)
+			continue
+		}
+		// Installer wie der von Hermes legen ihr Programm in ~/.local/bin ab, das oft (noch) nicht im PATH ist
+		for _, ordner := range []string{heim(".local", "bin"), heim(".npm-global", "bin"), heim(".bun", "bin")} {
+			if info, err := os.Stat(filepath.Join(ordner, a.Programm)); err == nil && !info.IsDir() && info.Mode()&0o111 != 0 {
+				a.Programm = filepath.Join(ordner, a.Programm)
+				r = append(r, a)
+				break
+			}
 		}
 	}
 	return r
