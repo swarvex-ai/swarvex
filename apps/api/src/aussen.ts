@@ -28,6 +28,8 @@ export const FELDER: Record<string, string> = {
   bis: "until", vorwoche: "previous_week", angelegt: "created", neue_menschen: "new_people", offene_freigaben: "open_approvals", hinweise: "hints", wochenberichte: "weekly_reports",
   // public profile (profil.ts)
   abzeichen: "badges", profil_oeffentlich: "public_profile", oeffentlich: "public",
+  // preview feedback (feedback.ts)
+  gut: "good", hakt: "problems", geraet: "device", neu: "new", rueckmeldungen: "feedback",
   nacharbeit: "rework", abgelehnt: "rejected", untere_grenze_prozent: "lower_bound_percent", pruefung_ok_prozent: "check_passed_percent", tokens_median_je_annahme: "median_tokens_per_accepted",
   familien: "kinds", familie: "kind", programme: "programs", programm: "program", anteil_prozent: "share_percent", ausgeblendet: "hidden", methode: "method",
   zeitraum_tage: "window_days", mindestens_bewertet: "min_reviewed", mindestens_mitstreiter: "min_contributors", mindestens_je_zeile: "min_per_row", schluessel: "key", weiterfuehren_regeln: "continuation_rules", deine_rollen: "your_roles", regeln: "rules", clean_room_regeln: "clean_room_rules",
@@ -77,6 +79,7 @@ export const WERTE: Record<string, Record<string, string>> = {
   zustand: {
     offen: "open", reserviert: "reserved", in_arbeit: "in_progress", eingereicht: "submitted", pruefung: "checking",
     geprueft_ok: "checked_ok", geprueft_fehler: "check_failed", angenommen: "accepted", gemerged: "merged", geschlossen: "closed",
+    neu: "new", gesehen: "seen", aufgabe: "task",
     beantwortet: "answered", erledigt: "done", hochgeladen: "uploaded", nacharbeit: "rework", abgelehnt: "rejected", zurueckgezogen: "withdrawn", beendet: "ended",
   },
   rolle: { visionaer: "visionary", lead: "lead", mitstreiter: "contributor" },
@@ -97,7 +100,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     arbeit_begonnen: "work_started", fortschritt: "progress", ergebnis_eingereicht: "result_submitted", einreichung_abgewiesen: "submission_rejected",
     abgebrochen: "abandoned", reservierung_abgelaufen: "reservation_expired", aufgabe_geschlossen: "task_closed", reservierung_beendet_sperre: "reservation_ended_block",
     reservierung_beendet_abmeldung: "reservation_ended_sign_out", pruefung_gestartet: "check_started", pruefung_beendet: "check_finished",
-    zurueck_in_pool: "back_to_pool", vorschau_gebaut: "preview_built", bewertet: "reviewed", gemerged: "merged", mitstreiter_beigetreten: "contributor_joined",
+    zurueck_in_pool: "back_to_pool", vorschau_gebaut: "preview_built", vorschau_feedback: "preview_feedback", bewertet: "reviewed", gemerged: "merged", mitstreiter_beigetreten: "contributor_joined",
     mensch_registriert: "person_registered", agent_angebunden: "agent_connected", agent_abgemeldet: "agent_signed_out",
     anmeldung_abgewiesen: "sign_in_rejected", clean_room_trennung: "clean_room_separation", pruefstrasse_abgewiesen: "pipeline_rejected",
     gegenpruefung_reserviert: "cross_check_reserved", gegenpruefung_zurueckgegeben: "cross_check_returned", rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",

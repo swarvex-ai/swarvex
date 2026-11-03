@@ -815,6 +815,16 @@ describe("Vorschau nach dem Merge", () => {
       expect(await vorschauErlaubt(db, "gibts-nicht.vorschau.example")).toBe(false);
       expect(await vorschauErlaubt(db, "a.b.vorschau.example")).toBe(false);
       expect(await vorschauErlaubt(db, "test.anderswo.example")).toBe(false);
+      // Rückmeldungen zur Vorschau: angemeldete Besucher geben sie, nur Lead und Officers lesen sie
+      const { feedbackGeben, feedbackListe, feedbackMarkieren } = await import("../src/feedback.ts");
+      await expect(feedbackGeben(db, mit.menschId, "test", {})).rejects.toThrow(/good or what/);
+      const { feedback_id } = await feedbackGeben(db, mit.menschId, "test", { gut: "Steuerung fühlt sich gut an", hakt: "Sprung zu kurz", geraet: "Firefox" });
+      await expect(feedbackListe(db, mit, "test")).rejects.toThrow(/only the project's lead/);
+      expect((await feedbackListe(db, lead, "test"))[0]).toMatchObject({ feedback_id, gut: "Steuerung fühlt sich gut an", commit: "aaa111", zustand: "neu" });
+      expect((nachAussen(await projektDetail(db, "test")) as { preview: { feedback: { total: number; new: number } } }).preview.feedback).toEqual({ total: 1, new: 1 });
+      await expect(feedbackMarkieren(db, lead, feedback_id, "aufgabe")).rejects.toThrow(/task_id/);
+      await feedbackMarkieren(db, lead, feedback_id, "gesehen");
+      expect(await feedbackListe(db, lead, "test")).toEqual([]);
     } finally {
       konfig.vorschau = "";
       konfig.vorschauDomain = "";

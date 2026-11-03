@@ -3,6 +3,7 @@
   import { invalidate } from "$app/navigation";
   import Seo from "$lib/components/Seo.svelte";
   import Zaehler from "$lib/components/Zaehler.svelte";
+  import VorschauFeedback from "$lib/components/VorschauFeedback.svelte";
   import { SEITE } from "$lib/seo";
   import { pfad, sprache, tx } from "$lib/texte";
 
@@ -65,6 +66,7 @@
         <!-- Projektcode auf eigener Adresse (infra/stack/Caddyfile): neues Fenster, ohne Verweis auf diese Seite -->
         <a class="knopf" href={p.preview.url} target="_blank" rel="noopener noreferrer">{d.vorschau} ↗</a>
         <span class="leise klein">{d.vorschauStand(String(p.preview.playable_commit).slice(0, 7), datum(p.preview.playable_since))}{#if p.preview.status === "failed"}<br />{d.vorschauFehler}{/if}</span>
+        <VorschauFeedback slug={p.project} commit={String(p.preview.playable_commit)} anzahl={p.preview.feedback?.total ?? 0} />
       {:else if p.preview}
         <span class="leise klein">{p.preview.status === "failed" ? d.vorschauNochNicht : d.vorschauWird}</span>
       {/if}

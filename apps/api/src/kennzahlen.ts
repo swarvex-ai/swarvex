@@ -7,6 +7,7 @@ import { STUFEN_GEWICHT, projektPerSlug } from "./aufgaben.ts";
 import { ketteVerifizieren } from "./ereignisse.ts";
 import { creditSpenden } from "./spenden.ts";
 import { vorschauUrl } from "./konfig.ts";
+import { feedbackZahlen } from "./feedback.ts";
 
 const ERLEDIGT = new Set(["angenommen", "gemerged"]);
 
@@ -182,7 +183,8 @@ export async function projektDetail(db: Db, slug: string) {
   // Spielbare Vorschau: die zuletzt gelungene, dazu der Stand des letzten Baus (z. B. fehlgeschlagen)
   const v = p.vorschau;
   const vorschau = vorschauUrl(slug) && v && v.status !== "none"
-    ? { url: v.ok_commit ? vorschauUrl(slug) : null, ok_commit: v.ok_commit, ok_zeit: v.ok_zeit, commit: v.commit, status: v.status, zeit: v.zeit } : null;
+    ? { url: v.ok_commit ? vorschauUrl(slug) : null, ok_commit: v.ok_commit, ok_zeit: v.ok_zeit, commit: v.commit, status: v.status, zeit: v.zeit,
+        rueckmeldungen: await feedbackZahlen(db, Number(p.id)) } : null;
   return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, vorschau, aufgaben, beitragende, ereignisse, bilanz: await schwarmBilanz(db, Number(p.id)),
            protokoll: { ok: kette.ok, eintraege: kette.anzahl, kopf: kette.kopf,
                         veroeffentlicht: kopf ? { seq: Number(kopf.seq), zeit: kopf.zeit } : null } };

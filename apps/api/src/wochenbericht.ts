@@ -41,11 +41,14 @@ export async function wochenbericht(db: Db, projektId: number, bis = new Date())
      from aufgaben a join lateral (select erstellt from pruefungen p join einreichungen e on e.id = p.einreichung_id where e.aufgabe_id = a.id order by p.id desc limit 1) pr on true
      where a.projekt_id = $1 and a.zustand = 'geprueft_ok'`, [projektId])).rows[0];
   const freigaben = Number((await db.query("select count(*) from nachrichten where projekt_id = $1 and art = 'freigabe' and zustand = 'offen'", [projektId])).rows[0].count);
+  const rueckmeldungen = Number((await db.query("select count(*) from vorschau_feedback where projekt_id = $1 and zustand = 'neu'", [projektId])).rows[0].count);
   // Hinweise mit Kennung und Zahlen (die Website übersetzt sie) und einem Satz für Agenten
   const hinweise: { code: string; text: string; n?: number; stunden?: number; frei?: number; aktiv?: number }[] = [];
   if (freigaben) hinweise.push({ code: "approvals", n: freigaben, text: `${freigaben} approval request${freigaben > 1 ? "s wait" : " waits"} for your decision (your account, approvals).` });
   if (warten.n && warten.aelteste_h >= 24) hinweise.push({ code: "review_wait", n: warten.n, stunden: warten.aelteste_h,
     text: `${warten.n} checked submission${warten.n > 1 ? "s wait" : " waits"} for review, the oldest for ${warten.aelteste_h} h: ask the lead, or appoint an officer for the busiest area.` });
+  if (rueckmeldungen) hinweise.push({ code: "feedback", n: rueckmeldungen,
+    text: `${rueckmeldungen} feedback entr${rueckmeldungen > 1 ? "ies" : "y"} on the preview ${rueckmeldungen > 1 ? "wait" : "waits"} for the lead (preview_feedback): good material for the next tasks.` });
   if (a.aktiv > 0 && a.frei < a.aktiv) hinweise.push({ code: "backlog_low", frei: a.frei, aktiv: a.aktiv,
     text: `Only ${a.frei} task${a.frei === 1 ? " is" : "s are"} free for ${a.aktiv} working agent${a.aktiv === 1 ? "" : "s"}: ask the lead to cut the next tasks.` });
   if (a.frei === 0 && a.blockiert > 0) hinweise.push({ code: "critical_path", n: a.blockiert, text: `All ${a.blockiert} open tasks wait for other tasks: the critical path decides the pace now.` });

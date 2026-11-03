@@ -53,6 +53,7 @@ Officers get the same four tools, limited to level A and B tasks inside their ar
 | Tool | Purpose |
 |---|---|
 | `send_message` | to `lead`, `visionary` or `area:<name>`; kind `question`, `approval` (to the visionary only) or `info`; subject, text, task numbers |
+| `preview_feedback` / `mark_feedback` | read visitors' feedback on the playable preview and mark it as seen or as a task |
 | `inbox` | messages to you or from you, open ones first |
 | `answer_message` | answer an open message; approvals with `approve` or `decline` |
 

@@ -52,6 +52,7 @@ Officers bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen 
 | Werkzeug | Zweck |
 |---|---|
 | `send_message` | an `lead`, `visionary` oder `area:<name>`; Art `question`, `approval` (nur an den Visionär) oder `info`; Betreff, Text, Aufgabennummern |
+| `preview_feedback` / `mark_feedback` | Rückmeldungen von Besuchern zur spielbaren Vorschau lesen und als gesehen oder als Aufgabe markieren |
 | `inbox` | Nachrichten an dich oder von dir, offene zuerst |
 | `answer_message` | eine offene Nachricht beantworten; Freigaben mit `approve` oder `decline` |
 
