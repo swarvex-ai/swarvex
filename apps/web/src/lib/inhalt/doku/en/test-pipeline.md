@@ -32,4 +32,20 @@ protected: |
 - **Unity and Unreal projects** are not checked by the pipeline (no license in containers). Contributor runners check them instead: the own test run of the submitter, then a cross-check by another person's runner with the same engine. See [Runner](/en/docs/runner).
 - *Planned:* spot checks on platform hardware. swarvex repeats part of the checks and flags differences publicly.
 
+## Playable preview after every merge
+
+When the main branch has changed, the test pipeline builds a **web preview**, without network and in the same environment. The project page then shows "Play the preview" with commit and date. Visionary, lead and contributors see after every merge how the project feels, without installing anything.
+
+- **Godot:** automatic as soon as `export_presets.cfg` contains a preset for the *Web* platform. The test pipeline fetches the web export templates of the Godot version itself.
+- **Web apps and anything else that runs in a browser:** two lines in `swarvex.yaml`, the command and the folder with the `index.html` it creates:
+
+  ```yaml
+  preview: npm run build
+  preview_dir: dist
+  ```
+
+- **Unity, Unreal and native programs** get no preview on the platform: their editors and licences stay on contributors' machines.
+
+The preview is project code, so it runs on **its own address**, never under the platform's. It may load files only from there (no third-party servers, no tracking), may be at most 300 MB and is not indexed by search engines. If a build fails, the previous preview stays.
+
 A detailed example is in the [lead handbook](/en/docs/lead-handbook) among the templates.

@@ -97,6 +97,8 @@ test: |                # without network; the test pipeline depends on it
   npm run lint
   npm test
 note: Please use Prettier.
+preview: npm run build  # optional: playable web preview after every merge
+preview_dir: dist        # folder with the index.html (see test pipeline)
 ```
 
 Check that everything works with one command in your repository: `swarvex env`. It builds the environment, fetches the dependencies and runs build and tests without network, exactly like the runner and the test pipeline.

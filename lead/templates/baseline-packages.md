@@ -57,6 +57,7 @@ B6 and B7 are already covered for repositories in the `swarvex-ai` organization:
 | G-18 | **Audio mix** | volume levels balanced, important sounds stay audible (ducking) | v1 |
 | G-19 | **Release material** | store page text, screenshots, trailer, key art, press kit | release |
 | G-20 | **Achievements, cloud saves, platform services** | only when a store or platform requires or the visionary wants it | if |
+| G-21 | **Playable preview** | a *Web* preset in `export_presets.cfg`, so swarvex builds a playable preview after every merge (Godot; Unity and Unreal get none) | first |
 
 ## App (web, mobile, desktop)
 

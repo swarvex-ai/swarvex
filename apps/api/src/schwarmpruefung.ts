@@ -3,11 +3,13 @@
 // Zustimmungen automatisch angenommen; ab Stufe B entscheiden Lead oder Officer, mit den Fremdprüfungen als Vorarbeit.
 // Wer prüft: nicht der Einreicher, nicht Lead oder Visionär des Projekts, Vertrauensstufe ab 1, in Clean-Room-Projekten nur von
 // derselben Seite der Trennwand wie die Aufgabe. Jede Fremdprüfung steht mit Urteil im öffentlichen Protokoll.
+// Nennt der Prüfer sein Modell, kommen Einreichungen eines anderen Modells zuerst: Ein zweites Modell findet andere Fehler.
 import type { Db, Tx } from "./db.ts";
 import { transaktion } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, rollenVon, variantenSchliessen, wechseln, type Wer } from "./aufgaben.ts";
 import { raeumeVon, trennwand } from "./cleanroom.ts";
+import { modellSchluessel } from "./modelle.ts";
 
 /** Zustimmungen verschiedener Menschen, nach denen eine Aufgabe der Stufe A ohne Lead angenommen wird. */
 export const AUTO_ANNAHME = { stufen: ["A"], zustimmungen: 2 };
@@ -28,10 +30,10 @@ async function darfPruefen(tx: Db | Tx, wer: Wer, a: { projekt_id: number | stri
 }
 
 /** Geprüfte Einreichungen, die auf Fremdprüfungen warten und die diese Person prüfen darf (ein Projekt oder alle). */
-export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: string) {
+export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: string, modell?: string) {
   const r = (await db.query(
     `select e.id::int as einreichung_id, a.id::int as aufgabe_id, p.slug as projekt, a.titel, a.beschreibung, a.akzeptanz, a.pfade, a.stufe, a.raum,
-       a.projekt_id, ag.mensch_id::int as autor, e.zusammenfassung, e.patch, pr.bericht,
+       a.projekt_id, ag.mensch_id::int as autor, e.modell as autor_modell, e.zusammenfassung, e.patch, pr.bericht,
        (select count(*)::int from fremdpruefungen f where f.einreichung_id = e.id and f.urteil = 'zustimmen') as zustimmungen
      from aufgaben a join projekte p on p.id = a.projekt_id
      join lateral (select * from einreichungen where aufgabe_id = a.id order by id desc limit 1) e on true
@@ -42,6 +44,12 @@ export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: stri
      order by e.id limit 50`, [wer.menschId, projektSlug ?? null])).rows;
   const erlaubt = [];
   for (const z of r) if (!(await darfPruefen(db, wer, z, z.autor))) erlaubt.push(z);
+  // anderes Modell zuerst (stabil sortiert, sonst in der Reihenfolge des Eingangs)
+  if (modell?.trim()) {
+    const eigenes = modellSchluessel(modell);
+    const gleich = (z: { autor_modell: string | null }) => (z.autor_modell && modellSchluessel(z.autor_modell) === eigenes ? 1 : 0);
+    erlaubt.sort((x, y) => gleich(x) - gleich(y));
+  }
   return erlaubt.slice(0, 20).map(({ projekt_id, autor, raum, ...z }) => ({
     ...z, bericht: String(z.bericht ?? "").slice(-4000),
     automatisch_ab: AUTO_ANNAHME.stufen.includes(z.stufe) ? AUTO_ANNAHME.zustimmungen : null,
@@ -49,7 +57,7 @@ export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: stri
 }
 
 /** Fremdprüfung abgeben; bei Stufe A und genug Zustimmungen wird die Aufgabe automatisch angenommen. */
-export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urteil: "zustimmen" | "aenderungen", begruendung: string) {
+export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urteil: "zustimmen" | "aenderungen", begruendung: string, modell?: string) {
   if (begruendung.trim().length < 20) throw new Abgelehnt("reason: at least one concrete sentence (20 characters)");
   return transaktion(db, async (tx) => {
     const e = (await tx.query("select e.*, ag.mensch_id::int as autor from einreichungen e join agenten ag on ag.id = e.agent_id where e.id = $1", [einreichungId])).rows[0];
@@ -61,14 +69,14 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
     const nein = await darfPruefen(tx, wer, a, e.autor);
     if (nein) throw new Abgelehnt(nein);
     try {
-      await tx.query("insert into fremdpruefungen(einreichung_id, agent_id, mensch_id, urteil, begruendung) values ($1,$2,$3,$4,$5)",
-        [einreichungId, wer.agentId, wer.menschId, urteil, begruendung.trim().slice(0, 4000)]);
+      await tx.query("insert into fremdpruefungen(einreichung_id, agent_id, mensch_id, urteil, begruendung, modell) values ($1,$2,$3,$4,$5,$6)",
+        [einreichungId, wer.agentId, wer.menschId, urteil, begruendung.trim().slice(0, 4000), modell?.trim().slice(0, 120) || null]);
     } catch (err) {
       if ((err as { code?: string }).code === "23505") throw new Abgelehnt("you already reviewed this submission");
       throw err;
     }
     await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: `agent:${wer.agentId}`, art: "fremdpruefung", bezug: `aufgabe:${a.id}`,
-      daten: { einreichung: einreichungId, urteil } });
+      daten: { einreichung: einreichungId, urteil, anderes_modell: modell?.trim() && e.modell ? modellSchluessel(modell) !== modellSchluessel(e.modell) : null } });
     const alle = (await tx.query(
       "select f.urteil, f.begruendung, f.agent_id, m.login from fremdpruefungen f join menschen m on m.id = f.mensch_id where f.einreichung_id = $1 order by f.id", [einreichungId])).rows;
     const zu = alle.filter((f) => f.urteil === "zustimmen");

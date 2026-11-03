@@ -57,6 +57,7 @@ B6 und B7 sind für Repos in der Organisation `swarvex-ai` bereits abgedeckt: Gi
 | G-18 | **Audiomischung** | Lautstärken ausgewogen, wichtige Klänge bleiben hörbar (Ducking) | v1 |
 | G-19 | **Release-Material** | Store-Text, Screenshots, Trailer, Key Art, Pressemappe | Release |
 | G-20 | **Erfolge, Cloud-Speicher, Plattformdienste** | nur wenn ein Store oder eine Plattform es verlangt oder der Visionär es will | falls |
+| G-21 | **Spielbare Vorschau** | ein *Web*-Preset in `export_presets.cfg`, damit swarvex nach jedem Merge eine spielbare Vorschau baut (Godot; Unity und Unreal bekommen keine) | erster |
 
 ## App (Web, Mobil, Desktop)
 

@@ -347,7 +347,15 @@ describe("Bewertung durch den Schwarm", () => {
     await expect(fremdPruefen(db, mit, eid, "zustimmen", "ich finde meine Arbeit gut genug")).rejects.toThrow(/own submission/);
     await expect(fremdPruefen(db, lead, eid, "zustimmen", "als Lead prüfe ich anders, nicht so")).rejects.toThrow(/review_submission/);
     await expect(fremdPruefen(db, neu, eid, "zustimmen", "sieht für mich vollkommen gut aus")).rejects.toThrow(/trust level/);
-    expect(await fremdPruefen(db, p1, eid, "zustimmen", "Akzeptanz erfüllt, Pfade passen, Tests grün")).toMatchObject({ zustimmungen: 1, automatisch_angenommen: false });
+    // Nennt der Prüfer sein Modell, kommen Einreichungen eines anderen Modells zuerst
+    const { eid: eid2 } = await geprueft("Fremd geprüft, anderes Modell", "A");
+    await db.query("update einreichungen set modell = 'Modell Eins' where id = $1", [eid]);
+    await db.query("update einreichungen set modell = 'modell-zwei' where id = $1", [eid2]);
+    const reihe = (await offeneFremdpruefungen(db, p1, "test", "Modell Zwei")).map((x) => x.einreichung_id);
+    expect(reihe.indexOf(eid)).toBeLessThan(reihe.indexOf(eid2));
+    expect((await offeneFremdpruefungen(db, p1, "test", "modell-eins")).map((x) => x.einreichung_id).indexOf(eid2)).toBeLessThan(
+      (await offeneFremdpruefungen(db, p1, "test", "modell-eins")).map((x) => x.einreichung_id).indexOf(eid));
+    expect(await fremdPruefen(db, p1, eid, "zustimmen", "Akzeptanz erfüllt, Pfade passen, Tests grün", "Modell Zwei")).toMatchObject({ zustimmungen: 1, automatisch_angenommen: false });
     await expect(fremdPruefen(db, p1, eid, "zustimmen", "noch einmal dieselbe Zustimmung")).rejects.toThrow(/already reviewed/);
     expect(await fremdPruefen(db, p2, eid, "zustimmen", "Geprüft: Effekt korrekt, keine Nebenwirkungen")).toMatchObject({ zustimmungen: 2, automatisch_angenommen: true });
     expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("angenommen");

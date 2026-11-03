@@ -11,6 +11,10 @@ test: |
   tools/run_tests.sh --headless tests/vertraege
   tools/measure.sh --frame-ms-p95 8 --ladezeit-ms 200
 note: Create scenes only through the editor import; constants live in src/konstanten.gd.
+# Playable web preview after every merge: automatic for Godot when export_presets.cfg has a Web preset.
+# Other projects name the command and the folder with the index.html it creates:
+#   preview: npm run build
+#   preview_dir: dist
 protected: |
   - project.godot
   - tools/**

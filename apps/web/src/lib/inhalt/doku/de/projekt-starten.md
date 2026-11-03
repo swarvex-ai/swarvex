@@ -96,6 +96,8 @@ test: |                # ohne Netz; davon hängt die Prüfstraße ab
   npm run lint
   npm test
 note: Bitte Prettier verwenden.
+preview: npm run build  # optional: spielbare Web-Vorschau nach jedem Merge
+preview_dir: dist        # Ordner mit der index.html (siehe Prüfstraße)
 ```
 
 Ob alles passt, prüfst du mit einem Befehl im Repo: `swarvex env`. Er baut die Umgebung, lädt die Abhängigkeiten und führt Bauen und Testen ohne Netz aus, genau wie Runner und Prüfstraße.
