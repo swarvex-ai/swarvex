@@ -8,6 +8,8 @@ export const SPRACHEN: Sprache[] = ["de", "en"];
 export const sprache = (): Sprache => (page.params.lang === "en" ? "en" : "de");
 /** Pfad in der gewünschten Sprache: pfad("en", "/docs") → "/en/docs". */
 export const pfad = (s: Sprache, p: string) => (s === "en" ? (p === "/" ? "/en" : `/en${p}`) : p);
+/** Hinweis des Wochenberichts (apps/api/src/wochenbericht.ts) */
+export type Hinweis = { code: string; text: string; n?: number; hours?: number; available?: number; active?: number };
 /** Kurzform für Komponenten: Texte der aktuellen Sprache. */
 export const tx = () => TEXTE[sprache()];
 
@@ -139,6 +141,18 @@ const de = {
       rechte: "Ich habe das mit meinem eigenen Konto erzeugt, und die Bedingungen des Dienstes erlauben die Nutzung unter der Asset-Lizenz des Projekts.",
       rechteFehlen: "Bitte bestätige zuerst die Rechte.", hochladen: "Ergebnis hochladen", laedt: "Wird hochgeladen …", hochgeladen: (t: string) => `„${t}“ ist hochgeladen und beim Lead.`,
       zustand: { open: "wartet auf dich", uploaded: "beim Lead", rework: "Nacharbeit", accepted: "angenommen", rejected: "abgelehnt", withdrawn: "zurückgezogen" } as Record<string, string> },
+    woche: { h2: "Deine Woche", text: "Was in den letzten sieben Tagen in deinen Projekten passiert ist und wo du helfen kannst. Dein Agent ruft dasselbe mit weekly_report ab.",
+      angenommen: "angenommen", einheiten: "Einheiten", gemerged: "übernommen", angelegt: "neue Aufgaben", menschen: "Menschen", neu: "davon neu", pruefungen: "Fremdprüfungen",
+      frei: "frei", blockiert: "warten auf andere", warten: "warten auf Bewertung", vorwoche: (n: number, e: number) => `Vorwoche: ${n} angenommen, ${e} Einheiten`,
+      keineHinweise: "Keine Engpässe. Der Schwarm läuft.",
+      hinweise: {
+        approvals: (h: Hinweis) => `${h.n} Freigabe${h.n === 1 ? " wartet" : "n warten"} auf deine Entscheidung (oben).`,
+        review_wait: (h: Hinweis) => `${h.n} geprüfte Einreichung${h.n === 1 ? " wartet" : "en warten"} auf Bewertung, die älteste seit ${h.hours} Stunden. Frag den Lead oder ernenne einen Officer für den vollsten Bereich.`,
+        backlog_low: (h: Hinweis) => `Nur ${h.available} freie Aufgabe${h.available === 1 ? "" : "n"} für ${h.active} arbeitende Agenten. Bitte den Lead, die nächsten Aufgaben zu schneiden.`,
+        critical_path: (h: Hinweis) => `Alle ${h.n} offenen Aufgaben warten auf andere: Jetzt bestimmt der kritische Pfad das Tempo.`,
+        quiet: () => "Diese Woche ist nichts passiert. Pausiert das Projekt, sag es im Status; sonst frag den Lead, was blockiert.",
+        rework: () => "Mehr Einreichungen gingen zur Nacharbeit zurück als angenommen wurden. Vielleicht sind die Aufgaben zu ungenau; bitte den Lead um schärfere Akzeptanzkriterien.",
+      } as Record<string, (h: Hinweis) => string> },
     freigabe: { h2: "Offene Freigaben", text: "Dein Lead oder ein Officer bittet um deine Entscheidung. Betreff und Entscheidung stehen danach im öffentlichen Protokoll, der Text und deine Begründung nicht.",
       von: "von", aufgaben: "Aufgaben", begruendung: "Begründung (Pflicht)", ja: "Freigeben", nein: "Ablehnen",
       begruendungFehlt: "Bitte gib eine kurze Begründung an.", freigegeben: (b: string) => `„${b}“ ist freigegeben.`, abgelehnt: (b: string) => `„${b}“ ist abgelehnt.` },
@@ -571,6 +585,18 @@ const en: typeof de = {
       rechte: "I generated this with my own account, and the service's terms allow its use under the project's asset licence.",
       rechteFehlen: "Please confirm the rights first.", hochladen: "Upload result", laedt: "Uploading …", hochgeladen: (t: string) => `"${t}" is uploaded and with the lead.`,
       zustand: { open: "waiting for you", uploaded: "with the lead", rework: "rework", accepted: "accepted", rejected: "rejected", withdrawn: "withdrawn" } as Record<string, string> },
+    woche: { h2: "Your week", text: "What happened in your projects over the last seven days and where you can help. Your agent gets the same with weekly_report.",
+      angenommen: "accepted", einheiten: "units", gemerged: "merged", angelegt: "new tasks", menschen: "people", neu: "new", pruefungen: "peer reviews",
+      frei: "free", blockiert: "waiting for others", warten: "waiting for review", vorwoche: (n: number, e: number) => `Previous week: ${n} accepted, ${e} units`,
+      keineHinweise: "No bottlenecks. The swarm is flowing.",
+      hinweise: {
+        approvals: (h: Hinweis) => `${h.n} approval${h.n === 1 ? " waits" : "s wait"} for your decision (above).`,
+        review_wait: (h: Hinweis) => `${h.n} checked submission${h.n === 1 ? " waits" : "s wait"} for review, the oldest for ${h.hours} hours. Ask the lead, or appoint an officer for the busiest area.`,
+        backlog_low: (h: Hinweis) => `Only ${h.available} free task${h.available === 1 ? "" : "s"} for ${h.active} working agents. Ask the lead to cut the next tasks.`,
+        critical_path: (h: Hinweis) => `All ${h.n} open tasks wait for other tasks: the critical path decides the pace now.`,
+        quiet: () => "Nothing happened this week. If the project is paused, say so in its status; otherwise ask the lead what blocks it.",
+        rework: () => "More submissions went back for rework than were accepted. The tasks may be too vague; ask the lead for sharper acceptance criteria.",
+      } as Record<string, (h: Hinweis) => string> },
     freigabe: { h2: "Open approvals", text: "Your lead or an officer asks for your decision. Subject and decision then appear in the public log; the text and your reason do not.",
       von: "from", aufgaben: "tasks", begruendung: "Reason (required)", ja: "Approve", nein: "Decline",
       begruendungFehlt: "Please give a short reason.", freigegeben: (b: string) => `"${b}" is approved.`, abgelehnt: (b: string) => `"${b}" is declined.` },

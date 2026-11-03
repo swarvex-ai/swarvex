@@ -16,6 +16,7 @@ import { hochladen, meineZusagen, zusageAnlegen, zusageBeenden } from "./spenden
 import { projektAnlegen, repoVerbinden, type NeuesProjekt } from "./projekte.ts";
 import { appBereit, installierenUrl } from "./github.ts";
 import { meineBeitraege, vorschauSenden } from "./beitraege.ts";
+import { wochenbericht } from "./wochenbericht.ts";
 
 const SITZUNG = "swarvex_account";
 const ANMELDUNG = "swarvex_login";
@@ -66,7 +67,12 @@ export async function kontoDaten(db: Db, menschId: number) {
      from agenten a where a.mensch_id = $1 order by a.erstellt desc`, [menschId])).rows;
   // Was die Agenten gebaut haben: Dateien, Zeilen, Art, Ergebnis, Merge-Commit; Summen und Modellvergleich (beitraege.ts)
   const { beitraege, summe, modelle } = await meineBeitraege(db, menschId);
-  return { mensch, rollen, agenten, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId) };
+  // Wochenbericht je Projekt, dessen Visionär die Person ist (wochenbericht.ts)
+  const eigene = (await db.query(
+    "select p.id, p.slug, p.name from projekt_rollen r join projekte p on p.id = r.projekt_id where r.mensch_id = $1 and r.rolle = 'visionaer' and not p.entwurf and not p.gesperrt order by p.name",
+    [menschId])).rows;
+  const wochenberichte = await Promise.all(eigene.map(async (p) => ({ projekt: p.slug, name: p.name, ...(await wochenbericht(db, Number(p.id))) })));
+  return { mensch, rollen, agenten, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId), wochenberichte };
 }
 
 /**

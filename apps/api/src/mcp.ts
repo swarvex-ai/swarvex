@@ -17,6 +17,7 @@ import type { Db } from "./db.ts";
 import * as k from "./aufgaben.ts";
 import { nacharbeitMuster } from "./lernen.ts";
 import { fremdPruefen, offeneFremdpruefungen } from "./schwarmpruefung.ts";
+import { wochenbericht } from "./wochenbericht.ts";
 import { aufArbeitWarten, WECKEN } from "./fluss.ts";
 import { kennzahlen } from "./kennzahlen.ts";
 import { gegenpruefungMelden, naechsteGegenpruefung } from "./gegenpruefung.ts";
@@ -70,6 +71,11 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       ...(p.projektart === "forschung" ? { forschung: p.forschung, forschung_regeln: FORSCHUNG_REGELN } : {}),
       ...(p.verfahren === "continuation" ? { upstream: p.upstream, weiterfuehren_regeln: WEITERFUEHREN_REGELN } : {}) };
   }));
+
+  s.registerTool("weekly_report", {
+    description: "The last seven days of a project for its visionary: tasks created, accepted (with units), merged, rework, people and new people, peer reviews, tokens, the previous week for comparison, what is free or blocked now, and hints on bottlenecks the visionary can resolve.",
+    inputSchema: { project: z.string() },
+  }, sicher(async ({ project }) => wochenbericht(db, Number((await k.projektPerSlug(db, project)).id))));
 
   s.registerTool("metrics", {
     description: "A project's status: progress in %, active agents, open tasks, last event. The website shows the same numbers.",

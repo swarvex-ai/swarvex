@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import Seo from "$lib/components/Seo.svelte";
   import RepoVerbinden from "$lib/components/RepoVerbinden.svelte";
-  import { pfad, sprache, tx } from "$lib/texte";
+  import { pfad, sprache, tx, type Hinweis } from "$lib/texte";
 
   type Agent = { id: number; name: string; client_id: string; created: string; signed_out: string | null; signed_in: boolean;
                  last: string | null; reservations: number; submissions: number };
@@ -17,7 +17,9 @@
   type Modell = { agent_program: string; model: string; submissions: number; accepted: number; acceptance_percent: number; tokens_per_accepted: number | null };
   type Konto = { person: { login: string; provider: string; created: string; trust_level: number };
                  roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean }[]; agents: Agent[]; contributions: Beitrag[];
-                 total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[] };
+                 total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[]; weekly_reports?: Woche[] };
+  type Woche = { project: string; name: string; week: Record<string, number>; previous_week: { accepted: number; units: number };
+                 now: { available: number; blocked: number; active: number; awaiting_review: number }; hints: Hinweis[] };
   type Auftrag = { brief_id: number; title: string; instructions: string; target_path: string; file_types: string[]; max_mb: number; credits: number;
                    state: string; file_name: string | null; uploaded: string | null; reason: string | null };
   type Zusage = { pledge_id: number; project: string; project_name: string; service: string; credits: number; expires: string; note: string; state: string; briefs: Auftrag[] };
@@ -192,6 +194,31 @@
             </li>
           {/each}
         </ul>
+      </section>
+    {/if}
+
+    {#if konto.weekly_reports?.length}
+      <section aria-labelledby="t-woche">
+        <h2 id="t-woche">{t.woche.h2}</h2>
+        <p class="leise einleitung">{t.woche.text}</p>
+        {#each konto.weekly_reports as w (w.project)}
+          <div class="woche">
+            <h3><a href={pfad(s, `${projektPfad}/${w.project}`)}>{w.name}</a></h3>
+            <dl class="wochenzahlen">
+              <div><dt>{t.woche.angenommen}</dt><dd>{w.week.accepted} <span class="leise">· {w.week.units} {t.woche.einheiten}</span></dd></div>
+              <div><dt>{t.woche.gemerged}</dt><dd>{w.week.merged}</dd></div>
+              <div><dt>{t.woche.angelegt}</dt><dd>{w.week.created}</dd></div>
+              <div><dt>{t.woche.menschen}</dt><dd>{w.week.people} <span class="leise">· {t.woche.neu} {w.week.new_people}</span></dd></div>
+              <div><dt>{t.woche.pruefungen}</dt><dd>{w.week.peer_reviews}</dd></div>
+              <div><dt>{t.woche.frei}</dt><dd>{w.now.available} <span class="leise">· {t.woche.blockiert} {w.now.blocked}</span></dd></div>
+              <div><dt>{t.woche.warten}</dt><dd>{w.now.awaiting_review}</dd></div>
+            </dl>
+            <p class="leise klein">{t.woche.vorwoche(w.previous_week.accepted, w.previous_week.units)}</p>
+            {#if w.hints.length}
+              <ul class="hinweise">{#each w.hints as h}<li>{(t.woche.hinweise[h.code] ?? (() => h.text))(h)}</li>{/each}</ul>
+            {:else}<p class="klein">{t.woche.keineHinweise}</p>{/if}
+          </div>
+        {/each}
       </section>
     {/if}
 
@@ -470,6 +497,12 @@
     .knoepfe { justify-content: flex-start; }
   }
   .freigaben { list-style: none; padding: 0; display: grid; gap: 14px; }
+  .woche { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: 16px 18px; display: grid; gap: 10px; margin-top: 12px; }
+  .woche h3 { margin: 0; font-size: 1.05rem; }
+  .wochenzahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 18px; margin: 0; }
+  .wochenzahlen dt { color: var(--leise); font-size: .82rem; }
+  .wochenzahlen dd { margin: 0; font: 500 1.05rem var(--schrift); }
+  .hinweise { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
   .freigabe { border: 1px solid var(--linie); border-radius: 10px; padding: 14px 16px; }
   .freigabe h3 { margin: 0 0 4px; font-size: 1.05rem; }
   .freigabe .inhalt { white-space: pre-wrap; margin: 10px 0; }

@@ -721,6 +721,29 @@ describe("Modell-Rangliste", () => {
   });
 });
 
+describe("Wochenbericht", () => {
+  it("zählt die letzten sieben Tage, vergleicht mit der Vorwoche und nennt Engpässe", async () => {
+    const { wochenbericht } = await import("../src/wochenbericht.ts");
+    const { nachAussen } = await import("../src/aussen.ts");
+    const p = await k.projektPerSlug(db, "test");
+    const w = nachAussen(await wochenbericht(db, Number(p.id))) as { week: Record<string, number>; now: Record<string, number>; hints: string[]; previous_week: Record<string, number> };
+    expect(w.week.created).toBeGreaterThan(0);
+    expect(w.week.accepted).toBeGreaterThan(0);
+    expect(w.week.units).toBeGreaterThanOrEqual(w.week.accepted);
+    expect(w.previous_week).toMatchObject({ accepted: 0 });
+    expect(Array.isArray(w.hints)).toBe(true);
+    const { kontoDaten } = await import("../src/konto.ts");
+    // im Konto nur für Projekte, deren Visionär man ist
+    expect((nachAussen(await kontoDaten(db, mit.menschId)) as { weekly_reports: unknown[] }).weekly_reports).toEqual([]);
+    await db.query("insert into projekt_rollen(projekt_id, mensch_id, rolle) values ($1, $2, 'visionaer') on conflict do nothing", [p.id, lead.menschId]);
+    try {
+      expect((nachAussen(await kontoDaten(db, lead.menschId)) as { weekly_reports: { project: string }[] }).weekly_reports.map((r) => r.project)).toContain("test");
+    } finally {
+      await db.query("delete from projekt_rollen where projekt_id = $1 and mensch_id = $2 and rolle = 'visionaer'", [p.id, lead.menschId]);
+    }
+  });
+});
+
 describe("Aufgaben-Feed", () => {
   it("liefert offene Aufgaben als Atom, gefiltert nach Fähigkeit und Stufe, mit maskiertem Text", async () => {
     const { aufgabenFeed } = await import("../src/feed.ts");

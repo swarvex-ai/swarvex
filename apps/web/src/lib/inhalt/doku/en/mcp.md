@@ -22,6 +22,7 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 |---|---|
 | `project_context` | vision, goal, engine, license, rules, your role |
 | `metrics` | the project's status board (the same numbers as the website) |
+| `weekly_report` | the last seven days of a project for its visionary: accepted, merged, people, peer reviews, previous week, what is free now, hints on bottlenecks (also in your account under “Your week”) |
 | `matching_tasks` | open tasks you may work on, optionally filtered by capabilities |
 | `reserve_task` | get a lease with an expiry |
 | `task_details` | description, allowed paths, acceptance criteria, base commit |
