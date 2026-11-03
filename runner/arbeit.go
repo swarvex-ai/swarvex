@@ -286,15 +286,15 @@ func arbeitenBefehl(args []string) {
 	}
 	verbrauch, protokoll, err := sandboxAusfuehren(ctx, a, u, image, arbeitsbaum, cache, ordner, agent, skills, zugang, *modell, *budget, nil)
 	stopp()
-	if err := verbrauchMerken(verbrauchsDatei(), id, tokensAus(verbrauch), time.Now()); err != nil {
+	if err := verbrauchMerken(verbrauchsDatei(), id, budgetTokensAus(verbrauch), time.Now()); err != nil {
 		fmt.Fprintln(os.Stderr, "recording usage:", err)
 	}
 	gestoppt()
 	// Token-Budget erreicht: was der Agent bis dahin erarbeitet hat, geht als Einreichung weiter (Prüfung und Bewertung
 	// entscheiden), statt verworfen zu werden; ohne Ergebnis wird die Aufgabe mit klarem Grund zurückgegeben.
-	amBudget := tokensAus(verbrauch) >= int64(*budget)
+	amBudget := budgetTokensAus(verbrauch) >= int64(*budget)
 	if amBudget {
-		fmt.Printf("Token budget reached (%d of %d tokens). Submitting what the agent produced so far; raise the budget with `swarvex setup`.\n", tokensAus(verbrauch), *budget)
+		fmt.Printf("Token budget reached (%d of %d, cache hits count a tenth). Submitting what the agent produced so far; raise the budget with `swarvex setup`.\n", budgetTokensAus(verbrauch), *budget)
 	} else if err != nil {
 		abbrechen("sandbox: " + err.Error())
 	}
@@ -306,7 +306,7 @@ func arbeitenBefehl(args []string) {
 	}
 	if err != nil || strings.TrimSpace(patch) == "" {
 		if amBudget {
-			abbrechen(fmt.Sprintf("token budget used up (%d of %d tokens) before a result; raise it with `swarvex setup`", tokensAus(verbrauch), *budget))
+			abbrechen(fmt.Sprintf("token budget used up (%d of %d, cache hits count a tenth; %d tokens in all) before a result; raise it with `swarvex setup`", budgetTokensAus(verbrauch), *budget, tokensAus(verbrauch)))
 		}
 		abbrechen("no usable result from the sandbox")
 	}
@@ -770,15 +770,23 @@ var restModus *restRegeln
 
 // verbrauchAusProxy summiert die Anfragen im Protokoll des Schlüssel-Proxys (eine JSON-Zeile je Anfrage).
 func verbrauchAusProxy(protokoll string) map[string]float64 {
-	verbrauch := map[string]float64{"tokens": 0, "requests": 0, "seconds": 0}
+	verbrauch := map[string]float64{"tokens": 0, "cached_tokens": 0, "budget_tokens": 0, "requests": 0, "seconds": 0}
 	for _, zeile := range strings.Split(protokoll, "\n") {
 		var e struct {
-			Art    string  `json:"type"`
-			Tokens float64 `json:"tokens"`
-			Ms     float64 `json:"ms"`
+			Art         string   `json:"type"`
+			Tokens      float64  `json:"tokens"`
+			Cached      float64  `json:"cached"`
+			FuersBudget *float64 `json:"budget_tokens"`
+			Ms          float64  `json:"ms"`
 		}
 		if json.Unmarshal([]byte(zeile), &e) == nil && e.Art == "request" {
 			verbrauch["tokens"] += e.Tokens
+			verbrauch["cached_tokens"] += e.Cached
+			if e.FuersBudget != nil {
+				verbrauch["budget_tokens"] += *e.FuersBudget
+			} else {
+				verbrauch["budget_tokens"] += e.Tokens // Proxy einer älteren Version
+			}
 			verbrauch["requests"]++
 			verbrauch["seconds"] += e.Ms / 1000
 		}

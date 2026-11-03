@@ -30,7 +30,7 @@ Runner (your machine)
 | `swarvex work --project <p\|auto> --model <m> --model-url <url>` | the same with your own options; `auto` takes the project with the most open tasks |
 | `… --schedule "mon-fri 18:00-23:00" --continuous` | keep working, only within the time windows (see [contributor control](/en/docs/contributor-control#time-windows)) |
 | `… --daily-budget-tokens 2000000` | at most this many tokens per day; then the runner waits until midnight |
-| `… --budget-tokens 1000000` | at most this many tokens per task (default 400,000; the setup suggests 1,000,000, because agents resend their context with every step). At the budget the runner submits what the agent has produced, marked as possibly incomplete; without a result the task goes back |
+| `… --budget-tokens 1000000` | at most this many tokens per task (default 400,000; the setup suggests 1,000,000). Agents resend their whole context with every step, so the budget counts tokens the way providers bill them: input read from the cache counts a tenth. The project statistics still show all tokens. At the budget the runner submits what the agent has produced, marked as possibly incomplete; without a result the task goes back |
 | `… --leftover` | beta, subscriptions only: use only the quota that would otherwise expire ([leftover quota](#leftover-quota-beta)) |
 | `swarvex service [same options as work]` | set up as a service: works continuously and starts with the computer (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | stop the service (a running task goes straight back to the pool), start it, show state and today's usage |

@@ -63,3 +63,11 @@ func mitternacht(t time.Time) time.Time {
 func tokensAus(verbrauch map[string]float64) int64 {
 	return int64(verbrauch["tokens"])
 }
+
+// budgetTokensAus: was für Aufgaben- und Tagesbudget zählt (Cache-Treffer zu einem Zehntel).
+func budgetTokensAus(verbrauch map[string]float64) int64 {
+	if v, ok := verbrauch["budget_tokens"]; ok {
+		return int64(v)
+	}
+	return int64(verbrauch["tokens"])
+}

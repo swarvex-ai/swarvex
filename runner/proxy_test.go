@@ -125,3 +125,29 @@ func TestProxyPfadeUndBudget(t *testing.T) {
 		t.Errorf("Budget (verbraucht %d): %d", verbraucht.Load(), c)
 	}
 }
+
+func TestZaehlerFuersBudget(t *testing.T) {
+	faelle := []struct {
+		name     string
+		ereignis string
+		summe    int64
+		budget   int64
+	}{
+		// OpenRouter/OpenAI: 40.000 Eingabe, davon 36.000 aus dem Cache, 500 Ausgabe
+		{"chat-cache", `{"usage":{"prompt_tokens":40000,"completion_tokens":500,"total_tokens":40500,"prompt_tokens_details":{"cached_tokens":36000}}}`, 40500, 40500 - 36000 + 3600},
+		// DeepSeek direkt
+		{"deepseek", `{"usage":{"prompt_tokens":20000,"completion_tokens":100,"total_tokens":20100,"prompt_cache_hit_tokens":19000}}`, 20100, 20100 - 19000 + 1900},
+		// Anthropic: input_tokens ohne Cache
+		{"anthropic", `{"type":"message","usage":{"input_tokens":50,"cache_read_input_tokens":1000,"output_tokens":7}}`, 1057, 1057 - 1000 + 100},
+		// Responses
+		{"responses", `{"type":"response.completed","response":{"usage":{"input_tokens":70,"output_tokens":30,"total_tokens":100,"input_tokens_details":{"cached_tokens":50}}}}`, 100, 100 - 50 + 5},
+		{"ohne-cache", `{"usage":{"total_tokens":100}}`, 100, 100},
+	}
+	for _, f := range faelle {
+		var z zaehler
+		z.lesen([]byte(f.ereignis))
+		if z.summe() != f.summe || z.fuersBudget() != f.budget {
+			t.Errorf("%s: summe %d (soll %d), budget %d (soll %d)", f.name, z.summe(), f.summe, z.fuersBudget(), f.budget)
+		}
+	}
+}

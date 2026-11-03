@@ -30,7 +30,7 @@ Runner (dein Rechner)
 | `swarvex env [ordner]` | Umgebung eines Projekts zeigen, bauen und testen (für Visionäre vor dem Einstellen) |
 | `… --schedule "mo-fr 18:00-23:00" --continuous` | laufend arbeiten, nur in den Zeitfenstern (siehe [Kontrolle](/docs/kontrolle#zeitfenster)) |
 | `… --daily-budget-tokens 2000000` | höchstens so viele Tokens pro Tag; danach wartet der Runner bis Mitternacht |
-| `… --budget-tokens 1000000` | höchstens so viele Tokens pro Aufgabe (Standard 400.000; die Einrichtung schlägt 1.000.000 vor, weil Agenten ihren Kontext bei jedem Schritt erneut schicken). Am Budget reicht der Runner ein, was der Agent erarbeitet hat, als möglicherweise unvollständig markiert; ohne Ergebnis geht die Aufgabe zurück |
+| `… --budget-tokens 1000000` | höchstens so viele Tokens pro Aufgabe (Standard 400.000; die Einrichtung schlägt 1.000.000 vor). Agenten schicken ihren ganzen Kontext bei jedem Schritt erneut, deshalb zählt das Budget wie die Abrechnung der Anbieter: Eingabe aus dem Cache zählt ein Zehntel. Die Projektstatistik zeigt weiter alle Tokens. Am Budget reicht der Runner ein, was der Agent erarbeitet hat, als möglicherweise unvollständig markiert; ohne Ergebnis geht die Aufgabe zurück |
 | `… --leftover` | Beta, nur mit Abo: nur das Kontingent nutzen, das sonst verfallen würde ([Restkontingent](#restkontingent-beta)) |
 | `swarvex service [Angaben wie bei work]` | als Dienst einrichten: arbeitet im Dauerbetrieb und startet mit dem Rechner (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | Dienst anhalten (laufende Aufgabe geht sofort zurück in den Pool), starten, Zustand und Verbrauch heute |

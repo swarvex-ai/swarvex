@@ -245,20 +245,21 @@ func weiterleiten(w http.ResponseWriter, r *http.Request, k proxyKonfig, verbrau
 		w.Write(roh)
 		z.lesen(roh)
 	}
-	tokens := z.summe()
+	tokens, fuersBudget := z.summe(), z.fuersBudget()
 	if !kostet {
-		tokens = 0
+		tokens, fuersBudget = 0, 0
 	}
-	gesamt := verbraucht.Add(tokens)
-	ereignis("request", map[string]any{"status": antwort.StatusCode, "tokens": tokens, "total": gesamt, "ms": time.Since(start).Milliseconds(), "stream": stream, "path": r.URL.Path})
+	gesamt := verbraucht.Add(fuersBudget) // das Budget zählt gewichtet
+	ereignis("request", map[string]any{"status": antwort.StatusCode, "tokens": tokens, "cached": min(z.cache, tokens), "budget_tokens": fuersBudget,
+		"total": gesamt, "ms": time.Since(start).Milliseconds(), "stream": stream, "path": r.URL.Path})
 }
 
-// zaehler sammelt die Nutzung einer Antwort (ganz oder als Folge von SSE-Ereignissen).
-// Gezählt werden alle Tokens, auch aus dem Cache gelesene: So bleibt das Budget für alle
-// Schnittstellen gleich bemessen.
+// zaehler sammelt die Nutzung einer Antwort (ganz oder als Folge von SSE-Ereignissen). summe() zählt alle Tokens
+// (für die Statistik), fuersBudget() gewichtet Cache-Treffer wie die Abrechnung der Anbieter.
 type zaehler struct {
 	gesamt   int64 // Chat Completions, Responses: total_tokens
 	ein, aus int64 // Anthropic: Eingabe (inkl. Cache) und Ausgabe
+	cache    int64 // davon aus dem Cache gelesen
 }
 
 type nutzung struct {
@@ -267,6 +268,14 @@ type nutzung struct {
 	Output        int64 `json:"output_tokens"`
 	CacheCreation int64 `json:"cache_creation_input_tokens"`
 	CacheRead     int64 `json:"cache_read_input_tokens"`
+	// Chat Completions (OpenAI-kompatibel, OpenRouter, DeepSeek) und Responses: aus dem Cache gelesene Eingabe
+	PromptDetails *struct {
+		Cached int64 `json:"cached_tokens"`
+	} `json:"prompt_tokens_details"`
+	InputDetails *struct {
+		Cached int64 `json:"cached_tokens"`
+	} `json:"input_tokens_details"`
+	DeepSeekCacheHit int64 `json:"prompt_cache_hit_tokens"`
 }
 
 func (z *zaehler) lesen(roh []byte) {
@@ -293,6 +302,15 @@ func (z *zaehler) lesen(roh []byte) {
 	if u == nil {
 		return
 	}
+	switch {
+	case u.PromptDetails != nil:
+		z.cache = max(z.cache, u.PromptDetails.Cached)
+	case u.InputDetails != nil:
+		z.cache = max(z.cache, u.InputDetails.Cached)
+	case u.CacheRead > 0:
+		z.cache = max(z.cache, u.CacheRead)
+	}
+	z.cache = max(z.cache, u.DeepSeekCacheHit)
 	if u.Total > 0 {
 		z.gesamt = u.Total
 		return
@@ -300,6 +318,13 @@ func (z *zaehler) lesen(roh []byte) {
 	// Anthropic: Zahlen sind kumulativ (message_start, dann message_delta) → jeweils das Maximum.
 	z.ein = max(z.ein, u.Input+u.CacheCreation+u.CacheRead)
 	z.aus = max(z.aus, u.Output)
+}
+
+// fuersBudget: wie Anbieter abrechnen. Aus dem Cache gelesene Eingabe kostet bei DeepSeek, Anthropic und OpenAI
+// etwa ein Zehntel; Agenten schicken ihren ganzen Kontext bei jedem Schritt erneut, das wäre sonst das Gros.
+func (z zaehler) fuersBudget() int64 {
+	cache := min(z.cache, z.summe())
+	return z.summe() - cache + cache/10
 }
 
 func (z zaehler) summe() int64 {
