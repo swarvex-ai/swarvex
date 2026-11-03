@@ -86,11 +86,18 @@ try {
   Ok "Windows build $build, $($env:PROCESSOR_ARCHITECTURE), WSL $wslVersion"
 
   Step "WSL distribution '$Distro' (Debian)"
-  $vorhanden = @(Native { & wsl.exe --list --quiet 2>$null } | ForEach-Object { "$_".Trim() }) -contains $Distro
-  if (-not $vorhanden) {
+  function DistroThere { @(Native { & wsl.exe --list --quiet 2>$null } | ForEach-Object { "$_".Trim() }) -contains $Distro }
+  if (-not (DistroThere)) {
     Ok 'downloading and installing Debian, usually 2 to 5 minutes ...'
     $code = Waiting (Start-Process wsl.exe -ArgumentList '--install', 'Debian', '--name', $Distro, '--no-launch' -NoNewWindow -PassThru) 'Installing Debian for swarvex' 5
     if ($code -ne 0) { Fail "Installing Debian failed (exit code $code)." }
+    # If a Windows component such as VirtualMachinePlatform was still missing, WSL enables it, reports success
+    # and installs no distribution until Windows has restarted.
+    if (-not (DistroThere)) {
+      Write-Host "`nWindows has enabled a component WSL needs (such as VirtualMachinePlatform); it only works after a restart."
+      Write-Host "Restart Windows, then run the one-liner again:`n    irm $Platform/install.ps1 | iex"
+      return
+    }
     Ok 'installed'
   } else {
     Ok 'already there, updating it'
