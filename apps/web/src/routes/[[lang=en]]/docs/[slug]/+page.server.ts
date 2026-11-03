@@ -16,7 +16,7 @@ export const load = async ({ params }) => {
   const { html, ueberschriften } = await rendern(s);
   const nachbar = (j: number) => (alle[j] ? { slug: alle[j].slug, titel: alle[j].titel } : null);
   return {
-    slug: s.slug, titel: s.titel, gruppe: s.gruppe, beschreibung: s.beschreibung, html, ueberschriften,
+    slug: s.slug, titel: s.titel, gruppe: s.gruppe, beschreibung: s.beschreibung, bild: s.bild, html, ueberschriften,
     zurueck: nachbar(i - 1), weiter: nachbar(i + 1), alternativen: alternativen(s),
     bearbeiten: `${REPO_WEB.replace("/blob/", "/edit/")}/${s.datei}`,
     eingebunden: s.quelle ?? null,

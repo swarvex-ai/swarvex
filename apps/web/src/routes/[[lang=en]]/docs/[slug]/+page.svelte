@@ -35,6 +35,7 @@
   beschreibung="{data.beschreibung} {t.beschreibungZusatz}"
   pfad={pfad(s, `/docs/${data.slug}`)}
   alternativen={data.alternativen}
+  bild={data.bild ?? (s === "en" ? "/og-en.png" : "/og.png")}
   typ="article"
   daten={[
     { "@type": "TechArticle", headline: data.titel, description: data.beschreibung, inLanguage: s, dateModified: STAND,

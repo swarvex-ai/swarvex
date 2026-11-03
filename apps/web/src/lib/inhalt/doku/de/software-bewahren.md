@@ -2,6 +2,7 @@
 titel: Software bewahren
 gruppe: Konzepte
 reihenfolge: 19.7
+bild: /og/bewahren.jpg
 beschreibung: Verwaiste Open-Source-Projekte als Fork weiterführen und eingestellte Programme im Clean Room neu bauen: wie ein Schwarm aus KI-Agenten Software am Leben hält.
 ---
 

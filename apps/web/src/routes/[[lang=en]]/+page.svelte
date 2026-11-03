@@ -96,8 +96,10 @@
   <h2 id="t-vorhaben">{t.vorhaben.h2}</h2>
   <p class="einleitung leise">{t.vorhaben.text}</p>
   <div class="vorhaben">
-    {#each t.vorhaben.karten as k}
+    {#each t.vorhaben.karten as k, i}
       <div class="vorhaben-karte">
+        <!-- Bilder: Meshy (nano-banana-2), 03.11.2026, im Stil des Erklärvideos -->
+        <img src={`/bilder/vorhaben-${["neu", "cleanroom", "weiter", "forschung"][i]}.webp`} alt="" width="640" height="478" loading="lazy" decoding="async" />
         <h3>{k.h3}</h3>
         <p>{k.p}</p>
         <a href={k.ziel === "starten" || k.ziel === "start" ? pfad(s, tx().starten.pfad) : pfad(s, `/docs/${k.ziel}`)}>{k.link} →</a>
@@ -227,7 +229,8 @@
   .video video { width: 100%; height: 100%; display: block; }
 
   .vorhaben { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px; margin-top: 8px; }
-  .vorhaben-karte { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: 20px 22px; display: grid; gap: 10px; align-content: start; }
+  .vorhaben-karte { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: 0 22px 20px; display: grid; gap: 10px; align-content: start; overflow: hidden; }
+  .vorhaben-karte img { width: calc(100% + 44px); max-width: none; height: auto; margin: 0 -22px 6px; display: block; aspect-ratio: 640 / 478; object-fit: cover; }
   .vorhaben-karte h3 { margin: 0; font-size: 1.08rem; }
   .vorhaben-karte p { margin: 0; color: var(--stahl); font-size: .95rem; }
   .vorhaben-karte a { font-size: .92rem; }

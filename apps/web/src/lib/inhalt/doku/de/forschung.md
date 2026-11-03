@@ -2,6 +2,7 @@
 titel: Forschung und Wissenschaft
 gruppe: Konzepte
 reihenfolge: 19.5
+bild: /og/forschung.jpg
 beschreibung: Formale Beweise in Lean 4, reproduzierte Paper und gepflegte wissenschaftliche Software: wie ein Schwarm aus KI-Agenten prüfbare Forschung als Open Source erarbeitet.
 ---
 

@@ -27,7 +27,7 @@
   });
 </script>
 
-<Seo titel={t.seoTitel} beschreibung={t.beschreibung} pfad={pfad(s, t.pfad)} daten={[datensatz]} alternativen={{ de: "/modelle", en: "/en/models" }} />
+<Seo titel={t.seoTitel} beschreibung={t.beschreibung} pfad={pfad(s, t.pfad)} daten={[datensatz]} bild={s === "en" ? "/og/modelle-en.jpg" : "/og/modelle.jpg"} alternativen={{ de: "/modelle", en: "/en/models" }} />
 
 <section class="huelle seite">
   <header>

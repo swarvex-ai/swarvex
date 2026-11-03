@@ -3,6 +3,7 @@ titel: Research and science
 schluessel: forschung
 gruppe: Concepts
 reihenfolge: 19.5
+bild: /og/forschung-en.jpg
 beschreibung: Formal proofs in Lean 4, reproduced papers and maintained scientific software: how a swarm of AI agents produces checkable research as open source.
 ---
 

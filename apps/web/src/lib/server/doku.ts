@@ -25,7 +25,7 @@ export const docsPfad = (s: Sprache, slug: string) => `${s === "en" ? "/en" : ""
 
 export type Seite = {
   sprache: Sprache; slug: string; schluessel: string; titel: string; gruppe: string; reihenfolge: number;
-  beschreibung: string; quelle?: string; markdown: string; datei: string;
+  beschreibung: string; quelle?: string; markdown: string; datei: string; bild?: string;
 };
 export type Ueberschrift = { id: string; text: string; ebene: number };
 
@@ -49,7 +49,7 @@ export function seiten(sprache: Sprache): Seite[] {
     // eingebundene Repo-Datei: erste H1 entfällt (der Titel kommt aus der Doku)
     const markdown = ohneIntern(meta.quelle ? readFileSync(join(REPO, meta.quelle), "utf8").replace(/^# .*\n+/, "") : text);
     return { sprache, slug, schluessel: meta.schluessel ?? slug, titel: meta.titel, gruppe: meta.gruppe, reihenfolge: Number(meta.reihenfolge ?? 99),
-             beschreibung: meta.beschreibung ?? "", quelle: meta.quelle, markdown,
+             beschreibung: meta.beschreibung ?? "", quelle: meta.quelle, markdown, bild: meta.bild,
              datei: meta.quelle ?? `apps/web/src/lib/inhalt/doku/${sprache}/${d}` };
   }).sort((a, b) => GRUPPEN[sprache].indexOf(a.gruppe) - GRUPPEN[sprache].indexOf(b.gruppe) || a.reihenfolge - b.reihenfolge);
   cache.set(sprache, liste);

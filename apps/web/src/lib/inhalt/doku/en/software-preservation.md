@@ -3,6 +3,7 @@ titel: Software preservation
 schluessel: software-bewahren
 gruppe: Concepts
 reihenfolge: 19.7
+bild: /og/bewahren-en.jpg
 beschreibung: Continue abandoned open-source projects as a fork and rebuild discontinued programs in a clean room: how a swarm of AI agents keeps software alive.
 ---
 
