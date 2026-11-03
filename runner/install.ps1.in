@@ -25,10 +25,18 @@ function Ask($question, [bool]$default = $true) {
   if ([string]::IsNullOrWhiteSpace($a)) { return $default }
   return $a.Trim().ToLower() -in @('y', 'yes', 'j', 'ja')
 }
-function Wsl { & wsl.exe @args; if ($LASTEXITCODE -ne 0) { Fail "wsl.exe $($args -join ' ') failed (exit code $LASTEXITCODE)" } }
+# Windows PowerShell 5.1 turns every line a program writes to stderr into an error, and with 'Stop' the script would end
+# right there (for example when wsl.exe says that WSL is not installed yet). Programs therefore run with 'Continue';
+# their exit code decides.
+function Native([scriptblock]$command) {
+  $before = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try { & $command } finally { $ErrorActionPreference = $before }
+}
+function Wsl { $a = $args; Native { & wsl.exe @a }; if ($LASTEXITCODE -ne 0) { Fail "wsl.exe $($a -join ' ') failed (exit code $LASTEXITCODE)" } }
 function InDistro($script) {
   # runs a shell script as root inside the distribution; the script comes through stdin, so Windows quoting cannot break it
-  $script -replace "`r", '' | & wsl.exe -d $Distro -u root -- sh -s
+  Native { $script -replace "`r", '' | & wsl.exe -d $Distro -u root -- sh -s }
   if ($LASTEXITCODE -ne 0) { Fail "Setting up the distribution failed (exit code $LASTEXITCODE)." }
 }
 
@@ -39,7 +47,8 @@ try {
   if ($env:PROCESSOR_ARCHITECTURE -notin @('AMD64', 'ARM64')) { Fail "Processor $($env:PROCESSOR_ARCHITECTURE) is not supported." }
   $wslVersion = $null
   if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
-    $out = (& wsl.exe --version 2>$null) -join "`n"
+    # without WSL, wsl.exe only says so on stderr; that is not an error here but the answer "missing"
+    $out = Native { (& wsl.exe --version 2>$null) -join "`n" }
     if ($LASTEXITCODE -eq 0 -and $out -match '(\d+)\.(\d+)\.(\d+)') { $wslVersion = [version]"$($Matches[1]).$($Matches[2]).$($Matches[3])" }
   }
   if (-not $wslVersion) {
@@ -57,7 +66,7 @@ try {
   Ok "Windows build $build, $($env:PROCESSOR_ARCHITECTURE), WSL $wslVersion"
 
   Step "WSL distribution '$Distro' (Debian)"
-  $vorhanden = @(& wsl.exe --list --quiet 2>$null | ForEach-Object { $_.Trim() }) -contains $Distro
+  $vorhanden = @(Native { & wsl.exe --list --quiet 2>$null } | ForEach-Object { "$_".Trim() }) -contains $Distro
   if (-not $vorhanden) {
     Wsl --install Debian --name $Distro --no-launch
     Ok 'installed'
@@ -80,7 +89,7 @@ mkdir -p /var/lib/systemd/linger && touch /var/lib/systemd/linger/$User
   Ok 'Podman and systemd ready'
 
   Step 'Installing the runner inside the distribution'
-  & wsl.exe -d $Distro -u $User --cd '~' -- sh -c "curl -fsSL $Platform/install.sh | sh"
+  Native { & wsl.exe -d $Distro -u $User --cd '~' -- sh -c "curl -fsSL $Platform/install.sh | sh" }
   if ($LASTEXITCODE -ne 0) { Write-Host "`nThe setup inside did not finish. Continue any time with: swarvex setup" }
 
   Step "The 'swarvex' command for Windows"
@@ -142,7 +151,7 @@ if (`$was -eq 'uninstall') {
     Ok "No Claude Code, Codex or Gemini CLI found on Windows. Other agents: add the MCP server $mcp"
   } elseif (Ask "Also connect $(($agenten | ForEach-Object { $_.Titel }) -join ', ') directly (design, texts, reviews; no code runs on your machine)?") {
     foreach ($a in $agenten) {
-      & $a.Programm @($a.Befehl) 2>&1 | Out-Null
+      Native { & $a.Programm @($a.Befehl) 2>&1 | Out-Null }
       if ($LASTEXITCODE -eq 0) { Ok "$($a.Titel) connected. Sign in: $($a.Anmelden)" } else { Ok "$($a.Titel): could not add (already connected?)" }
     }
   }
@@ -150,5 +159,9 @@ if (`$was -eq 'uninstall') {
   Write-Host "`nDone. In a new terminal: swarvex work (one task), swarvex status, swarvex stop, swarvex setup (change settings), swarvex uninstall."
 } catch [Stop] {
   Write-Host "`nx $($_.Exception.Message)" -ForegroundColor Red
+} catch {
+  # anything unexpected: say where, so it can be reported, instead of a bare PowerShell error
+  Write-Host "`nx Unexpected error: $($_.Exception.Message)" -ForegroundColor Red
+  Write-Host "  at line $($_.InvocationInfo.ScriptLineNumber). Please report it: https://github.com/swarvex-ai/swarvex/issues"
 }
 }
