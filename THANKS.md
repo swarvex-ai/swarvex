@@ -59,6 +59,7 @@ swarvex stands on the shoulders of these projects. Without them we would not exi
 | [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | Design rules |
 | [Claude SEO](https://github.com/AgriciDaniel/claude-seo) | MIT | Copy and search engines |
 | [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) | MIT | Godot 4.7 engine reference and game rules for leads and agents |
+| [superpowers (Jesse Vincent)](https://github.com/obra/superpowers) | MIT | Planning for strangers, review verdicts and starter skills in the lead handbook |
 | [ai-paper-reproduction-skill](https://github.com/lllllllama/ai-paper-reproduction-skill) | MIT | Ideas for the reproduction and literature role cards |
 | [claude-scientific-skills (K-Dense)](https://github.com/K-Dense-AI/claude-scientific-skills) | MIT | Ideas for the research role cards (hypotheses, statistics, provenance) |
 | [knowledge-work-plugins (Anthropic)](https://github.com/anthropics/knowledge-work-plugins) | Apache-2.0 | Synthesis method in the user research role cards |
