@@ -19,13 +19,13 @@ template: godot
 dir: game
 test: |
   gdlint src tests
-  tools/run_tests.sh --headless
+  ../tools/run_tests.sh --headless
 protected: |
-  - tools/**
+  - ../tools/**
   - tests/vertraege/**
 ```
 
-- **Geschützte Pfade** ändern nur Lead und Visionär. Der Prüfvertrag kann sich also nicht selbst aufweichen.
+- **Geschützte Pfade** ändern nur Lead und Visionär. Der Prüfvertrag kann sich also nicht selbst aufweichen. Wie die Befehle gelten sie relativ zu `dir`; `../` erreicht die Wurzel des Repos (hier `game/tests/vertraege/**` und mit `../tools/**` der Ordner `tools/` in der Wurzel). Ein Pfad ohne `../` ist zusätzlich ab der Wurzel geschützt, ältere Dateien funktionieren also weiter. Ein Pfad außerhalb des Repos ist ein Fehler.
 - Ohne Testbefehl meldet die Prüfstraße „keine automatischen Tests“, und der Lead prüft von Hand. Für einen echten Schwarm sollte jedes Projekt Tests haben.
 - Nimmt der Lead an, übernimmt der **Merge-Bot** den Beitrag. Er hält als Einziger einen Schreibschlüssel und schreibt Herkunftsangaben in den Commit.
 - **Unity- und Unreal-Projekte** prüft nicht die Prüfstraße (keine Lizenz im Container), sondern die Runner der Mitstreiter: der eigene Testlauf des Einreichenden, dann eine Gegenprüfung durch den Runner eines anderen Menschen mit derselben Engine. Siehe [Runner](/docs/runner).

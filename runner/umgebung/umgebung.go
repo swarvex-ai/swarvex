@@ -199,6 +199,11 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 			return u, fmt.Errorf("swarvex.yaml: unknown key %q (allowed: template, image, dir, setup, build, test, note, protected, preview, preview_dir, docs, docs_dir)", k)
 		}
 	}
+	geschuetzt, err := geschuetztAufWurzel(u.Ordner, u.Geschuetzt)
+	if err != nil {
+		return u, err
+	}
+	u.Geschuetzt = geschuetzt
 	if u.Image == "" && u.Basis == "" && u.Dockerfile == "" {
 		return u, fmt.Errorf("swarvex.yaml: neither template nor image given and no project type detected")
 	}
@@ -215,6 +220,41 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 		return u, fmt.Errorf("swarvex.yaml: docs_dir must be a folder inside the project")
 	}
 	return u, nil
+}
+
+// geschuetztAufWurzel: geschützte Pfade in swarvex.yaml gelten wie die Befehle relativ zu dir
+// („../“ erreicht die Wurzel des Repos). Ergebnis: Pfade relativ zur Wurzel. Ein Pfad ohne „../“
+// bleibt zusätzlich auch ab der Wurzel geschützt (ältere Projekte schrieben ihn so); doppelt
+// schützen schadet nicht, zu wenig schützen schon. Ein Pfad, der aus dem Repo führt, ist ein Fehler.
+func geschuetztAufWurzel(ordner string, muster []string) ([]string, error) {
+	var aus []string
+	gesehen := map[string]bool{}
+	dazu := func(g string) {
+		if !gesehen[g] {
+			gesehen[g] = true
+			aus = append(aus, g)
+		}
+	}
+	for _, g := range muster {
+		roh := strings.TrimPrefix(strings.TrimSpace(g), "./")
+		if roh == "" {
+			continue
+		}
+		if strings.HasPrefix(roh, "/") {
+			return nil, fmt.Errorf("swarvex.yaml: protected path %q must be relative (to dir, or to the repository root without dir)", g)
+		}
+		voll := path.Clean(path.Join(ordner, roh))
+		if voll == ".." || strings.HasPrefix(voll, "../") || voll == "." {
+			return nil, fmt.Errorf("swarvex.yaml: protected path %q points outside the repository", g)
+		}
+		dazu(voll)
+		if ordner != "" && !strings.HasPrefix(roh, "../") {
+			if eigen := path.Clean(roh); eigen != "." && !strings.HasPrefix(eigen, "../") {
+				dazu(eigen)
+			}
+		}
+	}
+	return aus, nil
 }
 
 func yamlLesen(text string) (map[string]string, error) {

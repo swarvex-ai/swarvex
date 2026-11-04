@@ -308,7 +308,14 @@ func arbeitenBefehl(args []string) {
 		if amBudget {
 			abbrechen(fmt.Sprintf("token budget used up (%d of %d, cache hits count a tenth; %d tokens in all) before a result; raise it with `swarvex setup`", budgetTokensAus(verbrauch), *budget, tokensAus(verbrauch)))
 		}
-		abbrechen("no usable result from the sandbox")
+		switch {
+		case err != nil:
+			abbrechen("could not build the patch: " + kuerzen(err.Error(), 300))
+		case verworfen > 0:
+			abbrechen(fmt.Sprintf("no change in the allowed paths (%s); %d changes elsewhere were discarded", strings.Join(a.Pfade, ", "), verworfen))
+		default:
+			abbrechen(fmt.Sprintf("the agent finished without changing the allowed paths (%s)", strings.Join(a.Pfade, ", ")))
+		}
 	}
 	if fehler := patchVorpruefen(patch, a.Pfade, u); len(fehler) > 0 {
 		abbrechen("patch violates the task: " + strings.Join(fehler, "; "))

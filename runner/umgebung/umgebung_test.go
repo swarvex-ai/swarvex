@@ -198,3 +198,29 @@ func TestVorschau(t *testing.T) {
 		}
 	}
 }
+
+// Geschützte Pfade gelten relativ zu dir (wie in Rend&Run: dir: game, ../tools/run_tests.sh)
+// und kommen als Pfade ab der Wurzel heraus; aus dem Repo heraus ist ein Fehler.
+func TestGeschuetztRelativZuDir(t *testing.T) {
+	yaml := "template: godot\ndir: game\nprotected: |\n  - project.godot\n  - tests/manifest.txt\n  - ../tools/run_tests.sh\n  - ../docs/vision.md\n"
+	u, err := Ermitteln(projekt(t, map[string]string{"game/project.godot": "config_version=5\n", "swarvex.yaml": yaml}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{"game/project.godot", "game/tests/manifest.txt", "tools/run_tests.sh", "docs/vision.md", "project.godot"} {
+		if !u.Gesperrt(p) {
+			t.Errorf("%s muss gesperrt sein (%v)", p, u.Geschuetzt)
+		}
+	}
+	for _, g := range u.Geschuetzt {
+		if strings.HasPrefix(g, "../") || strings.HasPrefix(g, "/") {
+			t.Errorf("Pfad nicht ab der Wurzel: %q", g)
+		}
+	}
+	if u.Gesperrt("docs/test-triage/a.md") || u.Gesperrt("game/enemy.gd") {
+		t.Errorf("zu viel gesperrt: %v", u.Geschuetzt)
+	}
+	if _, err := Ermitteln(projekt(t, map[string]string{"go.mod": "module x", "swarvex.yaml": "dir: app\nprotected: |\n  - ../../etc/passwd\n"})); err == nil {
+		t.Error("Pfad außerhalb des Repos muss ein Fehler sein")
+	}
+}

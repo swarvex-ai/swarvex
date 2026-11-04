@@ -18,7 +18,8 @@ note: Szenen nur über den Editor-Import anlegen; Konstanten stehen in src/konst
 # Doku, Blueprint oder Ergebnisbericht, nach jedem Merge unter /docs/ veröffentlicht:
 #   docs: cargo doc --no-deps
 #   docs_dir: target/doc
+# Geschützte Pfade gelten wie die Befehle relativ zu dir; ../ erreicht die Wurzel des Repos.
 protected: |
   - project.godot
-  - tools/**
+  - ../tools/**
   - tests/vertraege/**

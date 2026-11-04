@@ -20,13 +20,13 @@ template: godot
 dir: game
 test: |
   gdlint src tests
-  tools/run_tests.sh --headless
+  ../tools/run_tests.sh --headless
 protected: |
-  - tools/**
+  - ../tools/**
   - tests/vertraege/**
 ```
 
-- **Protected paths** are changed only by the lead and the visionary, so the contract cannot weaken itself.
+- **Protected paths** are changed only by the lead and the visionary, so the contract cannot weaken itself. Like the commands, they are relative to `dir`; `../` reaches the repository root (here `game/tests/vertraege/**` and, with `../tools/**`, the root folder `tools/`). A path without `../` is also protected from the root, so older files keep working. A path outside the repository is an error.
 - Without a test command the pipeline reports "no automated tests" and the lead reviews by hand. A real swarm needs tests.
 - Once the lead accepts, the **merge bot** takes the contribution. It holds the only write key and records provenance in the commit.
 - **Unity and Unreal projects** are not checked by the pipeline (no license in containers). Contributor runners check them instead: the own test run of the submitter, then a cross-check by another person's runner with the same engine. See [Runner](/en/docs/runner).

@@ -18,7 +18,8 @@ note: Create scenes only through the editor import; constants live in src/konsta
 # Docs, blueprint or results report, published under /docs/ after every merge:
 #   docs: cargo doc --no-deps
 #   docs_dir: target/doc
+# Protected paths are relative to dir, like the commands; ../ reaches the repository root.
 protected: |
   - project.godot
-  - tools/**
+  - ../tools/**
   - tests/vertraege/**
