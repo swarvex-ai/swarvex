@@ -51,7 +51,7 @@ Alles läuft nur auf dem Rechner der Analysierenden, nie in der Sandbox des Runn
 Die Plattform setzt sie pro Mensch und Projekt durch:
 
 - Wer in `analysis` gearbeitet hat (auch beim Prüfen), bekommt im selben Projekt keine Aufgaben aus `build` oder `review` angeboten und kann sie nicht reservieren. Wer gebaut hat, kann nicht mehr analysieren.
-- Officers gehören zu einem Raum; ihr Amt zählt für die Trennwand wie eine Reservierung.
+- Bereichs-Leads gehören zu einem Raum; ihr Amt zählt für die Trennwand wie eine Reservierung.
 - Bauende bekommen nur die freigegebene Spezifikation: Entwürfe, Prüfrunden und offene Fragen fehlen in ihrem Arbeitsstand.
 - Jeder Versuch, die Wand zu überschreiten, steht im Protokoll (`clean_room_separation`). Die Projektseite zeigt, wie viele Menschen in welchem Raum gearbeitet haben und ob die Trennung gehalten hat.
 
@@ -69,4 +69,4 @@ Clean Room ist ein anerkanntes Verfahren, kein Freibrief. Ob ein Projekt zuläss
 
 ## Für den Lead
 
-Das Lead-Handbuch beschreibt die Schleife unter „Clean-Room-Nachbau“, die Rollenkarten in `lead/roles/cleanroom/` (Analyse, Spezifikationsprüfung, Bau, Verifikation, Compliance) geben jeder Rolle ihre Aufgaben, ihre Prüfliste und ihr Officer-Mandat, und das Interview hat einen eigenen Fragenbaum. Beim Anlegen einer Aufgabe ist `room` Pflicht; die Plattform prüft, dass Analyse und Prüfung nur unter `specification/` schreiben und der Bau nie.
+Das Lead-Handbuch beschreibt die Schleife unter „Clean-Room-Nachbau“, die Rollenkarten in `lead/roles/cleanroom/` (Analyse, Spezifikationsprüfung, Bau, Verifikation, Compliance) geben jeder Rolle ihre Aufgaben, ihre Prüfliste und ihr Bereichs-Lead-Mandat, und das Interview hat einen eigenen Fragenbaum. Beim Anlegen einer Aufgabe ist `room` Pflicht; die Plattform prüft, dass Analyse und Prüfung nur unter `specification/` schreiben und der Bau nie.

@@ -61,7 +61,7 @@ As always, the key stays in the key proxy. Watch the provider's quantization: so
 
 ## Frontier models
 
-Via the runner with your own key or your subscription (Claude Code, Codex) (both stay in the key proxy, the sandbox never sees them), or as your own agent via MCP. For level C tasks, architecture-heavy work and reviews, they are currently clearly ahead of local models. **As a lead or officer, a frontier model is recommended** (not required): you cut and review the work of many others ([Roles and officers](/en/docs/roles-and-officers)).
+Via the runner with your own key or your subscription (Claude Code, Codex) (both stay in the key proxy, the sandbox never sees them), or as your own agent via MCP. For level C tasks, architecture-heavy work and reviews, they are currently clearly ahead of local models. **As a lead or area lead, a frontier model is recommended** (not required): you cut and review the work of many others ([Roles and area leads](/en/docs/roles-and-area-leads)).
 
 **Skills** are folders with a `SKILL.md`: instructions, and optionally scripts, that the agent loads only when they fit. Since December 2025 this has been an open standard ([agentskills.io](https://agentskills.io)). Claude Code, Codex, Gemini CLI, opencode, Goose and many others read the same files.
 

@@ -181,14 +181,18 @@ describe("Officers (lead/roles)", () => {
     const o = { menschId: fremd.menschId, agentId: fremd.agentId };
     await expect(k.officerErnennen(db, lead, "test", "fremd", "audio", ["game/audio/**"], ["asset.audio"])).rejects.toThrow(/visionary/);
     await expect(k.officerErnennen(db, vis, "test", "fremd", "audio", ["**"], ["asset.audio"])).rejects.toThrow(/whole repository/);
+    // Bereichs-Leads brauchen Vertrauensstufe 2 (E-35)
+    await expect(k.officerErnennen(db, vis, "test", "fremd", "audio", ["game/audio/**"], ["asset.audio", "text.*"])).rejects.toThrow(/trust level 0; area leads need level 2/);
+    await db.query("update menschen set vertrauensstufe = 2 where login = 'fremd'");
     await k.officerErnennen(db, vis, "test", "fremd", "audio", ["game/audio/**"], ["asset.audio", "text.*"]);
+    expect((await db.query("select vertrauensstufe from menschen where login = 'fremd'")).rows[0].vertrauensstufe).toBe(3);
     const basis = { beschreibung: "Klang", akzeptanz: ["ok"], meilenstein: "M1" };
     const t = await k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "UI-Klänge", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/audio/ui/**"] });
     expect(t.rolle).toBe("audio");
-    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Fremder Pfad", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/player/**"] })).rejects.toThrow(/officer for this area/);
-    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Zu groß", stufe: "C", faehigkeiten: ["asset.audio"], pfade: ["game/audio/**"] })).rejects.toThrow(/officer for this area/);
-    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Code", stufe: "B", faehigkeiten: ["code.gdscript"], pfade: ["game/audio/x.gd"] })).rejects.toThrow(/officer for this area/);
-    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Trick", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/audio/../player/**"] })).rejects.toThrow(/officer for this area/);
+    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Fremder Pfad", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/player/**"] })).rejects.toThrow(/area lead for this area/);
+    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Zu groß", stufe: "C", faehigkeiten: ["asset.audio"], pfade: ["game/audio/**"] })).rejects.toThrow(/area lead for this area/);
+    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Code", stufe: "B", faehigkeiten: ["code.gdscript"], pfade: ["game/audio/x.gd"] })).rejects.toThrow(/area lead for this area/);
+    await expect(k.aufgabeAnlegen(db, o, "test", { ...basis, titel: "Trick", stufe: "A", faehigkeiten: ["asset.audio"], pfade: ["game/audio/../player/**"] })).rejects.toThrow(/area lead for this area/);
     // Bewerten im Bereich; eine Lead-Aufgabe außerhalb sieht und bewertet er nicht
     const PATCH_AUDIO = "diff --git a/game/audio/ui/klick.txt b/game/audio/ui/klick.txt\nnew file mode 100644\n--- /dev/null\n+++ b/game/audio/ui/klick.txt\n@@ -0,0 +1 @@\n+klick\n";
     await k.reservieren(db, mit, t.id);
@@ -197,7 +201,7 @@ describe("Officers (lead/roles)", () => {
     await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
     const fremdeAufgabe = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Lead-Aufgabe"));
     expect((await k.wartendeEinreichungen(db, o, "test")).map((x) => Number(x.aufgabe_id))).toEqual([Number(t.id)]);
-    await expect(k.schliessen(db, o, fremdeAufgabe.id, "nicht meins")).rejects.toThrow(/officer for this area/);
+    await expect(k.schliessen(db, o, fremdeAufgabe.id, "nicht meins")).rejects.toThrow(/area lead for this area/);
     await k.bewerten(db, o, e.einreichung_id, "annehmen", "passt zur Sound Bible");
     // Bilanz und Kennzahlen zeigen den Officer
     const kz = await kennzahlen(db, "test");
@@ -230,12 +234,13 @@ describe("Nachrichten (Lead, Visionär, Officers)", () => {
     };
     const vis = await neuer("msgvis"), off = await neuer("msgoff");
     await db.query("insert into projekt_rollen select id, $1, 'visionaer' from projekte where slug = 'test'", [vis.menschId]);
+    await db.query("update menschen set vertrauensstufe = 2 where login = 'msgoff'");
     await k.officerErnennen(db, vis, "test", "msgoff", "ux", ["game/ui/**"], ["design.ui"]);
     // Mitstreiter ohne Rolle schreiben nicht
     await expect(n.nachrichtSenden(db, mit, "test", { an: "lead", art: "frage", betreff: "Hallo", inhalt: "x" })).rejects.toThrow(/only the project's lead/);
     // Officer fragt den Lead
     const f = await n.nachrichtSenden(db, off, "test", { an: "lead", art: "frage", betreff: "Fokus im Menü", inhalt: "Soll Zurück immer B sein?" });
-    await expect(n.nachrichtSenden(db, off, "test", { an: "bereich:audio", art: "frage", betreff: "Klang", inhalt: "x" })).rejects.toThrow(/no active officer/);
+    await expect(n.nachrichtSenden(db, off, "test", { an: "bereich:audio", art: "frage", betreff: "Klang", inhalt: "x" })).rejects.toThrow(/no active area lead/);
     await expect(n.nachrichtSenden(db, off, "test", { an: "lead", art: "freigabe", betreff: "Release", inhalt: "x" })).rejects.toThrow(/approvals go to the visionary/);
     expect((await n.offeneFuerMich(db, lead.menschId, (await k.projektPerSlug(db, "test")).id))?.offen).toBe(1);
     expect((await kennzahlen(db, "test")).lead_bilanz.nachrichten_offen).toBe(1);
@@ -571,12 +576,13 @@ describe("Clean Room (E-26)", () => {
     const visAgent = Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'crvis-agent','crvis-agent') returning id", [vis])).rows[0].id);
     await db.query("insert into projekt_rollen values ($1,$2,'visionaer')", [cr, vis]);
     const v = { menschId: vis, agentId: visAgent };
+    await db.query("update menschen set vertrauensstufe = greatest(vertrauensstufe, 2) where login in ('fremd', 'mitstreiterin')");
     await expect(k.officerErnennen(db, v, "cr", "fremd", "analyst", ["specification/drafts/**"], ["text.*"])).rejects.toThrow(/needs a room/);
     await expect(k.officerErnennen(db, v, "cr", "fremd", "analyst", ["specification/drafts/**"], ["text.*"], "analyse")).rejects.toThrow(/fremd has already worked in room "build"/);
     await k.officerErnennen(db, v, "cr", "mitstreiterin", "analyst", ["specification/drafts/**"], ["spec"], "analyse");
     const o = { menschId: mit.menschId, agentId: mit.agentId };
     await k.aufgabeAnlegen(db, o, "cr", { ...basis, titel: "Format beschreiben", stufe: "A", raum: "analyse", pfade: ["specification/drafts/format.md"] });
-    await expect(k.aufgabeAnlegen(db, o, "cr", { ...basis, titel: "Prüfen", stufe: "A", raum: "pruefung", pfade: ["specification/drafts/format.md"] })).rejects.toThrow(/officer's room/);
+    await expect(k.aufgabeAnlegen(db, o, "cr", { ...basis, titel: "Prüfen", stufe: "A", raum: "pruefung", pfade: ["specification/drafts/format.md"] })).rejects.toThrow(/area lead's room/);
     await expect(k.officerErnennen(db, v, "test", "fremd", "audio", ["game/audio/**"], ["asset.audio"], "bau")).rejects.toThrow(/visionary|only exist in clean-room/);
     await k.officerBeenden(db, v, "cr", "analyst", "Test");
   });
@@ -1138,5 +1144,99 @@ describe("Anmeldung: Zustimmung und Geräte-Bestätigung", () => {
     expect(r.text).not.toContain("<img src=x");
     expect(r.text).toContain("&#60;img");
     expect(r.text).toMatch(/Only confirm if you started this sign-in yourself|Bestätige nur, wenn du diese Anmeldung gerade selbst/);
+  });
+});
+
+describe("Vertrauensstufen im Ablauf (E-35)", () => {
+  it("drei Merges heben auf Stufe 1, eine Regression stuft sofort ab, alles im Protokoll", async () => {
+    const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea','aufsteiger','aufsteiger') returning id")).rows[0].id);
+    const wer = { menschId: m, agentId: Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'auf-agent','auf-agent') returning id", [m])).rows[0].id) };
+    const stufe = async () => Number((await db.query("select vertrauensstufe from menschen where id = $1", [m])).rows[0].vertrauensstufe);
+    const ids: number[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe(`Aufstieg ${i}`), meilenstein: "M1", neuer_meilenstein: false });
+      await k.reservieren(db, wer, a.id);
+      const e = (await k.einreichen(db, wer, a.id, { patch: PATCH_OK.replaceAll("neu.gd", `auf${i}.gd`), zusammenfassung: "fertig", eigene_tests: "ok", verbrauch: {} })) as { einreichung_id: number };
+      await k.pruefungStarten(db, e.einreichung_id);
+      await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
+      await k.bewerten(db, lead, e.einreichung_id, "annehmen", "gut");
+      expect(await stufe()).toBe(0);
+      await k.gemergedMelden(db, e.einreichung_id, `c${i}`);
+      ids.push(Number(a.id));
+    }
+    expect(await stufe()).toBe(1);
+    const auf = (await db.query("select daten from ereignisse where art = 'vertrauen_geaendert' and bezug = $1 order by seq", [`mensch:${m}`])).rows;
+    expect(auf.at(-1)!.daten).toMatchObject({ von: 0, nach: 1, anlass: "merged" });
+    // Regression: nur Lead oder Bereichs-Lead, nur gemergte Aufgaben, mit Grund
+    await expect(k.regressionMelden(db, mit, ids[0], "Das Spiel stürzt beim Start ab, seit dieser Beitrag drin ist.")).rejects.toThrow(/lead/);
+    await expect(k.regressionMelden(db, lead, ids[0], "kurz")).rejects.toThrow(/at least 20/);
+    const r = await k.regressionMelden(db, lead, ids[0], "Das Spiel stürzt beim Start ab, seit dieser Beitrag drin ist.");
+    expect(r.vertrauen).toEqual({ von: 1, nach: 0 });
+    expect(await stufe()).toBe(0);
+    await expect(k.regressionMelden(db, lead, ids[0], "Das Spiel stürzt beim Start ab, seit dieser Beitrag drin ist.")).rejects.toThrow(/already reported/);
+    // Der Stand für Konto und Agenten sagt, was fehlt
+    const { vertrauenStand } = await import("../src/vertrauen.ts");
+    const st = await vertrauenStand(db, m);
+    expect(st).toMatchObject({ stufe: 0, gemerged: 3, naechste: { stufe: 1 } });
+    expect(st.naechste!.fehlt.join()).toMatch(/no regression for (89|90) more days/);
+  });
+});
+
+describe("Bereichs-Leads automatisch (E-35)", () => {
+  it("lädt bei Last den passenden Kandidaten ein; Zusage, Freigabe, Stufe 3; ruhige Amtszeiten enden von selbst", async () => {
+    const b = await import("../src/bereichsleads.ts");
+    const { OFFICER_SCHWELLEN } = await import("../src/kennzahlen.ts");
+    const neu = async (login: string) => {
+      const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea',$1,$1) returning id", [login])).rows[0].id);
+      return { menschId: m, agentId: Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,$2,$2) returning id", [m, login + "-agent"])).rows[0].id) };
+    };
+    const kand = await neu("kandidatin"), vis = await neu("bl-vis");
+    await db.query("insert into projekt_rollen select id, $1, 'visionaer' from projekte where slug = 'test'", [vis.menschId]);
+    const rolle = { meilenstein: "M1", neuer_meilenstein: false, beschreibung: "Geschichte", akzeptanz: ["ok"], stufe: "B" as const, faehigkeiten: ["text.story"], pfade: ["game/story/**"], rolle: "narrative" };
+    for (let i = 1; i <= 2; i++) {
+      const a = await k.aufgabeAnlegen(db, lead, "test", { ...rolle, titel: `Szene ${i}` });
+      await k.reservieren(db, kand, a.id);
+      const e = (await k.einreichen(db, kand, a.id, { patch: PATCH_OK.replaceAll("game/modules/vfx/neu.gd", `game/story/s${i}.md`), zusammenfassung: "Szene", eigene_tests: "ok", verbrauch: {} })) as { einreichung_id: number };
+      await k.pruefungStarten(db, e.einreichung_id);
+      await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
+      await k.bewerten(db, lead, e.einreichung_id, "annehmen", "gut");
+      await k.gemergedMelden(db, e.einreichung_id, `s${i}`);
+    }
+    await k.aufgabeAnlegen(db, lead, "test", { ...rolle, titel: "Szene 3" }); // noch offen
+    // Schwellen für den Test niedrig, damit die Bilanz die Rolle empfiehlt
+    const alt = { ...OFFICER_SCHWELLEN };
+    Object.assign(OFFICER_SCHWELLEN, { offen_je_rolle: 0, einreichungen_je_rolle_30t: 1 });
+    try {
+      // Ohne Stufe 2 niemand
+      expect(await b.kandidaten(db, Number((await db.query("select id from projekte where slug='test'")).rows[0].id), "narrative")).toEqual([]);
+      await db.query("update menschen set vertrauensstufe = 2 where id = $1", [kand.menschId]);
+      expect(await b.vorschlaegeErzeugen(db)).toBeGreaterThanOrEqual(1);
+      expect(await b.vorschlaegeErzeugen(db)).toBe(0); // nicht doppelt
+    } finally { Object.assign(OFFICER_SCHWELLEN, alt); }
+    const meine = await b.bereichsLeadsFuer(db, kand.menschId);
+    const einl = meine.einladungen.find((x) => x.bereich === "narrative")!;
+    expect(einl).toMatchObject({ projekt: "test", pfade: ["game/story/**"], faehigkeiten: ["text.story"] });
+    await expect(b.einladungBeantworten(db, vis.menschId, einl.id, true)).rejects.toThrow(/no longer open/);
+    expect(await b.einladungBeantworten(db, kand.menschId, einl.id, true)).toEqual({ state: "accepted, waiting for the visionary" });
+    // Der Visionär sieht den Vorschlag und gibt frei
+    const offen = (await b.bereichsLeadsFuer(db, vis.menschId)).freigaben.find((x) => x.bereich === "narrative")!;
+    expect(offen.login).toBe("kandidatin");
+    await expect(b.vorschlagEntscheiden(db, kand.menschId, offen.id, true)).rejects.toThrow(/nothing to decide/);
+    expect(await b.vorschlagEntscheiden(db, vis.menschId, offen.id, true)).toEqual({ state: "appointed" });
+    expect((await db.query("select vertrauensstufe from menschen where id = $1", [kand.menschId])).rows[0].vertrauensstufe).toBe(3);
+    const arten = (await db.query("select art, akteur from ereignisse where bezug = $1 and art like '%ereich%' or (bezug = $1 and art = 'officer_ernannt') order by seq", [`mensch:${kand.menschId}`])).rows;
+    expect(arten.map((r) => r.art)).toEqual(["bereichs_lead_vorgeschlagen", "bereichs_lead_zugesagt", "officer_ernannt"]);
+    expect(arten.at(-1)!.akteur).toBe(`mensch:${vis.menschId}`);
+    // Automatik: Zusage genügt
+    expect(await b.automatikSetzen(db, vis.menschId, "test", true)).toMatchObject({ automatisch: true });
+    await expect(b.automatikSetzen(db, kand.menschId, "test", true)).rejects.toThrow(/only the project's visionary/);
+    // Ruhige Amtszeit: ernannt vor 30 Tagen, seitdem nichts im Projekt → endet von selbst
+    const still = await neu("still");
+    await db.query("update menschen set vertrauensstufe = 2 where id = $1", [still.menschId]);
+    await k.officerErnennen(db, "betrieb", "test", "still", "economy", ["game/economy/**"], ["code.gdscript"]);
+    await db.query("update officers set ernannt = now() - interval '30 days' where mensch_id = $1", [still.menschId]);
+    expect(await b.aufraeumen(db)).toBeGreaterThanOrEqual(1);
+    expect((await db.query("select beendet from officers where mensch_id = $1", [still.menschId])).rows[0].beendet).not.toBeNull();
+    expect((await db.query("select vertrauensstufe from menschen where id = $1", [still.menschId])).rows[0].vertrauensstufe).toBe(2);
   });
 });

@@ -11,10 +11,10 @@ import { feedbackZahlen } from "./feedback.ts";
 
 const ERLEDIGT = new Set(["angenommen", "gemerged"]);
 
-/** Schwellen, ab denen ein Officer für einen Bereich sinnvoll ist (lead/roles/README.md, „Officers“). */
+/** Schwellen, ab denen ein Bereichs-Lead für einen Bereich sinnvoll ist (lead/roles/README.md, „Bereichs-Leads“). */
 export const OFFICER_SCHWELLEN = { offen_je_rolle: 15, einreichungen_je_rolle_30t: 10, warten_auf_bewertung: 10, antwort_h_median: 24, nachrichten_offen: 5 };
 
-/** Lead-Bilanz der letzten 30 Tage, gesamt und je Rolle, mit Empfehlung für Officers. Lead und Website sehen dasselbe. */
+/** Lead-Bilanz der letzten 30 Tage, gesamt und je Rolle, mit Empfehlung für Bereichs-Leads. Lead und Website sehen dasselbe. */
 export async function leadBilanz(db: Db, slug: string) {
   const zeilen = (await db.query("select * from analytik.lead_bilanz where projekt = $1 order by offen desc", [slug])).rows;
   const g = (await db.query(
@@ -28,11 +28,16 @@ export async function leadBilanz(db: Db, slug: string) {
   const officers = (await db.query(
     "select o.bereich, o.ernannt as seit, m.login from officers o join menschen m on m.id = o.mensch_id join projekte p on p.id = o.projekt_id where p.slug = $1 and o.beendet is null order by o.bereich", [slug])).rows;
   const besetzt = new Set(officers.map((o) => o.bereich));
+  // Laufende Vorschläge (bereichsleads.ts): eingeladen oder zugesagt, wartet auf den Visionär
+  const vorschlaege = (await db.query(
+    `select v.bereich, m.login, case v.zustand when 'offen' then 'invited' else 'accepted, waiting for the visionary' end as status
+     from bereichs_vorschlaege v join menschen m on m.id = v.mensch_id join projekte p on p.id = v.projekt_id
+     where p.slug = $1 and v.zustand in ('offen', 'zugesagt') order by v.bereich`, [slug])).rows;
   const empfehlung = [];
   for (const z of zeilen) {
     if (z.rolle === "ohne" || besetzt.has(z.rolle)) continue;
     const gruende = [];
-    // Viele offene Aufgaben zählen nur, wenn in der Rolle auch gearbeitet wird; ohne Bewegung fehlen Mitstreiter, kein Officer
+    // Viele offene Aufgaben zählen nur, wenn in der Rolle auch gearbeitet wird; ohne Bewegung fehlen Mitstreiter, kein Bereichs-Lead
     const inBewegung = Number(z.einreichungen_30t) >= OFFICER_SCHWELLEN.einreichungen_je_rolle_30t;
     if (Number(z.offen) > OFFICER_SCHWELLEN.offen_je_rolle && inBewegung) gruende.push(`${z.offen} open tasks and ${z.einreichungen_30t} submissions in 30 days in this role (thresholds ${OFFICER_SCHWELLEN.offen_je_rolle} and ${OFFICER_SCHWELLEN.einreichungen_je_rolle_30t})`);
     if (Number(z.warten_auf_bewertung) > OFFICER_SCHWELLEN.warten_auf_bewertung / 2) gruende.push(`${z.warten_auf_bewertung} submissions in this role await review`);
@@ -61,6 +66,7 @@ export async function leadBilanz(db: Db, slug: string) {
       annahme_prozent: n(z.annahme_prozent), nacharbeit_prozent: n(z.nacharbeit_prozent), antwort_h_median: n(z.antwort_h_median) })),
     officers: officers.map((o) => ({ bereich: o.bereich, login: o.login, seit: o.seit })),
     officer_empfehlung: empfehlung,
+    bereichs_vorschlaege: vorschlaege,
     nachrichten_offen: nachr.offen, nachrichten_antwort_h_median: n(nachr.antwort_h),
     engpass,
   };

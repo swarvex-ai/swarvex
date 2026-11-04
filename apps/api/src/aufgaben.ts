@@ -11,6 +11,7 @@ import { aufgabePruefen, raeumeVon, trennwand, type Raum } from "./cleanroom.ts"
 import { WERTE } from "./aussen.ts";
 import { nachEinreichen, proprietaer } from "./gegenpruefung.ts";
 import { einreichungsVorschauUrl } from "./konfig.ts";
+import { vertrauenAktualisieren } from "./vertrauen.ts";
 
 const en = (zustand: string) => WERTE.zustand[zustand] ?? zustand;
 
@@ -69,7 +70,7 @@ async function mussLeadSein(tx: Tx, menschId: number, projektId: number) {
   if (!rollen.includes("lead") && !rollen.includes("visionaer")) throw new Abgelehnt("only the project's lead may do this");
 }
 
-// Officers (lead/roles/README.md): führen einen Bereich eines Projekts. Sie dürfen Aufgaben der Stufen A und B
+// Bereichs-Leads (lead/roles/README.md): führen einen Bereich eines Projekts. Sie dürfen Aufgaben der Stufen A und B
 // anlegen, schließen und bewerten, deren Pfade und Fähigkeiten ganz in ihrem Bereich liegen. Alles andere bleibt beim Lead.
 export type Officer = { id: number; bereich: string; pfade: string[]; faehigkeiten: string[]; raum: Raum | null };
 export const OFFICER_STUFEN = ["A", "B"];
@@ -91,12 +92,12 @@ export const imBereich = (o: Officer, a: { stufe: string; pfade: string[]; faehi
   OFFICER_STUFEN.includes(a.stufe) && a.pfade.length > 0 && a.faehigkeiten.length > 0 && (o.raum ?? null) === (a.raum ?? null) &&
   a.pfade.every((p) => pfadImBereich(p, o.pfade)) && a.faehigkeiten.every((f) => faehigkeitImBereich(f, o.faehigkeiten));
 
-/** Lead oder Visionär darf alles; ein Officer nur Aufgaben in seinem Bereich. Liefert den Officer, falls er es ist. */
+/** Lead oder Visionär darf alles; ein Bereichs-Lead nur Aufgaben in seinem Bereich. Liefert den Bereichs-Lead, falls er es ist. */
 async function mussLeadOderOfficerSein(tx: Tx, menschId: number, projektId: number, a: { stufe: string; pfade: string[]; faehigkeiten: string[]; raum?: string | null }): Promise<Officer | null> {
   const rollen = await rollenVon(tx, menschId, projektId);
   if (rollen.includes("lead") || rollen.includes("visionaer")) return null;
   const o = (await officersVon(tx, menschId, projektId)).find((x) => imBereich(x, a));
-  if (!o) throw new Abgelehnt("only the project's lead may do this, or an officer for this area (levels A and B, paths and capabilities inside the area, and in clean-room projects the officer's room)");
+  if (!o) throw new Abgelehnt("only the project's lead may do this, or an area lead for this area (levels A and B, paths and capabilities inside the area, and in clean-room projects the area lead's room)");
   return o;
 }
 
@@ -118,7 +119,7 @@ export type NeueAufgabe = {
   abhaengig_von?: number[];
   /** Gruppen von Vorgängern, z. B. Varianten-Paare: aus jeder Gruppe muss mindestens eine angenommen sein. */
   abhaengig_eins_von?: number[][];
-  /** Rolle aus dem Rollenkatalog (lead/roles), z. B. audio, ux, art; bei Officers immer ihr Bereich. */
+  /** Rolle aus dem Rollenkatalog (lead/roles), z. B. audio, ux, art; bei Bereichs-Leads immer ihr Bereich. */
   rolle?: string;
 };
 
@@ -127,7 +128,7 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
     const p = await projektPerSlug(tx, projektSlug);
     const officer = await mussLeadOderOfficerSein(tx, wer.menschId, Number(p.id), a);
     if (a.rolle !== undefined && !NAME.test(a.rolle)) throw new Abgelehnt("role: lowercase letters, digits and dashes, e.g. audio or level-design");
-    if (officer && a.rolle && a.rolle !== officer.bereich) throw new Abgelehnt(`as officer for ${officer.bereich} you create tasks for that role only`);
+    if (officer && a.rolle && a.rolle !== officer.bereich) throw new Abgelehnt(`as area lead for ${officer.bereich} you create tasks for that role only`);
     if (officer && a.neuer_meilenstein) throw new Abgelehnt("only the lead creates milestones");
     const rolle = officer?.bereich ?? a.rolle ?? null;
     const fehler = aufgabePruefen(p.verfahren, a.raum, a.pfade);
@@ -510,6 +511,34 @@ export async function bewerten(db: Db, wer: Wer, einreichungId: number, urteil: 
     await tx.query("insert into bewertungen(einreichung_id, agent_id, urteil, begruendung) values ($1,$2,$3,$4)", [einreichungId, wer.agentId, urteil, begruendung]);
     await wechseln(tx, a, urteil === "annehmen" ? "angenommen" : "offen", akteur(wer), "bewertet", { einreichung: einreichungId, urteil, begruendung });
     if (urteil === "annehmen") await variantenSchliessen(tx, a);
+    if (urteil === "ablehnen") await vertrauenAktualisieren(tx, Number(autor.mensch_id), "rejected");
+  });
+}
+
+/**
+ * Regression melden (Konzept §6: sofortiger Abstieg): Ein gemergter Beitrag hat etwas kaputt gemacht. Lead oder
+ * Bereichs-Lead des Bereichs melden es mit Grund; die Person steigt sofort eine Stufe ab, alles im Protokoll.
+ */
+export async function regressionMelden(db: Db, wer: Wer, aufgabeId: number, grund: string) {
+  if (grund.trim().length < 20) throw new Abgelehnt("reason: what broke and how you know (at least 20 characters)");
+  return transaktion(db, async (tx) => {
+    const a = await aufgabeSperren(tx, aufgabeId);
+    await mussLeadOderOfficerSein(tx, wer.menschId, Number(a.projekt_id), a);
+    if (a.zustand !== "gemerged") throw new Abgelehnt("only merged contributions can be reported as a regression");
+    const e = (await tx.query(
+      `select e.id, ag.mensch_id::int as autor from ereignisse x join einreichungen e on e.id = (x.daten->>'einreichung')::bigint join agenten ag on ag.id = e.agent_id
+       where x.art = 'gemerged' and x.bezug = $1 order by x.seq desc limit 1`, [`aufgabe:${aufgabeId}`])).rows[0];
+    if (!e) throw new Abgelehnt("this task was done by the lead without a submission; there is nobody to step down");
+    if (e.autor === wer.menschId) throw new Abgelehnt("your own contribution: fix it with a new task instead");
+    try {
+      await tx.query("insert into regressionen(einreichung_id, gemeldet_von, grund) values ($1,$2,$3)", [e.id, wer.menschId, grund.trim().slice(0, 2000)]);
+    } catch (err) {
+      if ((err as { code?: string }).code === "23505") throw new Abgelehnt("this contribution was already reported");
+      throw err;
+    }
+    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: akteur(wer), art: "regression_gemeldet", bezug: `aufgabe:${aufgabeId}`, daten: { einreichung: Number(e.id), grund: grund.trim().slice(0, 500) } });
+    const stufe = await vertrauenAktualisieren(tx, e.autor, "regression");
+    return { aufgabe: aufgabeId, einreichung: Number(e.id), vertrauen: stufe ? { von: stufe.von, nach: stufe.nach } : null };
   });
 }
 
@@ -567,15 +596,17 @@ export async function gemergedMelden(db: Db, einreichungId: number, commit: stri
     const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];
     const a = await aufgabeSperren(tx, e.aufgabe_id);
     await wechseln(tx, a, "gemerged", "pruefstrasse", "gemerged", { einreichung: einreichungId, commit });
+    const autor = (await tx.query("select mensch_id from agenten where id = $1", [e.agent_id])).rows[0];
+    await vertrauenAktualisieren(tx, Number(autor.mensch_id), "merged");
   });
 }
 
-/** Einreichungen, die auf eine Bewertung warten; ein Officer sieht nur die seines Bereichs. */
+/** Einreichungen, die auf eine Bewertung warten; ein Bereichs-Lead sieht nur die seines Bereichs. */
 export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: string) {
   const p = await projektPerSlug(db, projektSlug);
   const rollen = await rollenVon(db, wer.menschId, p.id);
   const officers = rollen.includes("lead") || rollen.includes("visionaer") ? null : await officersVon(db, wer.menschId, Number(p.id));
-  if (officers && !officers.length) throw new Abgelehnt("only the project's lead or one of its officers may do this");
+  if (officers && !officers.length) throw new Abgelehnt("only the project's lead or one of its area leads may do this");
   const r = await db.query(
     `select e.id as einreichung_id, a.id as aufgabe_id, a.titel, a.zustand, a.stufe, a.rolle, a.raum, a.pfade, a.faehigkeiten, e.zusammenfassung, e.patch, p.ergebnis as pruefung, p.bericht,
        e.vorschau->>'status' as vorschau_status,
@@ -589,31 +620,35 @@ export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: strin
   return officers ? zeilen.filter((a) => officers.some((o) => imBereich(o, a))) : zeilen;
 }
 
-/** Nur der Visionär ernennt Officers (Bereich, Pfade, Fähigkeiten); öffentlich protokolliert. */
-export async function officerErnennen(db: Db, wer: Wer | "betrieb", projektSlug: string, login: string, bereich: string, pfade: string[], faehigkeiten: string[], raum?: Raum) {
+/** Nur der Visionär ernennt Bereichs-Leads (Bereich, Pfade, Fähigkeiten); öffentlich protokolliert. */
+export async function officerErnennen(db: Db, wer: Wer | "betrieb", projektSlug: string, login: string, bereich: string, pfade: string[], faehigkeiten: string[], raum?: Raum, akteurText?: string) {
   if (!NAME.test(bereich)) throw new Abgelehnt("area: lowercase letters, digits and dashes, e.g. audio or ux");
   if (!pfade.length || pfade.some((x) => x.includes("..") || x.startsWith("/") || !x.trim())) throw new Abgelehnt("paths: relative globs inside the repository, e.g. game/audio/**");
-  if (pfade.some((x) => x === "**" || x === "*")) throw new Abgelehnt("an officer's area cannot be the whole repository");
+  if (pfade.some((x) => x === "**" || x === "*")) throw new Abgelehnt("an area lead's area cannot be the whole repository");
   if (!faehigkeiten.length) throw new Abgelehnt("capabilities: at least one, e.g. asset.audio or text.*");
   return transaktion(db, async (tx) => {
     const p = await projektPerSlug(tx, projektSlug);
-    if (wer !== "betrieb" && !(await rollenVon(tx, wer.menschId, p.id)).includes("visionaer")) throw new Abgelehnt("only the project's visionary appoints officers");
+    if (wer !== "betrieb" && !(await rollenVon(tx, wer.menschId, p.id)).includes("visionaer")) throw new Abgelehnt("only the project's visionary appoints area leads");
     const [anbieter, name] = login.includes(":") ? login.split(":", 2) : [null, login];
     const m = (await tx.query("select id from menschen where login = $1 and ($2::text is null or konto_provider = $2)", [name, anbieter])).rows;
     if (m.length !== 1) throw new Abgelehnt(m.length ? `login ${name} exists at several providers; use provider:login` : `${login} must sign in to swarvex once first`);
     const menschId = Number(m[0].id);
     if (wer !== "betrieb" && menschId === wer.menschId) throw new Abgelehnt("the visionary already has every right; appoint someone else");
-    // Clean Room: ein Officer gehört zu genau einem Raum; die Trennwand gilt für sein Amt wie für eine Reservierung
+    // Bereichs-Lead nur mit verdientem Vertrauen (E-35); Betreiber können das über die Kommandozeile überstimmen
+    const stufe = Number((await tx.query("select vertrauensstufe from menschen where id = $1", [menschId])).rows[0].vertrauensstufe);
+    if (wer !== "betrieb" && stufe < 2) throw new Abgelehnt(`${name} is at trust level ${stufe}; area leads need level 2 (experienced: 10 merged contributions, 3 of them at level B or higher, 5 peer reviews). Until then, run the area yourself with its role card as a subagent`);
+    // Clean Room: ein Bereichs-Lead gehört zu genau einem Raum; die Trennwand gilt für sein Amt wie für eine Reservierung
     if (p.verfahren === "clean_room") {
-      if (!raum) throw new Abgelehnt("clean-room project: an officer needs a room (analysis, review or build)");
+      if (!raum) throw new Abgelehnt("clean-room project: an area lead needs a room (analysis, review or build)");
       const grund = trennwand(await raeumeVon(tx, menschId, Number(p.id)), raum);
       if (grund) throw new Abgelehnt(grund.replace("you have", `${name} has`).replace("you therefore", "therefore"));
     } else if (raum) throw new Abgelehnt("rooms only exist in clean-room projects");
     await tx.query("update officers set beendet = now() where projekt_id = $1 and bereich = $2 and beendet is null", [p.id, bereich]);
     const id = Number((await tx.query("insert into officers(projekt_id, mensch_id, bereich, pfade, faehigkeiten, raum) values ($1,$2,$3,$4,$5,$6) returning id",
       [p.id, menschId, bereich, pfade, faehigkeiten, raum ?? null])).rows[0].id);
-    await protokollieren(tx, { projekt_id: Number(p.id), akteur: wer === "betrieb" ? "system" : akteur(wer), art: "officer_ernannt", bezug: `mensch:${menschId}`,
+    await protokollieren(tx, { projekt_id: Number(p.id), akteur: akteurText ?? (wer === "betrieb" ? "system" : akteur(wer)), art: "officer_ernannt", bezug: `mensch:${menschId}`,
       daten: { bereich, pfade, faehigkeiten, login: name, ...(raum ? { raum } : {}) } });
+    await vertrauenAktualisieren(tx, menschId, "appointed area lead");
     return { officer_id: id, bereich };
   });
 }
@@ -622,9 +657,10 @@ export async function officerBeenden(db: Db, wer: Wer | "betrieb", projektSlug: 
   if (!grund.trim()) throw new Abgelehnt("a reason is required");
   return transaktion(db, async (tx) => {
     const p = await projektPerSlug(tx, projektSlug);
-    if (wer !== "betrieb" && !(await rollenVon(tx, wer.menschId, p.id)).includes("visionaer")) throw new Abgelehnt("only the project's visionary ends an officer's term");
+    if (wer !== "betrieb" && !(await rollenVon(tx, wer.menschId, p.id)).includes("visionaer")) throw new Abgelehnt("only the project's visionary ends an area lead's term");
     const o = (await tx.query("update officers set beendet = now() where projekt_id = $1 and bereich = $2 and beendet is null returning mensch_id", [p.id, bereich])).rows[0];
-    if (!o) throw new Abgelehnt(`no active officer for ${bereich}`);
+    if (!o) throw new Abgelehnt(`no active area lead for ${bereich}`);
     await protokollieren(tx, { projekt_id: Number(p.id), akteur: wer === "betrieb" ? "system" : akteur(wer), art: "officer_beendet", bezug: `mensch:${o.mensch_id}`, daten: { bereich, grund } });
+    await vertrauenAktualisieren(tx, Number(o.mensch_id), "area lead term ended");
   });
 }

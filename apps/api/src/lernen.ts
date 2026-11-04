@@ -1,4 +1,4 @@
-// Der Schwarm lernt: Gründe für Nacharbeit und Ablehnung (vom Lead, von Officers und aus Fremdprüfungen) je Rolle gebündelt,
+// Der Schwarm lernt: Gründe für Nacharbeit und Ablehnung (vom Lead, von Bereichs-Leads und aus Fremdprüfungen) je Rolle gebündelt,
 // damit der Lead wiederkehrende Fehler in die Projektregeln (AGENTS.md) schreibt und spätere Agenten sie nicht wiederholen.
 import type { Db } from "./db.ts";
 import { Abgelehnt, projektPerSlug, rollenVon, type Wer } from "./aufgaben.ts";
@@ -7,7 +7,7 @@ export async function nacharbeitMuster(db: Db, wer: Wer, slug: string, tage: num
   const p = await projektPerSlug(db, slug);
   const rollen = await rollenVon(db, wer.menschId, Number(p.id));
   const officer = (await db.query("select 1 from officers where projekt_id = $1 and mensch_id = $2 and beendet is null", [p.id, wer.menschId])).rowCount;
-  if (!rollen.includes("lead") && !rollen.includes("visionaer") && !officer) throw new Abgelehnt("only the project's lead, visionary or an officer may do this");
+  if (!rollen.includes("lead") && !rollen.includes("visionaer") && !officer) throw new Abgelehnt("only the project's lead, visionary or an area lead may do this");
   const r = (await db.query(
     `select coalesce(a.rolle, '–') as rolle, x.quelle, x.urteil, x.begruendung, x.erstellt, a.id::int as aufgabe
      from (select e.aufgabe_id, 'lead' as quelle, b.urteil, b.begruendung, b.erstellt from bewertungen b join einreichungen e on e.id = b.einreichung_id

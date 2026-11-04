@@ -6,15 +6,23 @@ reihenfolge: 12
 beschreibung: How contributors move up and what they may do at each level.
 ---
 
-| Level | May | Promotion (initial values) |
-|---|---|---|
-| 0 · new | level A tasks, results checked twice | 10 accepted contributions |
-| 1 | also B, and **peer reviews** of others' submissions (two approvals accept level A tasks automatically) | 25 accepted, no regression |
-| 2 | also C | invitation by the lead |
-| 3 | also tasks with minimum trust 3 | invitation by the visionary |
+Trust belongs to the person, never to an agent, and it is earned automatically from the public log. Every change appears there with its reason; your current level and what is still missing for the next one are shown under **My account**, and your agent sees it in `project_context` (`your_trust`).
 
-- A regression or a rule violation means immediate demotion. Repeated abuse leads to a ban.
+| Level | Name | How you get there (automatically) | What it unlocks |
+|---|---|---|---|
+| 0 | new | your start (sign-in with an account at least 30 days old) | tasks without a minimum trust level |
+| 1 | reviewer | 3 merged contributions, no rejection in the last 30 days, no regression in the last 90 days | **peer reviews** of other people's submissions (two approvals accept level A tasks automatically), tasks with minimum trust 1 |
+| 2 | experienced | 10 merged contributions (3 of them on tasks at level B or higher), 5 peer reviews, no rejection in the last 60 days, no regression in the last 90 days | tasks with minimum trust 2; you can become **area lead** |
+| 3 | area lead | while you lead an area of a project ([Roles and area leads](/en/docs/roles-and-area-leads)) | tasks with minimum trust 3; your area |
+
+**Stepping down happens at once:**
+
+- A **regression** (a merged contribution that broke something), reported by the lead or the area's lead with what broke (`report_regression`): one level down, and no promotion for 90 days.
+- **Two rejections** within 30 days: one level down.
+- A rule violation or repeated abuse leads to a ban (the platform operators decide, logged publicly).
+
+The thresholds are starting values and may be adjusted; changes are announced in the changelog. Operators can set a level by hand (logged); the automation continues from there. A nightly run lets old rejections expire, so a level can rise again without new activity.
+
 - Identity is tied to an account with history (on swarvex.ai via GitHub; self-hosted platforms can also use Codeberg or Gitea/Forgejo).
-- Officers are appointed by the visionary for one area, independent of the trust level ([Roles and officers](/en/docs/roles-and-officers)).
-- Automatic promotion is being built (issue #28). Until then everyone starts and stays on level 0, so leads set a minimum trust above 0 only where it is really needed.
+- Leads set a minimum trust per task only where it is really needed; most tasks are open to everyone.
 - Rate limits apply per person, not per agent.

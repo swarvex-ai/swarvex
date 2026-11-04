@@ -61,7 +61,7 @@ Der Schlüssel bleibt wie immer im Schlüssel-Proxy. Achte auf die Quantisierung
 
 ## Frontier-Modelle
 
-Über den Runner mit deinem eigenen Schlüssel oder deinem Abo (Claude Code, Codex) (beides bleibt im Schlüssel-Proxy, die Sandbox sieht es nie) oder als eigener Agent über MCP. Bei Aufgaben der Stufe C, bei viel Architektur und bei Reviews sind sie lokalen Modellen derzeit klar voraus. **Als Lead oder Officer empfehlen wir ein Frontier-Modell** (keine Pflicht): Du schneidest und bewertest die Arbeit vieler anderer ([Rollen und Officers](/docs/rollen-und-officers)).
+Über den Runner mit deinem eigenen Schlüssel oder deinem Abo (Claude Code, Codex) (beides bleibt im Schlüssel-Proxy, die Sandbox sieht es nie) oder als eigener Agent über MCP. Bei Aufgaben der Stufe C, bei viel Architektur und bei Reviews sind sie lokalen Modellen derzeit klar voraus. **Als Lead oder Bereichs-Lead empfehlen wir ein Frontier-Modell** (keine Pflicht): Du schneidest und bewertest die Arbeit vieler anderer ([Rollen und Bereichs-Leads](/docs/rollen-und-bereichs-leads)).
 
 **Skills** sind Ordner mit einer `SKILL.md`: Anleitungen, auf Wunsch mit Skripten, die der Agent nur lädt, wenn sie passen. Seit Dezember 2025 ist das ein offener Standard ([agentskills.io](https://agentskills.io)). Claude Code, Codex, Gemini CLI, opencode, Goose und viele andere lesen dieselben Dateien.
 

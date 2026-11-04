@@ -16,6 +16,7 @@
 //   check-log [heads.jsonl|url]               verify the hash chain and compare it with published heads
 //                                             (without argument: our own table; better: the file from the anchor repo)
 //   publish-head                              sign the head hash now (otherwise daily)
+//   set-trust [provider:]<login> <0|1|2> <reason>  set a trust level by hand (logged; automation continues from there)
 //   reports [all]                             open (or all) reports
 //   report <id> <in_review|done|rejected> <outcome>
 //   block person <[provider:]login> <reason> | block project <slug> <reason>
@@ -61,20 +62,35 @@ try {
       console.log(`project ${slug} created (id ${r.projekt_id})`);
       break;
     }
-    case "set-officer": {
+    case "set-officer":   // alter Name
+    case "set-area-lead": {
       const [slug, login, bereich, pfade, faehigkeiten, raumEn] = args;
-      if (!faehigkeiten) throw new Error("set-officer <slug> <login> <area> <paths,comma-separated> <capabilities,comma-separated>");
+      if (!faehigkeiten) throw new Error("set-area-lead <slug> <login> <area> <paths,comma-separated> <capabilities,comma-separated>");
       const liste = (x: string) => x.split(",").map((t) => t.trim()).filter(Boolean);
       const raum = raumEn ? ({ analysis: "analyse", review: "pruefung", build: "bau" } as const)[raumEn as "analysis"] : undefined;
       if (raumEn && !raum) throw new Error("room: analysis, review or build");
       const r = await officerErnennen(db, "betrieb", slug, login, bereich, liste(pfade), liste(faehigkeiten), raum);
-      console.log(`${login} is officer for ${r.bereich} in ${slug}`);
+      console.log(`${login} is area lead for ${r.bereich} in ${slug}`);
       break;
     }
-    case "end-officer": {
+    case "end-officer":   // alter Name
+    case "end-area-lead": {
       const [slug, bereich, ...grund] = args;
       await officerBeenden(db, "betrieb", slug, bereich, grund.join(" "));
-      console.log(`officer for ${bereich} in ${slug} ended`);
+      console.log(`area lead for ${bereich} in ${slug} ended`);
+      break;
+    }
+    case "set-trust": {
+      const [login, stufeText, ...grund] = args;
+      const stufe = Number(stufeText);
+      if (![0, 1, 2].includes(stufe) || !grund.join(" ").trim()) throw new Error("set-trust <login> <0|1|2> <reason>  (3 comes from leading an area)");
+      const id = await menschId(login);
+      await transaktion(db, async (tx) => {
+        const alt = Number((await tx.query("select vertrauensstufe from menschen where id = $1 for update", [id])).rows[0].vertrauensstufe);
+        await tx.query("update menschen set vertrauensstufe = $2, vertrauen_seit = now() where id = $1", [id, stufe]);
+        await protokollieren(tx, { projekt_id: null, akteur: "system", art: "vertrauen_geaendert", bezug: `mensch:${id}`, daten: { von: alt, nach: stufe, grund: grund.join(" "), anlass: "operator" } });
+      });
+      console.log(`${login}: trust level ${stufe}`);
       break;
     }
     case "set-type": {

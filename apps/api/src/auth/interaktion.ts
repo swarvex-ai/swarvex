@@ -152,11 +152,11 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
           const knopf = (pfad: string, text: string, haupt: boolean) =>
             `<form method="post" action="/interaction/${esc(details.uid)}/${pfad}" style="display:inline"><button type="submit"${haupt ? ' class="haupt"' : ""}>${text}</button></form>`;
           return seite(res, 200, en ? "Allow this agent?" : "Diesen Agenten zulassen?", en
-            ? `<p>The agent <strong>${name}</strong> wants to work on swarvex.ai on your behalf: pick up and submit tasks, and where you are lead or officer, review and accept contributions.</p>
+            ? `<p>The agent <strong>${name}</strong> wants to work on swarvex.ai on your behalf: pick up and submit tasks, and where you are lead or area lead, review and accept contributions.</p>
                <p>After you allow it, you are sent back to <strong>${host}</strong>.</p>
                <p class="l">Signed in as <strong>${esc(login)}</strong>. Only allow agents you are setting up yourself right now. You can sign agents out any time under My account.</p>
                ${knopf("confirm", "Allow", true)} ${knopf("abort", "Cancel", false)}`
-            : `<p>Der Agent <strong>${name}</strong> möchte in deinem Namen auf swarvex.ai arbeiten: Aufgaben holen und einreichen und, wo du Lead oder Officer bist, Beiträge bewerten und annehmen.</p>
+            : `<p>Der Agent <strong>${name}</strong> möchte in deinem Namen auf swarvex.ai arbeiten: Aufgaben holen und einreichen und, wo du Lead oder Area lead bist, Beiträge bewerten und annehmen.</p>
                <p>Nach der Zustimmung geht es zurück zu <strong>${host}</strong>.</p>
                <p class="l">Angemeldet als <strong>${esc(login)}</strong>. Lass nur Agenten zu, die du gerade selbst einrichtest. Abmelden kannst du sie jederzeit unter Mein Konto.</p>
                ${knopf("confirm", "Zulassen", true)} ${knopf("abort", "Abbrechen", false)}`, en);

@@ -4,7 +4,7 @@
 //   /.well-known/oauth-authorization-server Metadaten des OAuth-Servers (RFC 8414)
 //   /tasks/<id>/snapshot                  Projektstand als tar.gz (nur Lease-Inhaber)
 //   /tasks/<id>/lfs/<oid>                 ein Git-LFS-Objekt (nur Lease-Inhaber)
-//   /donations/<id>/file                  hochgeladene Credit-Spende (nur Lead, Visionär, Officers)
+//   /donations/<id>/file                  hochgeladene Credit-Spende (nur Lead, Visionär, Bereichs-Leads)
 //   /api/projects[/<slug>[/metrics]]      öffentliche Projektdaten (Website, Rangliste)
 //   /api/account/…, /api/reports[/challenge], /api/log/…  Mein Konto, Meldeformular (mit Captcha), veröffentlichte Kopf-Hashes
 //   /pipeline/…                           Prüfstraße und Merge-Bot (HMAC-signiert)
@@ -34,6 +34,8 @@ import { aufruferIp, grenzenErstellen } from "./grenzen.ts";
 import { meldungAnlegen, MeldungSchema } from "./meldungen.ts";
 import { captchaAufgabe, captchaPruefen } from "./captcha.ts";
 import { kontoBehandeln } from "./konto.ts";
+import { alleVertrauenAktualisieren } from "./vertrauen.ts";
+import { aufraeumen as bereichsLeadsAufraeumen, vorschlaegeErzeugen } from "./bereichsleads.ts";
 import { hashesAn, koepfeListe, kopfVeroeffentlichen } from "./koepfe.ts";
 import { repoDaten } from "./repo.ts";
 import { modellRangliste } from "./modelle.ts";
@@ -79,6 +81,18 @@ await boss.createQueue("spenden-aufraeumen");
 await boss.schedule("spenden-aufraeumen", "41 4 * * *");
 await boss.work("spenden-aufraeumen", async () => { const n = await spendenAufraeumen(db); if (n) console.log(`donation files removed: ${n}`); });
 await boss.schedule("kopf-veroeffentlichen", "17 3 * * *");
+// Vertrauensstufen: Zeitfenster laufen ab (alte Ablehnungen blockieren den Aufstieg nicht mehr)
+await boss.createQueue("vertrauen");
+await boss.schedule("vertrauen", "29 3 * * *");
+await boss.work("vertrauen", async () => { const n = await alleVertrauenAktualisieren(db); if (n) console.log(`trust levels changed: ${n}`); });
+// Bereichs-Leads: Vorschläge, wo die Lead-Bilanz es empfiehlt; verfallene Vorschläge und ruhige Amtszeiten beenden
+await boss.createQueue("bereichs-leads");
+await boss.schedule("bereichs-leads", "41 3 * * *");
+await boss.work("bereichs-leads", async () => {
+  const beendet = await bereichsLeadsAufraeumen(db);
+  const neu = await vorschlaegeErzeugen(db);
+  if (beendet || neu) console.log(`area leads: ${neu} invited, ${beendet} ended for inactivity`);
+});
 await boss.work("kopf-veroeffentlichen", async () => {
   const k = await kopfVeroeffentlichen(db, schluessel.signatur);
   if (k) console.log(`head published: seq ${k.seq} ${k.hash.slice(0, 16)}…`);
@@ -172,7 +186,7 @@ const server = createServer(async (req, res) => {
       catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
     }
 
-    // Hochgeladene Credit-Spende herunterladen: nur Lead, Visionär oder Officers des Projekts (Agenten-Token)
+    // Hochgeladene Credit-Spende herunterladen: nur Lead, Visionär oder Bereichs-Leads des Projekts (Agenten-Token)
     const spende = /^\/donations\/(\d+)\/file$/.exec(url.pathname);
     if (spende && req.method === "GET") {
       let z;

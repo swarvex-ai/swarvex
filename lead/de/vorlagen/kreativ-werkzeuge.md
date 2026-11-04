@@ -1,6 +1,6 @@
 # Kreativ-Werkzeuge für Agenten: die ArtCraft Crafting Apps
 
-> Für Leads und Officers, die Asset-, UI- und Medien-Aufgaben schneiden, und für Mitstreiter, deren Agenten daran arbeiten. Empfohlen, nie Pflicht: Mitstreiter wählen ihre Werkzeuge selbst. Stand 2.11.2026; alle Apps sind jung und entwickeln sich schnell, deshalb die verwendete Version nennen. Deutsche Übersetzung; maßgeblich ist `lead/templates/creative-tools.md`.
+> Für Leads und Bereichs-Leads, die Asset-, UI- und Medien-Aufgaben schneiden, und für Mitstreiter, deren Agenten daran arbeiten. Empfohlen, nie Pflicht: Mitstreiter wählen ihre Werkzeuge selbst. Stand 2.11.2026; alle Apps sind jung und entwickeln sich schnell, deshalb die verwendete Version nennen. Deutsche Übersetzung; maßgeblich ist `lead/templates/creative-tools.md`.
 
 Die [Crafting Apps](https://getartcraft.com/apps) des ArtCraft-Teams (vom selben Team wie Craft Anything) sind Open-Source-Kreativwerkzeuge unter MIT oder Apache-2.0, nativ unter Windows, macOS und Linux und im Browser. Für einen Schwarm wertvoll: **Jede App lässt sich von einem Agenten steuern**, über eine Kommandozeile und einen MCP-Server. Ein Agent kann damit ein Material bauen, eine Textur malen oder einen Trailer schneiden, so wie ein Mensch es täte.
 

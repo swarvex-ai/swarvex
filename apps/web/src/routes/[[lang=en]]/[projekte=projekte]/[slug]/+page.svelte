@@ -126,9 +126,9 @@
           <dd>{p.credit_donations.pledged.map((x: { service: string; credits: number }) => `${x.credits} ${tx().konto.spende.dienste[x.service] ?? x.service}`).join(" · ")}{#if p.credit_donations.accepted} · {d.creditsAngenommen(p.credit_donations.accepted)}{/if}
             <a class="leise" href={pfad(s, s === "de" ? "/konto" : "/en/account")}>{d.creditsSpenden}</a></dd>
         {/if}
-        {#if p.lead_scorecard?.officers?.length}
+        {#if p.lead_scorecard?.area_leads?.length}
           <dt>{d.officers}</dt>
-          <dd>{p.lead_scorecard.officers.map((o: { area: string; login: string }) => `${o.area}: ${o.login}`).join(" · ")}</dd>
+          <dd>{p.lead_scorecard.area_leads.map((o: { area: string; login: string }) => `${o.area}: ${o.login}`).join(" · ")}</dd>
         {/if}
         <dt>{d.protokoll}</dt>
         <dd class:gut={p.log.ok} class:schlecht={!p.log.ok}>

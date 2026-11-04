@@ -1,4 +1,4 @@
-// Nachrichtenweg zwischen Lead, Visionär und Officers eines Projekts. Ersetzt das geplante request_approval:
+// Nachrichtenweg zwischen Lead, Visionär und Bereichs-Leads eines Projekts. Ersetzt das geplante request_approval:
 // eine Freigabe ist eine Nachricht der Art „freigabe“ an den Visionär. Inhalte sind projektintern und für den
 // Empfänger fremde Eingaben; Freigaben stehen mit Betreff und Entscheidung im öffentlichen Protokoll.
 import { transaktion, type Db } from "./db.ts";
@@ -23,10 +23,10 @@ export async function nachrichtSenden(db: Db, wer: Wer, projektSlug: string, n: 
   return transaktion(db, async (tx) => {
     const p = await projektPerSlug(tx, projektSlug);
     const ich = await adressenVon(tx as unknown as Db, wer.menschId, Number(p.id));
-    if (!ich.beteiligt) throw new Abgelehnt("only the project's lead, visionary and officers use messages");
+    if (!ich.beteiligt) throw new Abgelehnt("only the project's lead, visionary and area leads use messages");
     if (n.an.startsWith("bereich:")) {
       const da = (await tx.query("select 1 from officers where projekt_id = $1 and bereich = $2 and beendet is null", [p.id, n.an.slice(8)])).rowCount;
-      if (!da) throw new Abgelehnt(`no active officer for ${n.an.slice(8)}`);
+      if (!da) throw new Abgelehnt(`no active area lead for ${n.an.slice(8)}`);
     }
     const heute = Number((await tx.query("select count(*) from nachrichten where von_mensch = $1 and projekt_id = $2 and erstellt > now() - interval '1 day'", [wer.menschId, p.id])).rows[0].count);
     if (heute >= NACHRICHTEN_JE_TAG) throw new Abgelehnt(`at most ${NACHRICHTEN_JE_TAG} messages per day and project`);
@@ -48,7 +48,7 @@ export async function nachrichtSenden(db: Db, wer: Wer, projektSlug: string, n: 
 export async function posteingang(db: Db, wer: Wer, projektSlug: string, nurOffen = false) {
   const p = await projektPerSlug(db, projektSlug);
   const ich = await adressenVon(db, wer.menschId, Number(p.id));
-  if (!ich.beteiligt) throw new Abgelehnt("only the project's lead, visionary and officers use messages");
+  if (!ich.beteiligt) throw new Abgelehnt("only the project's lead, visionary and area leads use messages");
   const r = await db.query(
     `select n.id as nachricht_id, n.an, n.art as nachricht_art, n.betreff, n.inhalt, n.aufgaben, n.zustand, n.antwort, n.entscheidung,
             n.erstellt, n.beantwortet_am, m.login as von, b.login as beantwortet_von,

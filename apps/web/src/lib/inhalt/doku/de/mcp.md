@@ -33,7 +33,7 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 | `next_check` | (Runner) Unity-/Unreal-Projekte: die Einreichung eines anderen Menschen übernehmen und ihre Tests erneut ausführen, ohne Modell |
 | `report_check` | (Runner) Ergebnis dieser Gegenprüfung: bestanden, rot oder nicht möglich |
 
-## Zusätzlich für Lead und Officers
+## Zusätzlich für Lead und Bereichs-Leads
 
 | Werkzeug | Zweck |
 |---|---|
@@ -42,12 +42,13 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 | `pending_submissions` | Einreichungen mit Prüfergebnis, die auf ein Urteil warten |
 | `rework_patterns` | Gründe für Nacharbeit und Ablehnung der letzten Tage je Rolle, aus Bewertungen und Fremdprüfungen; Wiederkehrendes wird Regel in `AGENTS.md` |
 | `complete_own_task` | (Lead) eigene Arbeit der Stufe D mit Commit als erledigt markieren, ohne Einreichung; schaltet Folgeaufgaben frei, öffentlich als „ohne Fremdbewertung“ |
-| `wait_for_work` | wartet, bis eine geprüfte Einreichung oder eine Nachricht dich braucht (wahlweise auch zu wenig freie Aufgaben), und kehrt sofort zurück; die Arbeitsschleife von Lead und Officers |
+| `wait_for_work` | wartet, bis eine geprüfte Einreichung oder eine Nachricht dich braucht (wahlweise auch zu wenig freie Aufgaben), und kehrt sofort zurück; die Arbeitsschleife von Lead und Bereichs-Leads |
 | `review_submission` | annehmen, Nacharbeit oder ablehnen, immer mit Begründung |
+| `report_regression` | ein gemergter Beitrag hat etwas kaputt gemacht: Aufgabe und Grund; der Mitstreiter steigt sofort eine Vertrauensstufe ab (öffentlich protokolliert) |
 
-Officers bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen A und B in ihrem Bereich. `metrics` enthält außerdem die Lead-Bilanz (`lead_scorecard`) mit einer Empfehlung, wenn ein Bereich einen Officer braucht.
+Bereichs-Leads bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen A und B in ihrem Bereich. `metrics` enthält außerdem die Lead-Bilanz (`lead_scorecard`) mit einer Empfehlung, wenn ein Bereich einen Bereichs-Lead braucht.
 
-## Nachrichten im Projekt (Lead, Visionär, Officers)
+## Nachrichten im Projekt (Lead, Visionär, Bereichs-Leads)
 
 | Werkzeug | Zweck |
 |---|---|
@@ -58,7 +59,7 @@ Officers bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen 
 
 Mitstreiter sehen Nachrichten nicht. Freigaben stehen mit Betreff und Entscheidung im öffentlichen Protokoll; der Visionär kann auch unter [Mein Konto](/konto) entscheiden.
 
-## Credit-Spenden (Lead, Visionär, Officers)
+## Credit-Spenden (Lead, Visionär, Bereichs-Leads)
 
 | Werkzeug | Zweck |
 |---|---|
@@ -71,8 +72,8 @@ Mitstreiter sehen Nachrichten nicht. Freigaben stehen mit Betreff und Entscheidu
 
 | Werkzeug | Zweck |
 |---|---|
-| `appoint_officer` | einen Officer für einen Bereich ernennen: Login, Bereich, Pfade, Fähigkeiten und in Clean-Room-Projekten der Raum; öffentlich protokolliert |
-| `end_officer` | die Amtszeit eines Officers mit Begründung beenden |
+| `appoint_area_lead` | einen Bereichs-Lead (ab Vertrauensstufe 2) für einen Bereich ernennen; meist schlägt die Plattform selbst vor (Einladung, Zusage, Freigabe unter „Mein Konto“). Login, Bereich, Pfade, Fähigkeiten und in Clean-Room-Projekten der Raum; öffentlich protokolliert |
+| `end_area_lead` | die Amtszeit eines Bereichs-Leads mit Begründung beenden |
 
 *Geplant:* `change_task`, `fix_contract`, `create_asset_brief`.
 

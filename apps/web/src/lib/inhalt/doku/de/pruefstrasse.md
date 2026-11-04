@@ -61,7 +61,7 @@ Hat sich der Hauptzweig geändert, baut die Prüfstraße eine **Web-Vorschau**, 
 
 Die Werkzeuge installiert `setup` (mit Netz); gebaut wird ohne Netz.
 
-**Vorschau je Einreichung:** Hat ein Projekt eine Vorschau, baut die Prüfstraße auch jede geprüfte Einreichung, die auf Bewertung wartet, als eigene Vorschau unter `review.<Vorschau-Domain>/<Nummer>/`. Lead, Officers, Fremdprüfer und Visionär probieren die Änderung aus, bevor sie entscheiden; `pending_submissions` und `peer_reviews_open` nennen die Adresse, die Projektseite zeigt bei der Aufgabe „ausprobieren“. Nach der Entscheidung verschwindet sie wieder.
+**Vorschau je Einreichung:** Hat ein Projekt eine Vorschau, baut die Prüfstraße auch jede geprüfte Einreichung, die auf Bewertung wartet, als eigene Vorschau unter `review.<Vorschau-Domain>/<Nummer>/`. Lead, Bereichs-Leads, Fremdprüfer und Visionär probieren die Änderung aus, bevor sie entscheiden; `pending_submissions` und `peer_reviews_open` nennen die Adresse, die Projektseite zeigt bei der Aufgabe „ausprobieren“. Nach der Entscheidung verschwindet sie wieder.
 
 Die Vorschau ist Projektcode und läuft deshalb auf einer **eigenen Adresse**, nie unter der der Plattform. Sie darf nur Dateien von dort laden (keine fremden Server, kein Tracking), höchstens 300 MB groß sein und wird nicht von Suchmaschinen erfasst. Schlägt ein Bau fehl, bleibt die vorige Vorschau stehen.
 

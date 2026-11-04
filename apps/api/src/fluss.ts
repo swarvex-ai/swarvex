@@ -1,4 +1,4 @@
-// Fluss ohne Warten: Lead und Officers fragen nicht reihum nach, sondern warten mit wait_for_work, bis es etwas für sie gibt
+// Fluss ohne Warten: Lead und Bereichs-Leads fragen nicht reihum nach, sondern warten mit wait_for_work, bis es etwas für sie gibt
 // (geprüfte Einreichungen zum Bewerten, offene Nachrichten, auf Wunsch zu wenig freie Aufgaben für die aktiven Agenten).
 import type { Db } from "./db.ts";
 import { projektPerSlug, wartendeEinreichungen, type Wer } from "./aufgaben.ts";
@@ -22,7 +22,7 @@ export async function aufArbeitWarten(db: Db, wer: Wer, slug: string, maxSekunde
   const p = await projektPerSlug(db, slug);
   const ende = Date.now() + Math.min(Math.max(maxSekunden, 0), 600) * 1000;
   for (;;) {
-    // wartendeEinreichungen prüft die Rolle (Lead, Visionär, Officer) und filtert für Officers auf ihren Bereich
+    // wartendeEinreichungen prüft die Rolle (Lead, Visionär, Bereichs-Lead) und filtert für Bereichs-Leads auf ihren Bereich
     const bereit = wecken.includes("reviews") ? (await wartendeEinreichungen(db, wer, slug)).filter((e) => e.zustand === "geprueft_ok")
       .map((e) => ({ einreichung_id: Number(e.einreichung_id), aufgabe_id: Number(e.aufgabe_id), titel: e.titel })) : [];
     const nachrichten = wecken.includes("messages") ? (await offeneFuerMich(db, wer.menschId, Number(p.id)))?.offen ?? 0 : 0;

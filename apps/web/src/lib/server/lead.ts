@@ -90,7 +90,7 @@ export function paket(name: string): string {
     abschnitt(grund, "## How to use them").replace(/^## /, "### "),
     abschnitt(grund, "## All projects").replace(/^## /, "### "),
     abschnitt(grund, GRUNDPAKET[art]).replace(/^## /, "### "),
-    "## Roles, gates and officers (section 9a)",
+    "## Roles, gates and area leads (section 9a)",
     tiefer(lies("roles/README.md").replace(/^# .*\n/, "")),
     `### Your role cards\n\n${ordner.map((o) => karten(o).map((k) => `- \`${k}\` (${o}): ${ROH}/roles/${o}/${k}.md`).join("\n")).join("\n")}\n\nIn Claude Code they are installed as subagents with the setup script from the project wizard (\`.claude/agents/\`). Other agents read a card when they work on that role.`,
     ...(cleanroom ? ["## Clean-room specification format", tiefer(lies("templates/clean-room-specification.md").replace(/^# .*\n/, "")),

@@ -52,7 +52,7 @@ Everything runs only on the analyst's own machine, never in the runner's sandbox
 The platform enforces it per person and project:
 
 - Whoever worked in `analysis` (including checks) is not offered tasks from `build` or `review` in the same project and cannot reserve them. Whoever built can no longer analyse.
-- Officers belong to one room; their appointment counts for the wall like a reservation.
+- Area leads belong to one room; their appointment counts for the wall like a reservation.
 - Builders get only the released specification: drafts, check rounds and open questions are left out of their working copy.
 - Every attempt to cross the wall is recorded in the log (`clean_room_separation`). The project page shows how many people worked in which room and whether the separation held.
 
@@ -70,4 +70,4 @@ Clean room is a recognised method, not a blank cheque. Whether a project is perm
 
 ## For the lead
 
-The lead handbook describes the loop in "Clean-room rebuild", the role cards in `lead/roles/cleanroom/` (analyst, specification reviewer, builder, verifier, compliance) give each role its tasks, review checklist and officer mandate, and the interview has a dedicated question tree. When creating a task, `room` is mandatory; the platform checks that analysis and review only write under `specification/` and the build never does.
+The lead handbook describes the loop in "Clean-room rebuild", the role cards in `lead/roles/cleanroom/` (analyst, specification reviewer, builder, verifier, compliance) give each role its tasks, review checklist and area lead mandate, and the interview has a dedicated question tree. When creating a task, `room` is mandatory; the platform checks that analysis and review only write under `specification/` and the build never does.

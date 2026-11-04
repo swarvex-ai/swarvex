@@ -19,6 +19,8 @@ import { meineBeitraege, vorschauSenden } from "./beitraege.ts";
 import { wochenbericht } from "./wochenbericht.ts";
 import { profilSetzen } from "./profil.ts";
 import { feedbackGeben } from "./feedback.ts";
+import { automatikSetzen, bereichsLeadsFuer, einladungBeantworten, vorschlagEntscheiden } from "./bereichsleads.ts";
+import { vertrauenStand } from "./vertrauen.ts";
 
 const SITZUNG = "swarvex_account";
 const ANMELDUNG = "swarvex_login";
@@ -74,7 +76,8 @@ export async function kontoDaten(db: Db, menschId: number) {
     "select p.id, p.slug, p.name from projekt_rollen r join projekte p on p.id = r.projekt_id where r.mensch_id = $1 and r.rolle = 'visionaer' and not p.entwurf and not p.gesperrt order by p.name",
     [menschId])).rows;
   const wochenberichte = await Promise.all(eigene.map(async (p) => ({ projekt: p.slug, name: p.name, ...(await wochenbericht(db, Number(p.id))) })));
-  return { mensch, rollen, agenten, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId), wochenberichte };
+  return { mensch, rollen, agenten, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId), wochenberichte,
+    vertrauen: await vertrauenStand(db, menschId), bereichs_leads: await bereichsLeadsFuer(db, menschId) };
 }
 
 /**
@@ -211,6 +214,32 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
       try { eingabe = JSON.parse(await textLesen(req, 1000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
       if (typeof eingabe.public !== "boolean") return json(res, 400, { error: "public: true or false" });
       return json(res, 200, nachAussen(await profilSetzen(db, menschId, eingabe.public)));
+    }
+
+    // Bereichs-Leads (bereichsleads.ts): Einladung beantworten, Vorschlag freigeben, Automatik je Projekt
+    const einladung = /^\/api\/account\/area-lead-invitations\/(\d+)$/.exec(pfad);
+    const vorschlag = /^\/api\/account\/area-lead-proposals\/(\d+)$/.exec(pfad);
+    const automatik = /^\/api\/account\/projects\/([a-z0-9-]+)\/area-leads-automatic$/.exec(pfad);
+    if ((einladung || vorschlag || automatik) && req.method === "POST") {
+      if (!eigeneHerkunft(req)) return json(res, 403, { error: "foreign_origin" });
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
+      let e: { answer?: string; decision?: string; reason?: string; enabled?: unknown } = {};
+      try { e = JSON.parse(await textLesen(req, 4000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
+      try {
+        if (einladung) {
+          if (e.answer !== "accept" && e.answer !== "decline") return json(res, 400, { error: "answer: accept or decline" });
+          return json(res, 200, await einladungBeantworten(db, menschId, Number(einladung[1]), e.answer === "accept"));
+        }
+        if (vorschlag) {
+          if (e.decision !== "approve" && e.decision !== "decline") return json(res, 400, { error: "decision: approve or decline" });
+          return json(res, 200, await vorschlagEntscheiden(db, menschId, Number(vorschlag[1]), e.decision === "approve", e.reason ?? ""));
+        }
+        if (typeof e.enabled !== "boolean") return json(res, 400, { error: "enabled: true or false" });
+        return json(res, 200, nachAussen(await automatikSetzen(db, menschId, automatik![1], e.enabled)));
+      } catch (err) {
+        if (err instanceof Abgelehnt) return json(res, 409, { error: err.message });
+        throw err;
+      }
     }
 
     // Freigaben im Browser: der Visionär entscheidet ohne eigene Agenten-Sitzung (nachrichten.ts)

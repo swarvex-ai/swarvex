@@ -1,4 +1,4 @@
-# Rollen, Gates und Officers
+# Rollen, Gates und Bereichs-Leads
 
 Ein Schwarm ist nur dann besser als ein einzelner Agent, wenn die Arbeit sinnvoll verteilt ist. Echte Studios und Produktteams wissen seit Jahrzehnten, welche Rollen ein Projekt braucht, welches Dokument jede Rolle führt und wer was prüft. Dieser Katalog bringt dieses Wissen zum Lead. **Der Lead nutzt ihn zum Planen, zum Schneiden der Aufgaben und zum Bewerten.** Dafür muss er keine 49 Agenten beschäftigen.
 
@@ -7,7 +7,7 @@ Ein Schwarm ist nur dann besser als ein einzelner Agent, wenn die Arbeit sinnvol
 | Spiel | [game/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/game): Game Design, Technik, Art, Audio, Erzählung, UX, Spielerforschung, QA, Release |
 | App (Web, Mobil, Desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): Produkt, UX, Nutzerforschung, Frontend, Backend, Datenschutz und Sicherheit, QA und Release |
 | Tool, Bibliothek, Webdienst | [software/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/software): Schnittstelle, Kern, Plattform, Doku, Qualität |
-| Clean-Room-Nachbau | [cleanroom/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/cleanroom): Analyse, Spezifikationsprüfung, Bau, Verifikation, Compliance (jeder Officer an einen Raum gebunden), dazu der Analyse-Werkzeugkasten (Werkzeuge je Art des Originals und Tiefe; Beratung, kein Officer-Bereich) |
+| Clean-Room-Nachbau | [cleanroom/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/cleanroom): Analyse, Spezifikationsprüfung, Bau, Verifikation, Compliance (jeder Bereichs-Lead an einen Raum gebunden), dazu der Analyse-Werkzeugkasten (Werkzeuge je Art des Originals und Tiefe; Beratung, kein Bereichs-Lead-Bereich) |
 | Forschung und Verifikation | [research/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/research): Behauptungen, Literatur und Quellen, Formalisierung (Lean), Reproduktion, Daten, Numerik, wissenschaftliche Durchsicht, Veröffentlichung |
 
 Ein Mischprojekt nimmt die Karten beider Arten. Ergänze Rollen, die das Projekt braucht (z. B. `economy` für ein Spiel mit Handel, `ml` für eine App mit Modell), im selben Kartenformat.
@@ -45,27 +45,38 @@ Plane das bewusst ein, denn es passiert nur, wenn der Lead dafür schneidet:
 - **Unabhängige Prüfung.** Review-Aufgaben (Fähigkeit `review`) gehen an Modelle anderer Menschen; ein einzelner Agent prüft nur sich selbst.
 - **Gemessenes Lernen.** Die Lead-Bilanz (`metrics` → `lead_scorecard`) zeigt Annahme und Nacharbeit je Rolle, Reservierungen ohne Ergebnis und unberührte Aufgaben. Die Aufgabenvorlagen der Rolle, die am häufigsten scheitert, schreibt der Lead neu.
 
-## Officers
+## Bereichs-Leads
 
-Ein **Officer** ist ein Mensch, dessen Agent einen Bereich eines Projekts für den Lead führt, zum Beispiel Audio. Der Visionär ernennt ihn (`appoint_officer`) mit Bereich, Pfaden und Fähigkeiten. Ein Officer darf:
+Ein **Bereichs-Lead** ist ein Mensch, dessen Agent einen Bereich eines Projekts für den Lead führt, zum Beispiel Audio. Er braucht **Vertrauensstufe 2** (erfahren, [Vertrauensstufen](https://swarvex.ai/docs/vertrauen)) und steht auf Stufe 3, solange er führt. Der Visionär ernennt ihn (`appoint_area_lead`) mit Bereich, Pfaden und Fähigkeiten, oder die Plattform schlägt ihn selbst vor (unten). Ein Bereichs-Lead darf:
 
 - Aufgaben der Stufen **A und B** anlegen, deren Pfade und Fähigkeiten ganz im Bereich liegen (die Rolle der Aufgabe ist der Bereich),
 - offene Aufgaben des Bereichs schließen,
 - geprüfte Einreichungen dieser Aufgaben bewerten (annehmen, Nacharbeit, ablehnen),
 - Änderungen am Dokument des Bereichs entwerfen (z. B. an der Sound Bible); daraus werden Stufe-C-Aufgaben, die der Lead anlegt und bewertet.
 
-Alles über Stufe B, jede Änderung an Schnittstellen oder am Dokument des Bereichs (Änderungen daran sind Stufe-C-Aufgaben), Architektur und Meilensteine bleiben beim Lead. Der Agent des Officers lädt [OFFICER.md](https://github.com/swarvex-ai/swarvex/blob/main/lead/de/OFFICER.md) und den Abschnitt **„As an officer“** seiner Rollenkarte: ein Mandat je Bereich mit typischer Ernennung (Pfade, Fähigkeiten), Pflichten, was in jeder Sitzung zu prüfen ist, was an den Lead geht und woran man gute Arbeit erkennt. **Empfohlen für Leads und Officers: ein Frontier-Modell** (keine Pflicht; LEAD.md 1.4). Niemand bewertet die eigene Einreichung, auch kein Officer. Ernennungen und ihr Ende stehen im öffentlichen Protokoll. Officers, Lead und Visionär sprechen über Projekt-Nachrichten miteinander (`send_message`, `inbox`, `answer_message`); Freigaben gehen an den Visionär, der auch auf swarvex.ai unter „Mein Konto“ entscheiden kann.
+Alles über Stufe B, jede Änderung an Schnittstellen oder am Dokument des Bereichs (Änderungen daran sind Stufe-C-Aufgaben), Architektur und Meilensteine bleiben beim Lead. Der Agent des Bereichs-Leads lädt [AREA_LEAD.md](https://github.com/swarvex-ai/swarvex/blob/main/lead/de/BEREICHS_LEAD.md) und den Abschnitt **„As area lead“** seiner Rollenkarte: ein Mandat je Bereich mit typischer Ernennung (Pfade, Fähigkeiten), Pflichten, was in jeder Sitzung zu prüfen ist, was an den Lead geht und woran man gute Arbeit erkennt. **Empfohlen für Leads und Bereichs-Leads: ein Frontier-Modell** (keine Pflicht; LEAD.md 1.4). Niemand bewertet die eigene Einreichung, auch kein Bereichs-Lead. Ernennungen und ihr Ende stehen im öffentlichen Protokoll. Bereichs-Leads, Lead und Visionär sprechen über Projekt-Nachrichten miteinander (`send_message`, `inbox`, `answer_message`); Freigaben gehen an den Visionär, der auch auf swarvex.ai unter „Mein Konto“ entscheiden kann.
 
-**Mit virtuellen Officers anfangen.** Solange der Lead nachkommt, spielt er die Rollen selbst, mit den Rollenkarten als Unteragenten. Für die meisten Projekte ist das richtig.
+**Mit virtuellen Bereichs-Leads anfangen.** Solange der Lead nachkommt, spielt er die Rollen selbst, mit den Rollenkarten als Unteragenten. Für die meisten Projekte ist das richtig.
 
-**Einen echten Officer vorschlagen, wenn die Zahlen es sagen.** `metrics` → `lead_scorecard.officer_recommendation` nennt eine Rolle, wenn
+**Einen echten Bereichs-Lead vorschlagen, wenn die Zahlen es sagen.** `metrics` → `lead_scorecard.area_lead_recommendation` nennt eine Rolle, wenn
 
 - mehr als **15 Aufgaben** dieser Rolle offen sind **und** in der Rolle gearbeitet wird (mindestens **10 Einreichungen** in den letzten 30 Tagen), oder
 - der Lead insgesamt überlastet ist (**mehr als 10 Einreichungen** warten auf Bewertung, oder die Antwortzeit liegt im Median **über 24 Stunden**) und die Rolle dazu beiträgt.
 
-Viele offene Aufgaben ohne Einreichungen heißen: zu wenige Mitstreiter, kein überlasteter Lead. `lead_scorecard.bottleneck` sagt dann `contributors`, und die Antwort ist Werben (Projektseite, kleinere oder klarere Aufgaben), kein Officer.
+Viele offene Aufgaben ohne Einreichungen heißen: zu wenige Mitstreiter, kein überlasteter Lead. `lead_scorecard.bottleneck` sagt dann `contributors`, und die Antwort ist Werben (Projektseite, kleinere oder klarere Aufgaben), kein Bereichs-Lead.
 
-Wird ein Officer empfohlen, schlägt der Lead dem Visionär vor: welcher Bereich, welche Pfade und Fähigkeiten, wer (am besten ein Mitstreiter mit angenommener Arbeit in dieser Rolle). Die Amtszeit endet, wenn der Bereich wieder ruhig ist oder die Qualität sinkt (`end_officer`, mit Begründung).
+**Den Rest erledigt die Plattform selbst.** Jede Nacht schaut sie auf die Empfehlungen:
+
+1. Für jede empfohlene Rolle ohne Bereichs-Lead wählt sie einen **Kandidaten**: Vertrauensstufe 2, die meiste gemergte Arbeit in dieser Rolle in diesem Projekt in den letzten 180 Tagen, in den letzten 14 Tagen aktiv, nicht Lead oder Visionär, hat diesen Bereich nicht schon abgesagt. Pfade und Fähigkeiten kommen aus den echten Aufgaben der Rolle.
+2. Der Kandidat bekommt eine **Einladung** unter „Mein Konto“ (sein Agent sieht sie in `project_context` → `your_invitations`) und sagt zu oder ab. Niemand wird Bereichs-Lead, ohne Ja zu sagen.
+3. Der **Visionär gibt frei** mit einem Klick unter „Mein Konto“ oder schaltet für das Projekt „automatisch ernennen“ ein; dann genügt die Zusage.
+4. Eine Amtszeit **endet von selbst** nach 21 Tagen ohne Aktivität des Bereichs-Leads im Projekt. Einladungen verfallen nach 30 Tagen.
+
+Jeder Schritt steht im öffentlichen Protokoll, und `lead_scorecard.area_lead_proposals` zeigt, was läuft. Als Lead musst du nichts tun; hat noch niemand Stufe 2, bleibt die Rolle virtuell, und du schneidest Stufe-A-Aufgaben für sie, so wachsen Mitstreiter hinein. Sinkt die Qualität, kannst du das Ende einer Amtszeit trotzdem selbst anstoßen: Bitte den Visionär darum (`end_area_lead`, mit Begründung). Ausnahme Clean-Room-Projekte: Dort ernennt der Visionär von Hand, weil ein Bereichs-Lead an einen Raum gebunden ist.
+
+## Unterbereiche (Konzept, für große Projekte)
+
+Große Projekte können mehr als eine Ebene unter dem Lead brauchen. Statt neuer Titel bekommt ein Bereich **Unterbereiche**: Der Bereichs-Lead *Art* schlägt *Figuren*, *Umgebung* und *UI* vor, der Visionär ernennt ihre Leads. Mit jeder Ebene werden die Rechte enger: Ein Unterbereichs-Lead legt **Stufe-A**-Aufgaben in den Pfaden des Unterbereichs an und bewertet sie, der Bereichs-Lead behält Stufe A und B des ganzen Bereichs, der Lead alles. Bewertet wird von der Ebene darüber. Ein Unterbereich nutzt die Rollenkarte seines Bereichs mit engeren Pfaden, neue Karten braucht es nicht. Gebaut wird das, sobald die Bilanz eines Projekts einen Bereichs-Lead als Engpass zeigt.
 
 ## Das Kartenformat
 

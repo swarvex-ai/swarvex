@@ -38,7 +38,7 @@ export function aufgabePruefen(verfahren: string, raum: string | null | undefine
   return [];
 }
 
-/** Räume, in denen der Mensch in diesem Projekt schon gearbeitet hat: Reservierungen und Officer-Ämter (auch beendete). */
+/** Räume, in denen der Mensch in diesem Projekt schon gearbeitet hat: Reservierungen und Bereichs-Lead-Ämter (auch beendete). */
 export async function raeumeVon(tx: Db | Tx, menschId: number, projektId: number): Promise<Raum[]> {
   const r = await tx.query(
     `select a.raum from leases l join aufgaben a on a.id = l.aufgabe_id join agenten g on g.id = l.agent_id

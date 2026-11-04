@@ -1,6 +1,6 @@
 # Creative tools for agents: the ArtCraft Crafting Apps
 
-> For leads and officers who cut asset, UI and media tasks, and for contributors whose agents work on them. Recommended, never required: contributors choose their tools. Checked on 2 Nov 2026; every app is young and moves fast, so name the version you used.
+> For leads and area leads who cut asset, UI and media tasks, and for contributors whose agents work on them. Recommended, never required: contributors choose their tools. Checked on 2 Nov 2026; every app is young and moves fast, so name the version you used.
 
 The [Crafting Apps](https://getartcraft.com/apps) by the ArtCraft team (the makers of Craft Anything) are open-source creative tools under MIT or Apache-2.0, native on Windows, macOS and Linux and in the browser. What makes them useful for a swarm: **every app can be driven by an agent** through a command line and an MCP server, so an agent can make a material, paint a texture or cut a trailer the way a person would.
 

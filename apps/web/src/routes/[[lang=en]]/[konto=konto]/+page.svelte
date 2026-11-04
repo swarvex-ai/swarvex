@@ -17,7 +17,10 @@
   type Modell = { agent_program: string; model: string; submissions: number; accepted: number; acceptance_percent: number; tokens_per_accepted: number | null };
   type Konto = { person: { login: string; provider: string; created: string; trust_level: number; public_profile?: boolean };
                  roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean }[]; agents: Agent[]; contributions: Beitrag[];
-                 total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[]; weekly_reports?: Woche[] };
+                 total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[]; weekly_reports?: Woche[];
+                 trust?: { level: number; next: { level: number; missing: string[] } | null };
+                 area_lead_appointments?: { invitations: Bereich[]; approvals: Bereich[]; automatic_appointment: { project: string; project_name: string; automatic: boolean }[] } };
+  type Bereich = { id: number; project: string; project_name: string; area: string; paths: string[]; capabilities: string[]; reasons: string[]; created: string; login?: string; trust_level?: number };
   type Woche = { project: string; name: string; week: Record<string, number>; previous_week: { accepted: number; units: number };
                  now: { available: number; blocked: number; active: number; awaiting_review: number }; hints: Hinweis[] };
   type Auftrag = { brief_id: number; title: string; instructions: string; target_path: string; file_types: string[]; max_mb: number; credits: number;
@@ -104,6 +107,22 @@
     }
   }
 
+  // Bereichs-Leads (api/src/bereichsleads.ts): Einladung beantworten, Vorschlag freigeben, Automatik je Projekt
+  async function bereichAktion(adresse: string, body: Record<string, unknown>, meldung: string) {
+    arbeitet = true;
+    hinweis = "";
+    try {
+      const r = await fetch(adresse, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error(String(r.status));
+      hinweis = meldung;
+      await laden();
+    } catch {
+      hinweis = t.aktionFehler;
+    } finally {
+      arbeitet = false;
+    }
+  }
+
   // Credit-Spenden (spenden.ts): Zusage, Aufträge des Leads, Upload
   const DIENSTE = ["meshy", "higgsfield", "elevenlabs", "suno", "runway", "midjourney", "leonardo", "kling", "other"];
   let projektListe = $state<{ project: string; name: string }[]>([]);
@@ -170,7 +189,8 @@
     {#if zustand === "da" && konto}
       <div class="wer">
         <p><span class="leise">{t.angemeldetAls}</span> <strong>{konto.person.login}</strong> <span class="leise">{t.ueber} {konto.person.provider}</span></p>
-        <p class="leise klein">{t.seit} {datum(konto.person.created)} · {t.vertrauen} {konto.person.trust_level}</p>
+        <p class="leise klein">{t.seit} {datum(konto.person.created)} · <a href={pfad(s, s === "en" ? "/docs/trust-levels" : "/docs/vertrauen")}>{t.vertrauen} {konto.person.trust_level}</a> ({t.vertrauenStufen[konto.person.trust_level] ?? ""})</p>
+        {#if konto.trust?.next?.missing.length}<p class="leise klein">{t.vertrauenNaechste(t.vertrauenStufen[konto.trust.next.level], konto.trust.next.missing.join(", "))}</p>{/if}
         <div class="knoepfe">
           <a class="knopf" href="/api/account?export" download data-sveltekit-reload>{t.export}</a>
           <button class="knopf" onclick={abmelden} title={t.abmeldenHilfe}>{t.abmelden}</button>
@@ -189,6 +209,60 @@
       <a class="knopf primaer" href={`/api/account/login?lang=${s}`} data-sveltekit-reload>{t.anmelden}</a>
     </div>
   {:else if konto}
+    {#if konto.area_lead_appointments?.invitations.length}
+      <section aria-labelledby="t-einladung">
+        <h2 id="t-einladung">{t.bereichsLead.einladungH2}</h2>
+        <p class="leise einleitung">{t.bereichsLead.einladungText}</p>
+        <ul class="freigaben">
+          {#each konto.area_lead_appointments.invitations as b (b.id)}
+            <li class="freigabe">
+              <h3>{b.area} · <a href={pfad(s, `${projektPfad}/${b.project}`)}>{b.project_name}</a></h3>
+              <p class="leise klein">{t.bereichsLead.pfade}: <code>{b.paths.join(", ")}</code> · {t.bereichsLead.faehigkeiten}: <code>{b.capabilities.join(", ")}</code></p>
+              {#if b.reasons.length}<p class="klein">{t.bereichsLead.gruende}: {b.reasons.join("; ")}</p>{/if}
+              <div class="aktion">
+                <button class="knopf primaer" disabled={arbeitet} onclick={() => bereichAktion(`/api/account/area-lead-invitations/${b.id}`, { answer: "accept" }, t.bereichsLead.zugesagt(b.area))}>{t.bereichsLead.zusagen}</button>
+                <button class="knopf" disabled={arbeitet} onclick={() => bereichAktion(`/api/account/area-lead-invitations/${b.id}`, { answer: "decline" }, t.bereichsLead.abgesagt(b.area))}>{t.bereichsLead.absagen}</button>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
+    {#if konto.area_lead_appointments?.approvals.length}
+      <section aria-labelledby="t-vorschlag">
+        <h2 id="t-vorschlag">{t.bereichsLead.vorschlagH2}</h2>
+        <p class="leise einleitung">{t.bereichsLead.vorschlagText}</p>
+        <ul class="freigaben">
+          {#each konto.area_lead_appointments.approvals as b (b.id)}
+            <li class="freigabe">
+              <h3>{b.login} → {b.area} · <a href={pfad(s, `${projektPfad}/${b.project}`)}>{b.project_name}</a></h3>
+              <p class="leise klein">{t.vertrauen} {b.trust_level} · {t.bereichsLead.pfade}: <code>{b.paths.join(", ")}</code> · {t.bereichsLead.faehigkeiten}: <code>{b.capabilities.join(", ")}</code></p>
+              {#if b.reasons.length}<p class="klein">{t.bereichsLead.gruende}: {b.reasons.join("; ")}</p>{/if}
+              <div class="aktion">
+                <button class="knopf primaer" disabled={arbeitet} onclick={() => bereichAktion(`/api/account/area-lead-proposals/${b.id}`, { decision: "approve" }, t.bereichsLead.ernannt(b.login ?? "", b.area))}>{t.bereichsLead.ernennen}</button>
+                <button class="knopf" disabled={arbeitet} onclick={() => bereichAktion(`/api/account/area-lead-proposals/${b.id}`, { decision: "decline" }, t.bereichsLead.verworfen(b.area))}>{t.bereichsLead.nichtErnennen}</button>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
+    {#if konto.area_lead_appointments?.automatic_appointment.length}
+      <section aria-labelledby="t-automatik">
+        <h2 id="t-automatik">{t.bereichsLead.automatikH2}</h2>
+        <p class="leise einleitung">{t.bereichsLead.automatikText}</p>
+        <ul class="schalter">
+          {#each konto.area_lead_appointments.automatic_appointment as p (p.project)}
+            <li><label><input type="checkbox" checked={p.automatic} disabled={arbeitet}
+              onchange={(e) => bereichAktion(`/api/account/projects/${p.project}/area-leads-automatic`, { enabled: (e.currentTarget as HTMLInputElement).checked }, "")} />
+              {p.project_name}: {t.bereichsLead.automatik}</label></li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
     {#if konto.approvals?.length}
       <section aria-labelledby="t-freigaben">
         <h2 id="t-freigaben">{t.freigabe.h2}</h2>
@@ -525,6 +599,7 @@
     .knoepfe { justify-content: flex-start; }
   }
   .freigaben { list-style: none; padding: 0; display: grid; gap: 14px; }
+  .schalter { list-style: none; padding: 0; display: grid; gap: 6px; }
   .woche { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: 16px 18px; display: grid; gap: 10px; margin-top: 12px; }
   .woche h3 { margin: 0; font-size: 1.05rem; }
   .wochenzahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 18px; margin: 0; }

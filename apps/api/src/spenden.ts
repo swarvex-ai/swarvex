@@ -23,7 +23,7 @@ async function darfSteuern(db: Db, menschId: number, projektId: number) {
   const rollen = await rollenVon(db, menschId, projektId);
   if (rollen.includes("lead") || rollen.includes("visionaer")) return;
   if ((await officersVon(db, menschId, projektId)).length) return;
-  throw new Abgelehnt("only the project's lead, visionary or officers manage credit donations");
+  throw new Abgelehnt("only the project's lead, visionary or area leads manage credit donations");
 }
 
 export async function zusageAnlegen(db: Db, menschId: number, z: { projekt: string; dienst: string; credits: number; verfaellt: string; notiz?: string }) {
@@ -67,7 +67,7 @@ export async function meineZusagen(db: Db, menschId: number) {
     auftraege: a.filter((y) => Number(y.zusage_id) === Number(x.zusage_id)).map((y) => ({ ...y, auftrag_id: Number(y.auftrag_id), zusage_id: Number(y.zusage_id) })) }));
 }
 
-/** Für Lead, Visionär und Officers: offene Zusagen mit verbleibenden Credits. */
+/** Für Lead, Visionär und Bereichs-Leads: offene Zusagen mit verbleibenden Credits. */
 export async function zusagenFuerLead(db: Db, menschId: number, projektSlug: string) {
   const p = await projektPerSlug(db, projektSlug);
   await darfSteuern(db, menschId, Number(p.id));
@@ -169,7 +169,7 @@ export async function spendeBewerten(db: Db, menschId: number, agentId: number, 
   });
 }
 
-/** Datei an Lead, Visionär oder Officer des Projekts (Agenten-Token), immer als Download. */
+/** Datei an Lead, Visionär oder Bereichs-Lead des Projekts (Agenten-Token), immer als Download. */
 export async function dateiSenden(db: Db, menschId: number, auftragId: number, res: ServerResponse) {
   const a = (await db.query("select * from spendenauftraege where id = $1", [auftragId])).rows[0];
   if (!a || !a.datei) throw new Abgelehnt("no file for this brief");

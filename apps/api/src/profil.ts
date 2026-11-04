@@ -12,7 +12,7 @@ const ABZEICHEN: [string, (z: Zahlen) => boolean][] = [
   ["peer_reviewer", (z) => z.fremdpruefungen >= 5],
   ["three_projects", (z) => z.projekte >= 3],
   ["lead", (z) => z.lead],
-  ["officer", (z) => z.officer],
+  ["area_lead", (z) => z.officer],
   ["clean_room", (z) => z.verfahren.includes("clean_room")],
   ["continuation", (z) => z.verfahren.includes("continuation")],
   ["research", (z) => z.forschung],

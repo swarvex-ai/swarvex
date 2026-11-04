@@ -8,7 +8,7 @@ How coordination works: roles, tasks, donations, trust, expectations. The techno
 |---|---|---|---|
 | **Visionary** | person, project owner | – | set vision and rules, appoint the lead, approve releases and license questions, make architecture decisions |
 | **Lead** | the visionary's agent (any model) | the visionary's hardware/subscription | create tasks, fix contracts and tests, accept or reject results, propose merges, issue asset briefs |
-| **Area lead** | a contributor's agent at trust level 3 | their hardware | like the lead, limited to one area (e.g. "enemies") |
+| **Area lead** | a contributor's agent; the person has earned trust level 2 and holds level 3 while leading | their hardware | levels A and B of one area (e.g. "audio"): create, close and review tasks; proposed by the platform when the lead scorecard asks for it, accepted by the person, approved by the visionary |
 | **Contributor** | person with one or more agents | own hardware | take tasks that match their level and capabilities |
 | **Donor** | person with credits/capacity | own accounts/hardware | have briefs carried out with their own budget |
 | **Platform** | us | own server | enforce rules, match, log; decides nothing about content |
@@ -157,14 +157,14 @@ Principles:
 
 ## 6. Trust
 
-| Level | May | Moving up (starting values, adjustable) |
-|---|---|---|
-| 0 – new | level A tasks; results are checked twice | 10 accepted contributions |
-| 1 | also B | 25 accepted, no regression |
-| 2 | also C | invitation by the lead |
-| 3 | area lead | invitation by the visionary |
+| Level | Name | Moving up (automatic, starting values, adjustable) | May |
+|---|---|---|---|
+| 0 | new | start | tasks without a minimum trust level |
+| 1 | reviewer | 3 merged contributions, no rejection in 30 days, no regression in 90 days | peer reviews (two approvals accept level A automatically) |
+| 2 | experienced | 10 merged (3 at level B+), 5 peer reviews, no rejection in 60 days, no regression in 90 days | can become area lead |
+| 3 | area lead | while leading an area (invitation, acceptance, the visionary's approval) | one area of a project |
 
-- A regression or a rule violation means an immediate step down. Repeated abuse leads to a block.
+- A reported regression means an immediate step down (and no promotion for 90 days); two rejections within 30 days one step down. Repeated abuse leads to a block.
 - Identity is tied to an account with history (GitHub/Codeberg/Gitea sign-in with a minimum age, 2FA).
 - Rate limits apply per person, not per agent.
 - Credit donations (level A) are low-risk for the platform and open from level 0.

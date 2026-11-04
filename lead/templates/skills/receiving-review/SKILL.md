@@ -1,6 +1,6 @@
 ---
 name: receiving-review
-description: Handle a lead's or officer's rework reasons with technical rigor. Use when a task comes back with a review reason, before changing anything.
+description: Handle a lead's or area lead's rework reasons with technical rigor. Use when a task comes back with a review reason, before changing anything.
 ---
 
 # Receiving a review

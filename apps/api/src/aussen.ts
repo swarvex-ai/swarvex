@@ -28,6 +28,10 @@ export const FELDER: Record<string, string> = {
   bis: "until", vorwoche: "previous_week", angelegt: "created", neue_menschen: "new_people", offene_freigaben: "open_approvals", hinweise: "hints", wochenberichte: "weekly_reports",
   // public profile (profil.ts)
   abzeichen: "badges", profil_oeffentlich: "public_profile", oeffentlich: "public",
+  // trust levels (vertrauen.ts)
+  bereichs_vorschlaege: "area_lead_proposals", bereichs_leads: "area_lead_appointments", einladungen: "invitations", automatik: "automatic_appointment", deine_einladungen: "your_invitations",
+  gemerged_ab_b: "merged_level_b_plus", naechste: "next", fehlt: "missing",
+  dein_vertrauen: "your_trust", vertrauen: "trust", nach: "to", anlass: "occasion",
   // preview feedback (feedback.ts)
   gut: "good", hakt: "problems", geraet: "device", neu: "new", rueckmeldungen: "feedback",
   nacharbeit: "rework", abgelehnt: "rejected", untere_grenze_prozent: "lower_bound_percent", pruefung_ok_prozent: "check_passed_percent", tokens_median_je_annahme: "median_tokens_per_accepted",
@@ -58,7 +62,7 @@ export const FELDER: Record<string, string> = {
   gegenpruefung: "cross_check", gegenpruefung_id: "check_id", quelle: "source", engine: "engine",
   widerspricht_selbst: "contradicts_own_run", ohne_gegenpruefung: "without_cross_check", grund: "reason",
   // officers and lead scorecard
-  officer_id: "officer_id", officers: "officers", officer: "officer", bereich: "area", deine_bereiche: "your_areas", stufen: "levels", seit: "since",
+  officer_id: "area_lead_id", officers: "area_leads", officer: "area_lead", bereich: "area", deine_bereiche: "your_areas", stufen: "levels", seit: "since",
   lead_bilanz: "lead_scorecard", bewertet: "reviewed", je_rolle: "by_role", offen: "open", unberuehrt: "untouched_3_days", warten_auf_bewertung: "awaiting_review",
   reservierungen_ohne_ergebnis: "reservations_without_result", einreichungen_30t: "submissions_30d", annahme_prozent: "acceptance_percent",
   nacharbeit_prozent: "rework_percent",
@@ -71,7 +75,7 @@ export const FELDER: Record<string, string> = {
   credit_spenden: "credit_donations", zugesagt: "pledged", credits_angenommen: "credits_accepted", credits: "credits",
   schwarm: "swarm", agenten_stunden: "agent_hours", einzel_agent_stunden: "single_agent_hours", kalender_stunden: "calendar_hours",
   schwarm_faktor: "swarm_factor", max_parallel: "max_parallel", token_effizienz_prozent: "token_efficiency_percent", aelteste_h: "oldest_hours", freigaben: "approvals",
-  nachrichten_offen: "messages_open", nachrichten_antwort_h_median: "messages_response_hours_median", antwort_h_median: "response_hours_median", officer_empfehlung: "officer_recommendation", gruende: "reasons", engpass: "bottleneck",
+  nachrichten_offen: "messages_open", nachrichten_antwort_h_median: "messages_response_hours_median", antwort_h_median: "response_hours_median", officer_empfehlung: "area_lead_recommendation", gruende: "reasons", engpass: "bottleneck",
 };
 
 /** Values that are German words, translated per (German) field name. */
@@ -104,7 +108,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     mensch_registriert: "person_registered", agent_angebunden: "agent_connected", agent_abgemeldet: "agent_signed_out",
     anmeldung_abgewiesen: "sign_in_rejected", anmeldung_ausnahme: "sign_in_exemption", clean_room_trennung: "clean_room_separation", pruefstrasse_abgewiesen: "pipeline_rejected",
     gegenpruefung_reserviert: "cross_check_reserved", gegenpruefung_zurueckgegeben: "cross_check_returned", rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
-    officer_ernannt: "officer_appointed", officer_beendet: "officer_ended", freigabe_angefragt: "approval_requested", freigabe_entschieden: "approval_decided",
+    officer_ernannt: "area_lead_appointed", officer_beendet: "area_lead_ended", vertrauen_geaendert: "trust_changed", regression_gemeldet: "regression_reported", freigabe_angefragt: "approval_requested", freigabe_entschieden: "approval_decided",
     zusage_eingegangen: "pledge_received", zusage_beendet: "pledge_ended", spendenauftrag_angelegt: "donation_brief_created", spende_hochgeladen: "donation_uploaded", spende_bewertet: "donation_reviewed",
     fremdpruefung: "peer_review", vom_lead_erledigt: "done_by_lead", merge_konflikt: "merge_conflict", mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
   },

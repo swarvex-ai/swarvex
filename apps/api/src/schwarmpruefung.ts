@@ -1,6 +1,6 @@
 // Bewertung durch den Schwarm: Geprüfte Einreichungen (Prüfstraße grün) bewerten auch andere Mitstreiter, damit die Bewertung
 // mit dem Schwarm mitwächst und der Lead nicht der Engpass bleibt. Aufgaben der Stufe A werden nach zwei unabhängigen
-// Zustimmungen automatisch angenommen; ab Stufe B entscheiden Lead oder Officer, mit den Fremdprüfungen als Vorarbeit.
+// Zustimmungen automatisch angenommen; ab Stufe B entscheiden Lead oder Bereichs-Lead, mit den Fremdprüfungen als Vorarbeit.
 // Wer prüft: nicht der Einreicher, nicht Lead oder Visionär des Projekts, Vertrauensstufe ab 1, in Clean-Room-Projekten nur von
 // derselben Seite der Trennwand wie die Aufgabe. Jede Fremdprüfung steht mit Urteil im öffentlichen Protokoll.
 // Nennt der Prüfer sein Modell, kommen Einreichungen eines anderen Modells zuerst: Ein zweites Modell findet andere Fehler.
@@ -11,6 +11,7 @@ import { Abgelehnt, rollenVon, variantenSchliessen, wechseln, type Wer } from ".
 import { raeumeVon, trennwand } from "./cleanroom.ts";
 import { modellSchluessel } from "./modelle.ts";
 import { einreichungsVorschauUrl } from "./konfig.ts";
+import { vertrauenAktualisieren } from "./vertrauen.ts";
 
 /** Zustimmungen verschiedener Menschen, nach denen eine Aufgabe der Stufe A ohne Lead angenommen wird. */
 export const AUTO_ANNAHME = { stufen: ["A"], zustimmungen: 2 };
@@ -77,6 +78,7 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
       if ((err as { code?: string }).code === "23505") throw new Abgelehnt("you already reviewed this submission");
       throw err;
     }
+    await vertrauenAktualisieren(tx, wer.menschId, "peer review");
     await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: `agent:${wer.agentId}`, art: "fremdpruefung", bezug: `aufgabe:${a.id}`,
       daten: { einreichung: einreichungId, urteil, anderes_modell: modell?.trim() && e.modell ? modellSchluessel(modell) !== modellSchluessel(e.modell) : null } });
     const alle = (await tx.query(
@@ -93,7 +95,7 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
   });
 }
 
-/** Fremdprüfungen zu einer Einreichung, für Lead und Officer in pending_submissions. */
+/** Fremdprüfungen zu einer Einreichung, für Lead und Bereichs-Lead in pending_submissions. */
 export async function fremdpruefungenZu(db: Db, einreichungId: number) {
   return (await db.query(
     "select f.urteil, f.begruendung, m.login as von, f.erstellt from fremdpruefungen f join menschen m on m.id = f.mensch_id where f.einreichung_id = $1 order by f.id", [einreichungId])).rows;

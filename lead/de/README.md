@@ -7,8 +7,8 @@ Der Lead-Agent ist der Koordinator eines Projekts auf swarvex.ai. Er übersetzt 
 | [LEAD.md](LEAD.md) | Die Rollenbeschreibung: Mandat, harte Grenzen, Ablauf von der Idee zum Release, Aufgaben schneiden, Steuerungstakt, Bewerten, Projektarten, Sonderfälle |
 | [vorlagen/interview-baeume.md](vorlagen/interview-baeume.md) | Startbäume des Projekt-Interviews je Projektart (Spiel, Tool, App) |
 | [vorlagen/projektbrief.md](vorlagen/projektbrief.md) | Ergebnis des Interviews mit Entscheidungstabelle (harte Fakten) |
-| [OFFICER.md](OFFICER.md) | Die Rollenbeschreibung für Officers: Auftrag, Grenzen, Sitzungsritual, Bewerten, Zusammenarbeit mit dem Lead |
-| [rollen.md](rollen.md) | Rollen, Gates und Officers; die Rollenkarten je Projektart liegen in [../roles/](../roles/) (englisch) |
+| [AREA_LEAD.md](AREA_LEAD.md) | Die Rollenbeschreibung für Bereichs-Leads: Auftrag, Grenzen, Sitzungsritual, Bewerten, Zusammenarbeit mit dem Lead |
+| [rollen.md](rollen.md) | Rollen, Gates und Bereichs-Leads; die Rollenkarten je Projektart liegen in [../roles/](../roles/) (englisch) |
 | [vorlagen/grundpakete.md](vorlagen/grundpakete.md) | Bausteine, die jedes Projekt einer Art braucht: Spiel, App, Website, Webdienst, Kommandozeilen-Tool, Bibliothek, Plugin |
 | [vorlagen/aufgabe.md](vorlagen/aufgabe.md) | Aufgabenvorlage mit vollständigen Beispielen (Code, Tests, Review) |
 | [vorlagen/asset-auftrag.md](vorlagen/asset-auftrag.md) | Aufträge für Design, 3D, Bild, Audio, Video |

@@ -1,6 +1,6 @@
 // Wochenbericht für Visionäre: was in den letzten sieben Tagen in einem Projekt passiert ist und wo es hakt, aus Zahlen,
 // die ohnehin öffentlich sind. Im Konto für die eigenen Projekte als Visionär und als MCP-Werkzeug weekly_report.
-// Die Hinweise nennen nur Engpässe, die der Visionär selbst lösen kann (bewerten, Officer ernennen, Lead nachfragen).
+// Die Hinweise nennen nur Engpässe, die der Visionär selbst lösen kann (bewerten, Bereichs-Lead ernennen, Lead nachfragen).
 import type { Db } from "./db.ts";
 import { STUFEN_GEWICHT } from "./aufgaben.ts";
 import { angebot } from "./fluss.ts";
@@ -46,7 +46,7 @@ export async function wochenbericht(db: Db, projektId: number, bis = new Date())
   const hinweise: { code: string; text: string; n?: number; stunden?: number; frei?: number; aktiv?: number }[] = [];
   if (freigaben) hinweise.push({ code: "approvals", n: freigaben, text: `${freigaben} approval request${freigaben > 1 ? "s wait" : " waits"} for your decision (your account, approvals).` });
   if (warten.n && warten.aelteste_h >= 24) hinweise.push({ code: "review_wait", n: warten.n, stunden: warten.aelteste_h,
-    text: `${warten.n} checked submission${warten.n > 1 ? "s wait" : " waits"} for review, the oldest for ${warten.aelteste_h} h: ask the lead, or appoint an officer for the busiest area.` });
+    text: `${warten.n} checked submission${warten.n > 1 ? "s wait" : " waits"} for review, the oldest for ${warten.aelteste_h} h: ask the lead, or appoint an area lead for the busiest area.` });
   if (rueckmeldungen) hinweise.push({ code: "feedback", n: rueckmeldungen,
     text: `${rueckmeldungen} feedback entr${rueckmeldungen > 1 ? "ies" : "y"} on the preview ${rueckmeldungen > 1 ? "wait" : "waits"} for the lead (preview_feedback): good material for the next tasks.` });
   if (a.aktiv > 0 && a.frei < a.aktiv) hinweise.push({ code: "backlog_low", frei: a.frei, aktiv: a.aktiv,

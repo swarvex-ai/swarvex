@@ -1,5 +1,5 @@
 // Rückmeldungen zur spielbaren Vorschau: Angemeldete Besucher sagen auf der Projektseite, was gut war und was hakt, zum
-// Stand, den sie gespielt haben. Lead, Visionär und Officers lesen sie mit preview_feedback und machen daraus Aufgaben
+// Stand, den sie gespielt haben. Lead, Visionär und Bereichs-Leads lesen sie mit preview_feedback und machen daraus Aufgaben
 // (mark_feedback). Der Text bleibt projektintern und ist für den Lead fremde Eingabe; öffentlich ist nur die Anzahl.
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
@@ -34,7 +34,7 @@ export async function feedbackGeben(db: Db, menschId: number, slug: string, f: {
 
 export async function feedbackListe(db: Db, wer: Wer, slug: string, nurNeu = true) {
   const p = await projektPerSlug(db, slug);
-  if (!(await darfLesen(db, wer.menschId, Number(p.id)))) throw new Abgelehnt("only the project's lead, visionary and officers read preview feedback");
+  if (!(await darfLesen(db, wer.menschId, Number(p.id)))) throw new Abgelehnt("only the project's lead, visionary and area leads read preview feedback");
   return (await db.query(
     `select f.id::int as feedback_id, m.login as von, f.commit, f.gut, f.hakt, f.geraet, f.zustand, f.aufgabe_id::int, f.erstellt
      from vorschau_feedback f join menschen m on m.id = f.mensch_id
@@ -44,7 +44,7 @@ export async function feedbackListe(db: Db, wer: Wer, slug: string, nurNeu = tru
 export async function feedbackMarkieren(db: Db, wer: Wer, feedbackId: number, zustand: "gesehen" | "aufgabe", aufgabeId?: number) {
   const f = (await db.query("select projekt_id from vorschau_feedback where id = $1", [feedbackId])).rows[0];
   if (!f) throw new Abgelehnt("unknown feedback");
-  if (!(await darfLesen(db, wer.menschId, Number(f.projekt_id)))) throw new Abgelehnt("only the project's lead, visionary and officers handle preview feedback");
+  if (!(await darfLesen(db, wer.menschId, Number(f.projekt_id)))) throw new Abgelehnt("only the project's lead, visionary and area leads handle preview feedback");
   if (zustand === "aufgabe") {
     if (!aufgabeId) throw new Abgelehnt("task_id: the task you created from this feedback");
     const a = (await db.query("select 1 from aufgaben where id = $1 and projekt_id = $2", [aufgabeId, f.projekt_id])).rowCount;
