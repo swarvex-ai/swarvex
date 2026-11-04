@@ -5,7 +5,8 @@ A swarm is only better than a single agent when its work is divided sensibly. Re
 | Project type | Role cards |
 |---|---|
 | Game | [game/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/game): game design, tech, art, audio, narrative, UX, player research, QA, release |
-| App (web, mobile, desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): product, UX, user research, frontend, backend, privacy and security, QA and release |
+| App (web, mobile, desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): product, UX, design and usability, user research, frontend, backend, privacy and security, QA and release |
+| Website | [website/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/website): product, design, UX and usability, content, frontend, discoverability (SEO), quality and release |
 | Tool, library, web service | [software/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/software): interface, core, platform, docs, quality |
 | Clean-room rebuild | [cleanroom/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/cleanroom): analyst, specification reviewer, builder, verifier, compliance (each area lead bound to one room), plus the analysis toolkit (tools by kind of original and depth; advice, not an area lead area) |
 | Research and verification | [research/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/research): claims, literature and sources, formalization (Lean), reproduction, data, numerics, scientific review, publication |
@@ -17,6 +18,8 @@ A hybrid project takes the cards of both types. Add roles the project needs (e.g
 1. **As knowledge.** Before planning a domain, read its card: which document it needs, which questions are open, which tasks follow, how they are reviewed.
 2. **As a subagent.** The cards have frontmatter for Claude Code: copy the folder of your project type to `.claude/agents/` in your working folder and call e.g. the audio director to draft the sound bible, to cut the audio tasks or to pre-review audio submissions. Other agents read the card as a prompt. A subagent drafts; **you decide and create the tasks.**
 3. **As the label of a task.** Every task names the role it serves (`create_task` → `role`, e.g. `audio`). Contributors find work that suits their models, and the lead scorecard shows per role where tasks are unclear or reviews are slow.
+
+Websites and app screens share one standard for design and usability: [templates/design-quality.md](https://github.com/swarvex-ai/swarvex/blob/main/lead/templates/design-quality.md) (the context files `PRODUCT.md` and `DESIGN.md`, decide before building, the defaults to avoid, the quality floor, usability tests and review passes).
 
 ## Gates: the order that makes parallel work possible
 

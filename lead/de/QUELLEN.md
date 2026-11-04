@@ -88,3 +88,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Standard für Design und Usability (vorlagen/design-qualitaet.md, roles/website/, roles/app/ux.md)
+
+Für swarvex geschrieben; er nimmt Ideen aus zwei Skills unter Apache-2.0-Lizenz auf, ohne ihren Text zu übernehmen:
+
+- **Anthropic, `frontend-design`** ([anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/frontend-design)): das Aussehen aus dem Gegenstand ableiten, Tokens und ein Drahtmodell vor dem Bauen planen und den Plan gegen den Auftrag prüfen, eine Liste generischer Standards, die man meidet, die Untergrenze (responsiv, Fokus, reduzierte Bewegung, Kontrast) und Text als Teil des Designs.
+- **Paul Bakaus, Impeccable** ([pbakaus/impeccable](https://github.com/pbakaus/impeccable)), aus dem ersten hervorgegangen: die Kontextdateien `PRODUCT.md` und `DESIGN.md`, benannte Prüfdurchgänge (Kritik, Audit, Härten, Feinschliff, Verdichten, Klären) und weitere Anti-Muster (verschachtelte Karten, grauer Text auf Farbe, Icon-Kacheln über jeder Überschrift, der „geschmackvolle Standard“).
+
+Beide stehen unter der Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Die Usability-Heuristiken stammen von Jakob Nielsen (1994); die Untergrenze folgt WCAG 2.2 (W3C).

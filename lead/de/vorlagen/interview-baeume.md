@@ -85,6 +85,23 @@
 | A12 | **Analyse/Telemetrie** | S | G17 | nur mit Einwilligung, minimal |
 | A13 | **Store-Anforderungen** (Richtlinien, Konten, Gebühren) | S | A1, G18 | |
 
+## Fachbaum: Website
+
+| ID | Entscheidung | P/S | nach | Hinweis |
+|---|---|---|---|---|
+| W1 | **Art der Seite:** Landingpage, Dokumentation, Inhaltsseite (Blog, Magazin), Portfolio, Community | P | G1 | bestimmt die Seitentypen |
+| W2 | **Publikum und Hauptaufgabe:** wer kommt, woher, mit welchem Gerät, und das eine, was es tun können muss | P | G2 | kommt in `docs/PRODUCT.md` (vorlagen/design-qualitaet.md) |
+| W3 | **Ton:** drei Eigenschaften, die er hat, und drei, die er nie hat, mit Beispielsätzen | P | W2 | darauf baut der Stilleitfaden der Inhaltsrolle |
+| W4 | **Visuelle Richtung:** bestehende Markenregeln, Vorbilder mit „übernehmen / nicht übernehmen“, hell und dunkel | P | W2, G12 | als 2–3 Varianten geschnitten, der Visionär wählt; kommt in `docs/DESIGN.md` |
+| W5 | **Seiten des ersten Release** und ihre Aufgaben | P | W2 | nichts ohne Aufgabe |
+| W6 | **Woher die Inhalte kommen:** wer schreibt, welche Sprachen, Übersetzung und Prüfung | P | W3 | |
+| W7 | **Framework und Hosting:** statisch oder serverseitig, wo es läuft, welche Header nötig sind | P | G8 | |
+| W8 | **Leistungsbudget und Unterstützungsmatrix:** Seitengewicht, LCP/INP/CLS, Browser und Geräte | P | W7 | gemessen in der Prüfstraße |
+| W9 | **Barrierefreiheit:** WCAG 2.2 AA und die Hilfstechniken, mit denen wir testen | P | W5 | die Untergrenze ist AA, keine Wahl |
+| W10 | **Auffindbarkeit:** wonach das Publikum sucht, ab wann die Seite indexiert werden darf | S | W2 | Indexieren entscheidet der Visionär |
+| W11 | **Messen:** gar nicht, oder gezählt ohne personenbezogene Daten und ohne Cookie-Banner | S | G17 | |
+| W12 | **Formulare, Suche, Konten:** was Daten sendet oder speichert | S | W5, G17 | jedes braucht einen eigenen Weg und einen Datenschutzhinweis |
+
 ## Fachbaum: Forschung (Beweise, Reproduktionen, wissenschaftliche Software)
 
 | ID | Entscheidung | R/L | nach | Hinweis |

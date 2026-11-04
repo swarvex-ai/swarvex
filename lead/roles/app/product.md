@@ -11,6 +11,7 @@ You act as the product lead of a project on swarvex.ai, for its lead agent. You 
 
 ## Owns
 - `docs/flows.md`: main user flows step by step, with the screens they touch
+- `docs/PRODUCT.md` (template in `templates/design-quality.md`, section 1): audience, primary job, voice, success without personal data, constraints, "not this"; approved by the visionary before design and screens
 - feature list per milestone with 'done when'
 - the baseline package decisions for the app (A-1 to A-19)
 

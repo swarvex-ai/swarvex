@@ -88,3 +88,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Design and usability standard (templates/design-quality.md, roles/website/, roles/app/ux.md)
+
+Written for swarvex; it takes up ideas from two Apache-2.0-licensed skills, without copying their text:
+
+- **Anthropic, `frontend-design`** ([anthropics/skills](https://github.com/anthropics/skills/tree/main/skills/frontend-design)): ground the look in the subject, plan tokens and a wireframe before building and review the plan against the brief, a list of generic defaults to avoid, the quality floor (responsive, focus, reduced motion, contrast) and writing as part of the design.
+- **Paul Bakaus, Impeccable** ([pbakaus/impeccable](https://github.com/pbakaus/impeccable)), which grew out of the former: the context files `PRODUCT.md` and `DESIGN.md`, named review passes (critique, audit, harden, polish, distill, clarify) and further anti-patterns (nested cards, grey text on colour, icon tiles above every heading, the "tasteful default").
+
+Both are licensed under the Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). The usability heuristics are Jakob Nielsen's (1994); the quality floor follows WCAG 2.2 (W3C).

@@ -522,6 +522,7 @@ Ton: freundlich, konkret, nie herablassend. Kritisiere den Beitrag, nie den Mens
 - [ ] Lesbarkeit und Bedienbarkeit: Kontrast, Größen, klare Rückmeldung, Barrierefreiheit laut Projektbrief
 - [ ] Spiel: Gefühl (Timing, Feedback, Lesbarkeit der Gefahr) entspricht den Säulen
 - [ ] Assets: Maßstab, Silhouette, Konsistenz mit vorhandenen Assets
+- [ ] Websites und App-Bildschirme: `vorlagen/design-qualitaet.md`: folgt `docs/DESIGN.md` statt eines Standard-Looks, hält die Untergrenze ein, Screenshots bei 360/768/1440 px liegen bei
 
 **QA**
 - [ ] Reproduzierbar grün, kein Zufall ohne festen Seed in Tests
@@ -580,6 +581,13 @@ Du koordinierst ein Team aus Fremden. Dafür brauchst du, was ein Studio oder Pr
 - **Zustand und Daten:** ein klares Modell, API-Verträge mit Beispielantworten, Mock-Server für parallele Arbeit.
 - **Barrierefreiheit** (Kontrast, Tastatur, Screenreader-Labels) und **Responsivität** sind Kriterien.
 - **Visuelle Regression** über Screenshots in der Prüfstraße.
+- **Design vor Bildschirmen:** `docs/PRODUCT.md` und `docs/DESIGN.md` (`vorlagen/design-qualitaet.md`); die visuelle Richtung als 2–3 Varianten, der Visionär wählt; vor dem Release eine bewertete Kritik und ein Usability-Test je wichtigem Ablauf.
+
+### Website
+- **Produkt und Design vor Seiten:** `docs/PRODUCT.md` (Publikum, Hauptaufgabe, Ton) und `docs/DESIGN.md` (Richtung, Tokens) nach `vorlagen/design-qualitaet.md`; die Richtung als 2–3 Varianten, der Visionär wählt.
+- **Struktur vor Seiten:** Sitemap, Wege und Seitentypen (`design.ui`), dann eine Aufgabe je Seite; **Worte sind Design:** ein Stilleitfaden, Texte je Seite und Mikrotexte je Weg (`text.*`).
+- **Prüfungen in der Prüfstraße:** Gültigkeit, Links, axe-core, Leistungsbudget, visuelle Schnappschüsse in drei Breiten; **Prüfdurchgänge** vor jedem Release: Kritik, Audit, Härten, Feinschliff.
+- **Auffindbar und datensparsam:** Titel, Beschreibungen, Sitemap, strukturierte Daten; nichts, was ein Cookie-Banner braucht. Rollenkarten: `roles/website/`.
 
 ### Clean-Room-Nachbau (Verfahren `clean_room`)
 
@@ -700,6 +708,7 @@ Ein Forschungsprojekt erzeugt Wissen, das andere nachprüfen können: einen form
 | `../templates/skills/` | Phase 1: Start-Skills für `.agents/skills/` im Projekt-Repo (englisch, Agenten lesen Englisch) |
 | `vorlagen/playtest-bericht.md` | Spiele und Apps: Szenario, Fragen, Beobachtungen, Ergebnis |
 | `vorlagen/styleguide.md` | Aussehen, Klang und Ton; Asset-Vorgaben |
+| `vorlagen/design-qualitaet.md` | Websites und App-Bildschirme: PRODUCT.md und DESIGN.md, Vorgehen, zu meidende Standards, Untergrenze, Usability, Prüfdurchgänge, Prüfungen in der Pipeline |
 | `vorlagen/kreativ-werkzeuge.md` | empfohlene lokale Kreativ-Werkzeuge (ArtCraft Crafting Apps) für Materialien, Texturen, Icons, UI-Animation, Trailer und Wertetabellen, alle über MCP steuerbar |
 | `../engine-reference/godot/` | Änderungen in Godot 4.7, die Modelle oft nicht kennen (Englisch) |
 | `vorlagen/swarvex.yaml` | Beispiel `swarvex.yaml`: Umgebung, Tests und geschützte Pfade |

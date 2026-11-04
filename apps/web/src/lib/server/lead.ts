@@ -25,12 +25,12 @@ const GRUNDPAKET: Record<Art, string> = {
   research: "## Research (formal proofs, reproductions, scientific software)",
 };
 const BAUM: Record<Art, string> = {
-  game: "## Specialist tree: game", app: "## Specialist tree: app (web / mobile / desktop)", website: "## Specialist tree: app (web / mobile / desktop)",
+  game: "## Specialist tree: game", app: "## Specialist tree: app (web / mobile / desktop)", website: "## Specialist tree: website",
   service: "## Specialist tree: tool / CLI / library", tool: "## Specialist tree: tool / CLI / library", library: "## Specialist tree: tool / CLI / library", plugin: "## Specialist tree: tool / CLI / library",
   research: "## Specialist tree: research (proofs, reproductions, scientific software)",
 };
 /** Ordner der Rollenkarten je Art. */
-export const ROLLEN: Record<Art, string> = { game: "game", app: "app", website: "app", service: "software", tool: "software", library: "software", plugin: "software", research: "research" };
+export const ROLLEN: Record<Art, string> = { game: "game", app: "app", website: "website", service: "software", tool: "software", library: "software", plugin: "software", research: "research" };
 /** Abschnitte in LEAD.md (9. Projektarten), die nur ihr eigenes Paket braucht; die übrigen Pakete bleiben so unter der Grenze für Befehlszeilen. */
 const NUR_FUER = { cleanroom: "### Clean-room rebuild (process `clean_room`)", continuation: "### Continuing abandoned software (process `continuation`)",
   research: "### Research and verification (type `research`)" };
@@ -64,6 +64,8 @@ function tiefer(md: string, stufen = 1): string {
 
 export const karten = (ordner: string) => readdirSync(join(LEAD, "roles", ordner)).filter((d) => d.endsWith(".md")).map((d) => d.replace(/\.md$/, "")).sort();
 export const karte = (ordner: string, name: string) => lies(`roles/${ordner}/${name}.md`);
+/** Alle Ordner mit Rollenkarten (je Projektart, dazu Clean Room). */
+export const KARTEN_ORDNER = [...new Set([...Object.values(ROLLEN), "cleanroom"])];
 
 export function paket(name: string): string {
   const { art, verfahren } = zerlegen(name);
@@ -98,9 +100,19 @@ export function paket(name: string): string {
       "## Analysis toolkit", tiefer(karte("cleanroom", "toolkit").replace(/^---\n[\s\S]*?\n---\n/, "").replace(/^\s*# .*\n/, ""))] : []),
     ...(weiter ? ["## First milestone of a continuation", tiefer(lies("templates/continuation.md").replace(/^# .*\n/, ""))] : []),
     ...(art === "research" ? ["## Claims register format", tiefer(lies("templates/research-claims.md").replace(/^# .*\n/, ""))] : []),
+    // Websites und Apps: der Design- und Usability-Standard, bevor die ersten Design- und Seitenaufgaben geschnitten werden
+    ...(art === "website" || art === "app" ? ["## Design and usability standard", tiefer(lies("templates/design-quality.md").replace(/^# .*\n/, ""))] : []),
   ];
-  return teile.join("\n\n") + "\n";
+  const text = teile.join("\n\n") + "\n";
+  // Der Assistent startet den Lead mit claude --append-system-prompt "$(curl …)": ein einzelnes Argument darf unter
+  // Linux höchstens 128 KiB lang sein (MAX_ARG_STRLEN). Lieber hier beim Bauen scheitern als beim Start beim Visionär.
+  const bytes = Buffer.byteLength(text);
+  if (bytes > PAKET_GRENZE) throw new Error(`lead bundle ${name} has ${bytes} bytes, more than ${PAKET_GRENZE}: shorten a section or move it out of the bundle`);
+  return text;
 }
+
+/** Obergrenze je Lead-Paket (Linux MAX_ARG_STRLEN 131072 Byte, mit Rand). */
+export const PAKET_GRENZE = 126_000;
 
 /** Shell-Skript: richtet die Rollenkarten des Pakets als Claude-Code-Unteragenten im aktuellen Ordner ein. */
 export function agentenSkript(name: string): string {

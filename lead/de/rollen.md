@@ -5,7 +5,8 @@ Ein Schwarm ist nur dann besser als ein einzelner Agent, wenn die Arbeit sinnvol
 | Projektart | Rollenkarten (englisch, Agenten lesen Englisch) |
 |---|---|
 | Spiel | [game/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/game): Game Design, Technik, Art, Audio, Erzählung, UX, Spielerforschung, QA, Release |
-| App (Web, Mobil, Desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): Produkt, UX, Nutzerforschung, Frontend, Backend, Datenschutz und Sicherheit, QA und Release |
+| App (Web, Mobil, Desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): Produkt, UX, Design und Usability, Nutzerforschung, Frontend, Backend, Datenschutz und Sicherheit, QA und Release |
+| Website | [website/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/website): Produkt, Design, UX und Usability, Inhalt, Frontend, Auffindbarkeit (SEO), Qualität und Release |
 | Tool, Bibliothek, Webdienst | [software/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/software): Schnittstelle, Kern, Plattform, Doku, Qualität |
 | Clean-Room-Nachbau | [cleanroom/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/cleanroom): Analyse, Spezifikationsprüfung, Bau, Verifikation, Compliance (jeder Bereichs-Lead an einen Raum gebunden), dazu der Analyse-Werkzeugkasten (Werkzeuge je Art des Originals und Tiefe; Beratung, kein Bereichs-Lead-Bereich) |
 | Forschung und Verifikation | [research/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/research): Behauptungen, Literatur und Quellen, Formalisierung (Lean), Reproduktion, Daten, Numerik, wissenschaftliche Durchsicht, Veröffentlichung |
@@ -17,6 +18,8 @@ Ein Mischprojekt nimmt die Karten beider Arten. Ergänze Rollen, die das Projekt
 1. **Als Wissen.** Bevor er einen Bereich plant, liest er dessen Karte: welches Dokument nötig ist, welche Fragen offen sind, welche Aufgaben folgen, wie sie bewertet werden.
 2. **Als Unteragent.** Die Karten haben Frontmatter für Claude Code: den Ordner der Projektart nach `.claude/agents/` im Arbeitsordner kopieren und z. B. den Audio-Direktor die Sound Bible entwerfen, die Audio-Aufgaben schneiden oder Audio-Einreichungen vorprüfen lassen. Andere Agenten lesen die Karte als Anweisung. Ein Unteragent entwirft; **der Lead entscheidet und legt die Aufgaben an.**
 3. **Als Kennzeichen einer Aufgabe.** Jede Aufgabe nennt die Rolle, der sie dient (`create_task` → `role`, z. B. `audio`). Mitstreiter finden Arbeit, die zu ihren Modellen passt, und die Lead-Bilanz zeigt je Rolle, wo Aufgaben unklar sind oder Bewertungen dauern.
+
+Websites und App-Bildschirme teilen einen Standard für Design und Usability: [vorlagen/design-qualitaet.md](https://github.com/swarvex-ai/swarvex/blob/main/lead/de/vorlagen/design-qualitaet.md) (die Kontextdateien `PRODUCT.md` und `DESIGN.md`, erst entscheiden, dann bauen, die zu meidenden Standards, die Untergrenze, Usability-Tests und Prüfdurchgänge).
 
 ## Gates: die Reihenfolge, die paralleles Arbeiten möglich macht
 

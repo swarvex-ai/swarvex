@@ -521,6 +521,7 @@ Tone: friendly, concrete, never condescending. Criticize the contribution, never
 - [ ] Readability and usability: contrast, sizes, clear feedback, accessibility as defined in the project brief
 - [ ] Game: feel (timing, feedback, readability of danger) matches the pillars
 - [ ] Assets: scale, silhouette, consistency with existing assets
+- [ ] Websites and app screens: `templates/design-quality.md`: follows `docs/DESIGN.md` instead of a default look, meets the quality floor, screenshots at 360/768/1440 px attached
 
 **QA**
 - [ ] Reproducibly green, no randomness in tests without a fixed seed
@@ -579,6 +580,13 @@ You coordinate a team of strangers, so you need what a studio or product team kn
 - **State and data:** a clear model, API contracts with sample responses, a mock server for parallel work.
 - **Accessibility** (contrast, keyboard, screen reader labels) and **responsiveness** are criteria.
 - **Visual regression** via screenshots in the test pipeline.
+- **Design before screens:** `docs/PRODUCT.md` and `docs/DESIGN.md` (`templates/design-quality.md`); the visual direction as 2–3 variants, the visionary picks; a scored critique and a usability test per key flow before release.
+
+### Website
+- **Product and design before pages:** `docs/PRODUCT.md` (audience, primary job, voice) and `docs/DESIGN.md` (direction, tokens) from `templates/design-quality.md`; the direction as 2–3 variants, the visionary picks.
+- **Structure before pages:** site map, journeys and page types (`design.ui`), then one task per page; **words are design:** a style guide, copy per page and microcopy per journey (`text.*`).
+- **Checks in the pipeline:** validity, links, axe-core, performance budget, visual snapshots at three widths; **review passes** before each release: critique, audit, harden, polish.
+- **Findable and private:** titles, descriptions, sitemap, structured data; nothing that needs a consent banner. Role cards: `roles/website/`.
 
 ### Clean-room rebuild (process `clean_room`)
 
@@ -699,6 +707,7 @@ A research project produces knowledge others can check: a formal proof, a reprod
 | `templates/skills/` | phase 1: starter skills for `.agents/skills/` in the project repository |
 | `templates/playtest-report.md` | games and apps: scenario, questions, observations, result |
 | `templates/style-guide.md` | look, sound and tone; asset specifications |
+| `templates/design-quality.md` | websites and app screens: PRODUCT.md and DESIGN.md, design process, defaults to avoid, quality floor, usability, review passes, pipeline checks |
 | `templates/creative-tools.md` | recommended local creative tools (ArtCraft Crafting Apps) for materials, textures, icons, UI animation, trailers and value tables, all drivable over MCP |
 | `engine-reference/godot/` | Godot 4.7 changes that models often don't know |
 | `templates/swarvex.yaml` | example test contract |

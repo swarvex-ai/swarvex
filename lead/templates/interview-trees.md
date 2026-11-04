@@ -85,6 +85,23 @@
 | A12 | **Analytics/telemetry** | L | G17 | only with consent, minimal |
 | A13 | **Store requirements** (guidelines, accounts, fees) | L | A1, G18 | |
 
+## Specialist tree: website
+
+| ID | Decision | R/L | after | Hint |
+|---|---|---|---|---|
+| W1 | **Kind of site:** landing page, documentation, content site (blog, magazine), portfolio, community | R | G1 | determines the page types |
+| W2 | **Audience and primary job:** who comes, from where, on which device, and the one thing they must be able to do | R | G2 | goes into `docs/PRODUCT.md` (templates/design-quality.md) |
+| W3 | **Voice:** three adjectives it is and three it never is, with example sentences | R | W2 | the content role's style guide builds on it |
+| W4 | **Visual direction:** existing brand rules, references with "take / leave", light and dark | R | W2, G12 | cut as 2–3 variants, the visionary picks; goes into `docs/DESIGN.md` |
+| W5 | **Pages of the first release** and their jobs | R | W2 | nothing without a job |
+| W6 | **Content source:** who writes, which languages, translation and review | R | W3 | |
+| W7 | **Framework and hosting:** static or server-rendered, where it runs, headers we need | R | G8 | |
+| W8 | **Performance budget and support matrix:** page weight, LCP/INP/CLS, browsers and devices | R | W7 | measured in the pipeline |
+| W9 | **Accessibility:** WCAG 2.2 AA and the assistive technologies we test | R | W5 | the floor is AA, not a choice |
+| W10 | **Findability:** what the audience searches for, when the site may be indexed | L | W2 | indexing is the visionary's decision |
+| W11 | **Measurement:** none, or counted without personal data and without a consent banner | L | G17 | |
+| W12 | **Forms, search, accounts:** what sends or stores data | L | W5, G17 | each needs its own journey and privacy note |
+
 ## Specialist tree: research (proofs, reproductions, scientific software)
 
 | ID | Decision | R/L | after | Hint |

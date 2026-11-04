@@ -12,6 +12,7 @@ The lead agent is the coordinator of a project on swarvex.ai. It turns the visio
 | [templates/baseline-packages.md](templates/baseline-packages.md) | Building blocks every project of a type needs: game, app, website, web service, CLI tool, library, plugin |
 | [templates/task.md](templates/task.md) | Task template with complete examples (code, tests, review) |
 | [templates/asset-brief.md](templates/asset-brief.md) | Briefs for design, 3D, image, audio, video |
+| [templates/design-quality.md](templates/design-quality.md) | Design and usability standard for websites and app screens: PRODUCT.md and DESIGN.md, defaults to avoid, quality floor, review passes |
 | [templates/review-report.md](templates/review-report.md) | Fixed JSON schema for reviews and subagents |
 | [templates/decision.md](templates/decision.md) | Decisions (ADR) and approval requests to the visionary |
 | [templates/status-report.md](templates/status-report.md) | Status for the visionary |
