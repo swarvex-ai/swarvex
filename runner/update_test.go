@@ -44,3 +44,44 @@ func TestNeueVersionInstalliert(t *testing.T) {
 		t.Fatal("ohne Startzustand nie neu laden")
 	}
 }
+
+func TestEinheitArgsUndBudget(t *testing.T) {
+	args := []string{"--project", "auto", "--model-key-file=/home/a b/key", "--budget-tokens", "1000000", "--schedule", "daily 22:00-07:00", "--daily-budget-tokens", "2000000", "--auto-update"}
+	einheit := dienstEinheit("/home/u/.local/bin/swarvex", args)
+	gelesen, ok := einheitArgsLesen(einheit)
+	if !ok || len(gelesen) != len(args) {
+		t.Fatalf("%v %q", ok, gelesen)
+	}
+	for i := range args {
+		if gelesen[i] != args[i] {
+			t.Fatalf("Argument %d: %q statt %q", i, gelesen[i], args[i])
+		}
+	}
+	neu := argSetzen(argSetzen(gelesen, "budget-tokens", "0"), "daily-budget-tokens", "0")
+	if w, _ := argWert(neu, "budget-tokens"); w != "0" {
+		t.Fatalf("budget-tokens %q", w)
+	}
+	if w, _ := argWert(neu, "daily-budget-tokens"); w != "0" {
+		t.Fatalf("daily %q", w)
+	}
+	if w, _ := argWert(neu, "schedule"); w != "daily 22:00-07:00" || !hatFlag(neu, "auto-update") {
+		t.Fatalf("andere Angaben verändert: %q", neu)
+	}
+	if w, _ := argWert([]string{"--budget-tokens=5"}, "budget-tokens"); w != "5" {
+		t.Fatal("--x=wert nicht gelesen")
+	}
+}
+
+func TestVerlauf(t *testing.T) {
+	datei := filepath.Join(t.TempDir(), "history.jsonl")
+	for i := int64(1); i <= 5; i++ {
+		verlaufMerken(datei, verlaufEintrag{Aufgabe: i, Ergebnis: "returned"})
+	}
+	l := verlaufLesen(datei, 3)
+	if len(l) != 3 || l[0].Aufgabe != 5 || l[2].Aufgabe != 3 {
+		t.Fatalf("%+v", l)
+	}
+	if tausender(1234567) != "1,234,567" || tausender(999) != "999" {
+		t.Fatal(tausender(1234567))
+	}
+}

@@ -34,7 +34,10 @@ Runner (dein Rechner)
 | `… --leftover` | Beta, nur mit Abo: nur das Kontingent nutzen, das sonst verfallen würde ([Restkontingent](#restkontingent-beta)) |
 | `swarvex service [Angaben wie bei work]` | als Dienst einrichten: arbeitet im Dauerbetrieb und startet mit dem Rechner (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | Dienst anhalten (laufende Aufgabe geht sofort zurück in den Pool), starten, Zustand und Verbrauch heute |
-| `swarvex update` | neueste Version von der Plattform holen, mit derselben Signaturprüfung wie der Einzeiler; die Einstellungen bleiben. Eine laufende Aufgabe wird erst fertig, die nächste startet mit der neuen Version (`--now` wechselt sofort, `--check` schaut nur nach). Unter Windows geht derselbe Befehl in PowerShell |
+| `swarvex update` | neueste Version von der Plattform holen, mit derselben Signaturprüfung wie der Einzeiler; die Einstellungen bleiben. Eine laufende Aufgabe wird erst fertig, die nächste startet mit der neuen Version (`--now` wechselt sofort, `--check` schaut nur nach). Unter Windows geht derselbe Befehl in PowerShell. Mit automatischen Updates (fragt die Einrichtung) macht das der Dienst einmal am Tag selbst, zwischen zwei Aufgaben |
+| `swarvex history` | die letzten Aufgaben dieses Runners: eingereicht oder zurückgegeben samt Grund, Tokens, Modellzeit und dem heutigen Stand der Aufgabe auf der Plattform |
+| `swarvex doctor` | prüft Anmeldung, Version, Podman, Images, Netz, Einstellungen, ob die Sandbox das Modell erreicht, den Dienst und den freien Platz, und sagt bei jedem Problem, was zu tun ist |
+| `swarvex budget` | Token-Grenzen anzeigen; mit `--task 1000000` und `--daily 0` (0 = keine Grenze) ändern, ohne die Einrichtung zu durchlaufen. Eine laufende Aufgabe wird erst fertig (`--now` wechselt sofort) |
 | `swarvex logs` / `version` | Ausgabe des Dienstes mitlesen; installierte Version anzeigen (`status` sagt auch, wenn ein Update bereitliegt) |
 | `swarvex uninstall` | alles entfernen: Dienst, Container, Images, Daten, Programm; die Anmeldung wird bei der Plattform widerrufen |
 | `swarvex attack-test …` | eingebaute Sicherheitsprüfungen der Sandbox |

@@ -591,6 +591,9 @@ func setupDialog(ausfuehren bool) []string {
 			vorschlag = "0"
 		}
 		dienstArgs = append(dienstArgs, "--daily-budget-tokens", f.frage("Tokens per day at most (0 = no limit)", vorschlag))
+		if f.jaNein("Install runner updates automatically (at most once a day, between tasks, signature checked)?", true) {
+			dienstArgs = append(dienstArgs, "--auto-update")
+		}
 		if abo {
 			fmt.Println("  Leftover mode (beta): your agent only uses what your subscription would let expire, in the last 24 hours")
 			fmt.Println("  before the weekly reset, keeps 10 % of the week for you and never fills your 5-hour window beyond 80 %.")

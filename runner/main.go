@@ -8,6 +8,9 @@
 //	swarvex update                                neueste Version von der Plattform holen (Einstellungen bleiben)
 //	swarvex version                               installierte Version
 //	swarvex logs                                  Ausgabe des Dienstes laufend anzeigen
+//	swarvex history                               letzte Aufgaben mit Ergebnis, Grund und Verbrauch
+//	swarvex doctor                                alles prüfen, was der Runner braucht, mit Rat bei Problemen
+//	swarvex budget [--task N] [--daily N]         Token-Grenzen anzeigen oder ändern
 //	swarvex uninstall                             alles entfernen, Gerät abmelden
 //	swarvex proxy                                 Schlüssel-Proxy (läuft im Proxy-Container)
 package main
@@ -19,7 +22,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "commands: setup | connect | login | work | service | start | stop | status | logs | update | version | uninstall | env | attack-test")
+		fmt.Fprintln(os.Stderr, "commands: setup | connect | login | work | service | start | stop | status | logs | history | doctor | budget | update | version | uninstall | env | attack-test")
 		os.Exit(2)
 	}
 	switch os.Args[1] {
@@ -49,6 +52,12 @@ func main() {
 		versionBefehl()
 	case "logs", "log":
 		logsBefehl()
+	case "history":
+		historyBefehl(os.Args[2:])
+	case "doctor":
+		doctorBefehl()
+	case "budget":
+		budgetBefehl(os.Args[2:])
 	case "uninstall":
 		uninstallBefehl(os.Args[2:])
 	case "env":

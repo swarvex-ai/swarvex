@@ -34,7 +34,10 @@ Runner (your machine)
 | `… --leftover` | beta, subscriptions only: use only the quota that would otherwise expire ([leftover quota](#leftover-quota-beta)) |
 | `swarvex service [same options as work]` | set up as a service: works continuously and starts with the computer (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | stop the service (a running task goes straight back to the pool), start it, show state and today's usage |
-| `swarvex update` | fetch the newest version from the platform, with the same signature check as the one-liner; your settings stay. A running task finishes first, the next one starts with the new version (`--now` switches at once, `--check` only looks). On Windows the same command works in PowerShell |
+| `swarvex update` | fetch the newest version from the platform, with the same signature check as the one-liner; your settings stay. A running task finishes first, the next one starts with the new version (`--now` switches at once, `--check` only looks). On Windows the same command works in PowerShell. With automatic updates (the setup asks) the service does this itself once a day, between tasks |
+| `swarvex history` | the last tasks of this runner: submitted or handed back with the reason, tokens, model time and the task's state on the platform today |
+| `swarvex doctor` | checks sign-in, version, Podman, images, network, settings, whether the sandbox reaches the model, the service and free space, and says what to do for every problem |
+| `swarvex budget` | show the token limits; change them with `--task 1000000` and `--daily 0` (0 = no limit) without going through the setup. A running task finishes first (`--now` switches at once) |
 | `swarvex logs` / `version` | follow the service's output; show the installed version (`status` also says when an update is available) |
 | `swarvex uninstall` | remove everything: service, containers, images, data, program; the sign-in is revoked at the platform |
 | `swarvex env [folder]` | show, build and test a project's environment (for visionaries before publishing) |

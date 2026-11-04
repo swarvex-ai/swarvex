@@ -60,6 +60,57 @@ func installerHolen(plattform, ca string) (string, error) {
 	return string(roh), err
 }
 
+// plattformUndCA: wo der Runner angemeldet ist (oder --platform).
+func plattformUndCA(vorgabe string) (string, string) {
+	plattform, ca := vorgabe, ""
+	if z, err := zugangLaden(); err == nil {
+		if plattform == "" {
+			plattform = z.Plattform
+		}
+		ca = z.CAPfad
+	}
+	return plattform, ca
+}
+
+// neuesteVersion liest install.sh der Plattform: Skript, Version und ob der Signaturschlüssel der gemerkte ist.
+func neuesteVersion(plattform, ca string) (skript, neu string, err error) {
+	skript, err = installerHolen(plattform, ca)
+	if err != nil {
+		return "", "", fmt.Errorf("could not fetch %s/install.sh: %w", plattform, err)
+	}
+	neu, schluessel := installerLesen(skript)
+	if neu == "" || schluessel == "" {
+		return "", "", fmt.Errorf("the platform's install.sh has no version or signing key")
+	}
+	gemerkt, _ := os.ReadFile(pinDatei())
+	if !schluesselPasst(string(gemerkt), schluessel) {
+		return "", neu, fmt.Errorf("the platform's release signing key is not the one you installed with; " +
+			"if the project announced a new key, install again with the one-liner from the website")
+	}
+	return skript, neu, nil
+}
+
+// installieren führt install.sh ohne Einrichtungsfragen aus (dieselbe Signatur- und Prüfsummenprüfung wie der Einzeiler).
+func installieren(skript, ca string, ausgabe io.Writer) error {
+	datei, err := os.CreateTemp("", "swarvex-install-*.sh")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(datei.Name())
+	_, err = datei.WriteString(skript)
+	datei.Close()
+	if err != nil {
+		return err
+	}
+	install := exec.Command("sh", datei.Name())
+	install.Stdout, install.Stderr = ausgabe, ausgabe
+	install.Env = append(os.Environ(), "SWARVEX_NO_SETUP=1")
+	if ca != "" {
+		install.Env = append(install.Env, "SWARVEX_CA="+ca)
+	}
+	return install.Run()
+}
+
 func updateBefehl(args []string) {
 	fs := flag.NewFlagSet("update", flag.ExitOnError)
 	nurSehen := fs.Bool("check", false, "only show whether a newer version exists")
@@ -68,25 +119,17 @@ func updateBefehl(args []string) {
 	plattformWert := fs.String("platform", "", "platform address (default: where you are signed in)")
 	fs.Parse(args)
 
-	plattform, ca := *plattformWert, ""
-	if z, err := zugangLaden(); err == nil {
-		if plattform == "" {
-			plattform = z.Plattform
-		}
-		ca = z.CAPfad
-	}
+	plattform, ca := plattformUndCA(*plattformWert)
 	if plattform == "" {
 		fehlerAus("Not signed in: pass --platform https://swarvex.ai or run the one-liner from the website.")
 	}
-	skript, err := installerHolen(plattform, ca)
+	skript, neu, err := neuesteVersion(plattform, ca)
+	if neu != "" {
+		fmt.Printf("Installed: %s · on %s: %s\n", version, plattform, neu)
+	}
 	if err != nil {
-		fehlerAus("Could not fetch " + plattform + "/install.sh: " + err.Error())
+		fehlerAus(err.Error() + "; nothing was installed.")
 	}
-	neu, schluessel := installerLesen(skript)
-	if neu == "" || schluessel == "" {
-		fehlerAus("The platform's install.sh has no version or signing key; nothing was installed.")
-	}
-	fmt.Printf("Installed: %s · on %s: %s\n", version, plattform, neu)
 	if neu == version && !*erzwingen {
 		fmt.Println("✓ Up to date.")
 		return
@@ -95,33 +138,33 @@ func updateBefehl(args []string) {
 		fmt.Println("Update with: swarvex update")
 		return
 	}
-	gemerkt, _ := os.ReadFile(pinDatei())
-	if !schluesselPasst(string(gemerkt), schluessel) {
-		fehlerAus("The platform's release signing key is not the one you installed with; nothing was installed.\n" +
-			"  If the project announced a new key, install again with the one-liner from the website.")
-	}
-
-	datei, err := os.CreateTemp("", "swarvex-install-*.sh")
-	pruefen(err)
-	defer os.Remove(datei.Name())
-	_, err = datei.WriteString(skript)
-	datei.Close()
-	pruefen(err)
-	install := exec.Command("sh", datei.Name())
-	install.Stdin, install.Stdout, install.Stderr = os.Stdin, os.Stdout, os.Stderr
-	install.Env = append(os.Environ(), "SWARVEX_NO_SETUP=1")
-	if ca != "" {
-		install.Env = append(install.Env, "SWARVEX_CA="+ca)
-	}
-	if install.Run() != nil {
+	if installieren(skript, ca, os.Stdout) != nil {
 		fehlerAus("The update did not finish; the previous version keeps running.")
 	}
-	dienstNachUpdate(*sofort)
+	dienstNeuStarten(*sofort, "the new version")
 }
 
-// dienstNachUpdate: Ohne laufende Aufgabe startet der Dienst gleich neu. Mit Aufgabe läuft sie zu Ende;
-// die nächste startet schon mit der neuen Version, und der Dauerbetrieb lädt sich danach selbst neu.
-func dienstNachUpdate(sofort bool) {
+// autoUpdate: im Dauerbetrieb höchstens einmal am Tag, zwischen zwei Aufgaben. Danach lädt sich die Schleife neu.
+func autoUpdate() {
+	plattform, ca := plattformUndCA("")
+	if plattform == "" {
+		return
+	}
+	skript, neu, err := neuesteVersion(plattform, ca)
+	switch {
+	case err != nil:
+		fmt.Println("Automatic update skipped:", err)
+	case neu != version:
+		fmt.Printf("Automatic update: %s → %s\n", version, neu)
+		if err := installieren(skript, ca, os.Stdout); err != nil {
+			fmt.Println("Automatic update did not finish; continuing with", version)
+		}
+	}
+}
+
+// dienstNeuStarten: Ohne laufende Aufgabe startet der Dienst gleich neu. Mit Aufgabe läuft sie zu Ende; danach
+// lädt sich der Dauerbetrieb selbst neu (neues Programm oder geänderte Dienst-Einheit, siehe dauerbetrieb).
+func dienstNeuStarten(sofort bool, was string) {
 	if _, err := os.Stat(dienstDatei()); err != nil {
 		return
 	}
@@ -129,14 +172,14 @@ func dienstNachUpdate(sofort bool) {
 		return
 	}
 	if aufgabeLaeuft() && !sofort {
-		fmt.Println("A task is running: it finishes with the current version, the next one starts with the new one.")
-		fmt.Println("  To switch right away (the task is handed back): swarvex update --now")
+		fmt.Printf("A task is running: it finishes as it is, the service then continues with %s.\n", was)
+		fmt.Println("  To switch right away (the task is handed back), add --now")
 		return
 	}
 	if aus, err := systemctl("restart", dienstName); err != nil {
 		fehlerAus("restarting the service: " + aus)
 	}
-	fmt.Println("Service restarted with the new version.")
+	fmt.Printf("Service restarted with %s.\n", was)
 }
 
 // aufgabeLaeuft: Jede Aufgabe hat ihren eigenen Schlüssel-Proxy-Container.

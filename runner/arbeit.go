@@ -62,6 +62,7 @@ func arbeitenBefehl(args []string) {
 	amEnde := fs.String("at-window-end", "stop", "stop: the sandbox ends with the time window at the latest; finish: a running task may finish")
 	mindest := fs.Duration("min-time", 15*time.Minute, "do not start a new task if the time window ends sooner (only with stop)")
 	dauer := fs.Bool("continuous", false, "keep taking tasks; outside the time windows wait for the next window")
+	autoAktualisieren := fs.Bool("auto-update", false, "with --continuous: install new runner versions by itself, at most once a day and only between tasks")
 	pause := fs.Duration("pause", 5*time.Minute, "wait time in continuous mode when no matching task is open")
 	nurPruefen := fs.Bool("check-only", false, "only check the options, reserve nothing (used by `swarvex service`)")
 	rest := fs.Bool("leftover", false, "beta, subscriptions only: work only with what your subscription would let expire, shortly before its weekly reset")
@@ -102,7 +103,7 @@ func arbeitenBefehl(args []string) {
 		return
 	}
 	if *dauer {
-		dauerbetrieb(fenster, *pause, ohneDauerbetrieb(args))
+		dauerbetrieb(fenster, *pause, ohneDauerbetrieb(args), *autoAktualisieren)
 		return
 	}
 
@@ -205,9 +206,12 @@ func arbeitenBefehl(args []string) {
 	}
 	var lease map[string]any
 	pruefen(m.werkzeug("reserve_task", map[string]any{"task_id": id}, &lease))
-	// Ab hier gibt jeder Fehler die Aufgabe sofort zurück in den Pool.
+	// Ab hier gibt jeder Fehler die Aufgabe sofort zurück in den Pool (und landet in `swarvex history`).
+	var a aufgabe
+	var verbrauch map[string]float64
 	abbrechen := func(grund string) {
 		m.werkzeug("abandon_task", map[string]any{"task_id": id, "reason": grund}, nil)
+		verlaufMerken(verlaufsDatei(), verlaufEintragAus(id, a, "returned", grund, verbrauch))
 		fehlerAus(grund)
 	}
 	gestoppt := func() {
@@ -215,7 +219,6 @@ func arbeitenBefehl(args []string) {
 			abbrechen("runner was stopped")
 		}
 	}
-	var a aufgabe
 	if err := m.werkzeug("task_details", map[string]any{"task_id": id}, &a); err != nil {
 		abbrechen("reading the task: " + err.Error())
 	}
@@ -289,7 +292,8 @@ func arbeitenBefehl(args []string) {
 	if err != nil {
 		abbrechen(err.Error())
 	}
-	verbrauch, protokoll, err := sandboxAusfuehren(ctx, a, u, image, arbeitsbaum, cache, ordner, agent, skills, zugang, *modell, *budget, nil)
+	var protokoll string
+	verbrauch, protokoll, err = sandboxAusfuehren(ctx, a, u, image, arbeitsbaum, cache, ordner, agent, skills, zugang, *modell, *budget, nil)
 	stopp()
 	if err := verbrauchMerken(verbrauchsDatei(), id, budgetTokensAus(verbrauch), time.Now()); err != nil {
 		fmt.Fprintln(os.Stderr, "recording usage:", err)
@@ -349,6 +353,7 @@ func arbeitenBefehl(args []string) {
 	var ergebnis map[string]any
 	pruefen(m.werkzeug("submit_result", einreichung, &ergebnis))
 	fmt.Println("Submitted:", ergebnis)
+	verlaufMerken(verlaufsDatei(), verlaufEintragAus(id, a, "submitted", "", verbrauch))
 	// Arbeitsbaum (mit LFS-Kopien bis über 1 GB) aufräumen; Protokolle (agent.log, proxy.log) bleiben.
 	os.RemoveAll(arbeitsbaum)
 	os.RemoveAll(gitDir)
@@ -686,7 +691,7 @@ func einruecken(text string) string {
 // Kindprozess („work“ ohne --continuous), damit ein Fehler nicht den ganzen Runner beendet.
 // Exit-Codes des Kindes: 0 erledigt, 3 keine passende Aufgabe, 4 außerhalb bzw. zu kurz vor Fensterende,
 // 5 gestoppt vor der Reservierung, 6 Tagesbudget verbraucht, 7 Restkontingent: gerade nichts übrig.
-func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
+func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoAktualisieren bool) {
 	fmt.Println("Continuous mode started. Stop with Ctrl+C or `swarvex stop`.")
 	// Beim Anhalten bekommt die laufende Aufgabe das Signal ebenfalls, gibt sich zurück und endet; dann ist Schluss.
 	basis, aufhoeren := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -698,7 +703,24 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
 		}
 	}
 	programmBeimStart, _ := os.Stat(os.Args[0])
+	var einheitBeimStart os.FileInfo
+	if os.Getenv("INVOCATION_ID") != "" { // nur als systemd-Dienst, nicht im Vordergrund
+		einheitBeimStart, _ = os.Stat(dienstDatei())
+	}
+	var letzterUpdateCheck time.Time
 	for basis.Err() == nil {
+		if autoAktualisieren && time.Since(letzterUpdateCheck) > 24*time.Hour {
+			letzterUpdateCheck = time.Now()
+			autoUpdate()
+		}
+		// `swarvex budget` hat die Dienst-Einheit geändert: neu starten, damit die neuen Angaben gelten.
+		if jetzt, err := os.Stat(dienstDatei()); err == nil && einheitBeimStart != nil && !jetzt.ModTime().Equal(einheitBeimStart.ModTime()) {
+			fmt.Println("Settings changed; restarting the service with them.")
+			systemctl("restart", "--no-block", dienstName)
+			schlafen(2 * time.Minute) // systemd beendet diesen Prozess gleich
+			einheitBeimStart = jetzt
+			continue
+		}
 		// Nach `swarvex update` lädt sich der Dauerbetrieb zwischen zwei Aufgaben selbst neu (gleiche PID, der Dienst merkt nichts).
 		if neueVersionInstalliert(os.Args[0], programmBeimStart) {
 			fmt.Println("New runner version installed; continuing with it.")
