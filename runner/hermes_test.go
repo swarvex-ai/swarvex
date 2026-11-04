@@ -75,3 +75,13 @@ func TestHermesAnthropicMitKurzform(t *testing.T) {
 		t.Fatalf("Kurzform: %v", m)
 	}
 }
+
+func TestHalbFertigeVerbindung(t *testing.T) {
+	gescheitert := "✗ Failed to connect: Connecting to MCP server 'swarvex' timed out after 30s\n✓ Saved 'swarvex' to config (disabled)\n"
+	if !halbFertig([]byte(gescheitert)) {
+		t.Error("gescheiterte Hermes-Anmeldung nicht erkannt")
+	}
+	if halbFertig([]byte("✓ OAuth configured\n✓ Connected to 'swarvex' (12 tools)\n")) {
+		t.Error("gelungene Verbindung als gescheitert erkannt")
+	}
+}

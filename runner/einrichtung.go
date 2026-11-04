@@ -725,9 +725,30 @@ func verbinden(plattform string, agenten []mcpAgent) {
 			fmt.Printf("  ✗ %s: %s\n", a.Titel, letzteZeilen(strings.TrimSpace(string(aus))+" "+err.Error(), 3))
 			continue
 		}
+		if halbFertig(aus) {
+			// Hermes beendet sich auch dann mit 0, wenn die Anmeldung scheitert und es den Server deaktiviert speichert
+			spaeter := a.Anmelden
+			if i := strings.Index(spaeter, "later: "); i >= 0 {
+				spaeter = spaeter[i+len("later: "):]
+			}
+			fmt.Printf("  ! %s: added, but the sign-in did not finish. Finish it in a terminal on this machine's desktop: %s\n", a.Titel, spaeter)
+			continue
+		}
 		fmt.Printf("  ✓ %s connected. Sign in: %s\n", a.Titel, a.Anmelden)
 	}
 	fmt.Println("Directly connected agents only see tasks that run no code. Revoke access any time under My account on the website.")
+}
+
+// halbFertig erkennt in der Ausgabe eines Agenten, dass er den Server zwar gespeichert, die Verbindung
+// oder Anmeldung aber nicht geschafft hat (Hermes: "Failed to connect", "Saved ... (disabled)").
+func halbFertig(aus []byte) bool {
+	t := strings.ToLower(string(aus))
+	for _, m := range []string{"failed to connect", "(disabled)", "authorization failed", "oauth login failed"} {
+		if strings.Contains(t, m) {
+			return true
+		}
+	}
+	return false
 }
 
 // opencodeEintragen ergänzt ~/.config/opencode/opencode.json um den MCP-Server (nur reines JSON; sonst Hinweis).
