@@ -1003,3 +1003,28 @@ new file mode 100644
     expect(await ketteVerifizieren(db)).toMatchObject({ ok: true });
   });
 });
+
+describe("Besucherstatistik in der Datenbank", () => {
+  it("zählt Aufrufe und eindeutige Besucher und behält nach Tagesende nur die Zahl", async () => {
+    const { besuchZaehlen, besucheAbschliessen } = await import("../src/besuche.ts");
+    const ua = "Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0";
+    expect(await besuchZaehlen(db, { p: "/", r: "https://www.google.com/" }, "198.51.100.7", ua, "swarvex.ai")).toBe(true);
+    await besuchZaehlen(db, { p: "/projekte" }, "198.51.100.7", ua, "swarvex.ai");
+    await besuchZaehlen(db, { p: "/" }, "203.0.113.9", ua, "swarvex.ai");
+    expect(await besuchZaehlen(db, { p: "javascript:alert(1)" }, "203.0.113.9", ua, "swarvex.ai")).toBe(false);
+    const heute = (await db.query("select tag::text, besucher from analytik.besucher")).rows;
+    expect(heute).toHaveLength(1);
+    expect(heute[0].besucher).toBe(2);
+    const seiten = (await db.query("select pfad, quelle, sum(aufrufe)::int as n from analytik.besuche group by 1, 2 order by 1, 2")).rows;
+    expect(seiten).toEqual([{ pfad: "/", quelle: "direkt", n: 1 }, { pfad: "/", quelle: "google.com", n: 1 }, { pfad: "/projekte", quelle: "direkt", n: 1 }]);
+    // Kein Hash enthält die IP-Adresse im Klartext
+    const roh = (await db.query("select encode(kennung, 'escape') as k from besucher_heute")).rows.map((r) => r.k).join(" ");
+    expect(roh).not.toContain("198.51.100.7");
+    // Tag abschließen: so tun, als wäre gestern gezählt worden
+    await db.query("update besucher_heute set tag = tag - 1; update besuch_salz set tag = tag - 1; update besuche set tag = tag - 1");
+    await besucheAbschliessen(db);
+    expect((await db.query("select count(*)::int as n from besucher_heute")).rows[0].n).toBe(0);
+    expect((await db.query("select count(*)::int as n from besuch_salz")).rows[0].n).toBe(0);
+    expect((await db.query("select besucher from analytik.besucher")).rows).toEqual([{ besucher: 2 }]);
+  });
+});

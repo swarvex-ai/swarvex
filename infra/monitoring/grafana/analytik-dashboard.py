@@ -16,7 +16,7 @@ F = "projektart in ($projektart) and engine in ($engine) and projekt in ($projek
 FW = F + " and runner::text in ($weg)"
 
 # Zwei Ziele; bereich() wechselt, wohin zeile/panel/text schreiben
-BEREICHE = {"auswertung": {"panels": [], "y": 0}, "betrieb": {"panels": [], "y": 0}}
+BEREICHE = {"auswertung": {"panels": [], "y": 0}, "betrieb": {"panels": [], "y": 0}, "website": {"panels": [], "y": 0}}
 aktuell = "auswertung"
 panels = BEREICHE[aktuell]["panels"]
 y = 0
@@ -228,6 +228,54 @@ panel("timeseries", "Signale: Abweisungen, Abbrüche, Meldungen, Sperren",
 weiter(7)
 
 
+# ---------- Website: Besucher (eigenes Dashboard im Bereich „Auswertung“) ----------
+bereich("website")
+zeile("Besucher der Website (Zeitraum oben rechts)")
+text("So wird gezählt",
+     "Ohne Cookies und ohne Zugriffsprotokoll: der Browser meldet nur die Seite und beim ersten Aufruf die Herkunft (Domain). "
+     "**Besucher** = eindeutige Besucher je Tag (Hash aus IP, Browser und einem Tagesgeheimnis, das nach Tagesende samt Hashes "
+     "gelöscht wird). Über mehrere Tage sind es deshalb **Besuche**: wer an drei Tagen kommt, zählt dreimal. "
+     "Nicht gezählt: Bots, Browser mit „Do Not Track“ oder „Global Privacy Control“, Aufrufe ohne JavaScript.", 0, 24, 3)
+weiter(3)
+panel("stat", "Besucher heute", "select coalesce(sum(besucher), 0) from analytik.besucher where tag = (now() at time zone 'Europe/Berlin')::date",
+      0, 4, 4, optionen=stat, beschreibung="Unabhängig vom Zeitraum oben")
+panel("stat", "Besuche im Zeitraum", "select coalesce(sum(besucher), 0) from analytik.besucher where $__timeFilter(tag::timestamptz)", 4, 5, 4, optionen=stat,
+      beschreibung="Summe der eindeutigen Besucher je Tag")
+panel("stat", "Ø Besucher pro Tag", "select round(avg(besucher)) from analytik.besucher where $__timeFilter(tag::timestamptz)", 9, 5, 4, optionen=stat)
+panel("stat", "Seitenaufrufe im Zeitraum", "select coalesce(sum(aufrufe), 0) from analytik.besuche where $__timeFilter(tag::timestamptz)", 14, 5, 4, optionen=stat)
+panel("stat", "Seiten je Besuch", "select round(1.0 * (select sum(aufrufe) from analytik.besuche where $__timeFilter(tag::timestamptz)) "
+      "/ nullif((select sum(besucher) from analytik.besucher where $__timeFilter(tag::timestamptz)), 0), 1)", 19, 5, 4, optionen=stat)
+weiter(4)
+panel("timeseries", "Besucher und Seitenaufrufe je Tag",
+      """select t.tag::timestamptz as time, coalesce(b.besucher, 0) as "Besucher", coalesce(a.aufrufe, 0) as "Seitenaufrufe"
+         from generate_series($__timeFrom()::date, $__timeTo()::date, interval '1 day') t(tag)
+         left join (select tag, sum(besucher) as besucher from analytik.besucher group by 1) b on b.tag = t.tag::date
+         left join (select tag, sum(aufrufe) as aufrufe from analytik.besuche group by 1) a on a.tag = t.tag::date
+         order by 1""", 0, 24, 8, fmt="time_series", einheit="short",
+      optionen={"legend": {"displayMode": "list", "placement": "bottom"}}, felder={"custom": {"drawStyle": "bars", "fillOpacity": 60}})
+weiter(8)
+zeile("Was gelesen wird und woher die Besucher kommen")
+panel("table", "Meistbesuchte Seiten",
+      """select pfad as "Seite", sum(aufrufe) as "Aufrufe" from analytik.besuche where $__timeFilter(tag::timestamptz)
+         group by 1 order by 2 desc limit 25""", 0, 10, 10)
+panel("table", "Herkunft",
+      """select quelle as "Herkunft", sum(aufrufe) as "Aufrufe" from analytik.besuche where $__timeFilter(tag::timestamptz)
+         group by 1 order by 2 desc limit 25""", 10, 7, 10, beschreibung="Domain der verweisenden Seite beim ersten Aufruf; „direkt“ = eingetippt, Lesezeichen oder ohne Angabe")
+panel("piechart", "Geräte", "select geraet as metric, sum(aufrufe) as value from analytik.besuche where $__timeFilter(tag::timestamptz) group by 1",
+      17, 7, 5, optionen={"legend": {"displayMode": "table", "placement": "right", "values": ["percent"]}, "reduceOptions": {"values": True, "calcs": []}})
+weiter(5)
+panel("piechart", "Sprache", "select sprache as metric, sum(aufrufe) as value from analytik.besuche where $__timeFilter(tag::timestamptz) group by 1",
+      17, 7, 5, optionen={"legend": {"displayMode": "table", "placement": "right", "values": ["percent"]}, "reduceOptions": {"values": True, "calcs": []}})
+weiter(5)
+panel("table", "Projektseiten",
+      """select substring(pfad from '^/(?:en/)?(?:projekte|projects)/([^/]+)') as "Projekt", sum(aufrufe) as "Aufrufe"
+         from analytik.besuche where $__timeFilter(tag::timestamptz) and pfad ~ '^/(en/)?(projekte|projects)/[^/]+'
+         group by 1 order by 2 desc limit 15""", 0, 12, 8)
+panel("table", "Doku", """select pfad as "Seite", sum(aufrufe) as "Aufrufe" from analytik.besuche
+         where $__timeFilter(tag::timestamptz) and pfad ~ '^/(en/)?docs' group by 1 order by 2 desc limit 15""", 12, 12, 8)
+weiter(8)
+
+
 def variable(name, label, sql):
     return {"name": name, "label": label, "type": "query", "datasource": DS, "query": sql, "definition": sql, "refresh": 1,
             "multi": True, "includeAll": True, "current": {"selected": True, "text": ["All"], "value": ["$__all"]}, "sort": 1}
@@ -257,6 +305,9 @@ ausgaben = [
     # nicht im Datei-Provisioning (das landet im Bereich „Betrieb“); infra/grafana-setup.sh lädt es in den Bereich „Auswertung“
     (hier / "analytik" / "analytik.json", dashboard("swarvex-analytik", "swarvex Auswertung",
      "Interne Auswertung ohne personenbezogene Daten (Schema analytik). Nicht öffentlich.", BEREICHE["auswertung"]["panels"], True)),
+    (hier / "analytik" / "website.json", {**dashboard("swarvex-website", "swarvex Website: Besucher",
+     "Besucher der Website ohne Cookies und ohne personenbezogene Daten (Schema analytik). Nicht öffentlich.", BEREICHE["website"]["panels"], False),
+     "templating": {"list": []}, "time": {"from": "now-30d", "to": "now"}}),
     # Datei-Provisioning: Bereich „Betrieb“, nur admins
     (hier / "dashboards" / "swarvex-intern.json", dashboard("swarvex-intern", "swarvex intern: Leads und Moderation",
      "Nur für admins: Lead-Bilanz je Projekt (Projekte haben bekannte Leads) und Moderations-Signale.", BEREICHE["betrieb"]["panels"], False)),

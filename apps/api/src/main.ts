@@ -16,6 +16,7 @@ import { PgBoss } from "pg-boss";
 import { konfig, RESSOURCE } from "./konfig.ts";
 import { migrieren, verbinden } from "./db.ts";
 import { Abgelehnt, leasesAufraeumen } from "./aufgaben.ts";
+import { besucheAbschliessen, besuchZaehlen, zaehlbar } from "./besuche.ts";
 import { ohneGegenpruefungFreigeben } from "./gegenpruefung.ts";
 import { lfsObjektSenden, snapshotSenden } from "./snapshot.ts";
 import { aufraeumen as spendenAufraeumen, dateiSenden as spendeSenden } from "./spenden.ts";
@@ -67,6 +68,10 @@ await boss.work("leases-aufraeumen", async () => {
   const f = await ohneGegenpruefungFreigeben(db);
   if (f) console.log(`cross-check: ${f} submission(s) released with the contributor's own run only`);
 });
+// Besucherstatistik: abgeschlossene Tage behalten nur die Zahl, Tagesgeheimnis und Hashes werden gelöscht
+await boss.createQueue("besuche-abschliessen");
+await boss.schedule("besuche-abschliessen", "7 * * * *");
+await boss.work("besuche-abschliessen", async () => { await besucheAbschliessen(db); });
 // Kopf-Hash täglich signieren (03:17 UTC); der externe Anker holt ihn danach ab.
 await boss.createQueue("kopf-veroeffentlichen");
 // Dateien entschiedener Credit-Spenden nach 30 Tagen löschen
@@ -115,6 +120,17 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/reg" && req.method === "POST" && gebremst("registrierung", ip)) return;
     if ((/^\/(interaction|auth|token|device)(\/|$)/.test(url.pathname) || url.pathname === "/api/account/login") && gebremst("anmeldung", ip)) return;
     if (url.pathname.startsWith("/api/") && gebremst("oeffentlich", ip)) return;
+    // Besucherstatistik ohne Cookies (besuche.ts): immer 204, auch wenn nicht gezählt wird
+    if (url.pathname === "/api/visit" && req.method === "POST") {
+      if (zaehlbar(req.headers)) {
+        try {
+          const eingabe = (await koerper(req)) as { p?: unknown; r?: unknown } | undefined;
+          await besuchZaehlen(db, eingabe ?? {}, ip, String(req.headers["user-agent"]), new URL(konfig.basis).hostname);
+        } catch { /* eine Zählung darf nie eine Seite stören */ }
+      }
+      res.writeHead(204, { "cache-control": "no-store" }).end();
+      return;
+    }
 
     if (url.pathname.startsWith("/.well-known/oauth-protected-resource")) {
       return json(res, 200, { resource: RESSOURCE(), authorization_servers: [konfig.basis], scopes_supported: ["mcp"], bearer_methods_supported: ["header"] });

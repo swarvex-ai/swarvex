@@ -1,0 +1,534 @@
+{
+ "uid": "swarvex-website",
+ "title": "swarvex Website: Besucher",
+ "tags": [
+  "swarvex",
+  "intern"
+ ],
+ "timezone": "Europe/Berlin",
+ "schemaVersion": 41,
+ "version": 1,
+ "editable": false,
+ "refresh": "15m",
+ "time": {
+  "from": "now-30d",
+  "to": "now"
+ },
+ "description": "Besucher der Website ohne Cookies und ohne personenbezogene Daten (Schema analytik). Nicht öffentlich.",
+ "templating": {
+  "list": []
+ },
+ "panels": [
+  {
+   "type": "row",
+   "title": "Besucher der Website (Zeitraum oben rechts)",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [],
+   "id": 1
+  },
+  {
+   "type": "text",
+   "title": "So wird gezählt",
+   "gridPos": {
+    "x": 0,
+    "y": 1,
+    "w": 24,
+    "h": 3
+   },
+   "options": {
+    "mode": "markdown",
+    "content": "Ohne Cookies und ohne Zugriffsprotokoll: der Browser meldet nur die Seite und beim ersten Aufruf die Herkunft (Domain). **Besucher** = eindeutige Besucher je Tag (Hash aus IP, Browser und einem Tagesgeheimnis, das nach Tagesende samt Hashes gelöscht wird). Über mehrere Tage sind es deshalb **Besuche**: wer an drei Tagen kommt, zählt dreimal. Nicht gezählt: Bots, Browser mit „Do Not Track“ oder „Global Privacy Control“, Aufrufe ohne JavaScript."
+   },
+   "id": 2
+  },
+  {
+   "type": "stat",
+   "title": "Besucher heute",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 4,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select coalesce(sum(besucher), 0) from analytik.besucher where tag = (now() at time zone 'Europe/Berlin')::date"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Unabhängig vom Zeitraum oben",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 3
+  },
+  {
+   "type": "stat",
+   "title": "Besuche im Zeitraum",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 4,
+    "y": 4,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select coalesce(sum(besucher), 0) from analytik.besucher where $__timeFilter(tag::timestamptz)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Summe der eindeutigen Besucher je Tag",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 4
+  },
+  {
+   "type": "stat",
+   "title": "Ø Besucher pro Tag",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 9,
+    "y": 4,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select round(avg(besucher)) from analytik.besucher where $__timeFilter(tag::timestamptz)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 5
+  },
+  {
+   "type": "stat",
+   "title": "Seitenaufrufe im Zeitraum",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 14,
+    "y": 4,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select coalesce(sum(aufrufe), 0) from analytik.besuche where $__timeFilter(tag::timestamptz)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 6
+  },
+  {
+   "type": "stat",
+   "title": "Seiten je Besuch",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 19,
+    "y": 4,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select round(1.0 * (select sum(aufrufe) from analytik.besuche where $__timeFilter(tag::timestamptz)) / nullif((select sum(besucher) from analytik.besucher where $__timeFilter(tag::timestamptz)), 0), 1)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 7
+  },
+  {
+   "type": "timeseries",
+   "title": "Besucher und Seitenaufrufe je Tag",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 8,
+    "w": 24,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "time_series",
+     "rawSql": "select t.tag::timestamptz as time, coalesce(b.besucher, 0) as \"Besucher\", coalesce(a.aufrufe, 0) as \"Seitenaufrufe\" from generate_series($__timeFrom()::date, $__timeTo()::date, interval '1 day') t(tag) left join (select tag, sum(besucher) as besucher from analytik.besucher group by 1) b on b.tag = t.tag::date left join (select tag, sum(aufrufe) as aufrufe from analytik.besuche group by 1) a on a.tag = t.tag::date order by 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "drawStyle": "bars",
+      "fillOpacity": 60
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    }
+   },
+   "id": 8
+  },
+  {
+   "type": "row",
+   "title": "Was gelesen wird und woher die Besucher kommen",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 16,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [],
+   "id": 9
+  },
+  {
+   "type": "table",
+   "title": "Meistbesuchte Seiten",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 17,
+    "w": 10,
+    "h": 10
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select pfad as \"Seite\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where $__timeFilter(tag::timestamptz) group by 1 order by 2 desc limit 25"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "id": 10
+  },
+  {
+   "type": "table",
+   "title": "Herkunft",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 10,
+    "y": 17,
+    "w": 7,
+    "h": 10
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select quelle as \"Herkunft\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where $__timeFilter(tag::timestamptz) group by 1 order by 2 desc limit 25"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Domain der verweisenden Seite beim ersten Aufruf; „direkt“ = eingetippt, Lesezeichen oder ohne Angabe",
+   "id": 11
+  },
+  {
+   "type": "piechart",
+   "title": "Geräte",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 17,
+    "y": 17,
+    "w": 7,
+    "h": 5
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select geraet as metric, sum(aufrufe) as value from analytik.besuche where $__timeFilter(tag::timestamptz) group by 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "values": [
+      "percent"
+     ]
+    },
+    "reduceOptions": {
+     "values": true,
+     "calcs": []
+    }
+   },
+   "id": 12
+  },
+  {
+   "type": "piechart",
+   "title": "Sprache",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 17,
+    "y": 22,
+    "w": 7,
+    "h": 5
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select sprache as metric, sum(aufrufe) as value from analytik.besuche where $__timeFilter(tag::timestamptz) group by 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "values": [
+      "percent"
+     ]
+    },
+    "reduceOptions": {
+     "values": true,
+     "calcs": []
+    }
+   },
+   "id": 13
+  },
+  {
+   "type": "table",
+   "title": "Projektseiten",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 27,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select substring(pfad from '^/(?:en/)?(?:projekte|projects)/([^/]+)') as \"Projekt\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where $__timeFilter(tag::timestamptz) and pfad ~ '^/(en/)?(projekte|projects)/[^/]+' group by 1 order by 2 desc limit 15"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "id": 14
+  },
+  {
+   "type": "table",
+   "title": "Doku",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 27,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select pfad as \"Seite\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where $__timeFilter(tag::timestamptz) and pfad ~ '^/(en/)?docs' group by 1 order by 2 desc limit 15"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "id": 15
+  }
+ ]
+}

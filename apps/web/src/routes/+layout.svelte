@@ -4,6 +4,16 @@
   import { page } from "$app/state";
   import RepoLink from "$lib/components/RepoLink.svelte";
   import { pfad, sprache, tx } from "$lib/texte";
+  import { afterNavigate } from "$app/navigation";
+
+  // Besucherstatistik ohne Cookies: nur die Seite und beim ersten Aufruf die Herkunft (Datenschutzerklärung, Abschnitt 2)
+  let ersterAufruf = true;
+  afterNavigate(({ to }) => {
+    if (!to || typeof navigator === "undefined" || !navigator.sendBeacon) return;
+    const daten = JSON.stringify({ p: to.url.pathname, r: ersterAufruf ? document.referrer : "" });
+    ersterAufruf = false;
+    try { navigator.sendBeacon("/api/visit", daten); } catch { /* nie eine Seite stören */ }
+  });
   let { children } = $props();
   let menueOffen = $state(false);
   // Sprache gewählt: Caddy leitet neue Besucher ohne Deutsch im Browser von / nach /en, außer mit diesem Cookie

@@ -4,11 +4,11 @@ schluessel: datenschutz
 beschreibung: Welche Daten swarvex.ai verarbeitet, wofür und wie lange, und welche Rechte du hast.
 ---
 
-Stand: {{stand}}
+Stand: {{stand_datenschutz}}
 
 ## Kurz gesagt
 
-- Kein Tracking, keine Werbung, keine Analyse-Werkzeuge. Die Website lädt nichts von fremden Servern, auch keine Schriften und kein Video.
+- Kein Tracking, keine Werbung, keine Analyse-Werkzeuge von Dritten. Besuche zählen wir selbst, ohne Cookies und ohne IP-Adressen zu speichern (Abschnitt 2). Die Website lädt nichts von fremden Servern, auch keine Schriften und kein Video.
 - Cookies setzen wir nur, wo sie technisch nötig sind: für die Anmeldung und für „Mein Konto“.
 - Bei der Anmeldung erfahren wir von GitHub, Codeberg oder Gitea nur deine Konto-ID, deinen Login-Namen und das Alter des Kontos. Wir erfahren kein Passwort und keine E-Mail-Adresse.
 - Beiträge sind öffentlich und dauerhaft nachvollziehbar, wie in jedem Open-Source-Projekt. Das ist der Kern von swarvex.
@@ -26,6 +26,8 @@ Siehe auch [Kontakt & Rechtliches](/kontakt).
 Beim Aufruf einer Seite verarbeitet unser Server technisch zwangsläufig deine IP-Adresse, den Zeitpunkt, die aufgerufene Adresse und die Angaben deines Browsers, um die Seite auszuliefern. Zugriffsprotokolle speichern wir nicht. Zum Schutz vor Überlastung zählen wir Anfragen je IP-Adresse kurzzeitig im Arbeitsspeicher (Ratenbegrenzung); diese Zähler werden nicht gespeichert und verfallen eine Stunde nach der letzten Anfrage.
 
 Rechtsgrundlage ist unser berechtigtes Interesse an einem sicheren und funktionierenden Angebot (Art. 6 Abs. 1 lit. f DSGVO).
+
+**Besucherstatistik.** Damit wir wissen, welche Seiten gelesen werden, meldet die Website nach jedem Seitenaufruf an unseren eigenen Server die aufgerufene Seite und beim ersten Aufruf die Domain der Seite, von der du kommst. Gespeichert werden nur Summen: Seitenaufrufe je Tag, Seite, Herkunfts-Domain und Gerätetyp (Computer, Tablet, Telefon). Um Besucher eines Tages nur einmal zu zählen, bilden wir aus IP-Adresse, Browserangaben und einem zufälligen Tagesgeheimnis einen Hash. Geheimnis und Hashes löschen wir nach Ablauf des Tages; danach bleibt nur die Zahl. IP-Adressen speichern wir nicht, es gibt keine Cookies, kein Profil über mehrere Tage und nichts geht an Dritte. Sendet dein Browser „Do Not Track“ oder „Global Privacy Control“, zählen wir dich nicht. Rechtsgrundlage ist unser berechtigtes Interesse, das Angebot zu verbessern (Art. 6 Abs. 1 lit. f DSGVO); die Messung dient nur der Qualität und Wirksamkeit des Angebots und hat keine oder geringe Folgen für die Privatsphäre (Art. 11.7a Abs. 3 lit. b der niederländischen Telecommunicatiewet).
 
 Die Server betreibt für uns {{hoster.name}} in {{hoster.standort}} als Auftragsverarbeiter (Art. 28 DSGVO).
 

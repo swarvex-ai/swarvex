@@ -4,11 +4,11 @@ schluessel: datenschutz
 beschreibung: What data swarvex.ai processes, why and for how long, and what rights you have.
 ---
 
-Last updated: {{stand_en}}. The German and the English version are equally valid.
+Last updated: {{stand_datenschutz_en}}. The German and the English version are equally valid.
 
 ## In short
 
-- No tracking, no advertising, no analytics. The website loads nothing from third-party servers, not even fonts or video.
+- No tracking, no advertising, no third-party analytics. We count visits ourselves, without cookies and without storing IP addresses (section 2). The website loads nothing from third-party servers, not even fonts or video.
 - We only set cookies where they are technically required: for signing in and for "My account".
 - When you sign in, GitHub, Codeberg or Gitea only tell us your account ID, your login name and the age of the account. We never learn your password or your email address.
 - Contributions are public and traceable for good, as in any open-source project. That is the core of swarvex.
@@ -26,6 +26,8 @@ See also [contact & legal](/en/contact).
 When you open a page, our server necessarily processes your IP address, the time, the requested address and your browser's details in order to deliver the page. We do not store access logs. To protect against overload, we briefly count requests per IP address in memory (rate limiting); these counters are not stored and expire one hour after the last request.
 
 The legal basis is our legitimate interest in a secure, working service (Art. 6 (1) (f) GDPR).
+
+**Visitor statistics.** So that we know which pages are read, the website reports to our own server after every page view the page you opened and, on your first page, the domain of the page you came from. Only totals are stored: page views per day, page, referring domain and device type (computer, tablet, phone). To count a day's visitors only once, we form a hash from your IP address, your browser's details and a random secret of the day. We delete the secret and the hashes once the day is over; only the number remains. We do not store IP addresses, there are no cookies, no profile across days, and nothing goes to third parties. If your browser sends "Do Not Track" or "Global Privacy Control", we do not count you. The legal basis is our legitimate interest in improving the service (Art. 6 (1) (f) GDPR); the measurement only serves the quality and effectiveness of the service and has no or minimal consequences for privacy (Article 11.7a (3) (b) of the Dutch Telecommunications Act).
 
 The servers are operated for us by {{hoster.name}} in {{hoster.standort_en}} as a processor (Art. 28 GDPR).
 

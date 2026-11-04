@@ -82,8 +82,11 @@ if [ "$(curl -s -o /dev/null -w '%{http_code}' -u "$A" -H "$H" $G/api/datasource
 else
   printf '%s' "$quelle" | curl -fs -u "$A" -H "$H" -H 'content-type: application/json' -X POST $G/api/datasources -d @- >/dev/null
 fi
-{ printf '{"overwrite":true,"dashboard":'; cat /etc/grafana/analytik/analytik.json; printf '}'; } \
-  | curl -fs -u "$A" -H "$H" -H 'content-type: application/json' -X POST $G/api/dashboards/db -d @- >/dev/null
+# Every dashboard of the area (analytik.json: usage and swarm, website.json: visitors of the website)
+for d in /etc/grafana/analytik/*.json; do
+  { printf '{"overwrite":true,"dashboard":'; cat "$d"; printf '}'; } \
+    | curl -fs -u "$A" -H "$H" -H 'content-type: application/json' -X POST $G/api/dashboards/db -d @- >/dev/null
+done
 curl -fs -u "$A" -H "$H" -H 'content-type: application/json' -X PUT $G/api/org/preferences -d '{"homeDashboardUID":"swarvex-analytik","timezone":"Europe/Berlin"}' >/dev/null
 echo "grafana: area Auswertung ready (org $org)"
 EOF
