@@ -415,6 +415,7 @@ func git(gitDir, baum string, args ...string) (string, error) {
 		"-c", "user.name=swarvex", "-c", "user.email=runner@swarvex.invalid", "-c", "commit.gpgsign=false"}
 	cmd := exec.Command("git", append(sicher, args...)...)
 	cmd.Env = append(os.Environ(), "GIT_DIR="+gitDir, "GIT_WORK_TREE="+baum, "GIT_CONFIG_NOSYSTEM=1", "GIT_ATTR_NOSYSTEM=1")
+	cmd.Dir = baum // Pfade in Ausgaben immer ab der Wurzel des Baums
 	aus, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("git %s: %v: %s", args[0], err, aus)
@@ -446,22 +447,42 @@ func gitBasis(gitDir, baum string, ausschliessen []string) error {
 // patchBilden nimmt nur Änderungen in den erlaubten Pfaden auf. Alles andere – etwa Dateien,
 // die Werkzeuge beim Testen neu schreiben – bleibt auf dem Gerät und wird nur gezählt.
 func patchBilden(gitDir, baum string, erlaubt []string, u umgebung.Umgebung) (string, []string, error) {
-	args := []string{"add", "-A", "--"}
-	for _, g := range erlaubt {
-		args = append(args, ":(glob)"+g)
-	}
-	// Geschützte Dateien (Umgebung, Projektregeln, CI) nie aufnehmen, auch wenn ein Muster sie trifft.
-	for _, g := range append(append([]string{}, umgebung.Geschuetzt...), u.Geschuetzt...) {
-		args = append(args, ":(exclude,glob)"+g)
-	}
-	if _, err := git(gitDir, baum, args...); err != nil {
+	// Geänderte, gelöschte und neue Dateien selbst auflisten und mit denselben Regeln wie die Plattform
+	// prüfen (erlaubte Pfade, geschützte Dateien); Git bekommt nur wörtliche Pfade. Git-Globs in
+	// Pfadangaben nahmen neue Dateien in neuen Ordnern bei Git 2.43 (Ubuntu 24.04, Mint 22) nicht auf.
+	liste, err := git(gitDir, baum, "ls-files", "-z", "--full-name", "--modified", "--deleted", "--others", "--exclude-standard")
+	if err != nil {
 		return "", nil, err
 	}
-	rest, _ := git(gitDir, baum, "status", "--porcelain", "--untracked-files=all")
-	var verworfen []string
-	for _, zeile := range strings.Split(rest, "\n") {
-		if len(zeile) > 3 && zeile[1] != ' ' { // im Arbeitsbaum geändert, aber nicht aufgenommen
-			verworfen = append(verworfen, strings.TrimSpace(zeile[3:]))
+	gesehen := map[string]bool{}
+	var nehmen, verworfen []string
+	for _, p := range strings.Split(liste, "\x00") {
+		if p == "" || gesehen[p] {
+			continue
+		}
+		gesehen[p] = true
+		ok := !u.Gesperrt(p)
+		if ok {
+			ok = false
+			for _, g := range erlaubt {
+				if passt(g, p) {
+					ok = true
+				}
+			}
+		}
+		if ok {
+			nehmen = append(nehmen, p)
+		} else {
+			verworfen = append(verworfen, p)
+		}
+	}
+	for start := 0; start < len(nehmen); start += 200 {
+		args := []string{"add", "-A", "--"}
+		for _, p := range nehmen[start:min(start+200, len(nehmen))] {
+			args = append(args, ":(literal)"+p)
+		}
+		if _, err := git(gitDir, baum, args...); err != nil {
+			return "", verworfen, err
 		}
 	}
 	patch, err := git(gitDir, baum, "diff", "--cached", "--binary", "--no-color", "--no-ext-diff", "--no-textconv")
