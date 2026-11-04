@@ -40,7 +40,7 @@ export const FELDER: Record<string, string> = {
   aufgabe_id: "task_id", titel: "title", beschreibung: "description", stufe: "level", faehigkeiten: "capabilities",
   pfade: "paths", akzeptanz: "acceptance", basis_commit: "base_commit", lease_minuten: "lease_minutes", min_vertrauen: "min_trust",
   zustand: "state", erstellt: "created", raum: "room", projekt_id: "project_id", meilenstein_id: "milestone_id",
-  grenzen: "limits", zeilen: "lines", dateien: "files", arbeitet: "working", beitrag_von: "contribution_by",
+  grenzen: "limits", zeilen: "lines", dateien: "files", arbeitet: "working", arbeitet_login: "working_login", beitrag_von: "contribution_by", beitrag_login: "contribution_login",
   lease_id: "lease_id", laeuft_ab: "expires", einreichung_id: "submission_id", patch_sha256: "patch_sha256",
   abgewiesen: "rejected", zusammenfassung: "summary", eigene_tests: "own_tests", verbrauch: "usage", eingereicht: "submitted",
   pruefung: "check", bericht: "report", urteil: "verdict", begruendung: "reason", ergebnis: "result",
