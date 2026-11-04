@@ -234,7 +234,7 @@ func statusBefehl() {
 	if z, err := zugangLaden(); err == nil {
 		fmt.Println("Signed in at:", z.Plattform)
 		if skript, err := installerHolen(z.Plattform, z.CAPfad); err == nil {
-			if neu, _ := installerLesen(skript); istNeuer(neu, version) {
+			if neu, _, _ := installerLesen(skript); istNeuer(neu, version) {
 				fmt.Printf("Update available: %s → swarvex update\n", versionText(neu))
 			}
 		}
@@ -317,7 +317,8 @@ func uninstallBefehl(args []string) {
 				err = fmt.Errorf("%s", strings.TrimSpace(string(aus)))
 			}
 		}
-		exec.Command("podman", "network", "rm", "-f", "swarvex-intern").Run()
+		exec.Command("podman", "network", "rm", "-f", sandboxNetz).Run()
+		exec.Command("podman", "network", "rm", "-f", "swarvex-intern").Run() // Name bis 0.9.2
 		schritt(fmt.Sprintf("containers, %d images and network removed", len(images)), err)
 	}
 	// 4. Arbeitsdaten (Snapshots, Caches, Protokolle, Verbrauch) und Konfiguration mit Anmeldung

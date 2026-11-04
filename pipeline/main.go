@@ -12,6 +12,7 @@ package main
 import (
 	"bytes"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -83,11 +84,15 @@ func signiert(methode, pfad string, koerper any, aus any) error {
 		roh, _ = json.Marshal(koerper)
 	}
 	zeit := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	zufall := make([]byte, 16)
+	rand.Read(zufall)
+	nonce := hex.EncodeToString(zufall) // jede Anfrage nur einmal gültig (die Plattform merkt sich die Nummer)
 	mac := hmac.New(sha256.New, []byte(geheimnis))
-	fmt.Fprintf(mac, "%s\n%s\n%s\n%s", zeit, methode, pfad, roh)
+	fmt.Fprintf(mac, "%s\n%s\n%s\n%s\n%s", zeit, nonce, methode, pfad, roh)
 	req, _ := http.NewRequest(methode, plattform+pfad, bytes.NewReader(roh))
 	req.Header.Set("content-type", "application/json")
 	req.Header.Set("x-time", zeit)
+	req.Header.Set("x-nonce", nonce)
 	req.Header.Set("x-signature", hex.EncodeToString(mac.Sum(nil)))
 	r, err := client().Do(req)
 	if err != nil {

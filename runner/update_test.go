@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/base64"
 	"errors"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,11 +13,11 @@ import (
 
 func TestInstallerLesen(t *testing.T) {
 	skript := "#!/bin/sh\nset -eu\nPLATFORM=\"https://swarvex.ai\"\nVERSION=\"0.1.202611041235\"\nSIGNING_KEY=\"ssh-ed25519 AAAAC3Nza\"\nCA_SOURCE=\"${SWARVEX_CA:-}\"\n"
-	ver, key := installerLesen(skript)
+	ver, key, _ := installerLesen(skript)
 	if ver != "0.1.202611041235" || key != "ssh-ed25519 AAAAC3Nza" {
 		t.Fatalf("%q %q", ver, key)
 	}
-	if v, k := installerLesen("<html>nope</html>"); v != "" || k != "" {
+	if v, k, _ := installerLesen("<html>nope</html>"); v != "" || k != "" {
 		t.Fatalf("aus HTML gelesen: %q %q", v, k)
 	}
 }
@@ -206,5 +208,50 @@ func TestSicherInstallieren(t *testing.T) {
 	}
 	if zurueckholen(&aus, true) == nil {
 		t.Fatal("a second rollback has nothing to go back to")
+	}
+}
+
+// Schlüsselwechsel: Ein neuer Release-Schlüssel gilt nur, wenn der gemerkte ihn signiert hat.
+func TestSchluesselwechsel(t *testing.T) {
+	if _, err := exec.LookPath("ssh-keygen"); err != nil {
+		t.Skip("ssh-keygen not installed")
+	}
+	dir := t.TempDir()
+	neuerSchluessel := func(name string) (string, string) {
+		datei := filepath.Join(dir, name)
+		if aus, err := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", name, "-f", datei).CombinedOutput(); err != nil {
+			t.Fatalf("%v %s", err, aus)
+		}
+		pub, _ := os.ReadFile(datei + ".pub")
+		felder := strings.Fields(string(pub))
+		return datei, felder[0] + " " + felder[1]
+	}
+	altDatei, alt := neuerSchluessel("alt")
+	_, neu := neuerSchluessel("neu")
+	fremdDatei, _ := neuerSchluessel("fremd")
+	signieren := func(schluessel, text string) string {
+		cmd := exec.Command("ssh-keygen", "-Y", "sign", "-f", schluessel, "-n", "swarvex-key-rotation")
+		cmd.Stdin = strings.NewReader(text)
+		sig, err := cmd.Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return base64.StdEncoding.EncodeToString(sig)
+	}
+	if !schluesselwechselGeprueft(alt, neu, signieren(altDatei, neu)) {
+		t.Fatal("a new key signed with the pinned key must be accepted")
+	}
+	if schluesselwechselGeprueft(alt, neu, signieren(fremdDatei, neu)) {
+		t.Fatal("a new key signed by someone else must be refused")
+	}
+	if schluesselwechselGeprueft(alt, neu, signieren(altDatei, neu+"x")) {
+		t.Fatal("a signature over different text must be refused")
+	}
+	if schluesselwechselGeprueft(alt, neu, "") || schluesselwechselGeprueft("", neu, signieren(altDatei, neu)) {
+		t.Fatal("without a signature or a pinned key nothing changes")
+	}
+	_, _, w := installerLesen("VERSION=\"0.9.3\"\nSIGNING_KEY=\"" + neu + "\"\nKEY_ROTATION_SIGNATURE=\"abc\"\n")
+	if w != "abc" {
+		t.Fatalf("rotation signature not read: %q", w)
 	}
 }

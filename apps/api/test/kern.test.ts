@@ -848,8 +848,12 @@ describe("Vorschau nach dem Merge", () => {
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
     const basis = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
     const senden = async (methode: string, pfad: string, koerper?: unknown) => {
-      const text = koerper ? JSON.stringify(koerper) : "", zeit = String(Date.now());
-      const r = await fetch(basis + pfad, { method: methode, body: text || undefined, headers: { "x-time": zeit, "x-signature": signatur(geheim, zeit, methode, pfad, text) } });
+      const text = koerper ? JSON.stringify(koerper) : "", zeit = String(Date.now()), nonce = `n${Math.random().toString(36).slice(2)}${Date.now()}`;
+      const kopf = { "x-time": zeit, "x-nonce": nonce, "x-signature": signatur(geheim, zeit, nonce, methode, pfad, text) };
+      const r = await fetch(basis + pfad, { method: methode, body: text || undefined, headers: kopf });
+      // Dieselbe Anfrage noch einmal: abgewiesen (Wiederholschutz)
+      const nochmal = await fetch(basis + pfad, { method: methode, body: text || undefined, headers: kopf });
+      expect(nochmal.status).toBe(401);
       return r.json();
     };
     try {

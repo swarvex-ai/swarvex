@@ -166,6 +166,10 @@ func vorschauBauen(e einreichung, baum, ziel string, mitDoku bool) vorschauStand
 			return vorschauStand{status: "failed", bericht: b.String() + err.Error()}
 		}
 		st.spiel = true
+		// Einreichungs-Vorschau: ungeprüfter Code auf einer Adresse mit swarvex-Namen, deshalb ein deutlicher Hinweis
+		if !mitDoku {
+			bannerEinfuegen(filepath.Join(neu, "index.html"), e.EinreichungID)
+		}
 	}
 	if u.Doku != "" {
 		os.RemoveAll(filepath.Join(neu, "docs")) // /docs/ gehört der Doku
@@ -349,4 +353,26 @@ func godotVorlagen(voll string) (string, error) {
 	}
 	befehl("", nil, "chmod", "-R", "a+rX", neu)
 	return ordner, os.Rename(neu, ordner)
+}
+
+// bannerEinfuegen setzt in die Startseite einer Einreichungs-Vorschau einen Hinweis: ungeprüft, keine Passwörter
+// oder persönlichen Daten eingeben. Er liegt am unteren Rand und lässt Klicks durch, damit er kein Spiel stört.
+func bannerEinfuegen(datei string, id int64) {
+	roh, err := os.ReadFile(datei)
+	if err != nil {
+		return
+	}
+	banner := fmt.Sprintf(`<div role="note" style="position:fixed;left:0;right:0;bottom:0;z-index:2147483647;pointer-events:none;`+
+		`font:13px/1.4 system-ui,sans-serif;background:rgba(20,20,20,.85);color:#fff;padding:6px 12px;text-align:center">`+
+		`Preview of an unreviewed submission (#%d) · not checked by the project yet · never enter passwords or personal data here`+
+		` · Vorschau einer ungeprüften Einreichung · hier nie Passwörter oder persönliche Daten eingeben</div>`, id)
+	html := string(roh)
+	if i := strings.Index(strings.ToLower(html), "<body"); i >= 0 {
+		if j := strings.Index(html[i:], ">"); j >= 0 {
+			html = html[:i+j+1] + banner + html[i+j+1:]
+			os.WriteFile(datei, []byte(html), 0o644)
+			return
+		}
+	}
+	os.WriteFile(datei, []byte(banner+html), 0o644)
 }

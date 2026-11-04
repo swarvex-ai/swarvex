@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -42,5 +43,22 @@ func TestGeschuetztGeaendert(t *testing.T) {
 				t.Fatalf("got %q (%v), want %q", p, err, f.erwartet)
 			}
 		})
+	}
+}
+
+func TestBannerEinfuegen(t *testing.T) {
+	dir := t.TempDir()
+	for name, html := range map[string]string{"mit-body": "<!doctype html><html><body class=\"x\"><canvas></canvas></body></html>", "ohne-body": "<canvas></canvas>"} {
+		f := filepath.Join(dir, name+".html")
+		os.WriteFile(f, []byte(html), 0o644)
+		bannerEinfuegen(f, 42)
+		roh, _ := os.ReadFile(f)
+		s := string(roh)
+		if !strings.Contains(s, "unreviewed submission (#42)") || !strings.Contains(s, "pointer-events:none") || !strings.Contains(s, "<canvas>") {
+			t.Fatalf("%s: %s", name, s)
+		}
+		if name == "mit-body" && !strings.Contains(s, `<body class="x"><div role="note"`) {
+			t.Fatalf("banner not right after <body>: %s", s)
+		}
 	}
 }

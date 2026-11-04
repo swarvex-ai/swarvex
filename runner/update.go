@@ -11,6 +11,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
@@ -76,18 +77,43 @@ func istNeuer(neu, alt string) bool {
 	return false
 }
 
-var installWert = regexp.MustCompile(`(?m)^(VERSION|SIGNING_KEY)="([^"\n]*)"`)
+var installWert = regexp.MustCompile(`(?m)^(VERSION|SIGNING_KEY|KEY_ROTATION_SIGNATURE)="([^"\n]*)"`)
 
-// installerLesen liefert Version und Signaturschlüssel aus dem install.sh der Plattform.
-func installerLesen(skript string) (ver, schluessel string) {
+// installerLesen liefert Version, Signaturschlüssel und (nach einem Schlüsselwechsel) dessen Signatur mit dem alten.
+func installerLesen(skript string) (ver, schluessel, wechsel string) {
 	for _, m := range installWert.FindAllStringSubmatch(skript, -1) {
-		if m[1] == "VERSION" {
+		switch m[1] {
+		case "VERSION":
 			ver = m[2]
-		} else {
+		case "SIGNING_KEY":
 			schluessel = m[2]
+		default:
+			wechsel = m[2]
 		}
 	}
 	return
+}
+
+// schluesselwechselGeprueft: Der neue Schlüssel ist mit dem gemerkten signiert (ssh-keygen -Y, Namensraum
+// swarvex-key-rotation). Signiert ist genau der Schlüsseltext ohne Zeilenumbruch.
+func schluesselwechselGeprueft(gemerkt, neu, signaturB64 string) bool {
+	gemerkt, neu = strings.TrimSpace(gemerkt), strings.TrimSpace(neu)
+	sig, err := base64.StdEncoding.DecodeString(strings.TrimSpace(signaturB64))
+	if gemerkt == "" || neu == "" || err != nil || len(sig) == 0 {
+		return false
+	}
+	dir, err := os.MkdirTemp("", "swarvex-key-")
+	if err != nil {
+		return false
+	}
+	defer os.RemoveAll(dir)
+	erlaubt, sigDatei := filepath.Join(dir, "allowed"), filepath.Join(dir, "rotation.sig")
+	if os.WriteFile(erlaubt, []byte("swarvex-release "+gemerkt+"\n"), 0o600) != nil || os.WriteFile(sigDatei, sig, 0o600) != nil {
+		return false
+	}
+	cmd := exec.Command("ssh-keygen", "-Y", "verify", "-f", erlaubt, "-I", "swarvex-release", "-n", "swarvex-key-rotation", "-s", sigDatei)
+	cmd.Stdin = strings.NewReader(neu)
+	return cmd.Run() == nil
 }
 
 func pinDatei() string { return filepath.Join(konfigOrdner(), "release.pub") }
@@ -131,12 +157,14 @@ func neuesteVersion(plattform, ca string) (skript, neu string, err error) {
 	if err != nil {
 		return "", "", fmt.Errorf("could not fetch %s/install.sh: %w", plattform, err)
 	}
-	neu, schluessel := installerLesen(skript)
+	neu, schluessel, wechsel := installerLesen(skript)
 	if neu == "" || schluessel == "" {
 		return "", "", fmt.Errorf("the platform's install.sh has no version or signing key")
 	}
 	gemerkt, _ := os.ReadFile(pinDatei())
-	if !schluesselPasst(string(gemerkt), schluessel) {
+	if !schluesselPasst(string(gemerkt), schluessel) && schluesselwechselGeprueft(string(gemerkt), schluessel, wechsel) {
+		fmt.Println("The platform signs releases with a new key; the key you installed with confirmed it (signed key change).")
+	} else if !schluesselPasst(string(gemerkt), schluessel) {
 		return "", neu, fmt.Errorf("the platform's release signing key is not the one you installed with; " +
 			"if the project announced a new key, install again with the one-liner from the website")
 	}

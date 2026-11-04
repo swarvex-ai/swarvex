@@ -31,7 +31,11 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "proxy":
-		proxyStarten()
+		if len(os.Args) > 2 && os.Args[2] == "egress" {
+			ausgangStarten() // Ausgangs-Proxy fürs Einrichten (gleiches Image, eigener Modus)
+		} else {
+			proxyStarten()
+		}
 	case "setup":
 		setupBefehl(os.Args[2:])
 	case "connect":

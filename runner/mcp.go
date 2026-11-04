@@ -55,7 +55,7 @@ func (m *mcpClient) aufruf(methode string, params any) (json.RawMessage, error) 
 func (m *mcpClient) initialisieren() error {
 	_, err := m.aufruf("initialize", map[string]any{
 		"protocolVersion": "2025-06-18", "capabilities": map[string]any{},
-		"clientInfo": map[string]any{"name": "swarvex", "version": "0.1.0"},
+		"clientInfo": map[string]any{"name": "swarvex-runner", "version": version},
 	})
 	return err
 }

@@ -14,6 +14,11 @@ BASE_HOST=$(grep ^BASE_HOST= "$CODE/infra/stack/.env" | cut -d= -f2-)
 PLATFORM="https://$BASE_HOST"
 # Version: runner/VERSION (semantic: patch for fixes, minor for new features). A version is published once;
 # if the runner's code changed since, the release stops until runner/VERSION is raised.
+# Live signs on the visionary's machine (hardware key), never on this server: infra/release-local.sh
+if grep -q '^RELEASE_SIGNING=local' "$CODE/infra/stack/.env"; then
+  echo "== Releases of this platform are signed on the visionary's machine: sh infra/release-local.sh <host> (nothing done here)"
+  exit 0
+fi
 VERSION=${VERSION:-$(tr -d ' \n' < "$CODE/runner/VERSION")}
 echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "runner/VERSION must look like 0.9.0, not '$VERSION'"; exit 1; }
 # What's new (swarvex update shows the entries since the installed version); kept current even without a new version
@@ -51,7 +56,7 @@ echo "$QUELLE" > "$TARGET/SOURCE"
 ssh-keygen -q -Y sign -f "$DATA/release_key" -n swarvex-release "$TARGET/SHA256SUMS"   # creates SHA256SUMS.sig
 
 PUB=$(cut -d' ' -f1-2 "$DATA/release_key.pub")
-sed -e "s#@PLATFORM@#$PLATFORM#g" -e "s#@VERSION@#$VERSION#g" -e "s#@PUBKEY@#$PUB#g" \
+sed -e "s#@PLATFORM@#$PLATFORM#g" -e "s#@VERSION@#$VERSION#g" -e "s#@PUBKEY@#$PUB#g" -e "s#@ROTATION_SIG@##g" \
   "$CODE/runner/install.sh.in" > "$DOWNLOADS/install.sh"
 # Windows: sets up the WSL distribution and runs install.sh inside it (signature check happens there)
 sed -e "s#@PLATFORM@#$PLATFORM#g" "$CODE/runner/install.ps1.in" > "$DOWNLOADS/install.ps1"

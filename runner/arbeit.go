@@ -69,6 +69,8 @@ func arbeitenBefehl(args []string) {
 	restReserve := fs.Float64("leftover-reserve", 10, "with --leftover: percent of the weekly window that always stays yours")
 	restVor := fs.Duration("leftover-before-reset", 24*time.Hour, "with --leftover: start this long before the weekly window resets")
 	restSitzung := fs.Float64("leftover-session-max", 80, "with --leftover: never fill the 5-hour window beyond this percent")
+	fs.StringVar(&setupNetz, "setup-network", "", "network while installing dependencies: public (default, only public addresses through a filtering proxy), lan (also your local network), open (no proxy, like before 0.9.3)")
+	fs.StringVar(&setupErlaubt, "setup-allow", "", "with public: exceptions for the setup, e.g. a package mirror in your network (IP, CIDR or host name, comma-separated)")
 	fs.Parse(args)
 	if *projekt == "" || *modell == "" || (*upstream == "" && !codexAboDatei(*agentName, *keyDatei)) {
 		fehlerAus("--project, --model and --model-url are required (--model-url not with Codex and a ChatGPT sign-in)")
@@ -572,11 +574,9 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 		aus, err := exec.CommandContext(ctx, "podman", args...).CombinedOutput()
 		return strings.TrimSpace(string(aus)), err
 	}
-	netz := "swarvex-intern"
-	if _, err := podman("network", "exists", netz); err != nil {
-		if aus, err := podman("network", "create", "--internal", netz); err != nil {
-			return nil, "", fmt.Errorf("creating the network: %s", aus)
-		}
+	netz, err := internesNetz(ctx)
+	if err != nil {
+		return nil, "", err
 	}
 	tok := zufall(36)
 	if zugang.chatgpt() {
@@ -601,6 +601,10 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 		return nil, "", fmt.Errorf("starting the proxy: %s", aus)
 	}
 	defer exec.Command("podman", "rm", "-f", proxyName).Run()
+	proxyHosts, err := proxyHost(ctx, proxyName)
+	if err != nil {
+		return nil, "", err
+	}
 
 	auftrag := auftragstext(a, u)
 	agentArgs, agentBefehl, err := agentStart(agent, ordner, "http://"+proxyName+":8080", tok, modell, auftrag, skills, baum, u.Ordner, zugang)
@@ -614,7 +618,7 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 		rest = max(int(time.Until(frist).Seconds()), 1)
 	}
 	// Agent im Projekt-Image: kein Netz außer dem Schlüssel-Proxy, Projekt unter /work, Caches unter /cache.
-	sandboxArgs := append(append(containerArgs(sandboxName, baum, cache, u, rest), "--network", netz), agentArgs...)
+	sandboxArgs := append(append(append(containerArgs(sandboxName, baum, cache, u, rest), "--network", netz), proxyHosts...), agentArgs...)
 	sandboxArgs = append(sandboxArgs, image)
 	if befehl == nil {
 		befehl = agentBefehl

@@ -70,7 +70,7 @@ func umgebungBefehl(args []string) {
 	image, err := umgebungsImage(ctx, u, wurzel, "")
 	pruefen(err)
 	cache := cacheOrdner("local-" + filepath.Base(wurzel))
-	fmt.Println("== Setup (with network, without agent)")
+	fmt.Println("== Setup (dependencies through the egress proxy, without agent)")
 	protokoll := filepath.Join(os.TempDir(), "swarvex-setup.log")
 	if err := einrichten(ctx, u, image, wurzel, cache, protokoll); err != nil {
 		fehlerAus(err.Error())

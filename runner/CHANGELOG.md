@@ -5,6 +5,17 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.9.3 (5 Nov 2026)
+
+- Installing dependencies (the setup step) no longer reaches your local network: the setup container sits on the
+  internal network and goes out through a filtering proxy that refuses private, local and reserved addresses (your
+  router, NAS, other machines, this computer). `--setup-network lan` allows your network, `--setup-network open`
+  restores the old behaviour, `--setup-allow <ip|cidr|host>` lets a local package mirror through. Blocked targets are
+  listed in the setup log.
+- Signed key changes: when the platform moves to a new release signing key, `swarvex update` accepts it only if the
+  key you installed with signed it. Releases can then be signed on a hardware key instead of on the server.
+- The runner reports its real version to the platform (for the security overview of which versions are in use).
+
 ## 0.9.2 (4 Nov 2026)
 
 - Protected files (`AGENTS.md`, `swarvex.yaml`, CI workflows, agent settings) are matched regardless of upper and lower

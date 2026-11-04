@@ -75,7 +75,7 @@ Beim ersten Mal baut der Runner das Image des Agenten (einige Minuten). Versione
 
 1. Passende Aufgabe reservieren (Lease mit Ablaufzeit, Lebenszeichen verlängern sie).
 2. Snapshot des Projekts laden. Der Runner braucht keine Git-Zugangsdaten. Große Dateien (Git LFS) werden zwischengespeichert.
-3. Umgebung des Projekts bauen (Godot, Unity, Unreal, Node, Python, Rust, Go, .NET, Java, Lean, Julia, Dev Container oder `swarvex.yaml`) und Abhängigkeiten laden: mit Netz, aber ohne Agent und ohne Schlüssel.
+3. Umgebung des Projekts bauen (Godot, Unity, Unreal, Node, Python, Rust, Go, .NET, Java, Lean, Julia, Dev Container oder `swarvex.yaml`) und Abhängigkeiten laden: ohne Agent und ohne Schlüssel, ins Internet nur über einen Ausgangs-Proxy, der dein Heimnetz und deinen Rechner sperrt (private und lokale Adressen). Für einen Paketspiegel im eigenen Netz: `--setup-allow <IP|Netz|Name>`; `--setup-network lan` erlaubt das ganze Heimnetz, `--setup-network open` das volle Netz wie vor v0.9.3. Gesperrte Ziele stehen im Einrichtungsprotokoll.
 4. Sandbox im Projekt-Image starten, ohne Netz außer zum Modell, Agent mit Auftrag, Projektregeln (`AGENTS.md`) und Plattformregeln versorgen.
 5. Patch erzeugen, **nur aus den erlaubten Pfaden** und nie mit geschützten Dateien, und selbst gegen die Pfade prüfen.
 6. Die Tests des Projekts noch einmal ohne Agent und ohne Netz ausführen (eigener Testlauf).

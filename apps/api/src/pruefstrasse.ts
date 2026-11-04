@@ -1,6 +1,7 @@
 // Schnittstelle der Prüfstraße (läuft beim Visionär; im Nachweis als eigener Dienst).
-// Jede Anfrage ist mit HMAC-SHA256 signiert (Zeitstempel + Methode + Pfad + Körper) und nur
-// fünf Minuten gültig. Unsignierte oder veränderte Meldungen werden abgewiesen (Angriff S8).
+// Jede Anfrage ist mit HMAC-SHA256 signiert (Zeitstempel + Einmalnummer + Methode + Pfad + Körper) und nur
+// fünf Minuten gültig; jede Einmalnummer gilt nur einmal. Unsignierte, veränderte oder wiederholte Meldungen
+// werden abgewiesen (Angriff S8).
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Db } from "./db.ts";
@@ -29,8 +30,18 @@ async function mitToken(zeilen: Record<string, unknown>[], schreiben: boolean) {
   }));
 }
 
-export function signatur(geheimnis: string, zeit: string, methode: string, pfad: string, koerper: string) {
-  return createHmac("sha256", geheimnis).update(`${zeit}\n${methode}\n${pfad}\n${koerper}`).digest("hex");
+export function signatur(geheimnis: string, zeit: string, nonce: string, methode: string, pfad: string, koerper: string) {
+  return createHmac("sha256", geheimnis).update(`${zeit}\n${nonce}\n${methode}\n${pfad}\n${koerper}`).digest("hex");
+}
+
+/** Gesehene Einmalnummern der letzten fünf Minuten (danach ist der Zeitstempel ohnehin abgelaufen). */
+const GUELTIG_MS = 5 * 60_000;
+const gesehen = new Map<string, number>();
+function schonGesehen(nonce: string, jetzt = Date.now()) {
+  for (const [n, t] of gesehen) if (jetzt - t > GUELTIG_MS) gesehen.delete(n);
+  if (gesehen.has(nonce)) return true;
+  gesehen.set(nonce, jetzt);
+  return false;
 }
 
 function json(res: ServerResponse, status: number, wert: unknown) {
@@ -61,13 +72,15 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
     if (koerper === null) return json(res, 413, { error: "request too large" });
     const zeit = String(req.headers["x-time"] ?? "");
     const sig = String(req.headers["x-signature"] ?? "");
-    const erwartet = signatur(geheimnis, zeit, req.method ?? "", url.pathname, koerper);
-    const frisch = Math.abs(Date.now() - Number(zeit)) < 5 * 60_000;
-    if (!geheimnis || !frisch || sig.length !== erwartet.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(erwartet))) {
+    const nonce = String(req.headers["x-nonce"] ?? "");
+    const erwartet = signatur(geheimnis, zeit, nonce, req.method ?? "", url.pathname, koerper);
+    const frisch = Math.abs(Date.now() - Number(zeit)) < GUELTIG_MS;
+    const echt = !!geheimnis && frisch && /^[A-Za-z0-9_-]{16,64}$/.test(nonce) && sig.length === erwartet.length && timingSafeEqual(Buffer.from(sig), Buffer.from(erwartet));
+    if (!echt || schonGesehen(nonce)) {
       if (Date.now() - zuletztProtokolliert > 60_000) {
         zuletztProtokolliert = Date.now();
-        await transaktion(db, (tx) => protokollieren(tx, { projekt_id: null, akteur: "unbekannt", art: "pruefstrasse_abgewiesen", bezug: url.pathname, daten: { grund: frisch ? "signatur" : "zeitstempel" } }));
-      } else console.warn(`pipeline: rejected ${req.method} ${url.pathname} (${frisch ? "signature" : "timestamp"})`);
+        await transaktion(db, (tx) => protokollieren(tx, { projekt_id: null, akteur: "unbekannt", art: "pruefstrasse_abgewiesen", bezug: url.pathname, daten: { grund: !frisch ? "zeitstempel" : echt ? "wiederholt" : "signatur" } }));
+      } else console.warn(`pipeline: rejected ${req.method} ${url.pathname} (${!frisch ? "timestamp" : echt ? "replayed" : "signature"})`);
       return json(res, 401, { error: "invalid signature" });
     }
     const daten = koerper ? JSON.parse(koerper) : {};

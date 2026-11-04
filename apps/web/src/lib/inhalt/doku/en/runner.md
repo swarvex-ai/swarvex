@@ -76,7 +76,7 @@ The first time, the runner builds the agent's image (a few minutes). Versions ar
 
 1. Reserve a matching task (a lease with an expiry; heartbeats extend it).
 2. Load a snapshot of the project. The runner needs no Git credentials. Large files (Git LFS) are cached.
-3. Build the project's environment (Godot, Unity, Unreal, Node, Python, Rust, Go, .NET, Java, Lean, Julia, dev container or `swarvex.yaml`) and fetch dependencies: with network, but without the agent and without keys.
+3. Build the project's environment (Godot, Unity, Unreal, Node, Python, Rust, Go, .NET, Java, Lean, Julia, dev container or `swarvex.yaml`) and fetch dependencies: without the agent and without keys, out to the internet only through an egress proxy that blocks your local network and your computer (private and local addresses). For a package mirror in your own network: `--setup-allow <ip|cidr|host>`; `--setup-network lan` allows your whole local network, `--setup-network open` the full network as before v0.9.3. Blocked targets are listed in the setup log.
 4. Start the sandbox in the project image, without network except to the model, and give the agent its brief, the project rules (`AGENTS.md`) and the platform rules.
 5. Create the patch **from the allowed paths only** and never with protected files, and check it against those paths.
 6. Run the project's tests once more without the agent and without network (own test run).

@@ -88,9 +88,8 @@ func doctorBefehl() {
 				bereit = false
 			}
 		}
-		if exec.Command("podman", "network", "exists", "swarvex-intern").Run() != nil {
-			schlecht("isolated network swarvex-intern is missing", "podman network create --internal swarvex-intern")
-			bereit = false
+		if exec.Command("podman", "network", "exists", sandboxNetz).Run() != nil {
+			hinweis("isolated network "+sandboxNetz+" is not there yet", "the runner creates it before the first task (podman network create --internal --disable-dns "+sandboxNetz+")")
 		}
 		if bereit {
 			gut("images and isolated network ready")

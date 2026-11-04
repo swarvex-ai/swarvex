@@ -10,6 +10,9 @@ set -eu
 PLATFORM="@PLATFORM@"
 VERSION="@VERSION@"
 SIGNING_KEY="@PUBKEY@"
+# After a key change: the new key, signed with the previous one (base64). `swarvex update` accepts the new key only
+# when this signature verifies with the key it was installed with (namespace swarvex-key-rotation).
+KEY_ROTATION_SIGNATURE="@ROTATION_SIG@"
 CA_SOURCE="${SWARVEX_CA:-}"
 
 fail() { printf '\n✗ %s\n' "$1" >&2; exit 1; }
@@ -125,7 +128,8 @@ step "Preparing the agent and the key proxy (takes a few minutes the first time)
 ( cd "$DATA/release/sandbox" && podman build -q --target opencode -t swarvex-agent . >/dev/null ) || fail "Could not build the agent image"
 podman rmi -f swarvex-agent-claude swarvex-agent-codex >/dev/null 2>&1 || true   # rebuilt on first use with this version
 podman rmi -f swarvex-sandbox >/dev/null 2>&1 || true   # predecessor (sandbox with a fixed engine)
-podman network exists swarvex-intern 2>/dev/null || podman network create --internal swarvex-intern >/dev/null
+# Internal network without its own DNS (podman 5+ would otherwise hide external names from the proxies)
+podman network exists swarvex-sandbox 2>/dev/null || podman network create --internal --disable-dns swarvex-sandbox >/dev/null
 echo "   images and isolated network ready"
 
 step "Signing in"

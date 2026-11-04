@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -100,7 +101,49 @@ func containerArgs(name, baum, cache string, u umgebung.Umgebung, sekunden int) 
 	return args
 }
 
-// einrichten lädt die Abhängigkeiten des Projekts: mit Netz, aber ohne Agent, ohne Proxy und ohne Schlüssel.
+// Netz beim Einrichten (--setup-network oder SWARVEX_SETUP_NETWORK): public (Standard) über den Ausgangs-Proxy, nur
+// öffentliche Adressen; lan über den Proxy, auch private Adressen; open wie früher, das volle Netz des Rechners.
+// --setup-allow (SWARVEX_SETUP_ALLOW): Ausnahmen trotz public, etwa ein Paketspiegel im Heimnetz (IP, CIDR, Hostname).
+var setupNetz, setupErlaubt string
+
+func einrichtNetz() (modus, erlaubt string) {
+	modus, erlaubt = setupNetz, setupErlaubt
+	if modus == "" {
+		modus = envOder("SWARVEX_SETUP_NETWORK", "public")
+	}
+	if erlaubt == "" {
+		erlaubt = os.Getenv("SWARVEX_SETUP_ALLOW")
+	}
+	return
+}
+
+// sandboxNetz: das Podman-Netz ohne Ausgang, in dem Sandbox und Einrichten hängen. Ohne eigenen DNS: Hängt ein
+// Container an einem internen Netz mit DNS und zugleich am Standardnetz, trägt Podman (ab 5) nur den DNS des internen
+// Netzes ein, und der löst keine externen Namen auf; die Proxys erreichten dann keinen Anbieter. Sandbox und
+// Einrichten finden ihren Proxy deshalb über einen /etc/hosts-Eintrag (proxyHost). Bis 0.9.2 hieß es swarvex-intern.
+const sandboxNetz = "swarvex-sandbox"
+
+func internesNetz(ctx context.Context) (string, error) {
+	if exec.CommandContext(ctx, "podman", "network", "exists", sandboxNetz).Run() != nil {
+		if aus, err := exec.CommandContext(ctx, "podman", "network", "create", "--internal", "--disable-dns", sandboxNetz).CombinedOutput(); err != nil {
+			return "", fmt.Errorf("creating the network: %s", aus)
+		}
+	}
+	return sandboxNetz, nil
+}
+
+// proxyHost: "--add-host name:ip" für einen Proxy-Container im Sandbox-Netz, damit sein Name ohne DNS auflöst.
+func proxyHost(ctx context.Context, name string) ([]string, error) {
+	aus, err := exec.CommandContext(ctx, "podman", "inspect", "-f", `{{(index .NetworkSettings.Networks "`+sandboxNetz+`").IPAddress}}`, name).Output()
+	ip := strings.TrimSpace(string(aus))
+	if err != nil || net.ParseIP(ip) == nil {
+		return nil, fmt.Errorf("address of %s in %s not found (%v)", name, sandboxNetz, err)
+	}
+	return []string{"--add-host", name + ":" + ip}, nil
+}
+
+// einrichten lädt die Abhängigkeiten des Projekts: ohne Agent und ohne Schlüssel; ins Internet nur über den
+// Ausgangs-Proxy (ausgang.go), der das Heimnetz und den eigenen Rechner sperrt.
 func einrichten(ctx context.Context, u umgebung.Umgebung, image, baum, cache, protokoll string) error {
 	if strings.TrimSpace(u.Einrichten) == "" {
 		return nil
@@ -108,11 +151,55 @@ func einrichten(ctx context.Context, u umgebung.Umgebung, image, baum, cache, pr
 	ctx, stopp := context.WithTimeout(ctx, 20*time.Minute)
 	defer stopp()
 	name := "swarvex-setup-" + zufall(6)
-	args := append(containerArgs(name, baum, cache, u, 1200), image, "sh", "-ec", u.Einrichten)
+	args := containerArgs(name, baum, cache, u, 1200)
+	modus, erlaubt := einrichtNetz()
+	var ausgangName string
+	switch modus {
+	case "open":
+	case "public", "lan":
+		netz, err := internesNetz(ctx)
+		if err != nil {
+			return err
+		}
+		ausgangName = "swarvex-egress-" + zufall(6)
+		start := []string{"run", "-d", "--rm", "--name", ausgangName, "--network", netz, "--network", "podman", "--timeout", "1500",
+			"--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges", "--memory", "256m", "--pids-limit", "128",
+			"-e", "SWARVEX_EGRESS_MODE=" + modus, "-e", "SWARVEX_EGRESS_ALLOW=" + erlaubt, "swarvex-proxy", "egress"}
+		if aus, err := exec.CommandContext(ctx, "podman", start...).CombinedOutput(); err != nil {
+			return fmt.Errorf("starting the egress proxy for the setup: %s", strings.TrimSpace(string(aus)))
+		}
+		defer exec.Command("podman", "rm", "-f", ausgangName).Run()
+		proxy := "http://" + ausgangName + ":3128"
+		hosts, err := proxyHost(ctx, ausgangName)
+		if err != nil {
+			return err
+		}
+		args = append(append(args, "--network", netz), hosts...)
+		for _, v := range []string{"HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"} {
+			args = append(args, "-e", v+"="+proxy)
+		}
+		args = append(args, "-e", "NO_PROXY=localhost,127.0.0.1", "-e", "no_proxy=localhost,127.0.0.1",
+			// Java-Werkzeuge (Gradle, Maven) lesen keine Proxy-Variablen, nur Systemeigenschaften
+			"-e", fmt.Sprintf("JAVA_TOOL_OPTIONS=-Dhttp.proxyHost=%s -Dhttp.proxyPort=3128 -Dhttps.proxyHost=%s -Dhttps.proxyPort=3128", ausgangName, ausgangName))
+	default:
+		return fmt.Errorf("--setup-network: public, lan or open, not %q", modus)
+	}
+	args = append(args, image, "sh", "-ec", u.Einrichten)
 	cmd := exec.CommandContext(ctx, "podman", args...)
 	cmd.Cancel = func() error { exec.Command("podman", "kill", name).Run(); return cmd.Process.Kill() }
 	cmd.WaitDelay = 10 * time.Second
 	aus, err := cmd.CombinedOutput()
+	if ausgangName != "" {
+		// Gesperrte Ziele ins Protokoll, damit sichtbar ist, warum ein Download scheiterte
+		if log, _ := exec.Command("podman", "logs", ausgangName).CombinedOutput(); strings.Contains(string(log), "egress_blocked") {
+			for _, z := range strings.Split(string(log), "\n") {
+				if strings.Contains(z, "egress_blocked") {
+					aus = append(aus, []byte("\n[swarvex] "+z)...)
+				}
+			}
+			aus = append(aus, []byte("\n[swarvex] The setup may only reach public addresses. For a mirror in your network: swarvex work --setup-allow <ip|host>, or --setup-network lan\n")...)
+		}
+	}
 	os.WriteFile(protokoll, aus, 0o644)
 	if err != nil {
 		return fmt.Errorf("setup failed (%v): %s", err, letzteZeilen(string(aus), 15))

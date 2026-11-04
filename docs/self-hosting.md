@@ -114,6 +114,8 @@ curl -fsSL --cacert ca.crt https://<BASE_HOST>/install.sh | SWARVEX_CA=$PWD/ca.c
 
 The installer runs as a normal user, checks rootless Podman, downloads the release, verifies signature and checksum (aborts without installing on failure), builds the proxy and agent image and starts the sign-in in the browser. `infra/release.sh` creates releases (signed with `ssh-keygen -Y`).
 
+**Sign releases off the server.** `infra/release.sh` signs with a key on the server, which is fine for a lab. In production the key belongs on a hardware key on your own machine: `infra/release-local.sh <host>` builds the runner locally, signs the checksums with `~/.config/swarvex-release/release_sk` (one touch on the key) and uploads the release; with `RELEASE_SIGNING=local` in `.env`, `release.sh` on the server signs nothing. Create the key once with `ssh-keygen -t ed25519-sk -O application=ssh:swarvex-release -C swarvex-release -N "" -f ~/.config/swarvex-release/release_sk`. When the key changes, the script lets the previous key sign the new one, and runners from v0.9.3 on accept the new key only with that signature; afterwards delete the old key on the server.
+
 **Git LFS:** the snapshot only contains LFS pointers. The runner fetches every object once via `/tasks/<id>/lfs/<oid>`, checks SHA-256 and size and stores it in `~/.cache/swarvex/lfs/`.
 
 For operators and tests there is `infra/setup-contributor.sh` (as root; builds the runner and images for a user `runner`). Then:
