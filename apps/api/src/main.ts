@@ -99,6 +99,12 @@ await boss.work("kopf-veroeffentlichen", async () => {
 });
 
 const grenze = grenzenErstellen();
+// Ratenlimit-Treffer je Regel, einmal pro Minute als eine Zeile ins Log (Sicherheits-Dashboard, ohne Adressen)
+const gebremstZaehler = new Map<string, number>();
+setInterval(() => {
+  for (const [regel, anzahl] of gebremstZaehler) console.log(JSON.stringify({ type: "rate_limited", rule: regel, count: anzahl }));
+  gebremstZaehler.clear();
+}, 60_000).unref();
 
 const RESSOURCEN_METADATEN = `${konfig.basis}/.well-known/oauth-protected-resource`;
 
@@ -126,6 +132,7 @@ const server = createServer(async (req, res) => {
   const gebremst = (regel: Parameters<typeof grenze>[0], schluessel: string) => {
     const warten = grenze(regel, schluessel);
     if (!warten) return false;
+    gebremstZaehler.set(regel, (gebremstZaehler.get(regel) ?? 0) + 1);
     json(res, 429, { error: "rate_limited", error_description: `Too many requests, retry in ${warten} s` }, { "retry-after": String(warten) });
     return true;
   };
@@ -292,6 +299,7 @@ const server = createServer(async (req, res) => {
 
     return oidc(req, res);
   } catch (e) {
+    console.error(JSON.stringify({ type: "server_error", path: url.pathname.replace(/\/\d+(?=\/|$)/g, "/:id").replace(/[0-9a-f]{32,}/g, ":hash").slice(0, 120) }));
     console.error(e);
     if (!res.headersSent) json(res, 500, { error: "server_error" });
   }

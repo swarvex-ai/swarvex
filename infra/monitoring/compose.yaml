@@ -25,6 +25,10 @@ services:
   alloy:
     image: grafana/alloy:v1.10.0
     command: run --storage.path=/var/lib/alloy /etc/alloy/config.alloy
+    # Nur diese Werte aus infra/stack/.env (docker compose --env-file ../stack/.env), keine Geheimnisse
+    environment:
+      PROBE_HOST: ${BASE_HOST:-localhost}
+      PROBE_PREVIEW_HOST: ${VORSCHAU_DOMAIN:-}
     volumes:
       - ./config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

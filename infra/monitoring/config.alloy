@@ -3,6 +3,26 @@ prometheus.exporter.unix "host" {
   procfs_path = "/host/proc"
   sysfs_path  = "/host/sys"
   rootfs_path = "/rootfs"
+  // Kennzahlen aus Skripten (infra/backup.sh: Zeitpunkt des letzten gelungenen Backups)
+  textfile {
+    directory = "/rootfs/var/lib/swarvex-metrics"
+  }
+}
+
+// Sicherheits-Dashboard: Erreichbarkeit und Ablauf der TLS-Zertifikate von Plattform und Vorschau-Domain.
+// Die Gültigkeit der Kette prüft der externe Uptime-Check; hier zählt der Ablauf (auch im Labor mit eigener CA).
+prometheus.exporter.blackbox "tls" {
+  config = "{ modules: { https: { prober: http, timeout: 10s, http: { preferred_ip_protocol: ip4, tls_config: { insecure_skip_verify: true } } } } }"
+  target {
+    name    = "platform"
+    address = "https://" + sys.env("PROBE_HOST") + "/healthz"
+    module  = "https"
+  }
+  target {
+    name    = "previews"
+    address = "https://" + coalesce(sys.env("PROBE_PREVIEW_HOST"), sys.env("PROBE_HOST")) + "/"
+    module  = "https"
+  }
 }
 
 prometheus.exporter.cadvisor "containers" {
@@ -11,7 +31,7 @@ prometheus.exporter.cadvisor "containers" {
 }
 
 prometheus.scrape "all" {
-  targets         = array.concat(prometheus.exporter.unix.host.targets, prometheus.exporter.cadvisor.containers.targets)
+  targets         = array.concat(prometheus.exporter.unix.host.targets, prometheus.exporter.cadvisor.containers.targets, prometheus.exporter.blackbox.tls.targets)
   forward_to      = [prometheus.remote_write.local.receiver]
   scrape_interval = "30s"
 }
@@ -47,6 +67,44 @@ loki.source.docker "containers" {
 }
 
 // No access logs (privacy policy): IP addresses never reach Loki.
+// System-Journal, nur was die Sicherheit betrifft: SSH, Firewall-Blocks (Kernel, UFW) und die Dienste der Prüfstraße
+loki.relabel "journal" {
+  forward_to = []
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+  rule {
+    source_labels = ["__journal__transport"]
+    target_label  = "transport"
+  }
+}
+
+loki.source.journal "system" {
+  path          = "/rootfs/var/log/journal"
+  max_age       = "12h"
+  labels        = { job = "journal" }
+  relabel_rules = loki.relabel.journal.rules
+  forward_to    = [loki.process.journal.receiver]
+}
+
+loki.process "journal" {
+  stage.match {
+    selector = "{job=\"journal\", unit!~\"ssh.service|swarvex-.*\", transport!=\"kernel\"}"
+    action   = "drop"
+  }
+  stage.match {
+    selector = "{job=\"journal\", transport=\"kernel\"} !~ \"UFW BLOCK\""
+    action   = "drop"
+  }
+  // MAC-Adressen in Firewall-Zeilen entfernen (IP-Adressen entfernt der nächste Schritt)
+  stage.replace {
+    expression = "MAC=([0-9a-fA-F:]+)"
+    replace    = "<mac>"
+  }
+  forward_to = [loki.process.privacy.receiver]
+}
+
 loki.process "privacy" {
   stage.replace {
     expression = "(\\b\\d{1,3}(?:\\.\\d{1,3}){3}\\b)"

@@ -31,3 +31,7 @@ restic forget --quiet --tag swarvex --keep-daily 7 --keep-weekly 4 --keep-monthl
 # Sundays: read back a sample of the stored data, not only the index
 if [ "$(date +%u)" = 7 ]; then restic check --read-data-subset=5%; else restic check; fi
 restic snapshots --tag swarvex --latest 1
+# Für das Sicherheits-Dashboard (Alloy liest das Verzeichnis als Textfile-Kennzahlen)
+mkdir -p /var/lib/swarvex-metrics
+printf '# HELP swarvex_backup_last_success_timestamp_seconds Last successful backup (infra/backup.sh)\n# TYPE swarvex_backup_last_success_timestamp_seconds gauge\nswarvex_backup_last_success_timestamp_seconds %s\n' "$(date +%s)" > /var/lib/swarvex-metrics/backup.prom.tmp
+mv /var/lib/swarvex-metrics/backup.prom.tmp /var/lib/swarvex-metrics/backup.prom

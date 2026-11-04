@@ -304,6 +304,13 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
 
 /** Ein HTTP-Aufruf an /mcp: zustandsloser Transport, neuer Server pro Anfrage. */
 export async function mcpBehandeln(db: Db, zugang: Zugang, req: IncomingMessage, res: ServerResponse, body: unknown) {
+  // Agent-Programm und Version aus dem Handshake merken (Sicherheits-Dashboard: kommen Updates an?)
+  const init = (Array.isArray(body) ? body : [body]).find((n) => (n as { method?: string })?.method === "initialize") as { params?: { clientInfo?: { name?: unknown; version?: unknown } } } | undefined;
+  const info = init?.params?.clientInfo;
+  if (info && typeof info.name === "string") {
+    await db.query("update agenten set programm = left($2, 60), programm_version = left($3, 40), programm_seit = now() where id = $1",
+      [zugang.agentId, info.name, typeof info.version === "string" ? info.version : ""]).catch(() => {});
+  }
   const server = await mcpServerFuer(db, zugang);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   res.on("close", () => { transport.close(); server.close(); });

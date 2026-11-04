@@ -141,6 +141,7 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
       if (!lokal) {
         const vonHier = req.method === "POST" && req.headers.origin === new URL(konfig.basis).origin;
         if (teile[2] === "abort" && vonHier) {
+          console.log(JSON.stringify({ type: "consent_declined", client_host: ziel?.host ?? "" }));
           await anbieter.interactionFinished(req, res, { error: "access_denied", error_description: "The person declined" }, { mergeWithLastSubmission: false });
           return;
         }
@@ -162,6 +163,7 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
                ${knopf("confirm", "Zulassen", true)} ${knopf("abort", "Abbrechen", false)}`, en);
         }
       }
+      if (!lokal) console.log(JSON.stringify({ type: "consent_allowed", client_host: ziel?.host ?? "" }));
       const grant = prompt.details.grantId
         ? await anbieter.Grant.find(prompt.details.grantId)
         : new anbieter.Grant({ accountId: session.accountId, clientId: String(params.client_id) });
