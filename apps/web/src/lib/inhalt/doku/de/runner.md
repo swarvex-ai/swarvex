@@ -34,6 +34,7 @@ Runner (dein Rechner)
 | `… --leftover` | Beta, nur mit Abo: nur das Kontingent nutzen, das sonst verfallen würde ([Restkontingent](#restkontingent-beta)) |
 | `swarvex service [Angaben wie bei work]` | als Dienst einrichten: arbeitet im Dauerbetrieb und startet mit dem Rechner (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | Dienst anhalten (laufende Aufgabe geht sofort zurück in den Pool), starten, Zustand und Verbrauch heute |
+| `swarvex help` | alle Befehle mit Kurzbeschreibung (auch `-h`, `--help`); `swarvex help <befehl>` zeigt dessen Optionen |
 | `swarvex update` | neueste Version von der Plattform holen, mit derselben Signaturprüfung wie der Einzeiler; die Einstellungen bleiben. Eine laufende Aufgabe wird erst fertig, die nächste startet mit der neuen Version (`--now` wechselt sofort, `--check` schaut nur nach). Unter Windows geht derselbe Befehl in PowerShell. Mit automatischen Updates (fragt die Einrichtung) macht das der Dienst einmal am Tag selbst, zwischen zwei Aufgaben |
 | `swarvex history` | die letzten Aufgaben dieses Runners: eingereicht oder zurückgegeben samt Grund, Tokens, Modellzeit und dem heutigen Stand der Aufgabe auf der Plattform |
 | `swarvex doctor` | prüft Anmeldung, Version, Podman, Images, Netz, Einstellungen, ob die Sandbox das Modell erreicht, den Dienst und den freien Platz, und sagt bei jedem Problem, was zu tun ist |

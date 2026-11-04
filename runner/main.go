@@ -11,6 +11,7 @@
 //	swarvex history                               letzte Aufgaben mit Ergebnis, Grund und Verbrauch
 //	swarvex doctor                                alles prüfen, was der Runner braucht, mit Rat bei Problemen
 //	swarvex budget [--task N] [--daily N]         Token-Grenzen anzeigen oder ändern
+//	swarvex help [befehl]                         alle Befehle bzw. die Optionen eines Befehls (auch -h, --help, -?, ?)
 //	swarvex uninstall                             alles entfernen, Gerät abmelden
 //	swarvex proxy                                 Schlüssel-Proxy (läuft im Proxy-Container)
 package main
@@ -21,9 +22,12 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "commands: setup | connect | login | work | service | start | stop | status | logs | history | doctor | budget | update | version | uninstall | env | attack-test")
-		os.Exit(2)
+	if len(os.Args) < 2 || istHilfe(os.Args[1]) {
+		hilfeBefehl(os.Args[min(2, len(os.Args)):])
+		if len(os.Args) < 2 {
+			os.Exit(2)
+		}
+		return
 	}
 	switch os.Args[1] {
 	case "proxy":
@@ -65,7 +69,7 @@ func main() {
 	case "attack-test":
 		angriffstestBefehl(os.Args[2:])
 	default:
-		fmt.Fprintln(os.Stderr, "unknown command:", os.Args[1])
+		fmt.Fprintf(os.Stderr, "unknown command: %s (all commands: swarvex help)\n", os.Args[1])
 		os.Exit(2)
 	}
 }

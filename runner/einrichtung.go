@@ -140,6 +140,9 @@ func argsSpeichern(args []string) error {
 // Ohne gespeicherte Angaben startet im Terminal die Einrichtung.
 func mitGespeicherten(args []string) []string {
 	for _, a := range args {
+		if a == "-h" || a == "--help" || a == "-help" {
+			return args // nur die Optionen zeigen, auch ohne Einstellungen
+		}
 		if n, _, _ := strings.Cut(strings.TrimLeft(a, "-"), "="); n == "project" && strings.HasPrefix(a, "-") {
 			return args
 		}
