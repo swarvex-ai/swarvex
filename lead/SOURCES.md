@@ -97,3 +97,16 @@ Written for swarvex; it takes up ideas from two Apache-2.0-licensed skills, with
 - **Paul Bakaus, Impeccable** ([pbakaus/impeccable](https://github.com/pbakaus/impeccable)), which grew out of the former: the context files `PRODUCT.md` and `DESIGN.md`, named review passes (critique, audit, harden, polish, distill, clarify) and further anti-patterns (nested cards, grey text on colour, icon tiles above every heading, the "tasteful default").
 
 Both are licensed under the Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). The usability heuristics are Jakob Nielsen's (1994); the quality floor follows WCAG 2.2 (W3C).
+
+## Task slicing, decisions, debugging and tests (LEAD.md 6.7, 6.12, phase 0; templates/skills/; REVIEWER.md)
+
+More ideas from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, see the licence above), rewritten for a swarm of strangers:
+
+- `to-tickets`: thin, complete slices; "make the change easy, then make the easy change"; wide refactors as expand, migrate in batches, contract
+- `domain-modeling`: a decision record only when it is hard to reverse, surprising without context and a real trade-off; a glossary without implementation details
+- `triage`: before acting on a request, check whether it exists already, whether it was declined before (a record of what is out of scope), and reproduce it
+- `retro`: a mistake a machine can see becomes an automated check, a rule only what needs judgement
+- `writing-for-agents`: say what to do instead of what to avoid
+- `diagnosing-bugs` and `tdd`: the debugging loop (a red-capable, fast, deterministic command first, shrink the case, ranked falsifiable hypotheses, tagged temporary logs), tests at the public interface and the tautological and inside-coupled anti-patterns
+- `code-review`: two separate axes (the task's acceptance and the project's standards) and a list of code smells (after Fowler, *Refactoring*) as judgement calls
+- `codebase-design`: deep modules behind small interfaces, the deletion test, "one adapter is a hypothetical seam, two are a real one"

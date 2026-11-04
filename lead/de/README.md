@@ -12,6 +12,7 @@ Der Lead-Agent ist der Koordinator eines Projekts auf swarvex.ai. Er übersetzt 
 | [vorlagen/grundpakete.md](vorlagen/grundpakete.md) | Bausteine, die jedes Projekt einer Art braucht: Spiel, App, Website, Webdienst, Kommandozeilen-Tool, Bibliothek, Plugin |
 | [vorlagen/aufgabe.md](vorlagen/aufgabe.md) | Aufgabenvorlage mit vollständigen Beispielen (Code, Tests, Review) |
 | [vorlagen/asset-auftrag.md](vorlagen/asset-auftrag.md) | Aufträge für Design, 3D, Bild, Audio, Video |
+| [PRUEFER.md](PRUEFER.md) | Die Rollenbeschreibung für Prüfer (Vertrauensstufe 1): zwei Achsen, Sicherheit, Begründungen, Fallen |
 | [vorlagen/design-qualitaet.md](vorlagen/design-qualitaet.md) | Standard für Design und Usability von Websites und App-Bildschirmen: PRODUCT.md und DESIGN.md, zu meidende Standards, Untergrenze, Prüfdurchgänge |
 | [vorlagen/review-bericht.md](vorlagen/review-bericht.md) | Festes JSON-Schema für Reviews und Unteragenten |
 | [vorlagen/entscheidung.md](vorlagen/entscheidung.md) | Entscheidungen (ADR) und Freigabe-Anfragen an den Visionär |

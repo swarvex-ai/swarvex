@@ -11,7 +11,7 @@
 
   const s = $derived(sprache());
   const t = $derived(tx().starten);
-  const ARTEN = ["game", "app", "website", "service", "tool", "library", "plugin", "research"];
+  const ARTEN = ["game", "app", "website", "service", "tool", "library", "plugin", "research", "other"];
   // Art eines Forschungsprojekts (apps/api/src/projekte.ts FORSCHUNG_ARTEN)
   const FORSCHUNG = ["formal_proof", "reproduction", "scientific_software", "verification"];
   // Art des Originals: wählt den Werkzeug-Pfad im Lead-Paket (lead/roles/cleanroom/toolkit.md)
@@ -75,7 +75,7 @@
   function agentWaehlen(a: string) { d.agent = a; if (!d.modell || Object.values(MODELL).includes(d.modell)) d.modell = MODELL[a]; }
   function wegWaehlen(w: "neu" | "nachbau" | "weiter") {
     d.weg = w; d.cleanroom = w === "nachbau";
-    if (w !== "neu" && d.type === "research") d.type = "";
+    if (w !== "neu" && (d.type === "research" || d.type === "other")) d.type = "";
     if (w === "weiter" && d.upstream.license) d.license_code = d.upstream.license;
   }
   // Die Lizenz des Originals ist die Code-Lizenz des Forks; für Assets steht sie zusätzlich zur Wahl
@@ -191,7 +191,7 @@
       {#if fortfuehren}<p class="leise klein">{t.art.weiterText} <a href={doku("software-bewahren", "software-preservation")}>{t.art.weiterMehr}</a></p>{/if}
       <h3>{d.weg === "nachbau" ? t.art.entstehtNachbau : fortfuehren ? t.art.entstehtWeiter : t.art.entsteht}</h3>
       <div class="wahl arten" role="radiogroup" aria-label={t.art.entsteht}>
-        {#each ARTEN.filter((a) => d.weg === "neu" || a !== "research") as a}
+        {#each ARTEN.filter((a) => d.weg === "neu" || (a !== "research" && a !== "other")) as a}
           <button type="button" role="radio" aria-checked={d.type === a} class:an={d.type === a} onclick={() => artWaehlen(a)}>
             <strong>{t.art.arten[a][0]}</strong><small>{t.art.arten[a][1]}</small>
           </button>

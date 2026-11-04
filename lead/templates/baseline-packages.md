@@ -186,3 +186,15 @@ B6 and B7 are already covered for repositories in the `swarvex-ai` organization:
 | R-13 | **Ethics check** | dual use and personal data checked and recorded (interview F8) | first |
 | R-14 | **Results online** | results report (claims, table, deviations) and, for proofs, the blueprint with its dependency graph are built after every merge and linked on the project page (`docs` and `docs_dir` in `swarvex.yaml`) | first |
 | R-15 | **Sources verified** | `references.bib` with an identifier that resolves for every source, `docs/literature.md` with the search and the contradictions that affect a claim (literature role) | first |
+
+## Other (documents, data, designs, translations and more)
+
+| ID | Building block | Done when | Default |
+|---|---|---|---|
+| O-1 | **What it is** | `README.md` says in one screen what the project makes, for whom, and how to use the result | first |
+| O-2 | **Formats** | the formats of the work are open and named (Markdown, CSV, SVG, STEP, PO …), with the tool versions that read them | first |
+| O-3 | **Automatic checks** | everything a machine can check is in `swarvex.yaml`: spelling and links for texts, schema validation for data, rendering or export for designs | first |
+| O-4 | **How a contribution is judged** | written acceptance rules for what a machine cannot check (style, accuracy, completeness), with an example of good work | first |
+| O-5 | **Licences** | an open licence for every kind of work (CC BY 4.0 or CC0 for texts and data, CERN-OHL or similar for hardware, an OSI licence for code); third-party material only where its licence allows it | first |
+| O-6 | **Sources and credit** | where material comes from, and every contributor credited | v1 |
+| O-7 | **A release** | a versioned, downloadable release of the result | release |

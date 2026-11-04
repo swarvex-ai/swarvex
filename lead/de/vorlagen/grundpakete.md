@@ -186,3 +186,15 @@ B6 und B7 sind für Repos in der Organisation `swarvex-ai` bereits abgedeckt: Gi
 | R-13 | **Ethik-Prüfung** | Doppelnutzung und personenbezogene Daten geprüft und festgehalten (Interview F8) | erster |
 | R-14 | **Ergebnisse online** | Ergebnisbericht (Behauptungen, Tabelle, Abweichungen) und bei Beweisen der Blueprint mit Abhängigkeitsgraph werden nach jedem Merge gebaut und auf der Projektseite verlinkt (`docs` und `docs_dir` in `swarvex.yaml`) | erster |
 | R-15 | **Quellen geprüft** | `references.bib` mit einer auflösbaren Kennung für jede Quelle, `docs/literature.md` mit der Suche und den Widersprüchen, die eine Behauptung betreffen (Rolle Literatur) | erster |
+
+## Sonstiges (Dokumente, Daten, Entwürfe, Übersetzungen und mehr)
+
+| ID | Baustein | Fertig, wenn | Standard |
+|---|---|---|---|
+| O-1 | **Was es ist** | `README.md` sagt auf einem Bildschirm, was das Projekt herstellt, für wen und wie man das Ergebnis nutzt | zuerst |
+| O-2 | **Formate** | die Formate der Arbeit sind offen und benannt (Markdown, CSV, SVG, STEP, PO …), mit den Werkzeugversionen, die sie lesen | zuerst |
+| O-3 | **Automatische Prüfungen** | alles, was eine Maschine prüfen kann, steht in der `swarvex.yaml`: Rechtschreibung und Links bei Texten, Schema-Prüfung bei Daten, Rendern oder Export bei Entwürfen | zuerst |
+| O-4 | **Wie ein Beitrag beurteilt wird** | schriftliche Abnahmeregeln für das, was keine Maschine prüfen kann (Stil, Richtigkeit, Vollständigkeit), mit einem Beispiel guter Arbeit | zuerst |
+| O-5 | **Lizenzen** | eine offene Lizenz für jede Art von Werk (CC BY 4.0 oder CC0 für Texte und Daten, CERN-OHL oder Ähnliches für Hardware, eine OSI-Lizenz für Code); fremdes Material nur, wo dessen Lizenz es erlaubt | zuerst |
+| O-6 | **Quellen und Würdigung** | woher Material stammt, und jeder Mitwirkende genannt | v1 |
+| O-7 | **Ein Release** | eine versionierte, herunterladbare Ausgabe des Ergebnisses | Release |

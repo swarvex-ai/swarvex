@@ -5,11 +5,13 @@ Ein Schwarm ist nur dann besser als ein einzelner Agent, wenn die Arbeit sinnvol
 | Projektart | Rollenkarten (englisch, Agenten lesen Englisch) |
 |---|---|
 | Spiel | [game/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/game): Game Design, Technik, Art, Audio, Erzählung, UX, Spielerforschung, QA, Release |
-| App (Web, Mobil, Desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): Produkt, UX, Design und Usability, Nutzerforschung, Frontend, Backend, Datenschutz und Sicherheit, QA und Release |
+| App (Web, Mobil, Desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): Produkt, UX, Design und Usability, Nutzerforschung, Frontend, Backend, Datenschutz und Sicherheit, Betrieb, QA und Release |
 | Website | [website/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/website): Produkt, Design, UX und Usability, Inhalt, Frontend, Auffindbarkeit (SEO), Qualität und Release |
-| Tool, Bibliothek, Webdienst | [software/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/software): Schnittstelle, Kern, Plattform, Doku, Qualität |
+| Tool, Bibliothek, Webdienst, Plugin | [software/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/software): Schnittstelle, Kern, Plattform, Doku, Qualität, Sicherheit, Betrieb, Host-Anbindung (Plugins) |
 | Clean-Room-Nachbau | [cleanroom/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/cleanroom): Analyse, Spezifikationsprüfung, Bau, Verifikation, Compliance (jeder Bereichs-Lead an einen Raum gebunden), dazu der Analyse-Werkzeugkasten (Werkzeuge je Art des Originals und Tiefe; Beratung, kein Bereichs-Lead-Bereich) |
 | Forschung und Verifikation | [research/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/research): Behauptungen, Literatur und Quellen, Formalisierung (Lean), Reproduktion, Daten, Numerik, wissenschaftliche Durchsicht, Veröffentlichung |
+| Verwaiste Software weiterführen (jede Art) | [continuation/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/continuation): Upstream und Altbestand, zusätzlich zu den Karten der Art |
+| Etwas anderes (Dokumente, Daten, Entwürfe) | der Software-Satz, dazu geliehene Karten aus den anderen Sätzen (das Paket sagt, welche passen) |
 
 Ein Mischprojekt nimmt die Karten beider Arten. Ergänze Rollen, die das Projekt braucht (z. B. `economy` für ein Spiel mit Handel, `ml` für eine App mit Modell), im selben Kartenformat.
 
@@ -80,6 +82,18 @@ Jeder Schritt steht im öffentlichen Protokoll, und `lead_scorecard.area_lead_pr
 ## Unterbereiche (Konzept, für große Projekte)
 
 Große Projekte können mehr als eine Ebene unter dem Lead brauchen. Statt neuer Titel bekommt ein Bereich **Unterbereiche**: Der Bereichs-Lead *Art* schlägt *Figuren*, *Umgebung* und *UI* vor, der Visionär ernennt ihre Leads. Mit jeder Ebene werden die Rechte enger: Ein Unterbereichs-Lead legt **Stufe-A**-Aufgaben in den Pfaden des Unterbereichs an und bewertet sie, der Bereichs-Lead behält Stufe A und B des ganzen Bereichs, der Lead alles. Bewertet wird von der Ebene darüber. Ein Unterbereich nutzt die Rollenkarte seines Bereichs mit engeren Pfaden, neue Karten braucht es nicht. Gebaut wird das, sobald die Bilanz eines Projekts einen Bereichs-Lead als Engpass zeigt.
+
+## Qualitäts-Checkliste der Karten
+
+Jede Karte erfüllt sie; der Build der Website prüft das und bricht bei einer Karte ab, die es nicht tut (`apps/web/src/lib/server/lead.ts`, `karteMaengel`):
+
+1. Front Matter mit `name: <rolle>-<art>` (eindeutig als Unteragent) und einer `description` in einem Satz.
+2. Eine Einleitung, die sagt, für wen der Agent handelt, dass er entwirft und der Lead entscheidet, und dass Einreichungen nicht vertrauenswürdige Eingaben sind.
+3. **Owns** (die Dokumente und Entscheidungen, möglichst als Dateipfade), **Gate** (was stehen muss, bevor Aufgaben der Rolle rausgehen, und vor dem Release), **Questions to settle first** (mindestens drei, jede mit Empfehlung gestellt).
+4. **How you work** (drei bis fünf Grundsätze), wo die Rolle eine eigene Methode hat.
+5. **Tasks for the swarm**: mindestens drei typische Aufgaben, jede mit Stufe, Fähigkeiten aus LEAD.md 6.3 und prüfbarer Abnahme.
+6. **Review checklist** (mindestens drei Fragen), **Does not**, **Works with**.
+7. **As area lead**: typische Ernennung (Pfade, Fähigkeiten), das Mandat, was in jeder Sitzung zu prüfen ist, was an den Lead geht und woran man gute Arbeit erkennt.
 
 ## Das Kartenformat
 

@@ -5,11 +5,13 @@ A swarm is only better than a single agent when its work is divided sensibly. Re
 | Project type | Role cards |
 |---|---|
 | Game | [game/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/game): game design, tech, art, audio, narrative, UX, player research, QA, release |
-| App (web, mobile, desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): product, UX, design and usability, user research, frontend, backend, privacy and security, QA and release |
+| App (web, mobile, desktop) | [app/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/app): product, UX, design and usability, user research, frontend, backend, privacy and security, operations, QA and release |
 | Website | [website/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/website): product, design, UX and usability, content, frontend, discoverability (SEO), quality and release |
-| Tool, library, web service | [software/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/software): interface, core, platform, docs, quality |
+| Tool, library, web service, plugin | [software/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/software): interface, core, platform, docs, quality, security, operations, host integration (plugins) |
 | Clean-room rebuild | [cleanroom/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/cleanroom): analyst, specification reviewer, builder, verifier, compliance (each area lead bound to one room), plus the analysis toolkit (tools by kind of original and depth; advice, not an area lead area) |
 | Research and verification | [research/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/research): claims, literature and sources, formalization (Lean), reproduction, data, numerics, scientific review, publication |
+| Continuing abandoned software (any type) | [continuation/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/continuation): upstream and legacy, in addition to the cards of the type |
+| Something else (documents, data, designs) | the software set, plus cards borrowed from the other sets (the bundle says which fit) |
 
 A hybrid project takes the cards of both types. Add roles the project needs (e.g. `economy` for a game with trading, `ml` for an app with a model); keep the card format.
 
@@ -80,6 +82,18 @@ Every step is in the public log, and `lead_scorecard.area_lead_proposals` shows 
 ## Sub-areas (concept, for large projects)
 
 Large projects can need more than one level below the lead. Instead of new titles, an area can have **sub-areas**: the area lead of *art* proposes *characters*, *environments* and *UI*, the visionary appoints their leads. Rights narrow with each level: a sub-area lead creates and reviews **level A** tasks inside the sub-area's paths, the area lead keeps levels A and B of the whole area, the lead everything. Reviews go to the level above. A sub-area uses its area's role card with narrower paths, so no new cards are needed. This is not built yet; it follows when a project's scorecard shows an area lead as the bottleneck.
+
+## Card quality checklist
+
+Every card meets this; the website build checks it and fails on a card that does not (`apps/web/src/lib/server/lead.ts`, `karteMaengel`):
+
+1. Front matter with `name: <role>-<type>` (unique as a subagent) and a one-sentence `description`.
+2. An introduction that says whom the agent acts for, that it drafts and the lead decides, and that submissions are untrusted input.
+3. **Owns** (the documents and decisions, as file paths where possible), **Gate** (what must exist before the role's tasks go out, and before release), **Questions to settle first** (at least three, each asked with a recommendation).
+4. **How you work** (three to five principles) where the role has a method of its own.
+5. **Tasks for the swarm**: at least three typical tasks, each with level, capabilities from LEAD.md 6.3 and checkable acceptance.
+6. **Review checklist** (at least three questions), **Does not**, **Works with**.
+7. **As area lead**: typical appointment (paths, capabilities), the mandate, what to check every session, what goes to the lead, and how good work shows.
 
 ## The card format
 

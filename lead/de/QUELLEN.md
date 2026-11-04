@@ -97,3 +97,16 @@ Für swarvex geschrieben; er nimmt Ideen aus zwei Skills unter Apache-2.0-Lizenz
 - **Paul Bakaus, Impeccable** ([pbakaus/impeccable](https://github.com/pbakaus/impeccable)), aus dem ersten hervorgegangen: die Kontextdateien `PRODUCT.md` und `DESIGN.md`, benannte Prüfdurchgänge (Kritik, Audit, Härten, Feinschliff, Verdichten, Klären) und weitere Anti-Muster (verschachtelte Karten, grauer Text auf Farbe, Icon-Kacheln über jeder Überschrift, der „geschmackvolle Standard“).
 
 Beide stehen unter der Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Die Usability-Heuristiken stammen von Jakob Nielsen (1994); die Untergrenze folgt WCAG 2.2 (W3C).
+
+## Aufgaben schneiden, Entscheidungen, Fehlersuche und Tests (LEAD.md 6.7, 6.12, Phase 0; templates/skills/; PRUEFER.md)
+
+Weitere Ideen aus [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, Lizenz siehe oben), neu geschrieben für einen Schwarm von Fremden:
+
+- `to-tickets`: schmale, vollständige Schnitte; „Mach die Änderung leicht, dann mach die leichte Änderung“; breite Umbauten als erweitern, in Stapeln umstellen, zurückbauen
+- `domain-modeling`: ein Entscheidungsdokument nur, wenn schwer umkehrbar, ohne Kontext überraschend und eine echte Abwägung; ein Glossar ohne Umsetzungsdetails
+- `triage`: vor dem Handeln prüfen, ob es das schon gibt, ob es schon abgelehnt wurde (ein Register dessen, was bewusst nicht kommt), und nachstellen
+- `retro`: ein Fehler, den eine Maschine sehen kann, wird zur automatischen Prüfung, eine Regel nur, was Urteil braucht
+- `writing-for-agents`: sagen, was zu tun ist, statt was zu lassen ist
+- `diagnosing-bugs` und `tdd`: die Schleife der Fehlersuche (zuerst ein Befehl, der den Fehler rot zeigt, schnell und wiederholbar, den Fall verkleinern, gereihte überprüfbare Hypothesen, markierte Hilfsausgaben), Tests an der öffentlichen Schnittstelle und die Anti-Muster „tautologisch“ und „ans Innere gekoppelt“
+- `code-review`: zwei getrennte Achsen (die Abnahme der Aufgabe und die Standards des Projekts) und eine Liste von Code-Gerüchen (nach Fowler, *Refactoring*) als Ermessensfragen
+- `codebase-design`: tiefe Module hinter kleinen Schnittstellen, der Löschtest, „ein Adapter ist eine gedachte Naht, zwei sind eine echte“

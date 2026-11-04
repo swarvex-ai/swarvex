@@ -171,7 +171,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     }, sicher(async ({ task_id, reason }) => { await k.schliessen(db, wer, task_id, reason); return "closed"; }));
 
     s.registerTool("peer_reviews_open", {
-      description: "Checked submissions (test pipeline passed) that wait for peer reviews and that you may review: not your own, not as lead or visionary of that project, trust level 1 or higher, clean-room rooms respected. With task text, acceptance criteria, patch and check report, and preview_url when the submission has a playable build. Level A tasks are accepted automatically after two approving peer reviews.",
+      description: "Checked submissions (test pipeline passed) that wait for peer reviews and that you may review: not your own, not as lead or visionary of that project, trust level 1 or higher, clean-room rooms respected. How to review: https://github.com/swarvex-ai/swarvex/blob/main/lead/REVIEWER.md (two axes: the task's acceptance, then the project's standards; security always; read, never run). With task text, acceptance criteria, patch and check report, and preview_url when the submission has a playable build. Level A tasks are accepted automatically after two approving peer reviews.",
       inputSchema: { project: z.string().optional().describe("one project, or all projects when left out"),
         model: z.string().optional().describe("your model, e.g. claude-opus-5-5: submissions written by a different model come first, because a second model catches different mistakes") },
     }, sicher(async ({ project, model }) => offeneFremdpruefungen(db, wer, project, model)));

@@ -117,6 +117,17 @@
 | F9 | **Veröffentlichung:** wo und wie Ergebnisse erscheinen, archiviert (DOI) und gewürdigt werden | L | F3 | CITATION.cff von Anfang an |
 | F10 | **Automatische Abnahme:** welche Behauptungen die Maschine allein entscheidet (Beweisprüfer, Toleranzprüfung) und welche einen Menschen brauchen | L | F3 | je mehr die Maschine entscheidet, desto schneller der Schwarm |
 
+## Fachbaum: Sonstiges (Dokumente, Daten, Entwürfe und mehr)
+
+| ID | Entscheidung | P/S | nach | Hinweis |
+|---|---|---|---|---|
+| O1 | **Was entsteht:** Dokumente, ein Datensatz, Hardware-Entwürfe, Übersetzungen, eine Sammlung, etwas anderes | P | G1 | bestimmt, welche Rollenkarten geliehen werden |
+| O2 | **Formate und Werkzeuge:** offene Formate der Arbeit, die Werkzeuge und Versionen, die sie lesen und schreiben | P | O1 | Mitstreiter brauchen sie ohne Netz |
+| O3 | **Was eine Maschine prüfen kann:** Rechtschreibung, Links, Schemata, Rendern, Export | P | O2 | kommt in die `swarvex.yaml` |
+| O4 | **Was ein Mensch beurteilen muss:** Stil, Richtigkeit, Vollständigkeit; wer beurteilt, nach welchen Regeln | P | O3 | die Regeln mit einem guten Beispiel aufschreiben |
+| O5 | **Lizenzen je Art von Werk** und fremdes Material | P | G17 | |
+| O6 | **Form der Veröffentlichung:** wie Menschen das Ergebnis bekommen (Download, Website, Druck) | S | O1 | |
+
 ## Abschluss
 
 Die Pflicht-Front ist leer, wenn alle **P**-Knoten des Stamms und des passenden Fachbaums im Projektbrief stehen, als *entschieden*, *Empfehlung angenommen* oder *delegiert*. Dann folgt die ausdrückliche Bestätigung durch den Visionär (LEAD.md, Phase 0, Schritt 6).

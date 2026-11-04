@@ -1,6 +1,6 @@
 # Starter skills for projects
 
-Skills that every agent in every sandbox should know belong in the project repo under `.agents/skills/` (LEAD.md, phase 1). These five are a starting point (ideas from [obra/superpowers](https://github.com/obra/superpowers), MIT, rewritten for swarvex tasks); copy them, adapt them to the project and add project-specific ones (engine traps, asset pipeline, test tools).
+Skills that every agent in every sandbox should know belong in the project repo under `.agents/skills/` (LEAD.md, phase 1). These five are a starting point (ideas from [obra/superpowers](https://github.com/obra/superpowers) and, for debugging and tests, from [mattpocock/skills](https://github.com/mattpocock/skills) `diagnosing-bugs` and `tdd`, both MIT, rewritten for swarvex tasks); copy them, adapt them to the project and add project-specific ones (engine traps, asset pipeline, test tools).
 
 | Skill | Purpose |
 |---|---|

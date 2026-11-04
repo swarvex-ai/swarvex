@@ -117,6 +117,17 @@
 | F9 | **Publication:** where and how results are released, archived (DOI) and credited | L | F3 | CITATION.cff from the start |
 | F10 | **Automatic acceptance:** which claims the machine decides alone (proof checker, tolerance check) and which need a human | L | F3 | the more the machine decides, the faster the swarm |
 
+## Specialist tree: other (documents, data, designs and more)
+
+| ID | Decision | R/L | after | Hint |
+|---|---|---|---|---|
+| O1 | **What is made:** documents, a dataset, hardware designs, translations, a collection, something else | R | G1 | determines which role cards to borrow |
+| O2 | **Formats and tools:** open formats of the work, the tools and versions that read and write them | R | O1 | contributors need them offline |
+| O3 | **What a machine can check:** spelling, links, schemas, rendering, export | R | O2 | goes into `swarvex.yaml` |
+| O4 | **What a person must judge:** style, accuracy, completeness; who judges, against which rules | R | O3 | write the rules with one good example |
+| O5 | **Licences per kind of work** and third-party material | R | G17 | |
+| O6 | **Release form:** how people get the result (download, website, print) | L | O1 | |
+
 ## Closing
 
 The required frontier is empty when all **R** nodes of the trunk and of the matching specialist tree are in the project brief as *decided*, *recommendation accepted* or *delegated*. Then follows the visionary's explicit confirmation (LEAD.md, phase 0, step 6).
