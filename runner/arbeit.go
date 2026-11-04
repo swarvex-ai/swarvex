@@ -301,8 +301,8 @@ func arbeitenBefehl(args []string) {
 
 	// 5. Patch bilden (Git-Verzeichnis liegt außerhalb der Sandbox) und selbst prüfen.
 	patch, verworfen, err := patchBilden(gitDir, arbeitsbaum, a.Pfade, u)
-	if verworfen > 0 {
-		fmt.Printf("Discarded %d side changes outside the allowed paths (e.g. dependencies, build or import files); they never leave this machine.\n", verworfen)
+	if len(verworfen) > 0 {
+		fmt.Printf("Discarded %d side changes outside the allowed paths (e.g. dependencies, build or import files); they never leave this machine: %s\n", len(verworfen), beispiele(verworfen))
 	}
 	if err != nil || strings.TrimSpace(patch) == "" {
 		if amBudget {
@@ -311,8 +311,8 @@ func arbeitenBefehl(args []string) {
 		switch {
 		case err != nil:
 			abbrechen("could not build the patch: " + kuerzen(err.Error(), 300))
-		case verworfen > 0:
-			abbrechen(fmt.Sprintf("no change in the allowed paths (%s); %d changes elsewhere were discarded", strings.Join(a.Pfade, ", "), verworfen))
+		case len(verworfen) > 0:
+			abbrechen(fmt.Sprintf("no change in the allowed paths (%s); %d changes elsewhere were discarded: %s", strings.Join(a.Pfade, ", "), len(verworfen), beispiele(verworfen)))
 		default:
 			abbrechen(fmt.Sprintf("the agent finished without changing the allowed paths (%s)", strings.Join(a.Pfade, ", ")))
 		}
@@ -445,7 +445,7 @@ func gitBasis(gitDir, baum string, ausschliessen []string) error {
 
 // patchBilden nimmt nur Änderungen in den erlaubten Pfaden auf. Alles andere – etwa Dateien,
 // die Werkzeuge beim Testen neu schreiben – bleibt auf dem Gerät und wird nur gezählt.
-func patchBilden(gitDir, baum string, erlaubt []string, u umgebung.Umgebung) (string, int, error) {
+func patchBilden(gitDir, baum string, erlaubt []string, u umgebung.Umgebung) (string, []string, error) {
 	args := []string{"add", "-A", "--"}
 	for _, g := range erlaubt {
 		args = append(args, ":(glob)"+g)
@@ -455,13 +455,13 @@ func patchBilden(gitDir, baum string, erlaubt []string, u umgebung.Umgebung) (st
 		args = append(args, ":(exclude,glob)"+g)
 	}
 	if _, err := git(gitDir, baum, args...); err != nil {
-		return "", 0, err
+		return "", nil, err
 	}
 	rest, _ := git(gitDir, baum, "status", "--porcelain", "--untracked-files=all")
-	verworfen := 0
+	var verworfen []string
 	for _, zeile := range strings.Split(rest, "\n") {
 		if len(zeile) > 3 && zeile[1] != ' ' { // im Arbeitsbaum geändert, aber nicht aufgenommen
-			verworfen++
+			verworfen = append(verworfen, strings.TrimSpace(zeile[3:]))
 		}
 	}
 	patch, err := git(gitDir, baum, "diff", "--cached", "--binary", "--no-color", "--no-ext-diff", "--no-textconv")
@@ -502,6 +502,14 @@ func passt(muster, pfad string) bool {
 	}
 	ok, _ := path.Match(muster, pfad)
 	return ok
+}
+
+// beispiele: die ersten Pfade einer Liste für Meldungen.
+func beispiele(pfade []string) string {
+	if len(pfade) > 3 {
+		return strings.Join(pfade[:3], ", ") + fmt.Sprintf(" and %d more", len(pfade)-3)
+	}
+	return strings.Join(pfade, ", ")
 }
 
 func zufall(n int) string {
@@ -615,7 +623,13 @@ func auftragstext(a aufgabe, u umgebung.Umgebung) string {
 	for _, k := range a.Akzeptanz {
 		fmt.Fprintf(&b, "- %s\n", k)
 	}
-	b.WriteString("\nRULES:\n- Change or create ONLY these paths: " + strings.Join(a.Pfade, ", ") + "\n")
+	// Pfade sind relativ zur Wurzel des Repos; mit dir startet der Agent in einem Unterordner und
+	// legte Dateien sonst dort an (game/docs/... statt docs/...). Deshalb volle Pfade nennen.
+	volle := make([]string, len(a.Pfade))
+	for i, p := range a.Pfade {
+		volle[i] = "/work/" + strings.TrimPrefix(p, "/")
+	}
+	b.WriteString("\nRULES:\n- Change or create ONLY these paths (full paths; all task paths are relative to /work, not to your start folder): " + strings.Join(volle, ", ") + "\n")
 	b.WriteString("- Do not create or change any other files (no notes, logs or helper scripts in the project either).\n")
 	if u.Testen != "" {
 		fmt.Fprintf(&b, "- The project's tests run with:\n%s\n  Run them and fix failures until they pass.\n", einruecken(u.Testen))

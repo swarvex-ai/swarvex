@@ -49,7 +49,11 @@ func TestPatchMitGeschuetztenPfadenAusDir(t *testing.T) {
 	if !strings.Contains(patch, "docs/test-triage/x.md") || strings.Contains(patch, "run_tests.sh") || strings.Contains(patch, "enemy.gd") {
 		t.Errorf("Patch falsch:\n%s", patch)
 	}
-	if verworfen != 2 {
-		t.Errorf("verworfen = %d, erwartet 2", verworfen)
+	if len(verworfen) != 2 {
+		t.Errorf("verworfen = %v, erwartet 2", verworfen)
+	}
+	auftrag := auftragstext(aufgabe{Titel: "t", Pfade: []string{"docs/test-triage/x.md"}}, u)
+	if !strings.Contains(auftrag, "/work/docs/test-triage/x.md") || !strings.Contains(auftrag, "you start in /work/game") {
+		t.Errorf("Auftrag nennt keine vollen Pfade:\n%s", auftrag)
 	}
 }
