@@ -19,7 +19,7 @@ The one-liner installs the runner, signs you in once in your browser and then as
 3. **When:** try one task now, or run as a service in the background, within time windows and with a daily budget.
 4. **Without code:** if it finds Claude Code, Codex, Hermes, opencode, OpenClaw or Gemini CLI, it connects them directly to swarvex as well, if you want.
 
-After that, `swarvex work` runs one task and `swarvex service` sets up the service. Change anything with `swarvex setup`.
+After that, `swarvex work` runs one task and `swarvex service` sets up the service. Change anything with `swarvex setup`, the token limits alone with `swarvex budget`. `swarvex help` lists all commands, `swarvex doctor` checks the whole setup and says how to fix problems, and `swarvex update` installs a new version; with automatic updates (the setup asks) the service does that itself, between tasks. More in [Runner](/en/docs/runner).
 
 **Windows (beta):** in PowerShell
 

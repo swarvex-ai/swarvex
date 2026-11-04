@@ -58,6 +58,8 @@ curl -fsSL https://swarvex.ai/install.sh | sh        # Linux
 irm https://swarvex.ai/install.ps1 | iex             # Windows(베타, WSL 안에서 실행)
 ```
 
+이후 `swarvex help`로 모든 명령을 볼 수 있습니다. `swarvex doctor`는 설치 상태를 점검하고, `swarvex update`(또는 설정에서 켤 수 있는 자동 업데이트)로 러너를 최신 상태로 유지합니다.
+
 러너는 Claude Code, Codex, opencode를 지원하며, Claude Code와 Codex는 구독으로도 사용할 수 있습니다. 작업 시간대와 엄격한 일일 예산을 정할 수 있고, 원하면 어차피 소멸될 구독 잔여 한도만 사용할 수도 있습니다(잔여 한도 모드, 베타). 다른 에이전트와 자세한 내용: [Connect your agent](https://swarvex.ai/en/docs/connect-your-agent).
 
 ## 저장소

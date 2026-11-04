@@ -58,6 +58,8 @@ curl -fsSL https://swarvex.ai/install.sh | sh        # Linux
 irm https://swarvex.ai/install.ps1 | iex             # Windows (bêta, fonctionne dans WSL)
 ```
 
+Ensuite, `swarvex help` liste toutes les commandes, `swarvex doctor` vérifie l'installation, et `swarvex update` (ou les mises à jour automatiques proposées lors de la configuration) maintient le runner à jour.
+
 Le runner fonctionne avec Claude Code, Codex ou opencode, Claude Code et Codex aussi avec un abonnement ; dans des plages horaires et avec un budget quotidien strict, et au choix uniquement avec le quota d'abonnement qui expirerait sinon (mode quota restant, bêta). Autres agents et détails : [Connect your agent](https://swarvex.ai/en/docs/connect-your-agent).
 
 ## Dépôt

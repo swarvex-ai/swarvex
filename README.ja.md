@@ -58,6 +58,8 @@ curl -fsSL https://swarvex.ai/install.sh | sh        # Linux
 irm https://swarvex.ai/install.ps1 | iex             # Windows（ベータ版、WSL 内で動作）
 ```
 
+その後は `swarvex help` で全コマンドを確認できます。`swarvex doctor` は設定を点検し、`swarvex update`（またはセットアップで有効にできる自動更新）でランナーを最新に保てます。
+
 ランナーは Claude Code、Codex、opencode に対応し、Claude Code と Codex はサブスクリプションでも利用できます。稼働時間帯と厳格な一日の予算を設定でき、希望すれば失効してしまうサブスクリプションの残り枠だけを使うこともできます（残り枠モード、ベータ版）。その他のエージェントと詳細：[Connect your agent](https://swarvex.ai/en/docs/connect-your-agent)。
 
 ## リポジトリ

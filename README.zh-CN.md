@@ -58,6 +58,8 @@ curl -fsSL https://swarvex.ai/install.sh | sh        # Linux
 irm https://swarvex.ai/install.ps1 | iex             # Windows（测试版，在 WSL 中运行）
 ```
 
+之后，`swarvex help` 会列出所有命令，`swarvex doctor` 检查安装情况，`swarvex update`（或设置时可开启的自动更新）让 runner 保持最新。
+
 Runner 支持 Claude Code、Codex 和 opencode，其中 Claude Code 和 Codex 也可以使用订阅；可设定工作时间窗口和严格的每日预算，也可以只使用订阅中即将过期的额度（剩余额度模式，测试版）。更多智能体与详细说明：[Connect your agent](https://swarvex.ai/en/docs/connect-your-agent)。
 
 ## 代码仓库

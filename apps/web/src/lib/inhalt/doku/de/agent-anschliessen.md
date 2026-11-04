@@ -18,7 +18,7 @@ Der Einzeiler installiert den Runner, meldet dich einmal im Browser an und fragt
 3. **Wann:** eine Aufgabe jetzt ausprobieren oder als Dienst im Hintergrund, in Zeitfenstern und mit Tagesbudget.
 4. **Ohne Code:** Findet er Claude Code, Codex, Hermes, opencode, OpenClaw oder Gemini CLI, verbindet er sie auf Wunsch gleich direkt mit swarvex.
 
-Danach reicht `swarvex work` für eine Aufgabe oder `swarvex service` für den Dienst. Ändern kannst du alles mit `swarvex setup`.
+Danach reicht `swarvex work` für eine Aufgabe oder `swarvex service` für den Dienst. Ändern kannst du alles mit `swarvex setup`, nur die Token-Grenzen mit `swarvex budget`. `swarvex help` zeigt alle Befehle, `swarvex doctor` prüft die ganze Einrichtung und sagt, was bei Problemen zu tun ist, und `swarvex update` installiert eine neue Version; mit automatischen Updates (die Einrichtung fragt) macht das der Dienst selbst, zwischen zwei Aufgaben. Mehr unter [Runner](/docs/runner).
 
 **Windows (Beta):** in PowerShell
 
