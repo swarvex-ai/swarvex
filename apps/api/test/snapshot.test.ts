@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { snapshotPfade } from "../src/snapshot.ts";
+import { snapshotPfade, githubHttps } from "../src/snapshot.ts";
 
 describe("Snapshot im Clean Room", () => {
   it("lässt Entwürfe, Prüfrunden und offene Fragen für den Bau weg", () => {
@@ -28,5 +28,15 @@ describe("Snapshot im Clean Room", () => {
     expect(bau.some((x) => x.startsWith("specification/drafts") || x.startsWith("specification/checks") || x === "specification/unknowns.md")).toBe(false);
     expect(dateien("analyse")).toContain("specification/drafts/save/x.json");
     expect(dateien(null)).toContain("specification/unknowns.md");
+  });
+});
+
+describe("githubHttps", () => {
+  it("macht aus SSH-Adressen von GitHub öffentliche HTTPS-Adressen", () => {
+    expect(githubHttps("ssh://git@github.com/swarvex-ai/rend-and-run.git")).toBe("https://github.com/swarvex-ai/rend-and-run.git");
+    expect(githubHttps("git@github.com:swarvex-ai/rend-and-run.git")).toBe("https://github.com/swarvex-ai/rend-and-run.git");
+    expect(githubHttps("git@github.com:o/r")).toBe("https://github.com/o/r.git");
+    expect(githubHttps("ssh://git@gitlab.com/o/r.git")).toBeNull();
+    expect(githubHttps("ssh://git@github.com/o/r.git; rm -rf /")).toBeNull();
   });
 });

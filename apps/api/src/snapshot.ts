@@ -30,10 +30,30 @@ async function spiegelAktualisieren(slug: string, repoGit: string, commit: strin
   const ziel = join(SPIEGEL, `${slug}.git`);
   // Über die GitHub App: lesender Token nur für dieses Repo; sonst der Deploy-Key (SSH)
   const u = installation ? gitTokenUmgebung(await repoToken(installation, repoGit)) : {};
-  try { await access(ziel); await git(["remote", "set-url", "origin", repoGit], ziel); await git(["fetch", "--quiet", "--prune", "origin", "+refs/heads/*:refs/heads/*"], ziel, u); }
-  catch { await git(["clone", "--quiet", "--bare", repoGit, ziel], undefined, u); }
-  await git(["lfs", "fetch", "origin", commit], ziel, u); // LFS-Inhalte des Basis-Commits in den Spiegel
+  const vorhanden = await access(ziel).then(() => true, () => false);
+  const holen = async (url: string) => {
+    if (vorhanden) {
+      await git(["remote", "set-url", "origin", url], ziel);
+      await git(["fetch", "--quiet", "--prune", "origin", "+refs/heads/*:refs/heads/*"], ziel, u);
+    } else await git(["clone", "--quiet", "--bare", url, ziel], undefined, u);
+    await git(["lfs", "fetch", "origin", commit], ziel, u); // LFS-Inhalte des Basis-Commits in den Spiegel
+  };
+  try { await holen(repoGit); }
+  catch (e) {
+    // Öffentliche GitHub-Repos gehen auch ohne Schlüssel: scheitert der Deploy-Key (z. B. von GitHub
+    // abgelehnt), über HTTPS lesen statt alle Aufgaben des Projekts zu blockieren.
+    const offen = githubHttps(repoGit);
+    if (!offen || installation) throw e;
+    console.error(`mirror ${slug}: ${(e as Error).message.split("\n")[0]}; retrying over public HTTPS`);
+    try { await holen(offen); } catch { throw e; } // privat oder GitHub nicht erreichbar: der ursprüngliche Fehler zählt
+  }
   return ziel;
+}
+
+/** ssh://git@github.com/o/r.git bzw. git@github.com:o/r.git → https://github.com/o/r.git (sonst null). */
+export function githubHttps(repoGit: string): string | null {
+  const m = repoGit.match(/^(?:ssh:\/\/)?git@github\.com[:/]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/);
+  return m ? `https://github.com/${m[1]}/${m[2]}.git` : null;
 }
 
 async function aktiveAufgabe(db: Db, agentId: number, aufgabeId: number) {
