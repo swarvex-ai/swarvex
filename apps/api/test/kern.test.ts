@@ -1141,10 +1141,14 @@ describe("Anmeldung: Zustimmung und Geräte-Bestätigung", () => {
   it("Geräte-Bestätigung zeigt den Client-Namen maskiert", async () => {
     const { client_id } = await registrieren({ client_name: '<img src=x onerror="alert(1)">', grant_types: ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"], response_types: [], redirect_uris: [] });
     const d = (await (await fetch(`${basis}/device/auth`, { method: "POST", body: new URLSearchParams({ client_id, scope: "mcp", resource: RESSOURCE() }) })).json()) as { user_code: string };
+    const leer = await holen("/device"); // das sichtbare Eingabefeld (ohne Code im Link)
+    expect(leer.text).toMatch(/type="text" name="user_code"/);
+    expect(leer.text).not.toMatch(/\son[a-z]+="/); // keine Inline-Handler: die CSP würde sie sperren
     const eingabe = await holen(`/device?user_code=${encodeURIComponent(d.user_code)}`);
     const xsrf = /name="xsrf" value="([^"]+)"/.exec(eingabe.text)![1];
     const r = await folgen(await holen("/device", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ xsrf, user_code: d.user_code }).toString() }));
     expect(r.text).toMatch(/Confirm the device|Gerät bestätigen/);
+    expect(r.text).not.toMatch(/\son[a-z]+="/);
     expect(r.text).not.toContain("<img src=x");
     expect(r.text).toContain("&#60;img");
     expect(r.text).toMatch(/Only confirm if you started this sign-in yourself|Bestätige nur, wenn du diese Anmeldung gerade selbst/);

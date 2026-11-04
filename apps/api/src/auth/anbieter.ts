@@ -74,8 +74,10 @@ export function anbieterErstellen(db: Db, schluessel: Schluessel) {
       },
       deviceFlow: {
         enabled: true,
-        userCodeInputSource: async (ctx, form, _out, err) => {
+        userCodeInputSource: async (ctx, roh, _out, err) => {
           const en = englisch(ctx);
+          // Das Formular der Bibliothek bringt einen Inline-Handler mit (Text markieren), den unsere CSP sperrt
+          const form = roh.replace(/\s+onfocus="[^"]*"/, "").replace('placeholder="Enter code"', `placeholder="${en ? "Enter code" : "Code eingeben"}"`);
           ctx.body = en
             ? seite("Sign in a device", `${err ? "<p><strong>The code is invalid or has expired.</strong></p>" : ""}
               <p>Enter the code your runner shows.</p>${form}<button type="submit" form="op.deviceInputForm">Continue</button>`)
