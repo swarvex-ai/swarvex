@@ -23,8 +23,8 @@ trap 'rm -rf "$BUILD"' EXIT
 mkdir -p "$TARGET"
 for ARCH in amd64 arm64; do
   echo "== Runner $VERSION for linux/$ARCH"
-  docker run --rm -v "$CODE/runner:/src:ro" -v "$BUILD:/out" -w /src -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=$ARCH -e GOCACHE=/tmp/gc \
-    golang:1 sh -c 'go build -trimpath -ldflags="-s -w" -o /out/swarvex . && cp /etc/ssl/certs/ca-certificates.crt /out/'
+  docker run --rm -v "$CODE/runner:/src:ro" -v "$BUILD:/out" -w /src -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=$ARCH -e GOCACHE=/tmp/gc -e VERSION="$VERSION" \
+    golang:1 sh -c 'go build -trimpath -ldflags="-s -w -X main.version=$VERSION" -o /out/swarvex . && cp /etc/ssl/certs/ca-certificates.crt /out/'
   # The key proxy image is empty (FROM scratch): without this CA list it cannot reach any HTTPS model provider.
   PACKAGE=$BUILD/package-$ARCH
   mkdir -p "$PACKAGE/sandbox"

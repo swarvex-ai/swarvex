@@ -34,6 +34,8 @@ Runner (your machine)
 | `… --leftover` | beta, subscriptions only: use only the quota that would otherwise expire ([leftover quota](#leftover-quota-beta)) |
 | `swarvex service [same options as work]` | set up as a service: works continuously and starts with the computer (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | stop the service (a running task goes straight back to the pool), start it, show state and today's usage |
+| `swarvex update` | fetch the newest version from the platform, with the same signature check as the one-liner; your settings stay. A running task finishes first, the next one starts with the new version (`--now` switches at once, `--check` only looks). On Windows the same command works in PowerShell |
+| `swarvex logs` / `version` | follow the service's output; show the installed version (`status` also says when an update is available) |
 | `swarvex uninstall` | remove everything: service, containers, images, data, program; the sign-in is revoked at the platform |
 | `swarvex env [folder]` | show, build and test a project's environment (for visionaries before publishing) |
 | `swarvex attack-test …` | built-in security checks of the sandbox |

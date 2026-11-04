@@ -216,13 +216,28 @@ func ersteMeldung(seit time.Time, hoechstens time.Duration) (string, bool) {
 	return "", false
 }
 
+func logsBefehl() {
+	nurLinux()
+	c := exec.Command("journalctl", "--user", "-u", "swarvex", "-n", "50", "-f", "--no-pager", "-o", "short-iso")
+	c.Stdout, c.Stderr = os.Stdout, os.Stderr
+	if err := c.Run(); err != nil {
+		fehlerAus("journalctl: " + err.Error())
+	}
+}
+
 func statusBefehl() {
+	fmt.Println("Runner:", version)
 	fmt.Printf("Usage today: %d tokens\n", verbrauchAmTag(verbrauchsDatei(), time.Now()))
 	if k, ok := kontingentLesen(kontingentDatei()); ok {
 		fmt.Printf("Subscription (as of %s): %s\n", zeitpunkt(k.Zeit), kontingentText(k, time.Now()))
 	}
 	if z, err := zugangLaden(); err == nil {
 		fmt.Println("Signed in at:", z.Plattform)
+		if skript, err := installerHolen(z.Plattform, z.CAPfad); err == nil {
+			if neu, _ := installerLesen(skript); neu != "" && neu != version {
+				fmt.Printf("Update available: %s → swarvex update\n", neu)
+			}
+		}
 	} else {
 		fmt.Println("Not signed in.")
 	}

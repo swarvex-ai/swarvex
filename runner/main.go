@@ -5,6 +5,9 @@
 //	swarvex login --platform https://…           Anmeldung per Device Flow
 //	swarvex work --project <slug> …              eine Aufgabe in der Sandbox bearbeiten
 //	swarvex service <wie work>                    als Dienst im Dauerbetrieb einrichten (start, stop, status)
+//	swarvex update                                neueste Version von der Plattform holen (Einstellungen bleiben)
+//	swarvex version                               installierte Version
+//	swarvex logs                                  Ausgabe des Dienstes laufend anzeigen
 //	swarvex uninstall                             alles entfernen, Gerät abmelden
 //	swarvex proxy                                 Schlüssel-Proxy (läuft im Proxy-Container)
 package main
@@ -16,7 +19,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "commands: setup | connect | login | work | service | start | stop | status | uninstall | env | attack-test")
+		fmt.Fprintln(os.Stderr, "commands: setup | connect | login | work | service | start | stop | status | logs | update | version | uninstall | env | attack-test")
 		os.Exit(2)
 	}
 	switch os.Args[1] {
@@ -40,6 +43,12 @@ func main() {
 		stopBefehl()
 	case "status":
 		statusBefehl()
+	case "update":
+		updateBefehl(os.Args[2:])
+	case "version", "--version", "-v":
+		versionBefehl()
+	case "logs", "log":
+		logsBefehl()
 	case "uninstall":
 		uninstallBefehl(os.Args[2:])
 	case "env":

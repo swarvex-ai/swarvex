@@ -697,7 +697,16 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string) {
 		case <-time.After(d):
 		}
 	}
+	programmBeimStart, _ := os.Stat(os.Args[0])
 	for basis.Err() == nil {
+		// Nach `swarvex update` lädt sich der Dauerbetrieb zwischen zwei Aufgaben selbst neu (gleiche PID, der Dienst merkt nichts).
+		if neueVersionInstalliert(os.Args[0], programmBeimStart) {
+			fmt.Println("New runner version installed; continuing with it.")
+			if err := syscall.Exec(os.Args[0], os.Args, os.Environ()); err != nil {
+				fmt.Println("Could not switch to the new version:", err)
+				programmBeimStart, _ = os.Stat(os.Args[0])
+			}
+		}
 		jetzt := time.Now()
 		if !fenster.offen(jetzt) {
 			n, ok := fenster.naechsterBeginn(jetzt)

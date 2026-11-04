@@ -111,6 +111,8 @@ ssh-keygen -Y verify -f "$TMP/allowed" -I swarvex-release -n swarvex-release -s 
 ( cd "$TMP" && grep " $PACKAGE\$" SHA256SUMS | sha256sum -c --status ) \
   || fail "The package checksum does NOT match; nothing was installed."
 echo "   signature and checksum valid"
+# `swarvex update` installs only while the platform signs with this same key
+mkdir -p "$CONFIG" && printf '%s\n' "$SIGNING_KEY" > "$CONFIG/release.pub"
 
 step "Installing"
 rm -rf "$DATA/release" && mkdir -p "$DATA/release"

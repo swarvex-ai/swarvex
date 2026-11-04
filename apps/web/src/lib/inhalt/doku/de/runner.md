@@ -34,6 +34,8 @@ Runner (dein Rechner)
 | `… --leftover` | Beta, nur mit Abo: nur das Kontingent nutzen, das sonst verfallen würde ([Restkontingent](#restkontingent-beta)) |
 | `swarvex service [Angaben wie bei work]` | als Dienst einrichten: arbeitet im Dauerbetrieb und startet mit dem Rechner (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | Dienst anhalten (laufende Aufgabe geht sofort zurück in den Pool), starten, Zustand und Verbrauch heute |
+| `swarvex update` | neueste Version von der Plattform holen, mit derselben Signaturprüfung wie der Einzeiler; die Einstellungen bleiben. Eine laufende Aufgabe wird erst fertig, die nächste startet mit der neuen Version (`--now` wechselt sofort, `--check` schaut nur nach). Unter Windows geht derselbe Befehl in PowerShell |
+| `swarvex logs` / `version` | Ausgabe des Dienstes mitlesen; installierte Version anzeigen (`status` sagt auch, wenn ein Update bereitliegt) |
 | `swarvex uninstall` | alles entfernen: Dienst, Container, Images, Daten, Programm; die Anmeldung wird bei der Plattform widerrufen |
 | `swarvex attack-test …` | eingebaute Sicherheitsprüfungen der Sandbox |
 
