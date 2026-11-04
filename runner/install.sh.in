@@ -98,7 +98,7 @@ if [ -n "$CA_SOURCE" ]; then
   CURL="curl -fsSL --cacert $CONFIG/ca.crt"
 fi
 
-step "Downloading runner $VERSION and verifying the signature"
+step "Downloading runner v$VERSION and verifying the signature"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 PACKAGE="swarvex-$VERSION-linux-$ARCH.tar.gz"

@@ -85,3 +85,20 @@ func TestVerlauf(t *testing.T) {
 		t.Fatal(tausender(1234567))
 	}
 }
+
+func TestIstNeuer(t *testing.T) {
+	for _, f := range []struct {
+		neu, alt string
+		soll     bool
+	}{
+		{"0.9.0", "0.1.202611041358", true}, {"0.9.1", "0.9.0", true}, {"0.10.0", "0.9.3", true}, {"1.0.0", "0.99.0", true},
+		{"0.9.0", "0.9.0", false}, {"0.9.0", "0.9.1", false}, {"0.9", "0.9.0", false}, {"0.9.0", "dev", true}, {"kaputt", "0.9.0", false},
+	} {
+		if istNeuer(f.neu, f.alt) != f.soll {
+			t.Errorf("istNeuer(%q, %q) != %v", f.neu, f.alt, f.soll)
+		}
+	}
+	if versionText("0.9.0") != "v0.9.0" || versionText("dev") != "dev" {
+		t.Fatal(versionText("0.9.0"))
+	}
+}

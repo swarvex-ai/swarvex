@@ -14,14 +14,61 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
 
-// version setzt release.sh beim Bauen (-ldflags -X main.version=…).
+// version setzt release.sh beim Bauen aus runner/VERSION (-ldflags -X main.version=…), z. B. 0.9.0.
 var version = "dev"
 
-func versionBefehl() { fmt.Println("swarvex runner", version) }
+// versionText: so steht die Version vor Menschen, z. B. „v0.9.0“.
+func versionText(v string) string {
+	if v != "" && v[0] >= '0' && v[0] <= '9' {
+		return "v" + v
+	}
+	return v
+}
+
+func versionBefehl() { fmt.Println("swarvex runner", versionText(version)) }
+
+// istNeuer vergleicht Versionen Teil für Teil als Zahlen (0.10.0 > 0.9.3 > 0.1.202611041358);
+// eine eigene Entwicklerversion ("dev") gilt als älter als jede veröffentlichte.
+func istNeuer(neu, alt string) bool {
+	zahlen := func(v string) ([]int, bool) {
+		teile := strings.Split(strings.TrimPrefix(v, "v"), ".")
+		r := make([]int, len(teile))
+		for i, t := range teile {
+			n, err := strconv.Atoi(t)
+			if err != nil {
+				return nil, false
+			}
+			r[i] = n
+		}
+		return r, true
+	}
+	n, okN := zahlen(neu)
+	a, okA := zahlen(alt)
+	switch {
+	case !okN:
+		return false
+	case !okA:
+		return true
+	}
+	for i := 0; i < max(len(n), len(a)); i++ {
+		x, y := 0, 0
+		if i < len(n) {
+			x = n[i]
+		}
+		if i < len(a) {
+			y = a[i]
+		}
+		if x != y {
+			return x > y
+		}
+	}
+	return false
+}
 
 var installWert = regexp.MustCompile(`(?m)^(VERSION|SIGNING_KEY)="([^"\n]*)"`)
 
@@ -125,12 +172,12 @@ func updateBefehl(args []string) {
 	}
 	skript, neu, err := neuesteVersion(plattform, ca)
 	if neu != "" {
-		fmt.Printf("Installed: %s · on %s: %s\n", version, plattform, neu)
+		fmt.Printf("Installed: %s · on %s: %s\n", versionText(version), plattform, versionText(neu))
 	}
 	if err != nil {
 		fehlerAus(err.Error() + "; nothing was installed.")
 	}
-	if neu == version && !*erzwingen {
+	if !istNeuer(neu, version) && !*erzwingen {
 		fmt.Println("✓ Up to date.")
 		return
 	}
@@ -154,10 +201,10 @@ func autoUpdate() {
 	switch {
 	case err != nil:
 		fmt.Println("Automatic update skipped:", err)
-	case neu != version:
-		fmt.Printf("Automatic update: %s → %s\n", version, neu)
+	case istNeuer(neu, version):
+		fmt.Printf("Automatic update: %s → %s\n", versionText(version), versionText(neu))
 		if err := installieren(skript, ca, os.Stdout); err != nil {
-			fmt.Println("Automatic update did not finish; continuing with", version)
+			fmt.Println("Automatic update did not finish; continuing with", versionText(version))
 		}
 	}
 }

@@ -12,7 +12,19 @@ DATA=/opt/swarvex-data
 DOWNLOADS=$DATA/downloads
 BASE_HOST=$(grep ^BASE_HOST= "$CODE/infra/stack/.env" | cut -d= -f2-)
 PLATFORM="https://$BASE_HOST"
-VERSION=${VERSION:-0.1.$(date -u +%Y%m%d%H%M)}
+# Version: runner/VERSION (semantic: patch for fixes, minor for new features). A version is published once;
+# if the runner's code changed since, the release stops until runner/VERSION is raised.
+VERSION=${VERSION:-$(tr -d ' \n' < "$CODE/runner/VERSION")}
+echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "runner/VERSION must look like 0.9.0, not '$VERSION'"; exit 1; }
+QUELLE=$(cd "$CODE" && find runner -type f ! -name '*_test.go' ! -name '*.md' | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+if [ -f "$DOWNLOADS/$VERSION/SOURCE" ]; then
+  if [ "$(cat "$DOWNLOADS/$VERSION/SOURCE")" = "$QUELLE" ]; then
+    echo "== Release v$VERSION is already published with this code; nothing to do"
+    exit 0
+  fi
+  echo "The runner changed since v$VERSION was published: raise runner/VERSION (e.g. to the next patch version) and deploy again."
+  exit 1
+fi
 
 [ -f "$DATA/release_key" ] || ssh-keygen -q -t ed25519 -N "" -C "swarvex-release" -f "$DATA/release_key"
 chmod 600 "$DATA/release_key"
@@ -22,7 +34,7 @@ BUILD=$(mktemp -d)
 trap 'rm -rf "$BUILD"' EXIT
 mkdir -p "$TARGET"
 for ARCH in amd64 arm64; do
-  echo "== Runner $VERSION for linux/$ARCH"
+  echo "== Runner v$VERSION for linux/$ARCH"
   docker run --rm -v "$CODE/runner:/src:ro" -v "$BUILD:/out" -w /src -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=$ARCH -e GOCACHE=/tmp/gc -e VERSION="$VERSION" \
     golang:1 sh -c 'go build -trimpath -ldflags="-s -w -X main.version=$VERSION" -o /out/swarvex . && cp /etc/ssl/certs/ca-certificates.crt /out/'
   # The key proxy image is empty (FROM scratch): without this CA list it cannot reach any HTTPS model provider.
@@ -33,6 +45,7 @@ for ARCH in amd64 arm64; do
   tar -czf "$TARGET/swarvex-$VERSION-linux-$ARCH.tar.gz" -C "$PACKAGE" .
 done
 ( cd "$TARGET" && sha256sum swarvex-*.tar.gz > SHA256SUMS )
+echo "$QUELLE" > "$TARGET/SOURCE"
 ssh-keygen -q -Y sign -f "$DATA/release_key" -n swarvex-release "$TARGET/SHA256SUMS"   # creates SHA256SUMS.sig
 
 PUB=$(cut -d' ' -f1-2 "$DATA/release_key.pub")
@@ -41,5 +54,5 @@ sed -e "s#@PLATFORM@#$PLATFORM#g" -e "s#@VERSION@#$VERSION#g" -e "s#@PUBKEY@#$PU
 # Windows: sets up the WSL distribution and runs install.sh inside it (signature check happens there)
 sed -e "s#@PLATFORM@#$PLATFORM#g" "$CODE/runner/install.ps1.in" > "$DOWNLOADS/install.ps1"
 chmod -R a+rX "$DOWNLOADS"
-echo "== Release $VERSION ready: $PLATFORM/install.sh"
+echo "== Release v$VERSION ready: $PLATFORM/install.sh"
 ls -la "$TARGET"

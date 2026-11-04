@@ -73,7 +73,7 @@ func hilfeBefehl(args []string) {
 		}
 		fmt.Printf("Unknown command %q.\n\n", name)
 	}
-	fmt.Printf("swarvex runner %s: lets your agent work on open-source tasks in a sandbox.\n\nUsage: swarvex <command> [options]\n", version)
+	fmt.Printf("swarvex runner %s: lets your agent work on open-source tasks in a sandbox.\n\nUsage: swarvex <command> [options]\n", versionText(version))
 	for _, g := range befehlsGruppen {
 		fmt.Printf("\n%s:\n", g.titel)
 		for _, b := range g.befehl {

@@ -39,7 +39,7 @@ Runner (your machine)
 | `swarvex history` | the last tasks of this runner: submitted or handed back with the reason, tokens, model time and the task's state on the platform today |
 | `swarvex doctor` | checks sign-in, version, Podman, images, network, settings, whether the sandbox reaches the model, the service and free space, and says what to do for every problem |
 | `swarvex budget` | show the token limits; change them with `--task 1000000` and `--daily 0` (0 = no limit) without going through the setup. A running task finishes first (`--now` switches at once) |
-| `swarvex logs` / `version` | follow the service's output; show the installed version (`status` also says when an update is available) |
+| `swarvex logs` / `version` | follow the service's output; show the installed version, e.g. v0.9.0 (`status` also says when an update is available). Versions are semantic: the patch number for fixes, the minor number for new features; changes are listed in [runner/CHANGELOG.md](https://github.com/swarvex-ai/swarvex/blob/main/runner/CHANGELOG.md) |
 | `swarvex uninstall` | remove everything: service, containers, images, data, program; the sign-in is revoked at the platform |
 | `swarvex env [folder]` | show, build and test a project's environment (for visionaries before publishing) |
 | `swarvex attack-test …` | built-in security checks of the sandbox |

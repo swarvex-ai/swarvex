@@ -226,7 +226,7 @@ func logsBefehl() {
 }
 
 func statusBefehl() {
-	fmt.Println("Runner:", version)
+	fmt.Println("Runner:", versionText(version))
 	fmt.Printf("Usage today: %d tokens\n", verbrauchAmTag(verbrauchsDatei(), time.Now()))
 	if k, ok := kontingentLesen(kontingentDatei()); ok {
 		fmt.Printf("Subscription (as of %s): %s\n", zeitpunkt(k.Zeit), kontingentText(k, time.Now()))
@@ -234,8 +234,8 @@ func statusBefehl() {
 	if z, err := zugangLaden(); err == nil {
 		fmt.Println("Signed in at:", z.Plattform)
 		if skript, err := installerHolen(z.Plattform, z.CAPfad); err == nil {
-			if neu, _ := installerLesen(skript); neu != "" && neu != version {
-				fmt.Printf("Update available: %s → swarvex update\n", neu)
+			if neu, _ := installerLesen(skript); istNeuer(neu, version) {
+				fmt.Printf("Update available: %s → swarvex update\n", versionText(neu))
 			}
 		}
 	} else {

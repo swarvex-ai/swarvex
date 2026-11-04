@@ -43,7 +43,7 @@ func doctorBefehl() {
 		}
 	}
 
-	fmt.Println("swarvex doctor · runner", version)
+	fmt.Println("swarvex doctor · runner", versionText(version))
 	// 1. Anmeldung und Version
 	pruefe(func() {
 		z, err := zugangLaden()
@@ -59,8 +59,8 @@ func doctorBefehl() {
 		switch _, neu, err := neuesteVersion(z.Plattform, z.CAPfad); {
 		case err != nil:
 			hinweis("could not check for updates: "+kuerzen(err.Error(), 160), "")
-		case neu != version:
-			hinweis("update available: "+version+" → "+neu, "swarvex update")
+		case istNeuer(neu, version):
+			hinweis("update available: "+versionText(version)+" → "+versionText(neu), "swarvex update")
 		default:
 			gut("runner is up to date")
 		}
