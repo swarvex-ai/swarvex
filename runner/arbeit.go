@@ -54,7 +54,7 @@ func arbeitenBefehl(args []string) {
 	upstream := fs.String("model-url", "", "base URL of the model API without /v1: OpenAI-compatible (opencode), Anthropic (claude) or OpenAI Responses (codex)")
 	keyDatei := fs.String("model-key-file", "", "file containing the model's API key; claude: also a subscription token from `claude setup-token`; codex: also your ChatGPT sign-in ~/.codex/auth.json (optional)")
 	skillsWert := fs.String("skills", "", `your own skills for the agent: "auto" (the usual folders) or folders separated by ":" (copied, read-only)`)
-	budget := fs.Int("budget-tokens", 400000, "token budget for this task")
+	budget := fs.Int("budget-tokens", 400000, "token budget for this task (0 = no limit)")
 	tagesbudget := fs.Int64("daily-budget-tokens", 0, "at most this many tokens per calendar day across all tasks (0 = no daily limit)")
 	zeit := fs.Duration("time-limit", 90*time.Minute, "maximum run time of the sandbox")
 	faehigkeiten := fs.String("capabilities", "", "comma-separated, e.g. code.gdscript,code.javascript")
@@ -128,11 +128,15 @@ func arbeitenBefehl(args []string) {
 	// Tagesbudget: keine Aufgabe mehr, wenn es verbraucht ist (Exit-Code 6); sonst Aufgabenbudget auf den Rest kürzen.
 	if *tagesbudget > 0 {
 		rest := *tagesbudget - verbrauchAmTag(verbrauchsDatei(), time.Now())
-		if rest < min(int64(*budget), *tagesbudget)/10 {
+		grenze := *tagesbudget
+		if *budget > 0 {
+			grenze = min(int64(*budget), *tagesbudget)
+		}
+		if rest < grenze/10 {
 			fmt.Printf("Daily budget of %d tokens is used up. Continuing from %s.\n", *tagesbudget, zeitpunkt(mitternacht(time.Now())))
 			os.Exit(6)
 		}
-		if int64(*budget) > rest {
+		if *budget == 0 || int64(*budget) > rest {
 			*budget = int(rest)
 			fmt.Printf("Task budget reduced to what is left of the daily budget: %d tokens.\n", rest)
 		}
@@ -293,7 +297,7 @@ func arbeitenBefehl(args []string) {
 	gestoppt()
 	// Token-Budget erreicht: was der Agent bis dahin erarbeitet hat, geht als Einreichung weiter (Prüfung und Bewertung
 	// entscheiden), statt verworfen zu werden; ohne Ergebnis wird die Aufgabe mit klarem Grund zurückgegeben.
-	amBudget := budgetTokensAus(verbrauch) >= int64(*budget)
+	amBudget := *budget > 0 && budgetTokensAus(verbrauch) >= int64(*budget)
 	if amBudget {
 		fmt.Printf("Token budget reached (%d of %d, cache hits count a tenth). Submitting what the agent produced so far; raise the budget with `swarvex setup`.\n", budgetTokensAus(verbrauch), *budget)
 	} else if err != nil {
@@ -646,6 +650,10 @@ func auftragstext(a aufgabe, u umgebung.Umgebung) string {
 	fmt.Fprintf(&b, "You are working as a contributor on an open-source project. The project is in /work, you start in %s.\n", wurzel)
 	if u.Hinweis != "" {
 		fmt.Fprintf(&b, "Environment: %s\n", u.Hinweis)
+	}
+	if a.BasisCommit != "" {
+		// Der Snapshot hat kein .git; ohne diese Zeile nahmen Agenten einen Commit aus den Projektdokumenten.
+		fmt.Fprintf(&b, "The files are the project at commit %s (the base commit of this task; there is no .git folder).\n", a.BasisCommit)
 	}
 	b.WriteString("Read AGENTS.md first (if present) and follow the project's rules.\n\n")
 	fmt.Fprintf(&b, "TASK: %s\n\n%s\n\n", a.Titel, a.Beschreibung)

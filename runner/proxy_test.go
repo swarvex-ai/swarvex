@@ -126,6 +126,30 @@ func TestProxyPfadeUndBudget(t *testing.T) {
 	}
 }
 
+// Budget 0 = keine Grenze (lokale Modelle): der Proxy lässt jede Anfrage durch.
+func TestProxyOhneBudget(t *testing.T) {
+	var kopf http.Header
+	var pfad, modell string
+	up := upstreamAttrappe(t, &kopf, &pfad, &modell)
+	defer up.Close()
+	tok := strings.Repeat("t", 40)
+	var verbraucht atomic.Int64
+	p := httptest.NewServer(proxyHandler(proxyKonfig{upstream: up.URL, api: "responses", modell: "m", aufgabenTok: tok, budget: 0}, &verbraucht))
+	defer p.Close()
+	for i := 0; i < 3; i++ {
+		req, _ := http.NewRequest("POST", p.URL+"/v1/responses", strings.NewReader(`{}`))
+		req.Header.Set("authorization", "Bearer "+tok)
+		r, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		io.ReadAll(r.Body)
+		if r.StatusCode != 200 {
+			t.Fatalf("Anfrage %d: %d (verbraucht %d)", i, r.StatusCode, verbraucht.Load())
+		}
+	}
+}
+
 func TestZaehlerFuersBudget(t *testing.T) {
 	faelle := []struct {
 		name     string

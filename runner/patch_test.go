@@ -52,8 +52,11 @@ func TestPatchMitGeschuetztenPfadenAusDir(t *testing.T) {
 	if len(verworfen) != 2 {
 		t.Errorf("verworfen = %v, erwartet 2", verworfen)
 	}
-	auftrag := auftragstext(aufgabe{Titel: "t", Pfade: []string{"docs/test-triage/x.md"}}, u)
+	auftrag := auftragstext(aufgabe{Titel: "t", Pfade: []string{"docs/test-triage/x.md"}, BasisCommit: "77db3e1"}, u)
 	if !strings.Contains(auftrag, "/work/docs/test-triage/x.md") || !strings.Contains(auftrag, "you start in /work/game") {
 		t.Errorf("Auftrag nennt keine vollen Pfade:\n%s", auftrag)
+	}
+	if !strings.Contains(auftrag, "at commit 77db3e1") {
+		t.Errorf("Auftrag nennt den Basis-Commit nicht:\n%s", auftrag)
 	}
 }

@@ -99,7 +99,7 @@ func proxyHandler(k proxyKonfig, verbraucht *atomic.Int64) http.HandlerFunc {
 			w.Header().Set("content-type", "application/json")
 			json.NewEncoder(w).Encode(map[string]any{"object": "list", "data": []any{map[string]any{"id": k.modell, "object": "model", "type": "model", "display_name": k.modell}}})
 		case r.Method == http.MethodPost && erlaubt:
-			if kostet && verbraucht.Load() >= k.budget {
+			if kostet && k.budget > 0 && verbraucht.Load() >= k.budget { // 0 = keine Grenze
 				ereignis("budget_exhausted", map[string]any{"used": verbraucht.Load(), "budget": k.budget})
 				w.Header().Set("content-type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
