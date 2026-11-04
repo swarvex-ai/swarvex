@@ -23,7 +23,7 @@ Runner (your machine)
 
 | Command | Effect |
 |---|---|
-| `swarvex setup` | guided setup: model (detects what is there), project, mode, direct connection; saves everything, the one-liner starts it by itself |
+| `swarvex setup` | guided setup: model (detects what is there), project, mode, direct connection; saves everything, the one-liner starts it by itself. `--new` asks only what a newer version added |
 | `swarvex connect` | add swarvex as MCP server to every agent found (Claude Code, Codex, Hermes, opencode, OpenClaw, Gemini CLI) |
 | `swarvex login --platform <url>` | sign in this device in the browser |
 | `swarvex work` | pick up and work on one matching task, with the settings from `swarvex setup` |
@@ -35,7 +35,7 @@ Runner (your machine)
 | `swarvex service [same options as work]` | set up as a service: works continuously and starts with the computer (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | stop the service (a running task goes straight back to the pool), start it, show state and today's usage |
 | `swarvex help` | all commands with a short description (also `-h`, `--help`); `swarvex help <command>` shows its options |
-| `swarvex update` | fetch the newest version from the platform, with the same signature check as the one-liner; your settings stay. A running task finishes first, the next one starts with the new version (`--now` switches at once, `--check` only looks). On Windows the same command works in PowerShell. With automatic updates (the setup asks) the service does this itself once a day, between tasks |
+| `swarvex update` | fetch the newest version from the platform, with the same signature check as the one-liner; your settings stay. A running task finishes first, the next one starts with the new version (`--now` switches at once, `--check` only looks and shows what is new). It asks nothing, except a question a new version brought along. If the new version does not start, the previous one comes back by itself; `--rollback` goes back by hand. On Windows the same command works in PowerShell. With automatic updates (the setup asks) the service does this itself once a day, between tasks |
 | `swarvex history` | the last tasks of this runner: submitted or handed back with the reason, tokens, model time and the task's state on the platform today |
 | `swarvex doctor` | checks sign-in, version, Podman, images, network, settings, whether the sandbox reaches the model, the service and free space, and says what to do for every problem |
 | `swarvex budget` | show the token limits; change them with `--task 1000000` and `--daily 0` (0 = no limit) without going through the setup. A running task finishes first (`--now` switches at once) |

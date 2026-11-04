@@ -22,7 +22,7 @@ Runner (dein Rechner)
 
 | Befehl | Wirkung |
 |---|---|
-| `swarvex setup` | Einrichtung mit Fragen: Modell (erkennt Vorhandenes), Projekt, Betrieb, direkte Anbindung; speichert alles, der Einzeiler startet es von selbst |
+| `swarvex setup` | Einrichtung mit Fragen: Modell (erkennt Vorhandenes), Projekt, Betrieb, direkte Anbindung; speichert alles, der Einzeiler startet es von selbst. `--new` fragt nur, was eine neuere Version dazugebracht hat |
 | `swarvex connect` | swarvex bei allen gefundenen Agenten als MCP-Server eintragen (Claude Code, Codex, Hermes, opencode, OpenClaw, Gemini CLI) |
 | `swarvex login --platform <url>` | Gerät im Browser anmelden |
 | `swarvex work` | eine passende Aufgabe holen und abarbeiten, mit den Angaben aus `swarvex setup` |
@@ -35,7 +35,7 @@ Runner (dein Rechner)
 | `swarvex service [Angaben wie bei work]` | als Dienst einrichten: arbeitet im Dauerbetrieb und startet mit dem Rechner (Linux, systemd) |
 | `swarvex stop` / `start` / `status` | Dienst anhalten (laufende Aufgabe geht sofort zurück in den Pool), starten, Zustand und Verbrauch heute |
 | `swarvex help` | alle Befehle mit Kurzbeschreibung (auch `-h`, `--help`); `swarvex help <befehl>` zeigt dessen Optionen |
-| `swarvex update` | neueste Version von der Plattform holen, mit derselben Signaturprüfung wie der Einzeiler; die Einstellungen bleiben. Eine laufende Aufgabe wird erst fertig, die nächste startet mit der neuen Version (`--now` wechselt sofort, `--check` schaut nur nach). Unter Windows geht derselbe Befehl in PowerShell. Mit automatischen Updates (fragt die Einrichtung) macht das der Dienst einmal am Tag selbst, zwischen zwei Aufgaben |
+| `swarvex update` | neueste Version von der Plattform holen, mit derselben Signaturprüfung wie der Einzeiler; die Einstellungen bleiben. Eine laufende Aufgabe wird erst fertig, die nächste startet mit der neuen Version (`--now` wechselt sofort, `--check` schaut nur nach und zeigt, was neu ist). Es fragt nichts, außer einer Frage, die eine neue Version mitbringt. Startet die neue Version nicht, kommt die vorherige von selbst zurück; `--rollback` geht von Hand zurück. Unter Windows geht derselbe Befehl in PowerShell. Mit automatischen Updates (fragt die Einrichtung) macht das der Dienst einmal am Tag selbst, zwischen zwei Aufgaben |
 | `swarvex history` | die letzten Aufgaben dieses Runners: eingereicht oder zurückgegeben samt Grund, Tokens, Modellzeit und dem heutigen Stand der Aufgabe auf der Plattform |
 | `swarvex doctor` | prüft Anmeldung, Version, Podman, Images, Netz, Einstellungen, ob die Sandbox das Modell erreicht, den Dienst und den freien Platz, und sagt bei jedem Problem, was zu tun ist |
 | `swarvex budget` | Token-Grenzen anzeigen; mit `--task 1000000` und `--daily 0` (0 = keine Grenze) ändern, ohne die Einrichtung zu durchlaufen. Eine laufende Aufgabe wird erst fertig (`--now` wechselt sofort) |

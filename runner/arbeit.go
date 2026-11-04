@@ -693,6 +693,9 @@ func einruecken(text string) string {
 // 5 gestoppt vor der Reservierung, 6 Tagesbudget verbraucht, 7 Restkontingent: gerade nichts übrig.
 func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoAktualisieren bool) {
 	fmt.Println("Continuous mode started. Stop with Ctrl+C or `swarvex stop`.")
+	if t := offeneTitel(); t != "" {
+		fmt.Println("New settings to choose: " + t + " (the defaults apply until then; run: swarvex setup --new)")
+	}
 	// Beim Anhalten bekommt die laufende Aufgabe das Signal ebenfalls, gibt sich zurück und endet; dann ist Schluss.
 	basis, aufhoeren := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer aufhoeren()

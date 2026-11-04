@@ -24,8 +24,13 @@ Unter Windows passiert dasselbe mit `irm https://<plattform>/install.ps1 | iex`:
 
 ```bash
 swarvex update           # neueste Version, dieselbe Signaturprüfung wie der Einzeiler; Einstellungen bleiben
-swarvex update --check   # nur nachsehen
+swarvex update --check   # nur nachsehen, und zeigen, was neu ist
+swarvex update --rollback  # zurück zur Version vor dem letzten Update
 ```
+
+- **Keine Fragen:** Ein Update fragt nichts; die Einstellungen bleiben. Nur wenn eine neue Version eine neue Einrichtungsfrage mitbringt, stellt `swarvex update` genau diese eine (später auch `swarvex setup --new`; `swarvex doctor` zeigt, was noch offen ist). Ohne Terminal gilt bis zur Antwort der Standard.
+- **Sicherheitsnetz:** Das Update hebt die vorherige Version auf (`~/.local/share/swarvex/release.prev`) und startet die neue einmal. Startet sie nicht, kommt die vorherige samt ihren Images von selbst zurück. `swarvex update --rollback` geht von Hand zurück; automatische Updates lassen diese Version dann aus, bis eine neuere erscheint.
+- **Was ist neu:** `swarvex update` und `--check` zeigen die Einträge aus dem [Changelog](https://github.com/swarvex-ai/swarvex/blob/main/runner/CHANGELOG.md) seit deiner Version.
 
 - **Automatische Updates:** Die Einrichtung fragt danach (Vorschlag: ja). Der Dienst prüft dann einmal am Tag, nur zwischen zwei Aufgaben, installiert über denselben signierten Installer und lädt sich selbst neu; keine Aufgabe wird unterbrochen.
 - **Festgehaltener Signaturschlüssel:** Der Installer merkt sich den Release-Signaturschlüssel (`~/.config/swarvex/release.pub`). `swarvex update` und automatische Updates installieren nur, solange die Plattform mit genau diesem Schlüssel signiert; nach einem angekündigten Schlüsselwechsel neu mit dem Einzeiler installieren.

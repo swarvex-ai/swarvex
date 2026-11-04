@@ -16,7 +16,7 @@ var befehlsGruppen = []struct {
 	befehl []befehlInfo
 }{
 	{"Get started", []befehlInfo{
-		{"setup", "setup", "set up with a few questions: model, project, when it works, limits"},
+		{"setup", "setup [--new]", "set up with a few questions: model, project, when it works, limits (--new: only new questions)"},
 		{"doctor", "doctor", "check everything the runner needs and say how to fix problems"},
 		{"connect", "connect", "add swarvex as an MCP server to agents found here (tasks without code)"},
 		{"login", "login --platform <url>", "sign in again (opens the browser)"},
@@ -31,7 +31,7 @@ var befehlsGruppen = []struct {
 		{"budget", "budget [--task N] [--daily N]", "show or change the token limits (0 = no limit)"},
 	}},
 	{"Maintain", []befehlInfo{
-		{"update", "update", "install the newest version; settings stay (--check only looks)"},
+		{"update", "update [--check|--rollback]", "install the newest version; settings stay (--check: what's new, --rollback: back)"},
 		{"version", "version", "show the installed version"},
 		{"env", "env", "visionary: check the project environment in its repository"},
 		{"uninstall", "uninstall", "remove everything and sign this device out"},

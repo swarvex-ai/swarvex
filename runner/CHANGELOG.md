@@ -5,6 +5,15 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.9.1 (4 Nov 2026)
+
+- Safer updates: the update keeps the previous version. If the new one does not start, the previous one comes back
+  by itself; `swarvex update --rollback` goes back by hand (automatic updates then skip that version).
+- New setup questions only: when a version brings a new question, `swarvex update` asks just that one, never the
+  whole setup again (also `swarvex setup --new`; `swarvex doctor` lists what is still open).
+- `swarvex update` and `--check` show what is new since the installed version.
+- Updating no longer fails on platforms with their own certificate authority (self-hosted).
+
 ## 0.9.0 (4 Nov 2026)
 
 First numbered version.

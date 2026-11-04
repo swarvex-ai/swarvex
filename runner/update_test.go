@@ -1,8 +1,11 @@
 package main
 
 import (
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -100,5 +103,108 @@ func TestIstNeuer(t *testing.T) {
 	}
 	if versionText("0.9.0") != "v0.9.0" || versionText("dev") != "dev" {
 		t.Fatal(versionText("0.9.0"))
+	}
+}
+
+func TestNeuigkeiten(t *testing.T) {
+	text := "# Runner changelog\n\nIntro.\n\n## 0.9.2 (6 Nov)\n\n- c\n\n## 0.9.1 (5 Nov)\n\n- b\n  more\n\n## 0.9.0 (4 Nov)\n\n- a\n"
+	got := strings.Join(neuigkeiten(text, "0.9.0", "0.9.2"), "|")
+	if want := "0.9.2 (6 Nov)||- c||0.9.1 (5 Nov)||- b|  more"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+	if got := neuigkeiten(text, "0.9.1", "0.9.1"); len(got) != 0 {
+		t.Fatalf("nothing new expected, got %q", got)
+	}
+	if got := strings.Join(neuigkeiten(text, "0.1.202611041358", "0.9.0"), "|"); got != "0.9.0 (4 Nov)||- a" {
+		t.Fatalf("from a date build: %q", got)
+	}
+}
+
+func TestVersionAus(t *testing.T) {
+	for ein, want := range map[string]string{"swarvex runner v0.9.1\n": "0.9.1", "swarvex runner 0.1.202611041358": "0.1.202611041358",
+		"swarvex runner dev": "dev", "Unknown command": "", "": ""} {
+		if got := versionAus(ein); got != want {
+			t.Errorf("versionAus(%q) = %q, want %q", ein, got, want)
+		}
+	}
+}
+
+func TestOffeneFragen(t *testing.T) {
+	ohneDienst := &einrichtungStand{work: []string{"--project", "auto"}}
+	if len(offeneFragen(ohneDienst, nil)) != 0 {
+		t.Fatal("without a service there is no auto-update question")
+	}
+	mit := &einrichtungStand{mitDienst: true, dienst: []string{"--daily-budget-tokens", "0", "--auto-update"}}
+	if len(offeneFragen(mit, nil)) != 0 {
+		t.Fatal("auto-update already on")
+	}
+	aus := &einrichtungStand{mitDienst: true, dienst: []string{"--daily-budget-tokens", "0"}}
+	if len(offeneFragen(aus, nil)) != 1 {
+		t.Fatal("auto-update never asked: expected one open question")
+	}
+	datei := filepath.Join(t.TempDir(), "asked.json")
+	gefragtMerken(datei, "auto-update")
+	gefragtMerken(datei, "spaeter")
+	g := gefragtLesen(datei)
+	if !g["auto-update"] || !g["spaeter"] || len(offeneFragen(aus, g)) != 0 {
+		t.Fatalf("answered (no) must not be asked again: %v", g)
+	}
+}
+
+// Ein gespielter Installer: legt wie install.sh release/ und ~/.local/bin/swarvex an; das Programm meldet meldet.
+func spielInstaller(meldet string) string {
+	return `set -e
+R="$XDG_DATA_HOME/swarvex/release"; rm -rf "$R"; mkdir -p "$R" "$HOME/.local/bin"
+printf '#!/bin/sh\necho "swarvex runner ` + meldet + `"\n' > "$R/swarvex"; chmod 755 "$R/swarvex"
+install -m 755 "$R/swarvex" "$HOME/.local/bin/swarvex"
+`
+}
+
+func TestSicherInstallieren(t *testing.T) {
+	heimat := t.TempDir()
+	t.Setenv("HOME", heimat)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(heimat, "data"))
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(heimat, "config"))
+	gebaut := 0
+	altBauen, altVersion := imagesBauen, version
+	imagesBauen = func(string, io.Writer) error { gebaut++; return nil }
+	defer func() { imagesBauen, version = altBauen, altVersion }()
+	version = "0.9.0"
+	var aus strings.Builder
+	if err := installieren(spielInstaller("v0.9.0"), "", &aus); err != nil {
+		t.Fatal(err, aus.String())
+	}
+
+	// Die neue Version startet nicht richtig: die alte kommt zurück, mit ihren Images.
+	err := sicherInstallieren(spielInstaller("kaputt"), "", "0.9.1", &aus)
+	if !errors.Is(err, errStartetNicht) {
+		t.Fatalf("expected errStartetNicht, got %v", err)
+	}
+	if v, _ := programmVersion(installiertesProgramm()); v != "0.9.0" || gebaut != 1 {
+		t.Fatalf("after a broken update: version %q, images built %d times\n%s", v, gebaut, aus.String())
+	}
+	// Der Download scheitert, bevor etwas ersetzt ist: zurück ohne Images neu zu bauen.
+	if err := sicherInstallieren("exit 3", "", "0.9.1", &aus); err == nil || gebaut != 1 {
+		t.Fatalf("failed download: err %v, images built %d times", err, gebaut)
+	}
+	if _, err := os.Stat(filepath.Join(releaseOrdner(), "swarvex")); err != nil {
+		t.Fatal("release folder must be back after a failed download")
+	}
+	// Klappt: neue Version installiert, die alte liegt in release.prev.
+	if err := sicherInstallieren(spielInstaller("v0.9.1"), "", "0.9.1", &aus); err != nil {
+		t.Fatal(err, aus.String())
+	}
+	if v, _ := programmVersion(filepath.Join(releaseOrdner()+".prev", "swarvex")); v != "0.9.0" {
+		t.Fatalf("previous version kept: %q", v)
+	}
+	// Von Hand zurück (--rollback ohne Dienst): wieder 0.9.0, Images neu.
+	if err := zurueckholen(&aus, true); err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := programmVersion(installiertesProgramm()); v != "0.9.0" || gebaut != 2 {
+		t.Fatalf("after rollback: %q, images built %d times", v, gebaut)
+	}
+	if zurueckholen(&aus, true) == nil {
+		t.Fatal("a second rollback has nothing to go back to")
 	}
 }

@@ -16,6 +16,8 @@ PLATFORM="https://$BASE_HOST"
 # if the runner's code changed since, the release stops until runner/VERSION is raised.
 VERSION=${VERSION:-$(tr -d ' \n' < "$CODE/runner/VERSION")}
 echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "runner/VERSION must look like 0.9.0, not '$VERSION'"; exit 1; }
+# What's new (swarvex update shows the entries since the installed version); kept current even without a new version
+mkdir -p "$DOWNLOADS" && cp "$CODE/runner/CHANGELOG.md" "$DOWNLOADS/CHANGELOG.md" && chmod a+r "$DOWNLOADS/CHANGELOG.md"
 QUELLE=$(cd "$CODE" && find runner -type f ! -name '*_test.go' ! -name '*.md' | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
 if [ -f "$DOWNLOADS/$VERSION/SOURCE" ]; then
   if [ "$(cat "$DOWNLOADS/$VERSION/SOURCE")" = "$QUELLE" ]; then

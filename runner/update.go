@@ -4,8 +4,14 @@ package main
 // Es läuft dasselbe install.sh wie beim Einzeiler (Signatur- und Prüfsummenprüfung inklusive), nur ohne
 // die Einrichtungsfragen; die Einstellungen bleiben. Zusätzlich muss der Signaturschlüssel der Plattform
 // derselbe sein wie bei der Installation (release.pub), sonst wird nichts installiert.
+//
+// Sicherheitsnetz: Vor dem Installieren wird die bisherige Version (release/) als release.prev aufgehoben.
+// Startet die neue nicht, kommt die alte von selbst zurück; `swarvex update --rollback` geht von Hand zurück.
+// Neue Einrichtungsfragen einer Version stellt danach das neue Programm (setup --new), nur diese.
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -160,11 +166,16 @@ func installieren(skript, ca string, ausgabe io.Writer) error {
 
 func updateBefehl(args []string) {
 	fs := flag.NewFlagSet("update", flag.ExitOnError)
-	nurSehen := fs.Bool("check", false, "only show whether a newer version exists")
+	nurSehen := fs.Bool("check", false, "only show whether a newer version exists and what is new")
 	erzwingen := fs.Bool("force", false, "install even if this version is already installed")
+	zurueck := fs.Bool("rollback", false, "go back to the version installed before the last update")
 	sofort := fs.Bool("now", false, "restart the service right away, even during a task (the task is handed back)")
 	plattformWert := fs.String("platform", "", "platform address (default: where you are signed in)")
 	fs.Parse(args)
+	if *zurueck {
+		zurueckBefehl(*sofort)
+		return
+	}
 
 	plattform, ca := plattformUndCA(*plattformWert)
 	if plattform == "" {
@@ -181,13 +192,20 @@ func updateBefehl(args []string) {
 		fmt.Println("✓ Up to date.")
 		return
 	}
+	neuigkeitenZeigen(plattform, ca, version, neu)
 	if *nurSehen {
 		fmt.Println("Update with: swarvex update")
 		return
 	}
-	if installieren(skript, ca, os.Stdout) != nil {
-		fehlerAus("The update did not finish; the previous version keeps running.")
+	os.Remove(ueberspringenDatei()) // von Hand gewollt: auch eine zurückgerollte Version
+	if err := sicherInstallieren(skript, ca, neu, os.Stdout); err != nil {
+		fehlerAus("The update did not finish (" + err.Error() + "); " + versionText(version) + " stays installed.")
 	}
+	fmt.Println("✓ " + versionText(neu) + " installed (back to the previous version, if needed: swarvex update --rollback)")
+	// Neue Einrichtungsfragen kennt nur das neue Programm; es fragt nur, was noch offen ist (sonst still).
+	nachfragen := exec.Command(installiertesProgramm(), "setup", "--new", "--quiet")
+	nachfragen.Stdin, nachfragen.Stdout, nachfragen.Stderr = os.Stdin, os.Stdout, os.Stderr
+	nachfragen.Run()
 	dienstNeuStarten(*sofort, "the new version")
 }
 
@@ -201,10 +219,21 @@ func autoUpdate() {
 	switch {
 	case err != nil:
 		fmt.Println("Automatic update skipped:", err)
+	case istNeuer(neu, version) && strings.TrimSpace(lesen(ueberspringenDatei())) == neu:
+		fmt.Printf("Automatic update: %s skipped (rolled back on this machine; `swarvex update` installs it anyway)\n", versionText(neu))
 	case istNeuer(neu, version):
 		fmt.Printf("Automatic update: %s → %s\n", versionText(version), versionText(neu))
-		if err := installieren(skript, ca, os.Stdout); err != nil {
-			fmt.Println("Automatic update did not finish; continuing with", versionText(version))
+		if text, err := changelogHolen(plattform, ca); err == nil {
+			for _, z := range neuigkeiten(text, version, neu) {
+				fmt.Println(strings.TrimRight("  "+z, " "))
+			}
+		}
+		if err := sicherInstallieren(skript, ca, neu, os.Stdout); err != nil {
+			fmt.Printf("Automatic update did not finish (%v); continuing with %s\n", err, versionText(version))
+			if errors.Is(err, errStartetNicht) {
+				// diese Version nicht jeden Tag wieder versuchen; die nächste kommt wie gewohnt
+				os.WriteFile(ueberspringenDatei(), []byte(neu+"\n"), 0o644)
+			}
 		}
 	}
 }
@@ -239,4 +268,244 @@ func aufgabeLaeuft() bool {
 func neueVersionInstalliert(programm string, start os.FileInfo) bool {
 	jetzt, err := os.Stat(programm)
 	return err == nil && start != nil && !os.SameFile(start, jetzt)
+}
+
+// ---- Sicherheitsnetz: vorherige Version aufheben, neue prüfen, zurückrollen ----
+
+// installiertesProgramm: dorthin legt install.sh das Programm ($BIN/swarvex).
+func installiertesProgramm() string { return heim(".local", "bin", "swarvex") }
+
+// releaseOrdner: das entpackte Paket der installierten Version (Programm und Bauanleitungen der Images).
+func releaseOrdner() string { return filepath.Join(datenOrdner(), "release") }
+
+// ueberspringenDatei: eine zurückgerollte Version, die das automatische Update auslässt.
+func ueberspringenDatei() string { return filepath.Join(konfigOrdner(), "update-skip") }
+
+func lesen(datei string) string {
+	roh, _ := os.ReadFile(datei)
+	return string(roh)
+}
+
+var (
+	errStartetNicht = errors.New("the new version does not start")
+	// errImages: das Programm ist zurück, nur die Images ließen sich nicht neu bauen
+	errImages = errors.New("the images could not be rebuilt")
+)
+
+// versionAus liest die Version aus der Ausgabe von `swarvex version` („swarvex runner v0.9.1“).
+func versionAus(ausgabe string) string {
+	felder := strings.Fields(ausgabe)
+	if len(felder) < 3 || felder[0] != "swarvex" || felder[1] != "runner" {
+		return ""
+	}
+	return strings.TrimPrefix(felder[2], "v")
+}
+
+// programmVersion startet ein Programm einmal mit `version`: startet es überhaupt, und welche Version ist es?
+func programmVersion(programm string) (string, error) {
+	ctx, ende := context.WithTimeout(context.Background(), 20*time.Second)
+	defer ende()
+	aus, err := exec.CommandContext(ctx, programm, "version").Output()
+	if err != nil {
+		return "", err
+	}
+	if v := versionAus(string(aus)); v != "" {
+		return v, nil
+	}
+	return "", fmt.Errorf("unexpected output %q", kuerzen(strings.TrimSpace(string(aus)), 80))
+}
+
+// imagesBauen: wie install.sh, aus dem Paket im Ordner (Bauschritte sind im Cache, wenn sich nichts geändert hat).
+var imagesBauen = func(ordner string, ausgabe io.Writer) error {
+	fmt.Fprintln(ausgabe, "   rebuilding the agent and key proxy images of that version …")
+	schritte := []struct {
+		ordner, was string
+		args        []string
+	}{
+		{ordner, "proxy", []string{"build", "-q", "-f", "Containerfile.proxy", "-t", "swarvex-proxy", "."}},
+		{filepath.Join(ordner, "sandbox"), "agent", []string{"build", "-q", "--target", "opencode", "-t", "swarvex-agent", "."}},
+	}
+	for _, s := range schritte {
+		c := exec.Command("podman", s.args...)
+		c.Dir = s.ordner
+		if aus, err := c.CombinedOutput(); err != nil {
+			grund := strings.TrimSpace(string(aus))
+			if grund == "" {
+				grund = err.Error()
+			}
+			return fmt.Errorf("%w (%s image: %s)", errImages, s.was, kuerzen(grund, 200))
+		}
+	}
+	exec.Command("podman", "rmi", "-f", "swarvex-agent-claude", "swarvex-agent-codex").Run() // beim ersten Gebrauch neu gebaut
+	return nil
+}
+
+// sicherInstallieren: bisherige Version aufheben, installieren, die neue einmal starten. Geht etwas schief,
+// kommt die bisherige zurück (Programm, Paket und, falls schon ersetzt, die Images).
+func sicherInstallieren(skript, ca, neu string, ausgabe io.Writer) error {
+	rel, vorher := releaseOrdner(), releaseOrdner()+".prev"
+	gesichert := false
+	if _, err := os.Stat(filepath.Join(rel, "swarvex")); err == nil {
+		os.RemoveAll(vorher)
+		gesichert = os.Rename(rel, vorher) == nil
+	}
+	err := installieren(skript, ca, ausgabe)
+	if err == nil {
+		if v, e := programmVersion(installiertesProgramm()); e != nil {
+			err = fmt.Errorf("%w: %v", errStartetNicht, e)
+		} else if v != neu {
+			err = fmt.Errorf("%w: it reports version %s instead of %s", errStartetNicht, v, neu)
+		}
+	}
+	if err == nil || !gesichert {
+		return err
+	}
+	fmt.Fprintf(ausgabe, "\n%v; going back to the previous version …\n", err)
+	// Hat install.sh das Programm schon ersetzt, sind womöglich auch die Images neu: dann neu bauen.
+	ersetzt := true
+	if v, e := programmVersion(installiertesProgramm()); e == nil && v == version {
+		ersetzt = false
+	}
+	switch e := zurueckholen(ausgabe, ersetzt); {
+	case errors.Is(e, errImages):
+		fmt.Fprintf(ausgabe, "   previous version restored, but %v: swarvex doctor shows what is missing\n", e)
+	case e != nil:
+		return fmt.Errorf("%v; going back failed too (%v): run the one-liner from the website again", err, e)
+	default:
+		fmt.Fprintln(ausgabe, "   previous version restored")
+	}
+	return err
+}
+
+// zurueckholen setzt release.prev wieder als installierte Version ein; mitImages baut deren Images neu.
+func zurueckholen(ausgabe io.Writer, mitImages bool) error {
+	rel, vorher := releaseOrdner(), releaseOrdner()+".prev"
+	if _, err := os.Stat(filepath.Join(vorher, "swarvex")); err != nil {
+		return errors.New("no previous version kept")
+	}
+	weg := rel + ".failed"
+	os.RemoveAll(weg)
+	if _, err := os.Stat(rel); err == nil {
+		if err := os.Rename(rel, weg); err != nil {
+			return err
+		}
+	}
+	if err := os.Rename(vorher, rel); err != nil {
+		return err
+	}
+	os.RemoveAll(weg)
+	if err := programmEinsetzen(filepath.Join(rel, "swarvex"), installiertesProgramm()); err != nil {
+		return err
+	}
+	if mitImages {
+		return imagesBauen(rel, ausgabe)
+	}
+	return nil
+}
+
+// programmEinsetzen kopiert ein Programm an sein Ziel und tauscht es in einem Schritt aus (neue Datei, wie install -m 755;
+// ein laufender Dauerbetrieb merkt das und lädt sich zwischen zwei Aufgaben neu).
+func programmEinsetzen(quelle, ziel string) error {
+	roh, err := os.ReadFile(quelle)
+	if err != nil {
+		return err
+	}
+	os.MkdirAll(filepath.Dir(ziel), 0o755)
+	tmp := ziel + ".new"
+	if err := os.WriteFile(tmp, roh, 0o755); err != nil {
+		return err
+	}
+	os.Chmod(tmp, 0o755)
+	return os.Rename(tmp, ziel)
+}
+
+// zurueckBefehl: swarvex update --rollback
+func zurueckBefehl(sofort bool) {
+	alt, err := programmVersion(filepath.Join(releaseOrdner()+".prev", "swarvex"))
+	if err != nil {
+		fehlerAus("No previous version is kept on this machine (it is kept from v0.9.1 on, at the next update); nothing changed.")
+	}
+	fmt.Printf("Going back from %s to %s …\n", versionText(version), versionText(alt))
+	switch err := zurueckholen(os.Stdout, true); {
+	case errors.Is(err, errImages):
+		fmt.Printf("! %s is back, but %v.\n  Check with: swarvex doctor\n", versionText(alt), err)
+	case err != nil:
+		fehlerAus("Going back failed (" + err.Error() + "). If swarvex no longer works, run the one-liner from the website again.")
+	}
+	if version != "dev" {
+		os.WriteFile(ueberspringenDatei(), []byte(version+"\n"), 0o644)
+	}
+	fmt.Printf("✓ %s installed. Automatic updates skip %s; newer versions come as usual (or now: swarvex update).\n", versionText(alt), versionText(version))
+	dienstNeuStarten(sofort, versionText(alt))
+}
+
+// ---- Was ist neu: die Einträge aus CHANGELOG.md zwischen installierter und neuer Version ----
+
+func changelogHolen(plattform, ca string) (string, error) {
+	c := httpClient(ca)
+	c.Timeout = 10 * time.Second
+	r, err := c.Get(strings.TrimRight(plattform, "/") + "/downloads/CHANGELOG.md")
+	if err != nil {
+		return "", err
+	}
+	defer r.Body.Close()
+	if r.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP %d", r.StatusCode)
+	}
+	roh, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	return string(roh), err
+}
+
+var changelogKopf = regexp.MustCompile(`^## v?(\d+(?:\.\d+)*)\b`)
+
+// neuigkeiten: die Abschnitte „## X.Y.Z …“ mit alt < X.Y.Z ≤ neu, neueste zuerst wie in der Datei.
+func neuigkeiten(text, alt, neu string) []string {
+	var r []string
+	drin := false
+	for _, z := range strings.Split(strings.ReplaceAll(text, "\r", ""), "\n") {
+		switch m := changelogKopf.FindStringSubmatch(z); {
+		case m != nil:
+			drin = istNeuer(m[1], alt) && !istNeuer(m[1], neu)
+			if drin {
+				r = append(r, "", strings.TrimPrefix(z, "## "))
+			}
+		case strings.HasPrefix(z, "#"):
+			drin = false
+		case drin:
+			r = append(r, strings.TrimRight(z, " "))
+		}
+	}
+	// Leerzeilen am Rand weg, mehrere hintereinander zu einer
+	var sauber []string
+	for _, z := range r {
+		if z == "" && (len(sauber) == 0 || sauber[len(sauber)-1] == "") {
+			continue
+		}
+		sauber = append(sauber, z)
+	}
+	for len(sauber) > 0 && sauber[len(sauber)-1] == "" {
+		sauber = sauber[:len(sauber)-1]
+	}
+	return sauber
+}
+
+func neuigkeitenZeigen(plattform, ca, alt, neu string) {
+	text, err := changelogHolen(plattform, ca)
+	if err != nil {
+		return
+	}
+	zeilen := neuigkeiten(text, alt, neu)
+	if len(zeilen) == 0 {
+		return
+	}
+	fmt.Println("\nWhat's new:")
+	const hoechstens = 40
+	for i, z := range zeilen {
+		if i == hoechstens {
+			fmt.Printf("  … the full list: %s/downloads/CHANGELOG.md\n", strings.TrimRight(plattform, "/"))
+			break
+		}
+		fmt.Println(strings.TrimRight("  "+z, " "))
+	}
+	fmt.Println()
 }

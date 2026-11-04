@@ -162,16 +162,21 @@ func budgetBefehl(args []string) {
 	if !mitDienst {
 		return
 	}
+	einheitSchreiben(string(einheit), dienst)
+	dienstNeuStarten(*sofort, "the new limits")
+}
+
+// einheitSchreiben: die Dienst-Einheit mit neuen Argumenten, für dasselbe Programm wie bisher.
+func einheitSchreiben(einheit string, dienst []string) {
 	programm, err := os.Executable()
 	pruefen(err)
-	if teile := systemdTeilen(strings.TrimPrefix(zeileMit(string(einheit), "ExecStart="), "ExecStart=")); len(teile) > 0 {
-		programm = teile[0] // dasselbe Programm wie bisher
+	if teile := systemdTeilen(strings.TrimPrefix(zeileMit(einheit, "ExecStart="), "ExecStart=")); len(teile) > 0 {
+		programm = teile[0]
 	}
 	pruefen(os.WriteFile(dienstDatei(), []byte(dienstEinheit(programm, dienst)), 0o644))
 	if aus, err := systemctl("daemon-reload"); err != nil {
 		fehlerAus("systemctl --user daemon-reload: " + aus)
 	}
-	dienstNeuStarten(*sofort, "the new limits")
 }
 
 func zeileMit(text, anfang string) string {

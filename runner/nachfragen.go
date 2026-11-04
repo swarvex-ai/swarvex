@@ -1,0 +1,153 @@
+package main
+
+// Neue Einstellungen: Bringt eine Version eine neue Frage in die Einrichtung, stellt `swarvex update` danach nur
+// diese (über `swarvex setup --new`), nie die ganze Einrichtung noch einmal. Was schon gefragt wurde, steht in
+// asked.json; was ohne Terminal (automatisches Update) offen bleibt, gilt mit dem Standard und erscheint als
+// Hinweis im Log und in `swarvex doctor`.
+
+import (
+	"encoding/json"
+	"flag"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+// einrichtungStand: gespeicherte Angaben (work.json) und die der Dienst-Einheit, so wie die Fragen sie brauchen.
+type einrichtungStand struct {
+	work, dienst       []string
+	mitDienst          bool
+	workNeu, dienstNeu bool
+	einheit            string
+}
+
+type neueFrage struct {
+	Name, Seit, Titel string
+	offen             func(e *einrichtungStand) bool // betrifft diese Einrichtung und ist noch nicht gesetzt
+	fragen            func(f *frager, e *einrichtungStand)
+}
+
+const autoUpdateFrage = "Install runner updates automatically (at most once a day, between tasks, signature checked)?"
+
+// neueFragen: jede Frage, die nach v0.9.0 in die Einrichtung kommt, gehört auch hierher (mit der Version).
+var neueFragen = []neueFrage{
+	{Name: "auto-update", Seit: "0.9.0", Titel: "automatic updates",
+		offen: func(e *einrichtungStand) bool { return e.mitDienst && !hatFlag(e.dienst, "auto-update") },
+		fragen: func(f *frager, e *einrichtungStand) {
+			if f.jaNein(autoUpdateFrage, true) {
+				e.dienst, e.dienstNeu = append(e.dienst, "--auto-update"), true
+			}
+		}},
+}
+
+func gefragtDatei() string { return filepath.Join(konfigOrdner(), "asked.json") }
+
+func gefragtLesen(datei string) map[string]bool {
+	var g struct {
+		Gefragt []string `json:"asked"`
+	}
+	json.Unmarshal([]byte(lesen(datei)), &g)
+	r := map[string]bool{}
+	for _, n := range g.Gefragt {
+		r[n] = true
+	}
+	return r
+}
+
+func gefragtMerken(datei string, namen ...string) {
+	g := gefragtLesen(datei)
+	for _, n := range namen {
+		g[n] = true
+	}
+	liste := make([]string, 0, len(g))
+	for _, f := range neueFragen { // in fester Reihenfolge, Unbekanntes hinten
+		if g[f.Name] {
+			liste = append(liste, f.Name)
+			delete(g, f.Name)
+		}
+	}
+	for n := range g {
+		liste = append(liste, n)
+	}
+	roh, _ := json.MarshalIndent(map[string]any{"asked": liste}, "", "  ")
+	os.MkdirAll(filepath.Dir(datei), 0o700)
+	os.WriteFile(datei, roh, 0o600)
+}
+
+func einrichtungLaden() *einrichtungStand {
+	e := &einrichtungStand{work: gespeicherteArgs()}
+	einheit, err := os.ReadFile(dienstDatei())
+	if err == nil {
+		e.einheit = string(einheit)
+		e.dienst, e.mitDienst = einheitArgsLesen(e.einheit)
+	}
+	return e
+}
+
+// offeneFragen: neue Fragen, die diese Einrichtung betreffen und noch nie gestellt wurden.
+func offeneFragen(e *einrichtungStand, gefragt map[string]bool) []neueFrage {
+	var r []neueFrage
+	for _, f := range neueFragen {
+		if !gefragt[f.Name] && f.offen(e) {
+			r = append(r, f)
+		}
+	}
+	return r
+}
+
+// offeneTitel: für Hinweise („automatic updates, …“); leer, wenn nichts offen ist.
+func offeneTitel() string {
+	offen := offeneFragen(einrichtungLaden(), gefragtLesen(gefragtDatei()))
+	titel := make([]string, len(offen))
+	for i, f := range offen {
+		titel[i] = f.Titel
+	}
+	return strings.Join(titel, ", ")
+}
+
+// neueEinstellungen: swarvex setup --new. still: von `swarvex update` aus, ohne Ausgabe, wenn nichts offen ist.
+func neueEinstellungen(still bool) {
+	e := einrichtungLaden()
+	offen := offeneFragen(e, gefragtLesen(gefragtDatei()))
+	if len(offen) == 0 {
+		if !still {
+			fmt.Println("No new settings: everything is set up (all questions again: swarvex setup).")
+		}
+		return
+	}
+	f, ok := neuerFrager()
+	if !ok {
+		fmt.Println("New settings to choose: " + offeneTitel() + ". Run in a terminal: swarvex setup --new")
+		return
+	}
+	fmt.Println("\nNew in this version, one question each (everything else stays as it is):")
+	namen := make([]string, 0, len(offen))
+	for _, q := range offen {
+		q.fragen(f, e)
+		namen = append(namen, q.Name)
+	}
+	if e.workNeu {
+		pruefen(argsSpeichern(e.work))
+	}
+	if e.dienstNeu {
+		einheitSchreiben(e.einheit, e.dienst)
+	}
+	gefragtMerken(gefragtDatei(), namen...)
+	fmt.Println("Saved.")
+	if e.dienstNeu && !still { // von update aus startet update den Dienst selbst neu
+		dienstNeuStarten(false, "the new settings")
+	}
+}
+
+func setupBefehl(args []string) {
+	fs := flag.NewFlagSet("setup", flag.ExitOnError)
+	nurNeue := fs.Bool("new", false, "only ask what is new since your last setup (swarvex update does this by itself)")
+	still := fs.Bool("quiet", false, "with --new: say nothing if there is nothing new")
+	fs.Parse(args)
+	if *nurNeue {
+		neueEinstellungen(*still)
+		return
+	}
+	setupDialog(true)
+}

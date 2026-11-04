@@ -143,17 +143,17 @@ func doctorBefehl() {
 		default:
 			hinweis("service is "+zustand, "swarvex start")
 		}
-		einheit, _ := os.ReadFile(dienstDatei())
-		if dienst, ok := einheitArgsLesen(string(einheit)); ok {
-			if !hatFlag(dienst, "auto-update") {
-				hinweis("automatic updates are off", "swarvex setup (answer yes to automatic updates)")
-			}
-		}
 		if aus, _ := exec.Command("loginctl", "show-user", os.Getenv("USER"), "-p", "Linger", "--value").Output(); strings.TrimSpace(string(aus)) != "yes" && !istWSL() {
 			hinweis("the service only runs while you are logged in", "loginctl enable-linger")
 		}
 	})
-	// 5. Speicherplatz
+	// 5. Neue Einstellungen, die noch niemand beantwortet hat (z. B. nach einem automatischen Update)
+	pruefe(func() {
+		if t := offeneTitel(); t != "" {
+			hinweis("new settings to choose: "+t, "swarvex setup --new (asks only these)")
+		}
+	})
+	// 6. Speicherplatz
 	pruefe(func() {
 		var st syscall.Statfs_t
 		ordner := datenOrdner()

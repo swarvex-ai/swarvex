@@ -24,8 +24,13 @@ On Windows the same happens through `irm https://<platform>/install.ps1 | iex`: 
 
 ```bash
 swarvex update           # newest version, same signature check as the one-liner; settings stay
-swarvex update --check   # only look
+swarvex update --check   # only look, and show what is new
+swarvex update --rollback  # back to the version before the last update
 ```
+
+- **No questions:** an update asks nothing; your settings stay. Only when a new version brings a new setup question does `swarvex update` ask that one question (later also `swarvex setup --new`; `swarvex doctor` shows what is still open). Unattended, the default applies until you answer.
+- **Safety net:** the update keeps the previous version (`~/.local/share/swarvex/release.prev`) and starts the new one once. If it does not start, the previous one comes back by itself, with its images. `swarvex update --rollback` goes back by hand; automatic updates then skip that version until a newer one appears.
+- **What's new:** `swarvex update` and `--check` show the [changelog](https://github.com/swarvex-ai/swarvex/blob/main/runner/CHANGELOG.md) entries since your version.
 
 - **Automatic updates:** the setup asks for them (suggestion: yes). The service then checks once a day, only between two tasks, installs through the same signed installer and reloads itself; no task is interrupted.
 - **Pinned signing key:** the installer remembers the release signing key (`~/.config/swarvex/release.pub`). `swarvex update` and automatic updates only install while the platform signs with that same key; after an announced key change, install again with the one-liner.

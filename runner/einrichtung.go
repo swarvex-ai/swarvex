@@ -468,12 +468,6 @@ func projekteFuer(projekt string, z *zugangsdaten) []string {
 
 // ---- swarvex setup ----
 
-func setupBefehl(args []string) {
-	fs := flag.NewFlagSet("setup", flag.ExitOnError)
-	fs.Parse(args)
-	setupDialog(true)
-}
-
 // setupDialog fragt alles ab, speichert und liefert die Angaben für `work`. ausfuehren: danach gleich starten oder Dienst einrichten.
 func setupDialog(ausfuehren bool) []string {
 	f, ok := neuerFrager()
@@ -594,9 +588,10 @@ func setupDialog(ausfuehren bool) []string {
 			vorschlag = "0"
 		}
 		dienstArgs = append(dienstArgs, "--daily-budget-tokens", f.frage("Tokens per day at most (0 = no limit)", vorschlag))
-		if f.jaNein("Install runner updates automatically (at most once a day, between tasks, signature checked)?", true) {
+		if f.jaNein(autoUpdateFrage, true) {
 			dienstArgs = append(dienstArgs, "--auto-update")
 		}
+		gefragtMerken(gefragtDatei(), "auto-update")
 		if abo {
 			fmt.Println("  Leftover mode (beta): your agent only uses what your subscription would let expire, in the last 24 hours")
 			fmt.Println("  before the weekly reset, keeps 10 % of the week for you and never fills your 5-hour window beyond 80 %.")
