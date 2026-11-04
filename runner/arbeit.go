@@ -20,6 +20,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -394,7 +395,11 @@ func snapshotHolen(z *zugangsdaten, token string, id int64, ziel string) error {
 			os.MkdirAll(pfad, 0o755)
 		case tar.TypeReg:
 			os.MkdirAll(filepath.Dir(pfad), 0o755)
-			f, err := os.OpenFile(pfad, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+			modus := os.FileMode(0o644)
+			if h.Mode&0o111 != 0 {
+				modus = 0o755 // Ausführbare Skripte (z. B. tools/run_tests.sh) bleiben ausführbar.
+			}
+			f, err := os.OpenFile(pfad, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, modus)
 			if err != nil {
 				return err
 			}
@@ -539,9 +544,13 @@ func zufall(n int) string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
+// terminalSteuerung: ANSI-Escape-Sequenzen (Farben, Cursor), die Agenten in ihre Ausgabe schreiben.
+var terminalSteuerung = regexp.MustCompile(`\x1b(\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(\x07|\x1b\\)|[@-Z\\-_])`)
+
 func zusammenfassungAus(protokoll string) string {
+	protokoll = terminalSteuerung.ReplaceAllString(protokoll, "")
 	if len(protokoll) > 4000 {
-		protokoll = protokoll[len(protokoll)-4000:]
+		protokoll = strings.ToValidUTF8(protokoll[len(protokoll)-4000:], "")
 	}
 	return "Worked on in the sandbox. Last output of the agent:\n" + protokoll
 }
