@@ -154,7 +154,10 @@ const server = createServer(async (req, res) => {
         throw e;
       }
       if (gebremst("mcp", `agent:${z.agentId}`)) return;
-      return await mcpBehandeln(db, z, req, res, await koerper(req));
+      let eingabe;
+      try { eingabe = await koerper(req); }
+      catch { return json(res, 400, { jsonrpc: "2.0", error: { code: -32700, message: "parse error: invalid JSON or request too large" }, id: null }); }
+      return await mcpBehandeln(db, z, req, res, eingabe);
     }
 
     const snap = /^\/tasks\/(\d+)\/(snapshot|lfs\/([0-9a-f]{64}))$/.exec(url.pathname);
@@ -179,7 +182,10 @@ const server = createServer(async (req, res) => {
       catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
     }
 
-    if (url.pathname.startsWith("/pipeline/")) return await pruefstrasse(req, res, url);
+    if (url.pathname.startsWith("/pipeline/")) {
+      if (gebremst("pruefstrasse", ip)) return;
+      return await pruefstrasse(req, res, url);
+    }
 
     // Veröffentlichte Kopf-Hashes des Protokolls (für den externen Anker und alle, die nachprüfen wollen)
     if (req.method === "GET" && url.pathname === "/api/log/head") {

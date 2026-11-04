@@ -208,6 +208,13 @@ func einePruefung(e einreichung) (bool, string) {
 		return false, "patch does not apply to the base commit:\n" + aus
 	}
 	befehl(baum, nil, "git", "apply", patchDatei)
+	// Maßgeblich ist, was sich im Baum wirklich geändert hat, nicht was im Text des Patches steht.
+	if p, err := geschuetztGeaendert(baum); err != nil || p != "" {
+		if err != nil {
+			return false, "could not list the changed files: " + err.Error()
+		}
+		return false, "contribution changes a protected file: " + p
+	}
 	exec.Command("chmod", "-R", "a+rwX", baum).Run()
 
 	// Prüfvertrag: Umgebung des Projekts (auf dem Stand des Basis-Commits samt Beitrag), Abhängigkeiten mit
@@ -221,12 +228,11 @@ func einePruefung(e einreichung) (bool, string) {
 		// Proprietäre Engines prüfen die Runner der Mitstreiter (eigener Lauf + Gegenprüfung, E-31).
 		return false, b.String() + fmt.Sprintf("this project needs %s; the platform has contributor runners check it, not the test pipeline", u.Engine)
 	}
-	for _, zeile := range strings.Split(e.Patch, "\n") {
-		if teile := strings.Fields(strings.TrimPrefix(zeile, "diff --git ")); strings.HasPrefix(zeile, "diff --git ") && len(teile) == 2 {
-			for _, p := range teile {
-				if pfad := strings.TrimPrefix(strings.TrimPrefix(p, "a/"), "b/"); u.Gesperrt(pfad) {
-					return false, b.String() + "contribution changes a protected file: " + pfad
-				}
+	// Projekteigene geschützte Pfade (swarvex.yaml protect:) kennt erst die Umgebung
+	if pfade, err := geaendertePfade(baum); err == nil {
+		for _, p := range pfade {
+			if u.Gesperrt(p) {
+				return false, b.String() + "contribution changes a protected file: " + p
 			}
 		}
 	}
@@ -352,6 +358,13 @@ func einMerge(e einreichung) (string, error) {
 		}
 		return "", &konflikt{kopf: strings.TrimSpace(kopf), bericht: strings.TrimSpace(bericht)}
 	}
+	// Zweite Schranke vor dem Push: geschützte Dateien nie in den Hauptzweig, egal wie der Patch geschrieben ist
+	if p, err := geschuetztGeaendert(dir); err != nil || p != "" {
+		if err != nil {
+			return "", fmt.Errorf("listing the changed files: %v", err)
+		}
+		return "", fmt.Errorf("refused: the contribution changes the protected file %s", p)
+	}
 	nachricht := fmt.Sprintf("%s\n\nContributed through swarvex.ai.\n\nTask: %s#%d\nContributed-by: %s (%s)\nCheck: pass (submission %d)\nReviewed-by: %s — %s\nRights-confirmed-by: %s (contribution statement with submission %d)\n",
 		e.Titel, e.Slug, e.AufgabeID, e.Mensch, e.Agent, e.EinreichungID, e.LeadAgent, e.Begruendung, e.Mensch, e.EinreichungID)
 	if aus, err := befehl(dir, append(env, "GIT_AUTHOR_NAME="+e.Mensch, "GIT_AUTHOR_EMAIL="+e.Mensch+"@swarvex.invalid",
@@ -364,4 +377,39 @@ func einMerge(e einreichung) (string, error) {
 	}
 	aus, _ := befehl(dir, nil, "git", "rev-parse", "HEAD")
 	return strings.TrimSpace(aus), nil
+}
+
+// geaendertePfade: alle Dateien, die sich im Baum gegenüber HEAD geändert haben (angelegt, geändert, gelöscht,
+// umbenannt als Löschen plus Anlegen), so wie Git sie sieht.
+func geaendertePfade(baum string) ([]string, error) {
+	if aus, err := befehl(baum, nil, "git", "add", "-A"); err != nil {
+		return nil, fmt.Errorf("git add: %s", aus)
+	}
+	cmd := exec.Command("git", "-c", "core.quotePath=false", "diff", "--cached", "--name-only", "--no-renames", "-z", "HEAD")
+	cmd.Dir = baum
+	aus, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	var pfade []string
+	for _, p := range strings.Split(string(aus), "\x00") {
+		if p != "" {
+			pfade = append(pfade, p)
+		}
+	}
+	return pfade, nil
+}
+
+// geschuetztGeaendert: der erste geänderte Pfad, den kein Beitrag ändern darf (feste Liste), sonst "".
+func geschuetztGeaendert(baum string) (string, error) {
+	pfade, err := geaendertePfade(baum)
+	if err != nil {
+		return "", err
+	}
+	for _, p := range pfade {
+		if umgebung.IstGeschuetzt(p) {
+			return p, nil
+		}
+	}
+	return "", nil
 }

@@ -38,21 +38,36 @@ function json(res: ServerResponse, status: number, wert: unknown) {
   res.end(JSON.stringify(wert));
 }
 
-async function rohKoerper(req: IncomingMessage): Promise<string> {
+/** Höchstens so viel liest die Schnittstelle, bevor die Signatur geprüft ist (Berichte samt Build-Ausgabe passen bequem). */
+const MAX_KOERPER = 16 << 20;
+
+async function rohKoerper(req: IncomingMessage): Promise<string | null> {
   const teile: Buffer[] = [];
-  for await (const t of req) teile.push(t as Buffer);
+  let groesse = 0;
+  for await (const t of req) {
+    groesse += (t as Buffer).length;
+    if (groesse > MAX_KOERPER) return null;
+    teile.push(t as Buffer);
+  }
   return Buffer.concat(teile).toString("utf8");
 }
+
+// Abgewiesene Anfragen kommen ins öffentliche Protokoll, aber höchstens eine je Minute (sonst ließe es sich fluten).
+let zuletztProtokolliert = 0;
 
 export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
   return async (req: IncomingMessage, res: ServerResponse, url: URL) => {
     const koerper = await rohKoerper(req);
+    if (koerper === null) return json(res, 413, { error: "request too large" });
     const zeit = String(req.headers["x-time"] ?? "");
     const sig = String(req.headers["x-signature"] ?? "");
     const erwartet = signatur(geheimnis, zeit, req.method ?? "", url.pathname, koerper);
     const frisch = Math.abs(Date.now() - Number(zeit)) < 5 * 60_000;
     if (!geheimnis || !frisch || sig.length !== erwartet.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(erwartet))) {
-      await transaktion(db, (tx) => protokollieren(tx, { projekt_id: null, akteur: "unbekannt", art: "pruefstrasse_abgewiesen", bezug: url.pathname, daten: { grund: frisch ? "signatur" : "zeitstempel" } }));
+      if (Date.now() - zuletztProtokolliert > 60_000) {
+        zuletztProtokolliert = Date.now();
+        await transaktion(db, (tx) => protokollieren(tx, { projekt_id: null, akteur: "unbekannt", art: "pruefstrasse_abgewiesen", bezug: url.pathname, daten: { grund: frisch ? "signatur" : "zeitstempel" } }));
+      } else console.warn(`pipeline: rejected ${req.method} ${url.pathname} (${frisch ? "signature" : "timestamp"})`);
       return json(res, 401, { error: "invalid signature" });
     }
     const daten = koerper ? JSON.parse(koerper) : {};

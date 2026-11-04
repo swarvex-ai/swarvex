@@ -1,7 +1,9 @@
 // Koordinations-Kern: Aufgaben-Zustandsmaschine, Leases, Einreichungen, Bewertungen.
 // Jede Zustandsänderung läuft in einer Transaktion und schreibt ihr Ereignis in dieselbe
 // Transaktion – entweder beides oder nichts (docs/concept.md §3).
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { tmpdir } from "node:os";
 import { matchesGlob } from "node:path";
 import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
@@ -294,16 +296,90 @@ export async function fortschritt(db: Db, wer: Wer, aufgabeId: number, notiz: st
   });
 }
 
-/** Geänderte Pfade aus einem Patch im git-format-patch/diff-Format. */
+/** Git-Schreibweise eines Pfads lesen: in Anführungszeichen mit C-Escapes ("a\\tb\\303\\244"), sonst wörtlich. */
+export function gitPfadLesen(roh: string): { pfad: string; rest: string } | null {
+  if (!roh.startsWith('"')) return null;
+  const bytes: number[] = [];
+  const ESC: Record<string, number> = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, "\\": 92 };
+  for (let i = 1; i < roh.length; i++) {
+    const z = roh[i];
+    if (z === '"') return { pfad: Buffer.from(bytes).toString("utf8"), rest: roh.slice(i + 1) };
+    if (z !== "\\") { bytes.push(...Buffer.from(z, "utf8")); continue; }
+    const n = roh[++i];
+    if (n === undefined) return null;
+    if (/[0-7]/.test(n)) { bytes.push(parseInt(roh.slice(i, i + 3), 8)); i += 2; continue; }
+    if (!(n in ESC)) return null;
+    bytes.push(ESC[n]);
+  }
+  return null;
+}
+
+/** Ein Name aus einer Kopfzeile: in Anführungszeichen oder wörtlich bis zum Tab (Zeitstempel klassischer Diffs). */
+function name(roh: string): string {
+  return gitPfadLesen(roh)?.pfad ?? roh.split("\t")[0];
+}
+
+/** Erste Pfadkomponente weg, wie git apply -p1 ("a/x", "b/x", aber auch "irgendwas/x"). */
+const ohnePraefix = (p: string) => p.replace(/^[^/]*\//, "");
+
+/**
+ * Pfade aus dem Text eines Patches: Kopfzeilen diff --git, ---/+++ (auch klassische Diffs ohne a/ b/),
+ * rename/copy from/to, Namen in Anführungszeichen. Lieber ein Pfad zu viel als einer zu wenig:
+ * Die Liste dient der Prüfung, und git apply darf nichts anfassen, was hier fehlt (siehe gitPfade).
+ */
 export function geaendertePfade(patch: string): string[] {
   const pfade = new Set<string>();
-  for (const zeile of patch.split("\n")) {
-    const m = /^diff --git a\/(.+?) b\/(.+)$/.exec(zeile);
-    if (m) { pfade.add(m[1]); pfade.add(m[2]); continue; }
-    const z = /^(?:\+\+\+|---) (?:a|b)\/(.+)$/.exec(zeile);
-    if (z) pfade.add(z[1]);
+  const zeilen = patch.split("\n").map((z) => z.replace(/\r$/, ""));
+  const kopfName = (roh: string) => { const n = name(roh).trimEnd(); if (n !== "/dev/null") pfade.add(ohnePraefix(n)); };
+  zeilen.forEach((zeile, i) => {
+    const umb = /^(?:rename|copy) (?:from|to) (.+)$/.exec(zeile);
+    if (umb) { pfade.add(name(umb[1])); return; }
+    // ---/+++ nur als Paar (wie git apply); so zählt eine entfernte Kommentarzeile "-- x" nicht als Dateiname
+    if (zeile.startsWith("--- ") && zeilen[i + 1]?.startsWith("+++ ")) { kopfName(zeile.slice(4)); kopfName(zeilen[i + 1].slice(4)); return; }
+    const kopf = /^diff --git (.+)$/.exec(zeile);
+    if (!kopf) return;
+    const rest = kopf[1];
+    const erster = gitPfadLesen(rest);
+    if (erster) {
+      pfade.add(ohnePraefix(erster.pfad));
+      const zweiter = erster.rest.trimStart();
+      pfade.add(ohnePraefix(gitPfadLesen(zweiter)?.pfad ?? zweiter));
+      return;
+    }
+    // Ohne Anführungszeichen ist die Trennung bei Leerzeichen im Namen mehrdeutig. git nimmt den Namen aus dieser
+    // Zeile nur, wenn beide Hälften gleich sind (a/X b/X); sonst stehen die Namen in ---/+++ oder rename/copy.
+    for (let j = rest.indexOf(" "); j > 0; j = rest.indexOf(" ", j + 1)) {
+      const links = ohnePraefix(rest.slice(0, j)), rechts = ohnePraefix(gitPfadLesen(rest.slice(j + 1))?.pfad ?? rest.slice(j + 1));
+      if (links && links === rechts) { pfade.add(links); break; }
+    }
+  });
+  return [...pfade].filter(Boolean);
+}
+
+/**
+ * Pfade, die git apply selbst aus dem Patch liest (git apply --numstat -z, wendet nichts an). Das ist maßgeblich:
+ * genau diese Dateien würde git apply in Prüfstraße und Merge-Bot anlegen, ändern oder löschen.
+ * null, wenn git den Patch nicht lesen kann.
+ */
+export function gitPfade(patch: string): string[] | null {
+  let aus: string;
+  try {
+    aus = execFileSync("git", ["apply", "--numstat", "-z", "-"], {
+      input: patch, cwd: tmpdir(), encoding: "utf8", timeout: 15_000, maxBuffer: 16 << 20,
+      env: { ...process.env, GIT_CEILING_DIRECTORIES: tmpdir(), GIT_CONFIG_NOSYSTEM: "1", HOME: tmpdir() }, stdio: ["pipe", "pipe", "ignore"],
+    });
+  } catch {
+    return null;
   }
-  return [...pfade];
+  const pfade: string[] = [];
+  const teile = aus.split("\0");
+  for (let i = 0; i < teile.length; i++) {
+    const m = /^(?:\d+|-)\t(?:\d+|-)\t([\s\S]*)$/.exec(teile[i]);
+    if (!m) continue;
+    if (m[1]) pfade.push(m[1]);
+    else { pfade.push(teile[i + 1] ?? "", teile[i + 2] ?? ""); i += 2; } // Umbenennung: alter und neuer Name folgen
+  }
+  return pfade.filter(Boolean);
 }
 
 /**
@@ -315,16 +391,24 @@ export const GESCHUETZT = ["swarvex.yaml", ".devcontainer/**", ".devcontainer.js
   // Anweisungen an Agenten (Skills, Agenten-Konfiguration): sonst könnte ein Beitrag spätere Agenten steuern.
   ".agents/**", ".claude/**", ".codex/**", ".opencode/**", "CLAUDE.md", "opencode.json", "opencode.jsonc"];
 
+/** Geschützt, unabhängig von Groß- und Kleinschreibung (agents.md auf Systemen, die das nicht unterscheiden). */
+export const istGeschuetzt = (p: string) => GESCHUETZT.some((g) => matchesGlob(p.toLowerCase(), g.toLowerCase()));
+
 export function patchPruefen(patch: string, erlaubt: string[]): string[] {
   const fehler: string[] = [];
-  const pfade = geaendertePfade(patch);
-  if (pfade.length === 0) fehler.push("patch contains no file changes");
+  const ausGit = gitPfade(patch);
+  if (ausGit === null) return ["git cannot read the patch (git apply --numstat failed); submit a patch made with git diff"];
+  // Beide Lesarten zusammen: was git anfasst, und was im Text steht (z. B. die Quelle einer Umbenennung)
+  const pfade = [...new Set([...ausGit, ...geaendertePfade(patch)])];
+  if (ausGit.length === 0) fehler.push("patch contains no file changes");
   for (const p of pfade) {
-    if (p.includes("..") || p.startsWith("/")) fehler.push(`invalid path: ${p}`);
-    else if (GESCHUETZT.some((g) => matchesGlob(p, g))) fehler.push(`protected file (environment, project rules or CI): ${p}`);
+    if (p.includes("..") || p.startsWith("/") || /[\x00-\x1f\x7f]/.test(p) || p.split("/").includes(".git"))
+      fehler.push(`invalid path: ${JSON.stringify(p)}`);
+    else if (istGeschuetzt(p)) fehler.push(`protected file (environment, project rules or CI): ${p}`);
     else if (!erlaubt.some((g) => matchesGlob(p, g))) fehler.push(`outside the allowed paths: ${p}`);
   }
-  if (pfade.length > GRENZEN.dateien) fehler.push(`too many files: ${pfade.length} > ${GRENZEN.dateien}`);
+  const dateien = new Set(ausGit).size;
+  if (dateien > GRENZEN.dateien) fehler.push(`too many files: ${dateien} > ${GRENZEN.dateien}`);
   const zeilen = patch.split("\n").filter((z) => /^[+-](?![+-]{2} )/.test(z)).length;
   if (zeilen > GRENZEN.zeilen) fehler.push(`too many changed lines: ${zeilen} > ${GRENZEN.zeilen}`);
   return fehler;

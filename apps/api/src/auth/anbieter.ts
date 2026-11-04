@@ -11,13 +11,15 @@ import { konfig, RESSOURCE } from "../konfig.ts";
 import { pgAdapter } from "./adapter.ts";
 import type { Schluessel } from "./schluessel.ts";
 import { oeffentlicheAdresse } from "./netz.ts";
+import { esc } from "./interaktion.ts";
 
 const englisch = (ctx: { get(name: string): string }) => !/^de\b/i.test(ctx.get("accept-language") ?? "");
 const seite = (titel: string, inhalt: string, en = true) => `<!doctype html><html lang="${en ? "en" : "de"}"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>${titel}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(titel)}</title>
 <style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;color:#1d2328}
-input,button{font:inherit;padding:.5rem .75rem}code{background:#eef1f3;padding:.1rem .3rem}</style></head>
-<body><h1>${titel}</h1>${inhalt}</body></html>`;
+input,button{font:inherit;padding:.5rem .75rem}code{background:#eef1f3;padding:.1rem .3rem}
+.warnung{border-left:4px solid #d4a72c;padding:.5rem .75rem;background:#fff8e5}</style></head>
+<body><h1>${esc(titel)}</h1>${inhalt}</body></html>`;
 
 export function anbieterErstellen(db: Db, schluessel: Schluessel) {
   const anbieter = new Provider(konfig.basis, {
@@ -81,14 +83,20 @@ export function anbieterErstellen(db: Db, schluessel: Schluessel) {
               <p>Gib den Code ein, den dein Runner anzeigt.</p>${form}<button type="submit" form="op.deviceInputForm">Weiter</button>`, false);
         },
         userCodeConfirmSource: async (ctx, form, client, _info, userCode) => {
-          const name = client.clientName ?? client.clientId;
+          // Name und Code stammen vom Client (selbst registriert): immer maskieren
+          const name = esc(String(client.clientName ?? client.clientId));
+          const code = esc(String(userCode));
           ctx.body = englisch(ctx)
             ? seite("Confirm the device", `<p>The agent <strong>${name}</strong> wants to work on tasks on your behalf.</p>
-              <p>Code: <code>${userCode}</code>. Does it match what the runner shows?</p>${form}
+              <p>Code: <code>${code}</code>. Does it match what the runner shows?</p>
+              <p class="warnung"><strong>Only confirm if you started this sign-in yourself, on your own computer, just now.</strong>
+              If someone sent you this link or code, cancel: they would get access to your account.</p>${form}
               <button type="submit" form="op.deviceConfirmForm">Yes, sign in</button>
               <button type="submit" form="op.deviceConfirmForm" value="yes" name="abort">Cancel</button>`)
             : seite("Gerät bestätigen", `<p>Der Agent <strong>${name}</strong> möchte in deinem Namen Aufgaben bearbeiten.</p>
-              <p>Code: <code>${userCode}</code>. Stimmt er mit der Anzeige des Runners überein?</p>${form}
+              <p>Code: <code>${code}</code>. Stimmt er mit der Anzeige des Runners überein?</p>
+              <p class="warnung"><strong>Bestätige nur, wenn du diese Anmeldung gerade selbst auf deinem eigenen Rechner gestartet hast.</strong>
+              Hat dir jemand diesen Link oder Code geschickt, brich ab: Er bekäme sonst Zugriff auf dein Konto.</p>${form}
               <button type="submit" form="op.deviceConfirmForm">Ja, anmelden</button>
               <button type="submit" form="op.deviceConfirmForm" value="yes" name="abort">Abbrechen</button>`, false);
         },

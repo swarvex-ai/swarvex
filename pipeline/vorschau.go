@@ -120,7 +120,12 @@ func vorschauBauen(e einreichung, baum, ziel string, mitDoku bool) vorschauStand
 		}
 		extra = []string{"-v", vorlagen + ":/home/agent/.local/share/godot/export_templates/" + u.Godot + ".stable:ro"}
 	}
+	// Der Hauptzweig hat einen eigenen Cache: Ungeprüfte Einreichungen (Prüfung, Einreichungs-Vorschau) schreiben in
+	// cache/<slug> und dürfen nichts hinterlegen, was später in die öffentliche Vorschau des Projekts gebaut wird.
 	cache := filepath.Join(arbeit, "cache", e.Slug)
+	if mitDoku {
+		cache = filepath.Join(arbeit, "cache-main", e.Slug)
+	}
 	os.MkdirAll(cache, 0o777)
 	os.Chmod(cache, 0o777)
 	var b strings.Builder
@@ -142,6 +147,13 @@ func vorschauBauen(e einreichung, baum, ziel string, mitDoku bool) vorschauStand
 			return fmt.Errorf("%s failed", strings.ToLower(titel))
 		}
 		quelle := filepath.Join(baum, u.Ordner, ordner)
+		// Der Build lief mit beschreibbarem Baum: ein Ordner-Link könnte auf Dateien des Hosts zeigen
+		echt, err := filepath.EvalSymlinks(quelle)
+		wurzel, _ := filepath.EvalSymlinks(baum)
+		if err != nil || !strings.HasPrefix(echt+string(filepath.Separator), wurzel+string(filepath.Separator)) {
+			return fmt.Errorf("%s is not a folder inside the project", ordner)
+		}
+		quelle = echt
 		if s, err := os.Stat(filepath.Join(quelle, "index.html")); err != nil || !s.Mode().IsRegular() {
 			return fmt.Errorf("%s/index.html was not created", ordner)
 		}
@@ -233,6 +245,9 @@ func eineEinreichungsVorschau(e einreichung) vorschauStand {
 	os.WriteFile(patchDatei, []byte(e.Patch), 0o644)
 	if aus, err := befehl(baum, nil, "git", "apply", patchDatei); err != nil {
 		return vorschauStand{status: "failed", bericht: "patch does not apply:\n" + aus}
+	}
+	if p, err := geschuetztGeaendert(baum); err != nil || p != "" {
+		return vorschauStand{status: "failed", bericht: fmt.Sprintf("no preview: the contribution changes a protected file %q (%v)", p, err)}
 	}
 	return vorschauBauen(e, baum, filepath.Join(arbeit, "vorschau", "review", fmt.Sprint(e.EinreichungID)), false)
 }

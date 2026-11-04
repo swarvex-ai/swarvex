@@ -6,6 +6,12 @@ import * as k from "../src/aufgaben.ts";
 import { kennzahlen, projektListe } from "../src/kennzahlen.ts";
 import { projektAnlegen, projektPruefen, repoVerbinden, uebersetzungSetzen, type NeuesProjekt } from "../src/projekte.ts";
 import * as g from "../src/gegenpruefung.ts";
+import { createServer, type Server } from "node:http";
+import { createHash, randomBytes } from "node:crypto";
+import { anbieterErstellen } from "../src/auth/anbieter.ts";
+import { interaktionBehandeln } from "../src/auth/interaktion.ts";
+import { schluesselLaden } from "../src/auth/schluessel.ts";
+import { konfig, RESSOURCE } from "../src/konfig.ts";
 
 let db: Db;
 const lead = { menschId: 0, agentId: 0 };
@@ -1026,5 +1032,111 @@ describe("Besucherstatistik in der Datenbank", () => {
     expect((await db.query("select count(*)::int as n from besucher_heute")).rows[0].n).toBe(0);
     expect((await db.query("select count(*)::int as n from besuch_salz")).rows[0].n).toBe(0);
     expect((await db.query("select besucher from analytik.besucher")).rows).toEqual([{ besucher: 2 }]);
+  });
+});
+
+// Anmeldeablauf gegen den echten OAuth-Server (Review 4. Nov. 2026): Clients mit Rücksprung auf eine Website brauchen
+// eine ausdrückliche Zustimmung; lokale Agenten nicht. Der Konto-Anbieter ist gespielt.
+describe("Anmeldung: Zustimmung und Geräte-Bestätigung", () => {
+  let server: Server;
+  let basis = "";
+  const keks = new Map<string, string>();
+  // Vitest setzt BASE_URL selbst auf "/", deshalb hier ein fester Issuer (danach wieder der alte Wert)
+  const BASIS = "http://localhost:3000";
+  const vorher = konfig.basis;
+
+  beforeAll(async () => {
+    konfig.basis = BASIS;
+    const schluessel = await schluesselLaden(db);
+    const anbieter = anbieterErstellen(db, schluessel);
+    const konto = { name: "spiel", titel: "Spiel", anmelden: (_r: string, state: string) => `https://konto.invalid/login?state=${encodeURIComponent(state)}`,
+      nutzer: async () => ({ id: "oauth-1", login: "oauthtester", erstellt: null }) };
+    const interaktion = interaktionBehandeln(anbieter, db, schluessel.cookies[0], [konto]);
+    const oidc = anbieter.callback();
+    server = createServer((req, res) => {
+      const url = new URL(req.url ?? "/", konfig.basis);
+      if (url.pathname.startsWith("/interaction/")) interaktion(req, res, url).catch((e) => { console.error(e); res.writeHead(500).end(); });
+      else oidc(req, res);
+    });
+    await new Promise<void>((ok) => server.listen(0, "127.0.0.1", ok));
+    basis = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  });
+  afterAll(() => new Promise<void>((ok) => { konfig.basis = vorher; server.close(() => ok()); }));
+
+  /** Eine Anfrage wie ein Browser ohne automatische Weiterleitung; Cookies merkt sich keks. */
+  async function holen(pfad: string, init: RequestInit = {}) {
+    const ziel = pfad.startsWith(BASIS) ? basis + pfad.slice(BASIS.length) : pfad.startsWith("http") ? pfad : basis + pfad;
+    const r = await fetch(ziel, { ...init, redirect: "manual", headers: { ...(init.headers ?? {}), cookie: [...keks].map(([k, v]) => `${k}=${v}`).join("; ") } });
+    for (const c of r.headers.getSetCookie()) {
+      const [paar, ...attr] = c.split(";");
+      const [k, ...v] = paar.split("=");
+      if (attr.some((a) => /max-age=0|expires=thu, 01 jan 1970/i.test(a.trim()))) keks.delete(k.trim()); else keks.set(k.trim(), v.join("="));
+    }
+    return { status: r.status, ort: r.headers.get("location") ?? "", text: await r.text() };
+  }
+  const folgen = async (start: { status: number; ort: string; text: string }) => {
+    let r = start;
+    for (let i = 0; i < 10 && r.status >= 300 && r.status < 400 && !/^https?:\/\/(?!127\.0\.0\.1:\d+\/(?:auth|interaction|device))/.test(r.ort.replace(BASIS, basis)); i++) r = await holen(r.ort);
+    return r;
+  };
+  const registrieren = async (body: Record<string, unknown>) => {
+    const r = await fetch(`${basis}/reg`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token_endpoint_auth_method: "none", ...body }) });
+    return (await r.json()) as { client_id: string };
+  };
+  const autorisieren = (clientId: string, rueck: string) => {
+    const pruef = createHash("sha256").update(randomBytes(32).toString("base64url")).digest("base64url");
+    return holen(`/auth?${new URLSearchParams({ client_id: clientId, response_type: "code", redirect_uri: rueck, scope: "mcp", code_challenge: pruef, code_challenge_method: "S256", resource: RESSOURCE(), state: "s" })}`);
+  };
+
+  it("Web-Client: erst nach Zulassen gibt es einen Code; fremder Origin zählt nicht", async () => {
+    const { client_id } = await registrieren({ client_name: "Böse <b>Seite</b>", redirect_uris: ["https://boese.invalid/cb"] });
+    // Anmelden: Interaktion → gespielter Anbieter → callback → login
+    let r = await folgen(await autorisieren(client_id, "https://boese.invalid/cb"));
+    expect(r.ort).toMatch(/^https:\/\/konto\.invalid\/login\?state=/);
+    const state = new URL(r.ort).searchParams.get("state")!;
+    r = await holen(`/interaction/callback?${new URLSearchParams({ state, code: "x" })}`);
+    const weiter = /url=([^"]+)"/.exec(r.text)![1];
+    r = await folgen(await holen(weiter));
+    // Jetzt die Zustimmungsseite, kein Code für die fremde Seite
+    expect(r.status).toBe(200);
+    expect(r.text).toMatch(/Allow this agent\?|Diesen Agenten zulassen\?/);
+    expect(r.text).toContain("boese.invalid");
+    expect(r.text).toContain("oauthtester");
+    expect(r.text).not.toContain("<b>Seite</b>");
+    const uid = /action="\/interaction\/([^/"]+)\/confirm"/.exec(r.text)![1];
+    // Formular von einer fremden Seite abgeschickt: wieder nur die Seite
+    const fremd = await holen(`/interaction/${uid}/confirm`, { method: "POST", headers: { origin: "https://boese.invalid" } });
+    expect(fremd.status).toBe(200);
+    expect(fremd.text).toMatch(/Allow this agent\?|Diesen Agenten zulassen\?/);
+    // Von swarvex selbst bestätigt: Code an die Rücksprungadresse
+    r = await folgen(await holen(`/interaction/${uid}/confirm`, { method: "POST", headers: { origin: BASIS } }));
+    expect(r.ort).toMatch(/^https:\/\/boese\.invalid\/cb\?code=/);
+  });
+
+  it("Abbrechen schickt access_denied zurück", async () => {
+    const { client_id } = await registrieren({ client_name: "Zweite Seite", redirect_uris: ["https://zwei.invalid/cb"] });
+    let r = await folgen(await autorisieren(client_id, "https://zwei.invalid/cb")); // Sitzung besteht schon
+    expect(r.text).toMatch(/Allow this agent\?|Diesen Agenten zulassen\?/);
+    const uid = /action="\/interaction\/([^/"]+)\/abort"/.exec(r.text)![1];
+    r = await folgen(await holen(`/interaction/${uid}/abort`, { method: "POST", headers: { origin: BASIS } }));
+    expect(r.ort).toMatch(/^https:\/\/zwei\.invalid\/cb\?error=access_denied/);
+  });
+
+  it("lokaler Agent (Loopback) kommt ohne Rückfrage durch", async () => {
+    const { client_id } = await registrieren({ client_name: "Lokal", redirect_uris: ["http://127.0.0.1:9/cb"] });
+    const r = await folgen(await autorisieren(client_id, "http://127.0.0.1:9/cb"));
+    expect(r.ort).toMatch(/^http:\/\/127\.0\.0\.1:9\/cb\?code=/);
+  });
+
+  it("Geräte-Bestätigung zeigt den Client-Namen maskiert", async () => {
+    const { client_id } = await registrieren({ client_name: '<img src=x onerror="alert(1)">', grant_types: ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"], response_types: [], redirect_uris: [] });
+    const d = (await (await fetch(`${basis}/device/auth`, { method: "POST", body: new URLSearchParams({ client_id, scope: "mcp", resource: RESSOURCE() }) })).json()) as { user_code: string };
+    const eingabe = await holen(`/device?user_code=${encodeURIComponent(d.user_code)}`);
+    const xsrf = /name="xsrf" value="([^"]+)"/.exec(eingabe.text)![1];
+    const r = await folgen(await holen("/device", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ xsrf, user_code: d.user_code }).toString() }));
+    expect(r.text).toMatch(/Confirm the device|Gerät bestätigen/);
+    expect(r.text).not.toContain("<img src=x");
+    expect(r.text).toContain("&#60;img");
+    expect(r.text).toMatch(/Only confirm if you started this sign-in yourself|Bestätige nur, wenn du diese Anmeldung gerade selbst/);
   });
 });

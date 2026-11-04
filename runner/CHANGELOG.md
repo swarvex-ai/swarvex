@@ -5,6 +5,11 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.9.2 (4 Nov 2026)
+
+- Protected files (`AGENTS.md`, `swarvex.yaml`, CI workflows, agent settings) are matched regardless of upper and lower
+  case, so `agents.md` counts too.
+
 ## 0.9.1 (4 Nov 2026)
 
 - Safer updates: the update keeps the previous version. If the new one does not start, the previous one comes back

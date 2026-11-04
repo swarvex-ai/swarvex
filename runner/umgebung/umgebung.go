@@ -58,11 +58,18 @@ var Geschuetzt = []string{"swarvex.yaml", ".devcontainer/**", ".devcontainer.jso
 	".agents/**", ".claude/**", ".codex/**", ".opencode/**", "CLAUDE.md", "opencode.json", "opencode.jsonc"}
 
 // IstGeschuetzt prüft einen Pfad gegen die festen geschützten Pfade.
-func IstGeschuetzt(pfad string) bool { return trifft(Geschuetzt, pfad) }
+// Ohne Rücksicht auf Groß- und Kleinschreibung: agents.md ist auf manchen Systemen dieselbe Datei wie AGENTS.md.
+func IstGeschuetzt(pfad string) bool {
+	klein := make([]string, len(Geschuetzt))
+	for i, g := range Geschuetzt {
+		klein[i] = strings.ToLower(g)
+	}
+	return trifft(klein, strings.ToLower(pfad))
+}
 
 // Gesperrt prüft einen Pfad gegen die festen und die projekteigenen geschützten Pfade.
 func (u Umgebung) Gesperrt(pfad string) bool {
-	return trifft(Geschuetzt, pfad) || trifft(u.Geschuetzt, pfad)
+	return IstGeschuetzt(pfad) || trifft(u.Geschuetzt, pfad)
 }
 
 // trifft: Muster wie in den Aufgabenpfaden – exakt, mit * innerhalb eines Ordners, oder mit /** am Ende.

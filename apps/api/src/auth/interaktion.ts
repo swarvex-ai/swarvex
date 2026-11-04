@@ -12,6 +12,7 @@ import { konfig } from "../konfig.ts";
 import type { KontoAnbieter, KontoNutzer } from "./konten.ts";
 
 export const CALLBACK = () => `${konfig.basis}/interaction/callback`;
+const LOOPBACK = ["127.0.0.1", "localhost", "[::1]"];
 export const KONTO_PRAEFIX = "konto-";
 
 export function signieren(geheimnis: string, wert: string) {
@@ -38,7 +39,9 @@ export function seite(res: ServerResponse, status: number, titel: string, inhalt
 body{font:16px/1.5 system-ui,sans-serif;max-width:26rem;margin:4rem auto;padding:0 1rem;color:#1d2328;background:#f6f8fa}
 h1{font-size:1.4rem}a.k{display:block;margin:.6rem 0;padding:.75rem 1rem;border:1px solid #c9d1d9;border-radius:8px;background:#fff;color:inherit;text-decoration:none;font-weight:600}
 a.k:hover,a.k:focus-visible{border-color:#0f9f8f;outline:none}p.l{color:#57606a;font-size:.9rem}
-@media (prefers-color-scheme:dark){body{background:#0d1117;color:#e6edf3}a.k{background:#161b22;border-color:#30363d}p.l{color:#8b949e}}
+button{font:inherit;padding:.55rem 1.1rem;border-radius:8px;border:1px solid #c9d1d9;background:#fff;color:inherit;cursor:pointer;margin:.3rem .3rem 0 0}
+button.haupt{background:#0f9f8f;border-color:#0f9f8f;color:#fff;font-weight:600}
+@media (prefers-color-scheme:dark){body{background:#0d1117;color:#e6edf3}a.k,button{background:#161b22;border-color:#30363d}button.haupt{background:#0f9f8f}p.l{color:#8b949e}}
 </style></head><body><h1>${esc(titel)}</h1>${inhalt}</body></html>`);
 }
 
@@ -105,7 +108,16 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
       return;
     }
 
-    const details = await anbieter.interactionDetails(req, res);
+    let details;
+    try { details = await anbieter.interactionDetails(req, res); }
+    catch (e) {
+      // Abgelaufen, schon benutzt oder in einem anderen Browser begonnen: verständlich sagen statt Serverfehler
+      if ((e as { statusCode?: number }).statusCode !== 400) throw e;
+      const en = englisch(req);
+      return seite(res, 400, en ? "Sign-in expired" : "Anmeldung abgelaufen", en
+        ? "<p>This sign-in has expired or was started in another browser. Start it again from your agent (for the runner: <code>swarvex login</code>).</p>"
+        : "<p>Diese Anmeldung ist abgelaufen oder wurde in einem anderen Browser begonnen. Starte sie in deinem Agenten neu (beim Runner: <code>swarvex login</code>).</p>", en);
+    }
     if (details.prompt.name === "login") {
       const zuAnbieter = (k: KontoAnbieter) => k.anmelden(CALLBACK(), `${details.uid}.${k.name}.${signieren(geheimnis, `state:${details.uid}:${k.name}`)}`);
       const gewaehlt = konten.length === 1 ? konten[0] : konten.find((k) => k.name === url.searchParams.get("anbieter"));
@@ -119,6 +131,37 @@ export function interaktionBehandeln(anbieter: Provider, db: Db, geheimnis: stri
     }
     if (details.prompt.name === "consent") {
       const { prompt, params, session } = details as any;
+      // Zustimmung: Agenten auf dem eigenen Rechner (Rücksprung auf Loopback) und die Geräte-Anmeldung (eigene
+      // Bestätigungsseite, ohne Rücksprung) brauchen keine weitere Frage: Der Code landet nur bei der Person selbst.
+      // Jeder andere Client (Rücksprung auf eine Website) muss einmal ausdrücklich bestätigt werden, sonst könnte
+      // jede Website mit einem selbst registrierten Client und einem Link ein Token im Namen der Person holen.
+      const en = englisch(req);
+      const ziel = params.redirect_uri ? URL.parse(String(params.redirect_uri)) : null;
+      const lokal = !params.redirect_uri || (ziel?.protocol === "http:" && LOOPBACK.includes(ziel.hostname));
+      if (!lokal) {
+        const vonHier = req.method === "POST" && req.headers.origin === new URL(konfig.basis).origin;
+        if (teile[2] === "abort" && vonHier) {
+          await anbieter.interactionFinished(req, res, { error: "access_denied", error_description: "The person declined" }, { mergeWithLastSubmission: false });
+          return;
+        }
+        if (!(teile[2] === "confirm" && vonHier)) {
+          const client = await anbieter.Client.find(String(params.client_id));
+          const login = (await db.query("select login from menschen where id = $1", [session.accountId])).rows[0]?.login ?? "?";
+          const name = esc(String(client?.clientName ?? params.client_id));
+          const host = esc(ziel?.host ?? String(params.redirect_uri));
+          const knopf = (pfad: string, text: string, haupt: boolean) =>
+            `<form method="post" action="/interaction/${esc(details.uid)}/${pfad}" style="display:inline"><button type="submit"${haupt ? ' class="haupt"' : ""}>${text}</button></form>`;
+          return seite(res, 200, en ? "Allow this agent?" : "Diesen Agenten zulassen?", en
+            ? `<p>The agent <strong>${name}</strong> wants to work on swarvex.ai on your behalf: pick up and submit tasks, and where you are lead or officer, review and accept contributions.</p>
+               <p>After you allow it, you are sent back to <strong>${host}</strong>.</p>
+               <p class="l">Signed in as <strong>${esc(login)}</strong>. Only allow agents you are setting up yourself right now. You can sign agents out any time under My account.</p>
+               ${knopf("confirm", "Allow", true)} ${knopf("abort", "Cancel", false)}`
+            : `<p>Der Agent <strong>${name}</strong> möchte in deinem Namen auf swarvex.ai arbeiten: Aufgaben holen und einreichen und, wo du Lead oder Officer bist, Beiträge bewerten und annehmen.</p>
+               <p>Nach der Zustimmung geht es zurück zu <strong>${host}</strong>.</p>
+               <p class="l">Angemeldet als <strong>${esc(login)}</strong>. Lass nur Agenten zu, die du gerade selbst einrichtest. Abmelden kannst du sie jederzeit unter Mein Konto.</p>
+               ${knopf("confirm", "Zulassen", true)} ${knopf("abort", "Abbrechen", false)}`, en);
+        }
+      }
       const grant = prompt.details.grantId
         ? await anbieter.Grant.find(prompt.details.grantId)
         : new anbieter.Grant({ accountId: session.accountId, clientId: String(params.client_id) });
