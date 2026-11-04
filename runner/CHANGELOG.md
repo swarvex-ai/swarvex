@@ -11,7 +11,10 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   internal network and goes out through a filtering proxy that refuses private, local and reserved addresses (your
   router, NAS, other machines, this computer). `--setup-network lan` allows your network, `--setup-network open`
   restores the old behaviour, `--setup-allow <ip|cidr|host>` lets a local package mirror through. Blocked targets are
-  listed in the setup log.
+  listed in the setup log. Your model is not affected: the agent reaches it through the key proxy as before, also
+  a model server on your own network.
+- A model server on this computer works however you enter it: `localhost`, `127.0.0.1` and this computer's own address
+  in your network become `host.containers.internal`, the only way the sandbox reaches this computer.
 - Signed key changes: when the platform moves to a new release signing key, `swarvex update` accepts it only if the
   key you installed with signed it. Releases can then be signed on a hardware key instead of on the server.
 - The runner reports its real version to the platform (for the security overview of which versions are in use).

@@ -828,6 +828,7 @@ func ohneDauerbetrieb(args []string) []string {
 // zugangLesen: Modell-Adresse und Anmeldung aus --model-url und --model-key-file. Bei Codex mit
 // ChatGPT-Anmeldung (auth.json) wird das Token bei Bedarf erneuert, damit es die ganze Aufgabe hält.
 func zugangLesen(agent agentArt, keyDatei, upstream string, dauer time.Duration) (modellZugang, error) {
+	upstream, _ = sandboxAdresse(upstream) // ältere Einstellungen mit localhost oder der eigenen IP
 	z := modellZugang{URL: upstream}
 	if keyDatei == "" {
 		return z, nil

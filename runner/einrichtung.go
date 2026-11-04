@@ -15,6 +15,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -316,10 +317,8 @@ func hermesModelle() []modellWahl {
 		key, quelle = schluessel("OPENROUTER_API_KEY", "OPENAI_API_KEY")
 	case adresse != "" && (anbieter == "custom" || anbieter == "auto" || anbieter == "" || anbieter == "ollama" || anbieter == "vllm" || anbieter == "llamacpp" || anbieter == "lmstudio"):
 		name = adresse
-		if u, err := url.Parse(adresse); err == nil && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1") {
-			// aus der Sandbox ist der eigene Rechner host.containers.internal
-			u.Host = strings.Replace(u.Host, u.Hostname(), "host.containers.internal", 1)
-			w.URL, w.Lokal = u.String(), true
+		if neu, lokal := sandboxAdresse(adresse); lokal {
+			w.URL, w.Lokal = neu, true // aus der Sandbox ist der eigene Rechner host.containers.internal
 		}
 		key, quelle = schluessel("OPENAI_API_KEY")
 	default:
@@ -406,11 +405,58 @@ func schluesselDatei(name, wert string) string {
 	return pfad
 }
 
+// eigeneAdressen: die Adressen dieses Rechners (zum Test austauschbar).
+var eigeneAdressen = func() []net.IP {
+	var ips []net.IP
+	if adr, err := net.InterfaceAddrs(); err == nil {
+		for _, a := range adr {
+			if n, ok := a.(*net.IPNet); ok {
+				ips = append(ips, n.IP)
+			}
+		}
+	}
+	return ips
+}
+
+// sandboxAdresse: wie die Sandbox einen Modell-Server auf diesem Rechner erreicht. localhost und die eigene Adresse
+// im Heimnetz zeigen aus dem Container nicht auf den Rechner (rootless Podman gibt dem Container die Adresse des
+// Rechners mit), host.containers.internal schon. Server auf anderen Geräten bleiben unverändert. Bei https mit der
+// eigenen IP bleibt die Adresse, weil das Zertifikat auf sie lautet.
+func sandboxAdresse(adresse string) (string, bool) {
+	u, err := url.Parse(adresse)
+	if err != nil || u.Host == "" {
+		return adresse, false
+	}
+	h := u.Hostname()
+	eigen := h == "localhost"
+	if ip := net.ParseIP(h); ip != nil {
+		if ip.IsLoopback() {
+			eigen = true
+		} else if u.Scheme == "http" {
+			for _, e := range eigeneAdressen() {
+				if e.Equal(ip) {
+					eigen = true
+				}
+			}
+		}
+	}
+	if !eigen {
+		return adresse, false
+	}
+	port := u.Port()
+	u.Host = "host.containers.internal"
+	if port != "" {
+		u.Host += ":" + port
+	}
+	return u.String(), true
+}
+
 // erreichbar prüft im Proxy-Image (gleiches Netz wie der echte Proxy), ob die Modell-Adresse antwortet.
 func erreichbar(adresse string) (bool, string) {
 	if _, err := exec.LookPath("podman"); err != nil {
 		return true, "podman missing, not checked"
 	}
+	adresse, _ = sandboxAdresse(adresse)
 	aus, err := exec.Command("podman", "run", "--rm", "--network", "podman", "--entrypoint", "/swarvex", "swarvex-proxy", "probe", adresse).CombinedOutput()
 	return err == nil, strings.TrimSpace(string(aus))
 }
@@ -516,6 +562,10 @@ func setupDialog(ausfuehren bool) []string {
 		vorschlag := []string{"https://openrouter.ai/api", "https://api.anthropic.com", "https://api.openai.com"}[i]
 		for w.URL == "" {
 			w.URL = strings.TrimSuffix(strings.TrimSuffix(f.frage("Address of the model API without /v1 (local server: http://host.containers.internal:<port>)", vorschlag), "/"), "/v1")
+		}
+		if neu, lokal := sandboxAdresse(w.URL); lokal {
+			fmt.Println("  That server runs on this computer; the sandbox reaches it as " + neu)
+			w.URL, w.Lokal = neu, true
 		}
 		if k := f.geheim("API key (empty if none)"); k != "" {
 			w.Key = schluesselDatei(w.Agent+"-key", k)
