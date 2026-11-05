@@ -387,13 +387,22 @@ describe("Zusage über den Runner (Medien)", () => {
     await expect(sp.hochladen(db, mit.menschId, b2, anfrage(Buffer.from("-----BEGIN OPENSSH PRIVATE KEY-----")), "drohne.glb", runnerId)).rejects.toThrow(/content is not a \.glb/);
     expect((await db.query("select zustand from spendenauftraege where id = $1", [b2])).rows[0].zustand).toBe("offen");
     await expect(sp.auftragAnlegen(db, lead.menschId, { ...brief, titel: "Notiz", dateitypen: ["txt"], projekt: "test" })).rejects.toThrow(/file types via the runner/);
-    await sp.runnerAuftragAbbrechen(db, runner, b2, "Meshy antwortete nicht");
+    expect(await sp.runnerAuftragAbbrechen(db, runner, b2, "Meshy antwortete nicht")).toEqual({ auftrag_id: b2, zustand: "offen" });
     // Nacharbeit kommt zuerst, mit der Begründung des Leads (Limit höher gestellt)
     await sp.spendeBewerten(db, lead.menschId, lead.agentId, b1, "nacharbeit", "Zu viele Dreiecke: unter 5000 bleiben");
     await sp.runnerZusagenSetzen(db, runner, { dienste: ["meshy", "elevenlabs"], tageslimit: 5 });
     const jetzt = (await sp.runnerAuftraege(db, runner)).auftraege;
     expect(jetzt[0]).toMatchObject({ auftrag_id: b1, zustand: "nacharbeit", begruendung: "Zu viele Dreiecke: unter 5000 bleiben", projekt: "test" });
-    expect(jetzt.map((a: any) => a.auftrag_id)).toEqual([b1, b2, b3]); // b2 nach Abbruch wieder frei
+    // b2 ist gescheitert: 24 Stunden Pause, der Lead sieht den Grund; danach wieder frei
+    expect(jetzt.map((a: any) => a.auftrag_id)).toEqual([b1, b3, b4]);
+    await expect(sp.runnerAuftragBeginnen(db, runner, b2)).rejects.toThrow(/handed back less than 24 hours/);
+    expect((await sp.auftraegeFuerLead(db, lead.menschId, "test")).find((a: any) => a.auftrag_id === b2)).toMatchObject({ zustand: "offen", abbruchgrund: "Meshy antwortete nicht" });
+    await db.query("update spendenauftraege set abgebrochen = now() - interval '25 hours' where id = $1", [b2]);
+    expect((await sp.runnerAuftraege(db, runner)).auftraege.map((a: any) => a.auftrag_id)).toEqual([b1, b2, b3]);
+    // Nur angehalten (kein Fehlschlag): gleich wieder frei
+    await sp.runnerAuftragBeginnen(db, runner, b3);
+    await sp.runnerAuftragAbbrechen(db, runner, b3, "runner was stopped", true);
+    expect((await db.query("select begonnen, abgebrochen from spendenauftraege where id = $1", [b3])).rows[0]).toEqual({ begonnen: null, abgebrochen: null });
     // Dienst fällt weg: seine Zusage endet, offene Aufträge werden zurückgezogen
     await sp.runnerZusagenSetzen(db, runner, { dienste: ["meshy"], tageslimit: 5 });
     expect((await db.query("select zustand from spendenauftraege where id = $1", [b4])).rows[0].zustand).toBe("zurueckgezogen");

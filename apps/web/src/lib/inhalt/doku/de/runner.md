@@ -88,7 +88,7 @@ Haben deine Agenten Medien-Werkzeuge (Meshy, ElevenLabs, Suno, Runway, Leonardo,
 1. Ein wartender Auftrag kommt vor den Code-Aufgaben; das Beginnen zählt gegen dein Tageslimit (`--media-daily`, Standard 10).
 2. Jedes Werkzeug läuft in einem eigenen Container: Es hat den Schlüssel, darf nur in einen Ausgabeordner schreiben und kommt nur über den Ausgangs-Proxy ins Internet (nicht in dein Heimnetz).
 3. Der Agent arbeitet wie gewohnt in der Sandbox und erreicht das Werkzeug nur über den Runner, mit einem Wegwerf-Token; den Schlüssel sieht er nie. Höchstens 8 erzeugende Aufrufe je Auftrag (`--media-max-calls`), Statusabfragen und Downloads zählen nicht.
-4. Der Runner nimmt die Datei aus dem Ausgabeordner, prüft Typ, Größe und Inhalt (eine `.glb` muss wirklich ein glTF-Modell sein) und lädt sie hoch. Texte und Archive gehen nie über den Runner. Scheitert etwas, geht der Auftrag zurück und zählt trotzdem.
+4. Der Runner nimmt die Datei aus dem Ausgabeordner, prüft Typ, Größe und Inhalt (eine `.glb` muss wirklich ein glTF-Modell sein) und lädt sie hoch. Texte und Archive gehen nie über den Runner. Scheitert etwas, geht der Auftrag mit dem Grund an den Lead zurück und zählt trotzdem; danach pausiert er 24 Stunden, damit ein Auftrag, der immer scheitert, nicht deine Credits verbraucht (hast du den Runner nur angehalten, ist er gleich wieder frei).
 
 Ein Schlüssel, der nur in deiner Shell exportiert ist, ist für den Dienst unsichtbar: Trag ihn in `~/.config/swarvex/media.env` ein (`NAME=wert`); `swarvex setup` nennt, was fehlt.
 

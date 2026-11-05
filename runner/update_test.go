@@ -86,6 +86,11 @@ func TestVerlauf(t *testing.T) {
 	if len(l) != 3 || l[0].Aufgabe != 5 || l[2].Aufgabe != 3 {
 		t.Fatalf("%+v", l)
 	}
+	verlaufMerken(datei, verlaufEintrag{Brief: 7, Ergebnis: "uploaded"}) // Medien-Aufträge haben keine Aufgabe
+	verlaufMerken(datei, verlaufEintrag{Ergebnis: "returned"})           // ohne beides: nicht lesbar
+	if l = verlaufLesen(datei, 2); len(l) != 2 || l[0].Brief != 7 || l[1].Aufgabe != 5 {
+		t.Fatalf("%+v", l)
+	}
 	if tausender(1234567) != "1,234,567" || tausender(999) != "999" {
 		t.Fatal(tausender(1234567))
 	}

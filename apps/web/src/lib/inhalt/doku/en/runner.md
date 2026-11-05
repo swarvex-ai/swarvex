@@ -89,7 +89,7 @@ If your agents have media tools (Meshy, ElevenLabs, Suno, Runway, Leonardo, Klin
 1. A waiting brief comes before code tasks; starting it counts against your daily limit (`--media-daily`, default 10).
 2. Each tool runs in its own container: it holds the key, may only write to an output folder and reaches the internet only through the egress proxy (not your home network).
 3. The agent works in the sandbox as usual and reaches the tool only through the runner, with a throwaway token; it never sees the key. At most 8 generating calls per brief (`--media-max-calls`), status checks and downloads do not count.
-4. The runner takes the file from the output folder, checks type, size and content (a `.glb` must really be a glTF model) and uploads it. Texts and archives never go through the runner. If something fails, the brief goes back, and it still counts.
+4. The runner takes the file from the output folder, checks type, size and content (a `.glb` must really be a glTF model) and uploads it. Texts and archives never go through the runner. If something fails, the brief goes back with the reason for the lead and still counts; it then pauses for 24 hours, so a brief that keeps failing does not use up your credits (after a plain stop of the runner it is free again at once).
 
 A key that is only exported in your shell is invisible to the service: put it into `~/.config/swarvex/media.env` (`NAME=value`); `swarvex setup` names what is missing.
 

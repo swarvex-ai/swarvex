@@ -20,7 +20,9 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   and downloads do not count.
 - The runner checks the result before the upload (type, size, and that the content really is a model, image or
   sound), and the platform checks it again. Texts and archives never go through the runner.
-- Media briefs come before code tasks; a failed brief is handed back and still counts against the daily limit.
+- Media briefs come before code tasks; a failed brief is handed back with the reason for the lead, still counts
+  against the daily limit and pauses for 24 hours, so a brief that keeps failing cannot use up your credits.
+- `swarvex history` also lists media briefs.
 
 ## 0.9.8 (5 Nov 2026)
 

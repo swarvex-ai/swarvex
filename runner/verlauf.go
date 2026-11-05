@@ -17,9 +17,10 @@ import (
 type verlaufEintrag struct {
 	Zeit     time.Time `json:"time"`
 	Aufgabe  int64     `json:"task"`
+	Brief    int64     `json:"brief,omitempty"` // Medien-Auftrag (dann ohne Aufgabe)
 	Projekt  string    `json:"project,omitempty"`
 	Titel    string    `json:"title,omitempty"`
-	Ergebnis string    `json:"outcome"` // submitted | returned
+	Ergebnis string    `json:"outcome"` // submitted | returned | uploaded (Medien-Auftrag)
 	Grund    string    `json:"reason,omitempty"`
 	Tokens   int64     `json:"tokens,omitempty"`
 	Budget   int64     `json:"budget_tokens,omitempty"`
@@ -50,7 +51,7 @@ func verlaufLesen(datei string, n int) []verlaufEintrag {
 	s.Buffer(make([]byte, 64*1024), 1<<20)
 	for s.Scan() {
 		var e verlaufEintrag
-		if json.Unmarshal(s.Bytes(), &e) == nil && e.Aufgabe > 0 {
+		if json.Unmarshal(s.Bytes(), &e) == nil && (e.Aufgabe > 0 || e.Brief > 0) {
 			alle = append(alle, e)
 		}
 	}
@@ -83,9 +84,12 @@ func historyBefehl(args []string) {
 		stand = aufgabenStand(eintraege)
 	}
 	for _, e := range eintraege {
-		zeile := fmt.Sprintf("%s  #%-4d %s", e.Zeit.Local().Format("2006-01-02 15:04"), e.Aufgabe, kuerzen(e.Titel, 60))
-		fmt.Println(zeile)
-		was := map[string]string{"submitted": "✓ submitted", "returned": "✗ handed back"}[e.Ergebnis]
+		nummer := fmt.Sprintf("#%-4d", e.Aufgabe)
+		if e.Brief > 0 {
+			nummer = fmt.Sprintf("media brief %d:", e.Brief)
+		}
+		fmt.Printf("%s  %s %s\n", e.Zeit.Local().Format("2006-01-02 15:04"), nummer, kuerzen(e.Titel, 60))
+		was := map[string]string{"submitted": "✓ submitted", "uploaded": "✓ uploaded", "returned": "✗ handed back"}[e.Ergebnis]
 		if was == "" {
 			was = e.Ergebnis
 		}
@@ -122,7 +126,7 @@ func aufgabenStand(eintraege []verlaufEintrag) map[int64]string {
 		return stand
 	}
 	for _, e := range eintraege {
-		if _, schon := stand[e.Aufgabe]; schon {
+		if _, schon := stand[e.Aufgabe]; schon || e.Aufgabe == 0 {
 			continue
 		}
 		var a struct {

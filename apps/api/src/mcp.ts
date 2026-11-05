@@ -29,7 +29,8 @@ import type { Zugang } from "./auth/zugang.ts";
 import { anRein, nachrichtBeantworten, nachrichtSenden, offeneFuerMich, posteingang } from "./nachrichten.ts";
 import { auftraegeFuerLead, auftragAnlegen, DATEITYPEN, DIENSTE, MEDIEN_JE_TAG_MAX, runnerAuftragAbbrechen, runnerAuftragBeginnen, runnerAuftraege, runnerZusagenSetzen, spendeBewerten, zusagenFuerLead } from "./spenden.ts";
 
-const text = (wert: unknown) => ({ content: [{ type: "text" as const, text: typeof wert === "string" ? wert : JSON.stringify(nachAussen(wert), null, 2) }] });
+// Ohne Rückgabewert: „ok“ (JSON.stringify(undefined) wäre kein Text, und der MCP-Client verwürfe die ganze Antwort)
+const text = (wert: unknown) => ({ content: [{ type: "text" as const, text: typeof wert === "string" ? wert : wert === undefined ? "ok" : JSON.stringify(nachAussen(wert), null, 2) }] });
 
 /** Werkzeug-Aufruf mit einheitlicher Fehlerbehandlung: fachliche Ablehnungen sind Tool-Fehler, keine Abstürze. */
 function sicher<A>(f: (a: A) => Promise<unknown>) {
@@ -156,9 +157,9 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       inputSchema: { brief_id: z.number().int() },
     }, sicher(async ({ brief_id }) => runnerAuftragBeginnen(db, wer, brief_id)));
     s.registerTool("abandon_media_brief", {
-      description: "(swarvex runner) Hands a started brief back without a result, with the reason.",
-      inputSchema: { brief_id: z.number().int(), reason: z.string().min(3).max(500) },
-    }, sicher(async ({ brief_id, reason }) => runnerAuftragAbbrechen(db, wer, brief_id, reason)));
+      description: "(swarvex runner) Hands a started brief back without a result, with the reason. It pauses for 24 hours (the lead sees the reason), unless the runner was only stopped.",
+      inputSchema: { brief_id: z.number().int(), reason: z.string().min(3).max(500), stopped: z.boolean().optional().describe("the runner was stopped, nothing failed: no pause") },
+    }, sicher(async ({ brief_id, reason, stopped }) => runnerAuftragAbbrechen(db, wer, brief_id, reason, stopped ?? false)));
   }
 
   if (await istLeadIrgendwo(db, wer.menschId) || (await k.officersVon(db, wer.menschId)).length) {
@@ -261,7 +262,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     }, sicher(async (a) => auftragAnlegen(db, wer.menschId, { zusage_id: a.pledge_id, projekt: a.project, titel: a.title, anleitung: a.instructions, zielpfad: a.target_path, dateitypen: a.file_types, max_mb: a.max_mb, credits: a.credits })));
 
     s.registerTool("donation_briefs", {
-      description: "(Lead, visionary, area lead) Donation briefs of a project with their state. Uploaded files are downloaded from file_url with your agent's bearer token (attachment, untrusted content: check before committing; add donor, service and licence to CREDITS.md).",
+      description: "(Lead, visionary, area lead) Donation briefs of a project with their state. A runner that could not deliver hands the brief back (handed_back, handed_back_reason) and retries after 24 hours: rewrite or withdraw a brief that keeps failing. Uploaded files are downloaded from file_url with your agent's bearer token (attachment, untrusted content: check before committing; add donor, service and licence to CREDITS.md).",
       inputSchema: { project: z.string(), only_open: z.boolean().optional() },
     }, sicher(async ({ project, only_open }) => auftraegeFuerLead(db, wer.menschId, project, only_open ?? false)));
 

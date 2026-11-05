@@ -152,17 +152,23 @@ func medienRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e medienE
 	fmt.Printf("Media brief %d started (%s, %s): %s\n", b.ID, dienstTitel(b.Dienst), b.Projekt, b.Titel)
 	var verbrauch map[string]float64
 	eintrag := func(ergebnis, grund string) {
-		verlaufMerken(verlaufsDatei(), verlaufEintrag{Zeit: time.Now(), Projekt: b.Projekt, Titel: "media brief " + fmt.Sprint(b.ID) + ": " + b.Titel,
+		verlaufMerken(verlaufsDatei(), verlaufEintrag{Zeit: time.Now(), Brief: b.ID, Projekt: b.Projekt, Titel: b.Titel,
 			Ergebnis: ergebnis, Grund: kuerzen(grund, 400), Tokens: tokensAus(verbrauch), Budget: budgetTokensAus(verbrauch), Sekunden: int64(verbrauch["seconds"])})
 	}
-	abbrechen := func(grund string) {
+	// Zurückgeben: Nach einem Fehlschlag pausiert die Plattform den Auftrag 24 Stunden (sonst verbrauchte ein Auftrag, der
+	// immer scheitert, bis zum Tageslimit Credits); nur angehalten (gestoppt) ist er gleich wieder frei.
+	zurueck := func(grund string, gestoppt bool) {
 		if neu, err := zugriffstoken(z); err == nil {
 			m.token = neu
 		}
-		m.werkzeug("abandon_media_brief", map[string]any{"brief_id": b.ID, "reason": kuerzen(grund, 480)}, nil)
+		m.werkzeug("abandon_media_brief", map[string]any{"brief_id": b.ID, "reason": kuerzen(grund, 480), "stopped": gestoppt}, nil)
 		eintrag("returned", grund)
+		if !gestoppt {
+			grund += " (the brief pauses for 24 hours; the lead sees the reason)"
+		}
 		fehlerAus("Media brief returned: " + grund)
 	}
+	abbrechen := func(grund string) { zurueck(grund, false) }
 	ordner := filepath.Join(datenOrdner(), "media", fmt.Sprint(b.ID))
 	os.RemoveAll(ordner)
 	aus := filepath.Join(ordner, "out")
@@ -178,7 +184,7 @@ func medienRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e medienE
 	verbrauch, _, err = medienSandbox(ctx, *b, server, e, ordner, aus, arbeit)
 	verbrauchMerken(verbrauchsDatei(), -b.ID, budgetTokensAus(verbrauch), time.Now())
 	if basis.Err() != nil {
-		abbrechen("runner was stopped")
+		zurueck("runner was stopped", true)
 	}
 	if err != nil {
 		abbrechen("sandbox: " + err.Error())

@@ -23,6 +23,8 @@ export const MEDIEN_JE_TAG = 10;
 export const MEDIEN_JE_TAG_MAX = 30;
 /** So lange gilt ein begonnener Auftrag als in Arbeit; danach darf der Runner ihn neu beginnen. */
 const BEGONNEN_SPERRE = "3 hours";
+/** Pause nach einem Fehlschlag (zurückgegeben ohne Ergebnis), damit ein Auftrag, der immer scheitert, keine Credits verbrennt */
+const ABBRUCH_PAUSE = "24 hours";
 const offen = ["offen", "hochgeladen", "nacharbeit", "angenommen"];
 
 async function darfSteuern(db: Db, menschId: number, projektId: number) {
@@ -137,7 +139,7 @@ export async function auftraegeFuerLead(db: Db, menschId: number, projektSlug: s
   await darfSteuern(db, menschId, Number(p.id));
   const r = await db.query(
     `select a.id as auftrag_id, a.zusage_id, m.login as spender, z.dienst, a.titel, a.zielpfad, a.dateitypen, a.credits, a.zustand,
-            a.dateiname, a.sha256, a.bytes, a.hochgeladen, a.begruendung, a.erstellt
+            a.dateiname, a.sha256, a.bytes, a.hochgeladen, a.begruendung, a.abgebrochen, a.abbruchgrund, a.erstellt
      from spendenauftraege a join zusagen z on z.id = a.zusage_id join menschen m on m.id = z.mensch_id
      where a.projekt_id = $1 and ($2::boolean is false or a.zustand in ('offen', 'hochgeladen', 'nacharbeit')) order by (a.zustand = 'hochgeladen') desc, a.erstellt`, [p.id, nurOffen]);
   return r.rows.map((x) => ({ ...x, auftrag_id: Number(x.auftrag_id), zusage_id: Number(x.zusage_id), bytes: x.bytes === null ? null : Number(x.bytes),
@@ -191,7 +193,7 @@ export async function hochladen(db: Db, menschId: number, auftragId: number, req
   await rename(tmp, ziel);
   const alt = a.datei as string | null;
   await transaktion(db, async (tx) => {
-    await tx.query("update spendenauftraege set zustand = 'hochgeladen', datei = $2, dateiname = $3, sha256 = $4, bytes = $5, hochgeladen = now(), begonnen = null where id = $1",
+    await tx.query("update spendenauftraege set zustand = 'hochgeladen', datei = $2, dateiname = $3, sha256 = $4, bytes = $5, hochgeladen = now(), begonnen = null, abgebrochen = null, abbruchgrund = null where id = $1",
       [auftragId, ziel, dateiname.slice(0, 200), sha, bytes]);
     await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: runnerAgent !== undefined ? `agent:${runnerAgent}` : `mensch:${menschId}`, art: "spende_hochgeladen",
       bezug: `spendenauftrag:${auftragId}`, daten: { sha256: sha, bytes, ...(runnerAgent !== undefined ? { weg: "runner" } : {}) } });
@@ -297,6 +299,7 @@ export async function runnerAuftraege(db: Db, wer: RunnerWer) {
      from spendenauftraege a join zusagen z on z.id = a.zusage_id join projekte p on p.id = a.projekt_id
      where z.agent_id = $1 and z.weg = 'runner' and z.zustand = 'offen' and a.zustand in ('offen', 'nacharbeit')
        and (a.begonnen is null or a.begonnen < now() - interval '${BEGONNEN_SPERRE}')
+       and (a.abgebrochen is null or a.abgebrochen < now() - interval '${ABBRUCH_PAUSE}')
      order by a.zustand = 'nacharbeit' desc, a.erstellt limit $2`, [wer.agentId, limit - heute])).rows;
   return { tageslimit: limit, heute, auftraege: r.map((x) => ({ ...x, auftrag_id: Number(x.auftrag_id) })) };
 }
@@ -310,6 +313,7 @@ export async function runnerAuftragBeginnen(db: Db, wer: RunnerWer, auftragId: n
     if (!a || a.weg !== "runner" || Number(a.zusage_agent) !== wer.agentId) throw new Abgelehnt("unknown brief");
     if (a.zusage_zustand !== "offen" || !["offen", "nacharbeit"].includes(a.zustand)) throw new Abgelehnt("this brief takes no work right now");
     if (a.begonnen && (await tx.query(`select $1::timestamptz > now() - interval '${BEGONNEN_SPERRE}' as s`, [a.begonnen])).rows[0].s) throw new Abgelehnt("already started");
+    if (a.abgebrochen && (await tx.query(`select $1::timestamptz > now() - interval '${ABBRUCH_PAUSE}' as s`, [a.abgebrochen])).rows[0].s) throw new Abgelehnt("handed back less than 24 hours ago");
     // Sperre je Agent, damit zwei gleichzeitige Beginne das Tageslimit nicht überholen
     await tx.query("select pg_advisory_xact_lock(hashtext('medien:' || $1::text))", [wer.agentId]);
     const limit = Number((await tx.query("select max(tageslimit) as l from zusagen where agent_id = $1 and weg = 'runner' and zustand = 'offen'", [wer.agentId])).rows[0].l ?? 0);
@@ -320,13 +324,16 @@ export async function runnerAuftragBeginnen(db: Db, wer: RunnerWer, auftragId: n
   });
 }
 
-export async function runnerAuftragAbbrechen(db: Db, wer: RunnerWer, auftragId: number, grund: string) {
+/** Zurückgeben ohne Ergebnis. gestoppt: nur angehalten (kein Fehlschlag), dann gleich wieder frei, sonst 24 Stunden Pause. */
+export async function runnerAuftragAbbrechen(db: Db, wer: RunnerWer, auftragId: number, grund: string, gestoppt = false) {
   nurRunner(wer);
   return transaktion(db, async (tx) => {
     const a = (await tx.query("select a.*, z.agent_id as zusage_agent from spendenauftraege a join zusagen z on z.id = a.zusage_id where a.id = $1 for update of a", [auftragId])).rows[0];
     if (!a || Number(a.zusage_agent) !== wer.agentId) throw new Abgelehnt("unknown brief");
     if (!a.begonnen) throw new Abgelehnt("this brief was not started");
-    await tx.query("update spendenauftraege set begonnen = null where id = $1", [auftragId]);
-    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: `agent:${wer.agentId}`, art: "spendenauftrag_abgebrochen", bezug: `spendenauftrag:${auftragId}`, daten: { grund: grund.slice(0, 500) } });
+    if (gestoppt) await tx.query("update spendenauftraege set begonnen = null where id = $1", [auftragId]);
+    else await tx.query("update spendenauftraege set begonnen = null, abgebrochen = now(), abbruchgrund = $2 where id = $1", [auftragId, grund.slice(0, 500)]);
+    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: `agent:${wer.agentId}`, art: "spendenauftrag_abgebrochen", bezug: `spendenauftrag:${auftragId}`, daten: { grund: grund.slice(0, 500), gestoppt } });
+    return { auftrag_id: auftragId, zustand: a.zustand };
   });
 }
