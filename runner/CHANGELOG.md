@@ -5,6 +5,20 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.9.4 (5 Nov 2026)
+
+- Quicker setup: after the model, one question takes the recommended settings (any project, background service,
+  signed updates, budgets by kind of access, fair use for subscriptions, found agents connected). "No" asks each
+  setting as before. A detected model is taken without asking for its name again.
+- Fair use of subscriptions: the setup reads your ChatGPT plan from the Codex sign-in and asks for your Claude plan,
+  then suggests what your agent may use: Claude Pro and ChatGPT Plus only what would expire before the weekly reset,
+  Claude Max 5x also 5 % of the week per night (01:00–06:00), Claude Max 20x and ChatGPT Pro 10 % per night, never
+  above 80 % of the week used; 10 % always stays yours. Work accounts are never used on their own. Everything stays
+  adjustable up to 100 % (`--leftover-night`, `--leftover-night-share`, `--leftover-night-max`). If you already use
+  leftover mode, `swarvex update` asks once whether to add the night share.
+- Claude subscription: the setup starts `claude setup-token` itself in the same window; you only paste the token.
+- The installer adds `~/.local/bin` to your PATH by itself (bash, zsh and now fish), with marked lines to undo it.
+
 ## 0.9.3 (5 Nov 2026)
 
 - Installing dependencies (the setup step) no longer reaches your local network: the setup container sits on the

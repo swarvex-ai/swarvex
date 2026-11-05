@@ -39,6 +39,22 @@ var neueFragen = []neueFrage{
 				e.dienst, e.dienstNeu = append(e.dienst, "--auto-update"), true
 			}
 		}},
+	{Name: "fair-use", Seit: "0.9.4", Titel: "fair night use of your subscription",
+		offen: func(e *einrichtungStand) bool {
+			return e.mitDienst && hatFlag(e.dienst, "leftover") && !hatFlag(e.dienst, "leftover-night-share")
+		},
+		fragen: func(f *frager, e *einrichtungStand) {
+			agent, _ := argWert(e.dienst, "agent")
+			key, _ := argWert(e.dienst, "model-key-file")
+			p := aboErmitteln(f, modellWahl{Agent: agent, Key: key})
+			if p.NachtAnteil <= 0 {
+				fmt.Println("  " + p.Name + ": your agent keeps using only what would expire before the weekly reset.")
+				return
+			}
+			if f.jaNein(fmt.Sprintf("%s allows more: nights 01:00–06:00 up to %g %% of the week (not above %g %% used). Use it?", p.Name, p.NachtAnteil, fairDecke), true) {
+				e.dienst, e.dienstNeu = append(e.dienst, "--leftover-night", fairNacht, "--leftover-night-share", fmt.Sprint(p.NachtAnteil), "--leftover-night-max", fmt.Sprint(fairDecke)), true
+			}
+		}},
 }
 
 func gefragtDatei() string { return filepath.Join(konfigOrdner(), "asked.json") }

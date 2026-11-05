@@ -166,6 +166,22 @@ func (z zeitfenster) naechsterBeginn(t time.Time) (time.Time, bool) {
 	return time.Time{}, false
 }
 
+// abschnitt: Beginn und Ende des Fensters, das gerade offen ist, sonst des nächsten (auf die Minute; nichts, wenn nie offen).
+func (z zeitfenster) abschnitt(t time.Time) (von, bis time.Time) {
+	t = t.Truncate(time.Minute)
+	if z.offen(t) {
+		von = t
+		for d := 0; d < 8*24*60 && z.offen(von.Add(-time.Minute)); d++ {
+			von = von.Add(-time.Minute)
+		}
+		return von, t.Add(z.verbleibend(t))
+	}
+	if n, ok := z.naechsterBeginn(t); ok {
+		return n, n.Add(z.verbleibend(n))
+	}
+	return time.Time{}, time.Time{}
+}
+
 // zeitpunkt schreibt einen Zeitpunkt kurz, z. B. „Sat 31 Oct 03:00“.
 func zeitpunkt(t time.Time) string {
 	return t.Format("Mon 02 Jan 15:04")

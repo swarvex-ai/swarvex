@@ -22,7 +22,7 @@ Runner (dein Rechner)
 
 | Befehl | Wirkung |
 |---|---|
-| `swarvex setup` | Einrichtung mit Fragen: Modell (erkennt Vorhandenes), Projekt, Betrieb, direkte Anbindung; speichert alles, der Einzeiler startet es von selbst. `--new` fragt nur, was eine neuere Version dazugebracht hat |
+| `swarvex setup` | Einrichtung: Modell wählen (erkennt Vorhandenes), dann eine Frage für die empfohlenen Einstellungen (beliebiges Projekt, Dienst im Hintergrund, signierte Updates, Budget nach Art des Zugangs, faire Nutzung bei Abos, gefundene Agenten angebunden) oder jede Einstellung selbst; der Einzeiler startet es von selbst. `--new` fragt nur, was eine neuere Version dazugebracht hat |
 | `swarvex connect` | swarvex bei allen gefundenen Agenten als MCP-Server eintragen (Claude Code, Codex, Hermes, opencode, OpenClaw, Gemini CLI) |
 | `swarvex login --platform <url>` | Gerät im Browser anmelden |
 | `swarvex work` | eine passende Aufgabe holen und abarbeiten, mit den Angaben aus `swarvex setup` |
@@ -97,6 +97,9 @@ Abos wie Claude Pro oder Max und ChatGPT Plus oder Pro haben zwei Fenster: eines
 - **Erst kurz vor dem Wochen-Reset:** Standard sind die letzten 24 Stunden (`--leftover-before-reset 24h`).
 - **Deine Reserve bleibt:** 10 % der Woche rührt der Runner nie an (`--leftover-reserve 10`).
 - **Deine Sitzung bleibt frei:** Das Fünf-Stunden-Fenster füllt er höchstens bis 80 % (`--leftover-session-max 80`).
+- **Auf Wunsch auch nachts:** In den Nachtfenstern (`--leftover-night "daily 01:00-06:00"`) darf der Runner auch vor dem Reset arbeiten, je Nacht bis zu einem Anteil der Woche (`--leftover-night-share 10`) und nur, solange weniger als 80 % der Woche verbraucht sind (`--leftover-night-max 80`). Die Nacht ist genau ein Fünf-Stunden-Fenster, am Morgen ist es abgelaufen.
+
+Das Setup wählt faire Werte für dein Abo (Codex liest die Stufe aus deiner Anmeldung, bei Claude fragt es einmal): Claude Pro und ChatGPT Plus nur, was verfallen würde, Claude Max 5x dazu 5 % je Nacht, Claude Max 20x und ChatGPT Pro 10 % je Nacht. Firmenkonten (Team, Business, Enterprise) nutzt es nie von selbst. Jeder Wert lässt sich ändern, bis 100 %: in `swarvex setup` unter „jede Einstellung selbst“ oder mit den Schaltern oben.
 
 Den Stand melden Anthropic und OpenAI mit jeder Antwort. Der Schlüssel-Proxy liest ihn mit, stoppt hart, sobald eine Grenze erreicht ist, und der Runner merkt ihn sich für die nächste Entscheidung. `swarvex status` zeigt ihn an. Im Dauerbetrieb wartet der Runner von selbst bis zum nächsten Rest. Nach längerer Pause kennt er den Stand noch nicht; dann zeigt ihn die erste Anfrage, und ist gerade nichts übrig, endet die Aufgabe danach und geht zurück in den Pool.
 

@@ -37,7 +37,10 @@ type frager struct {
 	tty *os.File
 }
 
-func neuerFrager() (*frager, bool) {
+// neuerFrager: Fragen im Terminal (im Test austauschbar).
+var neuerFrager = terminalFrager
+
+func terminalFrager() (*frager, bool) {
 	if st, err := os.Stdin.Stat(); err == nil && st.Mode()&os.ModeCharDevice != 0 {
 		return &frager{r: bufio.NewReader(os.Stdin), tty: os.Stdin}, true
 	}
@@ -528,7 +531,7 @@ func setupDialog(ausfuehren bool) []string {
 		pruefen(err)
 	}
 
-	fmt.Println("\n== 1/4 Model\nYour agent works with a model of your choice. Your key stays on this machine; the sandbox never sees it.")
+	fmt.Println("\n== 1/2 Model\nYour agent works with a model of your choice. Your key stays on this machine; the sandbox never sees it.")
 	optionen := modellAuswahl()
 	titel := make([]string, len(optionen))
 	for i, o := range optionen {
@@ -539,8 +542,7 @@ func setupDialog(ausfuehren bool) []string {
 	abo := w.Key == "claude-setup-token" || (w.Agent == "codex" && strings.HasSuffix(w.Key, "auth.json"))
 	switch {
 	case w.Key == "claude-setup-token":
-		fmt.Println("Run `claude setup-token` in another terminal and paste the token here (input is hidden).")
-		w.Key = schluesselDatei("claude-token", f.geheim("Token"))
+		w.Key = schluesselDatei("claude-token", claudeTokenHolen(f))
 	case strings.HasPrefix(w.Key, "env:"):
 		w.Key = schluesselDatei(strings.ToLower(strings.TrimPrefix(w.Key, "env:")), os.Getenv(strings.TrimPrefix(w.Key, "env:")))
 	case strings.HasPrefix(w.Key, "wert:"):
@@ -571,8 +573,7 @@ func setupDialog(ausfuehren bool) []string {
 			w.Key = schluesselDatei(w.Agent+"-key", k)
 		}
 	}
-	w.Modell = f.frage("Model name", w.Modell)
-	for w.Modell == "" {
+	for w.Modell == "" { // erkannte Modelle gelten ohne Frage; ändern lässt es sich unter „Customize“
 		w.Modell = f.frage("Model name (required)", "")
 	}
 	if w.URL != "" {
@@ -590,8 +591,125 @@ func setupDialog(ausfuehren bool) []string {
 			}
 		}
 	}
+	var plan aboPlan
+	if abo {
+		plan = aboErmitteln(f, w)
+	}
 
-	fmt.Println("\n== 2/4 Project")
+	fmt.Println("\n== 2/2 Settings")
+	var agenten []mcpAgent
+	if !istWSL() {
+		agenten = mcpAgentenGefunden()
+	}
+	e := empfehlung(w, abo, plan, agenten)
+	if !e.moeglich {
+		fmt.Println(e.grund)
+		return anpassen(f, z, w, abo, plan, agenten, ausfuehren)
+	}
+	fmt.Println("Recommended:")
+	for _, zeile := range e.zeilen {
+		fmt.Println("  • " + zeile)
+	}
+	if !f.jaNein("Use these settings? (no: choose each one yourself)", true) {
+		return anpassen(f, z, w, abo, plan, agenten, ausfuehren)
+	}
+	pruefen(argsSpeichern(e.args))
+	gefragtMerken(gefragtDatei(), "auto-update", "fair-use")
+	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
+	agentenVerbinden(z, agenten)
+	if !ausfuehren {
+		return e.args
+	}
+	dienstBefehl(append(append([]string{}, e.args...), e.dienstArgs...))
+	return e.args
+}
+
+// empfohlen: der Schnellstart (eine Frage statt aller): beliebiges Projekt, Dienst, automatische Updates, Budget nach
+// Art des Zugangs, bei Abos die faire Nutzung für die Stufe, gefundene Agenten verbunden.
+type empfohlen struct {
+	moeglich         bool
+	grund            string
+	zeilen           []string
+	args, dienstArgs []string
+}
+
+func modellArgs(w modellWahl, projekt string) []string {
+	args := []string{"--project", projekt, "--agent", w.Agent, "--model", w.Modell}
+	if w.URL != "" {
+		args = append(args, "--model-url", w.URL)
+	}
+	if w.Key != "" {
+		args = append(args, "--model-key-file", w.Key)
+	}
+	return args
+}
+
+func empfehlung(w modellWahl, abo bool, plan aboPlan, agenten []mcpAgent) empfohlen {
+	e := empfohlen{moeglich: true, args: modellArgs(w, "auto"), dienstArgs: []string{"--auto-update"}}
+	e.zeilen = []string{"model: " + w.Modell, "project: any, wherever most is open",
+		"runs in the background (also after a restart) and installs signed updates itself"}
+	switch {
+	case abo && plan.Firma:
+		e.moeglich, e.grund = false, plan.Name+": swarvex never uses a work account on its own. Choose each setting yourself:"
+	case abo && plan.ZuKlein:
+		e.moeglich, e.grund = false, plan.Name+" has too little quota for tasks (a local model or an API key works better). Choose each setting yourself:"
+	case abo:
+		e.zeilen = append(e.zeilen, plan.Name+", fair use: "+plan.fairText(), "at most 1,000,000 tokens per task")
+		e.args = append(e.args, "--budget-tokens", "1000000")
+		e.dienstArgs = append(e.dienstArgs, plan.fairArgs()...)
+	case w.Lokal:
+		e.zeilen = append(e.zeilen, "local model: no token limits")
+		e.args = append(e.args, "--budget-tokens", "0")
+	default:
+		e.zeilen = append(e.zeilen, "at most 1,000,000 tokens per task and 2,000,000 per day")
+		e.args = append(e.args, "--budget-tokens", "1000000")
+		e.dienstArgs = append(e.dienstArgs, "--daily-budget-tokens", "2000000")
+	}
+	if len(agenten) > 0 {
+		namen := make([]string, len(agenten))
+		for i, a := range agenten {
+			namen[i] = a.Titel
+		}
+		e.zeilen = append(e.zeilen, "connects "+strings.Join(namen, ", ")+" for tasks without code (design, texts, reviews)")
+	}
+	return e
+}
+
+// claudeTokenHolen startet `claude setup-token` im selben Fenster (es öffnet den Browser) und nimmt den Token entgegen.
+func claudeTokenHolen(f *frager) string {
+	fmt.Println("Claude Code now creates a token for the runner (`claude setup-token`, opens your browser).")
+	cmd := exec.Command("claude", "setup-token")
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = f.tty, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Println("  That did not start (" + err.Error() + "). Run `claude setup-token` in another terminal.")
+	}
+	for i := 0; ; i++ {
+		t := strings.TrimSpace(f.geheim("Paste the token it showed (starts with sk-ant-oat, input is hidden)"))
+		if strings.HasPrefix(t, "sk-ant-oat") || i >= 2 {
+			return t
+		}
+		fmt.Println("  That does not look like a Claude token (sk-ant-oat…).")
+	}
+}
+
+// agentenVerbinden: gefundene Agenten für Aufgaben ohne Code eintragen (unter WSL macht das der Windows-Installer).
+func agentenVerbinden(z *zugangsdaten, agenten []mcpAgent) {
+	switch {
+	case istWSL():
+		fmt.Println("Agents installed on Windows (Claude Code, Codex …) are connected by the Windows installer, or later with: swarvex connect")
+	case len(agenten) > 0:
+		verbinden(z.Plattform, agenten)
+	}
+}
+
+// anpassen: jede Einstellung einzeln (statt des Schnellstarts).
+func anpassen(f *frager, z *zugangsdaten, w modellWahl, abo bool, plan aboPlan, agenten []mcpAgent, ausfuehren bool) []string {
+	w.Modell = f.frage("Model name", w.Modell)
+	for w.Modell == "" {
+		w.Modell = f.frage("Model name (required)", "")
+	}
+
+	fmt.Println("\n-- Project")
 	projekte := projekteLaden(z.Plattform, z.CAPfad)
 	pTitel := []string{"Any project, wherever most is open (recommended)"}
 	for _, p := range projekte {
@@ -605,19 +723,12 @@ func setupDialog(ausfuehren bool) []string {
 	if i := f.wahl("Where should your agent help?", pTitel); i > 0 {
 		projekt = projekte[i-1].Projekt
 	}
+	args := modellArgs(w, projekt)
 
-	args := []string{"--project", projekt, "--agent", w.Agent, "--model", w.Modell}
-	if w.URL != "" {
-		args = append(args, "--model-url", w.URL)
-	}
-	if w.Key != "" {
-		args = append(args, "--model-key-file", w.Key)
-	}
-
-	fmt.Println("\n== 3/4 When")
-	modus := f.wahl("How should it run?", []string{"Try one task now", "As a service in the background, within time windows", "Only save, I start it myself with `swarvex work`"})
+	fmt.Println("\n-- When")
+	modus := f.wahl("How should it run?", []string{"As a service in the background (recommended)", "Try one task now", "Only save, I start it myself with `swarvex work`"})
 	var dienstArgs []string
-	if modus == 1 {
+	if modus == 0 {
 		titel := make([]string, len(zeitVorschlaege))
 		for i, v := range zeitVorschlaege {
 			titel[i] = v.titel
@@ -633,21 +744,17 @@ func setupDialog(ausfuehren bool) []string {
 		if fenster != "" {
 			dienstArgs = append(dienstArgs, "--schedule", fenster)
 		}
-		vorschlag := "2000000"
-		if w.Lokal {
-			vorschlag = "0"
+		if abo {
+			dienstArgs = append(dienstArgs, aboNutzungFragen(f, plan)...)
+		} else {
+			vorschlag := "2000000"
+			if w.Lokal {
+				vorschlag = "0"
+			}
+			dienstArgs = append(dienstArgs, "--daily-budget-tokens", f.frage("Tokens per day at most (0 = no limit)", vorschlag))
 		}
-		dienstArgs = append(dienstArgs, "--daily-budget-tokens", f.frage("Tokens per day at most (0 = no limit)", vorschlag))
 		if f.jaNein(autoUpdateFrage, true) {
 			dienstArgs = append(dienstArgs, "--auto-update")
-		}
-		gefragtMerken(gefragtDatei(), "auto-update")
-		if abo {
-			fmt.Println("  Leftover mode (beta): your agent only uses what your subscription would let expire, in the last 24 hours")
-			fmt.Println("  before the weekly reset, keeps 10 % of the week for you and never fills your 5-hour window beyond 80 %.")
-			if f.jaNein("Use only leftover quota?", false) {
-				dienstArgs = append(dienstArgs, "--leftover")
-			}
 		}
 	}
 	// Agenten schicken ihren Kontext bei jedem Schritt erneut; eine Textaufgabe braucht so leicht mehrere 100.000 Tokens
@@ -662,19 +769,20 @@ func setupDialog(ausfuehren bool) []string {
 	}
 	args = append(args, "--budget-tokens", aufgabenBudget)
 	pruefen(argsSpeichern(args))
+	gefragtMerken(gefragtDatei(), "auto-update", "fair-use")
 	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
 
-	fmt.Println("\n== 4/4 Tasks without code")
-	if istWSL() {
-		fmt.Println("Agents installed on Windows (Claude Code, Codex …) are connected by the Windows installer, or later with: swarvex connect")
-	} else if gefunden := mcpAgentenGefunden(); len(gefunden) > 0 {
-		namen := make([]string, len(gefunden))
-		for i, a := range gefunden {
+	fmt.Println("\n-- Tasks without code")
+	if len(agenten) > 0 && !istWSL() {
+		namen := make([]string, len(agenten))
+		for i, a := range agenten {
 			namen[i] = a.Titel
 		}
 		if f.jaNein("Also connect "+strings.Join(namen, ", ")+" directly (design, texts, reviews; no code runs on your machine)?", true) {
-			verbinden(z.Plattform, gefunden)
+			agentenVerbinden(z, agenten)
 		}
+	} else if istWSL() {
+		agentenVerbinden(z, nil)
 	} else {
 		fmt.Println("No other agent found (Claude Code, Codex, Hermes, opencode, OpenClaw, Gemini CLI). Later: swarvex connect")
 	}
@@ -684,10 +792,10 @@ func setupDialog(ausfuehren bool) []string {
 	}
 	switch modus {
 	case 0:
+		dienstBefehl(append(append([]string{}, args...), dienstArgs...))
+	case 1:
 		fmt.Println("\nStarting one task …")
 		arbeitenBefehl(args)
-	case 1:
-		dienstBefehl(append(append([]string{}, args...), dienstArgs...))
 	default:
 		fmt.Println("\nDone. Start with:  swarvex work   (one task)  or  swarvex service  (in the background)")
 	}

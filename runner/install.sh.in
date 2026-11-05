@@ -142,22 +142,28 @@ else
   "$BIN/swarvex" login --platform "$PLATFORM" $CA_ARG
 fi
 
-# ~/.local/bin fehlt im PATH oft, bis man sich neu anmeldet; auf Wunsch in die Shell-Konfiguration eintragen
+# ~/.local/bin fehlt im PATH oft, bis man sich neu anmeldet: beim ersten Einrichten selbst in die Shell-Konfiguration
+# eintragen (zwei markierte Zeilen, leicht zu entfernen); bei Updates (SWARVEX_NO_SETUP) nichts anfassen
 case ":$PATH:" in
   *":$BIN:"*) ;;
   *)
-    case "${SHELL:-}" in */zsh) RC="$HOME/.zshrc" ;; */bash|"") RC="$HOME/.bashrc" ;; *) RC="" ;; esac
-    answer="n"
-    # swarvex update (SWARVEX_NO_SETUP) asks nothing: whoever declined once is not asked at every update
-    if [ -n "$RC" ] && [ -z "${SWARVEX_NO_SETUP:-}" ] && ! grep -qs '.local/bin' "$RC" && ( : </dev/tty ) 2>/dev/null; then
-      printf '\n%s is not in your PATH, so the command `swarvex` is not found yet.\nAdd it to %s? [Y/n] ' "$BIN" "$RC"
-      read -r answer </dev/tty || answer="n"
-    fi
-    case "$answer" in
-      ""|[yYjJ]*) printf '\n# added by the swarvex installer\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$RC"
-                  printf '   added; new terminals find `swarvex`. In this terminal run once:  export PATH="$HOME/.local/bin:$PATH"\n' ;;
-      *) printf '\nNote: %s is not in your PATH; add it, e.g. in ~/.profile:\n  export PATH="$HOME/.local/bin:$PATH"\n' "$BIN" ;;
-    esac ;;
+    if [ -z "${SWARVEX_NO_SETUP:-}" ]; then
+      JETZT='export PATH="$HOME/.local/bin:$PATH"'
+      case "${SHELL:-}" in
+        */fish) RC="${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d/swarvex.fish"; ZEILE='fish_add_path -g $HOME/.local/bin'; JETZT='fish_add_path -g ~/.local/bin' ;;
+        */zsh) RC="$HOME/.zshrc"; ZEILE='export PATH="$HOME/.local/bin:$PATH"' ;;
+        */bash|"") RC="$HOME/.bashrc"; ZEILE='export PATH="$HOME/.local/bin:$PATH"' ;;
+        *) RC=""; ZEILE="" ;;
+      esac
+      if [ -n "$RC" ] && ! grep -qs '.local/bin' "$RC"; then
+        mkdir -p "$(dirname "$RC")"
+        printf '\n# added by the swarvex installer\n%s\n' "$ZEILE" >> "$RC"
+        printf '\n%s is now in your PATH (%s; to undo, remove the two lines marked "added by the swarvex installer").\n' "$BIN" "$RC"
+        printf 'New terminals find `swarvex`; in this one run once:  %s\n' "$JETZT"
+      elif [ -z "$RC" ]; then
+        printf '\nNote: %s is not in your PATH; add it in your shell configuration.\n' "$BIN"
+      fi
+    fi ;;
 esac
 # Einrichtung gleich anschließen: wenige Fragen, Vorschläge aus dem, was schon da ist (swarvex setup).
 # Über `curl … | sh` ist stdin das Skript, deshalb vom Terminal lesen; ohne Terminal (CI) nur der Hinweis.

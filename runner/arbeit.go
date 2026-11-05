@@ -69,6 +69,9 @@ func arbeitenBefehl(args []string) {
 	restReserve := fs.Float64("leftover-reserve", 10, "with --leftover: percent of the weekly window that always stays yours")
 	restVor := fs.Duration("leftover-before-reset", 24*time.Hour, "with --leftover: start this long before the weekly window resets")
 	restSitzung := fs.Float64("leftover-session-max", 80, "with --leftover: never fill the 5-hour window beyond this percent")
+	restNacht := fs.String("leftover-night", "", "with --leftover: also work in these time windows before the reset, e.g. \"daily 01:00-06:00\" (default with a night share)")
+	restNachtAnteil := fs.Float64("leftover-night-share", 0, "with --leftover: percent of the weekly window the agent may use per night (0 = no night work, 100 = no limit)")
+	restNachtDecke := fs.Float64("leftover-night-max", 80, "with --leftover: no night work once this percent of the weekly window is used")
 	fs.StringVar(&setupNetz, "setup-network", "", "network while installing dependencies: public (default, only public addresses through a filtering proxy), lan (also your local network), open (no proxy, like before 0.9.3)")
 	fs.StringVar(&setupErlaubt, "setup-allow", "", "with public: exceptions for the setup, e.g. a package mirror in your network (IP, CIDR or host name, comma-separated)")
 	fs.Parse(args)
@@ -99,6 +102,11 @@ func arbeitenBefehl(args []string) {
 		}
 		r, err := restRegelnLesen(fmt.Sprintf("reserve=%g;before=%s;session=%g", *restReserve, *restVor, *restSitzung))
 		pruefen(err)
+		r.NachtText, r.NachtAnteil, r.NachtDecke = *restNacht, *restNachtAnteil, *restNachtDecke
+		if r.NachtAnteil > 0 && r.NachtText == "" {
+			r.NachtText = fairNacht
+		}
+		pruefen(r.gueltig())
 		restModus = &r
 	}
 	if *nurPruefen {
@@ -120,7 +128,7 @@ func arbeitenBefehl(args []string) {
 	// Restkontingent: nur kurz vor dem Wochen-Reset und nur bis zur Reserve (Exit-Code 7, kontingent.go).
 	if restModus != nil {
 		if k, ok := kontingentLesen(kontingentDatei()); ok {
-			if erlaubt, grund, ab := restModus.pruefen(k.fortgeschrieben(time.Now()), time.Now()); !erlaubt {
+			if erlaubt, grund, ab := restModus.fuer(k, time.Now()).pruefen(k.fortgeschrieben(time.Now()), time.Now()); !erlaubt {
 				fmt.Printf("Leftover mode: %s. Next chance from %s.\n", grund, zeitpunkt(ab))
 				os.Exit(7)
 			}
@@ -595,7 +603,8 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 		proxyArgs = append(proxyArgs, "-e", "SWARVEX_ACCOUNT_ID="+zugang.Konto)
 	}
 	if restModus != nil {
-		proxyArgs = append(proxyArgs, "-e", "SWARVEX_LEFTOVER="+restModus.String())
+		k, _ := kontingentLesen(kontingentDatei())
+		proxyArgs = append(proxyArgs, "-e", "SWARVEX_LEFTOVER="+restModus.fuer(k, time.Now()).String())
 	}
 	if aus, err := podman(append(proxyArgs, "swarvex-proxy")...); err != nil {
 		return nil, "", fmt.Errorf("starting the proxy: %s", aus)
@@ -638,6 +647,9 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	os.WriteFile(filepath.Join(ordner, "proxy.log"), proxyLog, 0o644)
 	// Stand der Abo-Fenster für die nächste Entscheidung im Restkontingent-Modus und für `swarvex status`
 	if k, ok := kontingentAusProtokoll(string(proxyLog)); ok {
+		if alt, ok := kontingentLesen(kontingentDatei()); ok && k.Nacht == nil {
+			k.Nacht = alt.Nacht // der Beginn der Nacht bleibt, auch wenn diese Aufgabe ihn nicht neu gesetzt hat
+		}
 		kontingentMerken(kontingentDatei(), k)
 	}
 	verbrauch := verbrauchAusProxy(string(proxyLog))
@@ -792,7 +804,7 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 			// Das Kind hat Grund und Zeitpunkt schon genannt; aus dem gemerkten Stand ergibt sich, wie lange.
 			n := time.Now().Add(30 * time.Minute)
 			if k, ok := kontingentLesen(kontingentDatei()); ok && restModus != nil {
-				if _, _, ab := restModus.pruefen(k.fortgeschrieben(time.Now()), time.Now()); ab.After(time.Now()) {
+				if _, _, ab := restModus.fuer(k, time.Now()).pruefen(k.fortgeschrieben(time.Now()), time.Now()); ab.After(time.Now()) {
 					n = ab
 				}
 			}

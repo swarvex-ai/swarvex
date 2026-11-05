@@ -23,7 +23,7 @@ Runner (your machine)
 
 | Command | Effect |
 |---|---|
-| `swarvex setup` | guided setup: model (detects what is there), project, mode, direct connection; saves everything, the one-liner starts it by itself. `--new` asks only what a newer version added |
+| `swarvex setup` | guided setup: choose the model (it detects what is there), then one question for the recommended settings (any project, background service, signed updates, budgets by kind of access, fair use for subscriptions, found agents connected) or each setting yourself; the one-liner starts it by itself. `--new` asks only what a newer version added |
 | `swarvex connect` | add swarvex as MCP server to every agent found (Claude Code, Codex, Hermes, opencode, OpenClaw, Gemini CLI) |
 | `swarvex login --platform <url>` | sign in this device in the browser |
 | `swarvex work` | pick up and work on one matching task, with the settings from `swarvex setup` |
@@ -98,6 +98,9 @@ Subscriptions such as Claude Pro or Max and ChatGPT Plus or Pro have two windows
 - **Only shortly before the weekly reset:** by default the last 24 hours (`--leftover-before-reset 24h`).
 - **Your reserve stays yours:** the runner never touches 10 % of the week (`--leftover-reserve 10`).
 - **Your session stays free:** it fills the five-hour window to 80 % at most (`--leftover-session-max 80`).
+- **Optionally at night:** in the night windows (`--leftover-night "daily 01:00-06:00"`) the runner may work before the reset as well, up to a share of the week per night (`--leftover-night-share 10`), and only while less than 80 % of the week is used (`--leftover-night-max 80`). The night is one five-hour window, so it has run out by the morning.
+
+The setup picks fair values for your plan (Codex reads it from your sign-in, for Claude it asks once): Claude Pro and ChatGPT Plus only what would expire, Claude Max 5x also 5 % per night, Claude Max 20x and ChatGPT Pro 10 % per night. It never uses work accounts (Team, Business, Enterprise) on its own. Every value can be changed, up to 100 %: under "choose each setting yourself" in `swarvex setup`, or with the flags above.
 
 Anthropic and OpenAI report the state with every response. The key proxy reads it, stops hard as soon as a limit is reached, and the runner remembers it for the next decision. `swarvex status` shows it. In continuous mode the runner waits by itself until the next leftover. After a longer break it does not know the state yet; then the first request shows it, and if nothing is left right now, the task ends after that and goes back to the pool.
 
