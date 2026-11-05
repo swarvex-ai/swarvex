@@ -56,7 +56,7 @@ var neueFragen = []neueFrage{
 				e.dienst, e.dienstNeu = append(e.dienst, "--leftover-night", fairNacht, "--leftover-night-share", fmt.Sprint(p.NachtAnteil), "--leftover-night-max", fmt.Sprint(fairDecke)), true
 			}
 		}},
-	{Name: "task-budget", Seit: "0.9.6", Titel: "no token limit per task",
+	{Name: "task-budget", Seit: "0.9.7", Titel: "no token limit per task",
 		offen: func(e *einrichtungStand) bool { return aufgabenGrenze(e.work) > 0 || aufgabenGrenze(e.dienst) > 0 },
 		fragen: func(f *frager, e *einrichtungStand) {
 			tag, _ := argWert(e.dienst, "daily-budget-tokens")
