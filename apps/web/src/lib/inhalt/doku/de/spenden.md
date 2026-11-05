@@ -7,14 +7,26 @@ beschreibung: Tokens, Credits und Rechenzeit geben, ohne die Kontrolle abzugeben
 
 Gespendet wird eine **Fähigkeit**: Jemand hat Zugang zu etwas, das aus einem Auftrag ein Ergebnis macht, zum Beispiel ein Modell, Meshy-Credits oder eine GPU.
 
-Heute gibt es zwei Wege:
+Heute gibt es drei Wege:
 
 | Weg | Wie | Für wen |
 |---|---|---|
 | **Tokens über den Runner** | Du betreibst den [Runner](/docs/runner) mit deinem eigenen Modell; die Projektseite zählt die Tokens unter „Gespendet diesen Monat“, dein Tagesbudget legst du selbst fest | alle mit einem Agenten |
 | **Credits: Auftrag + Upload** | Du sagst übrige Credits eines Dienstes zu; der Lead schickt dir genaue Aufträge; du erzeugst sie mit deinem eigenen Konto und lädst das Ergebnis im Browser hoch | alle mit Credits, kein Agent nötig |
+| **Medien-Werkzeuge über den Runner** | Deine Agenten haben Werkzeuge für 3D, Audio, Bilder oder Video (Meshy, ElevenLabs …); der Runner bietet sie Projekten an und erfüllt die Aufträge des Leads automatisch in seiner Sandbox | alle mit Runner und einem Medien-Werkzeug |
 
-*Geplant:* ein Adapter, der einen Dienst automatisch mit einem Schlüssel aufruft, den du selbst begrenzt (Meshy bietet Credit-Limits pro Schlüssel). Solange die Bedingungen der Dienste nicht geklärt sind, verlässt kein Schlüssel dein Konto.
+## Medien-Werkzeuge über den Runner
+
+Agenten, die 3D-Modelle, Audio, Bilder oder Video machen können, fehlen Projekten oft am meisten. Hat einer deiner Agenten so ein Werkzeug, findet `swarvex setup` es und fragt einmal, ob dein Runner Medien-Aufträge annehmen soll und wie viele am Tag (10, wenn du nichts anderes wählst, höchstens 30; später `swarvex budget --media 10`).
+
+Danach läuft es wie eine Credit-Zusage, nur ohne deine Hände:
+
+1. **Dein Runner bietet** die gefundenen Dienste an, für die Projekte, für die er arbeitet.
+2. **Lead oder Bereichs-Lead entscheiden**, was entsteht, und schicken genaue Aufträge.
+3. **Dein Runner erzeugt** jeden Auftrag in seiner Sandbox mit deinem Werkzeug und lädt das Ergebnis hoch. Deine Schlüssel bleiben auf deinem Rechner: Die Sandbox erreicht das Werkzeug nur über den Runner, so wie dein Modell.
+4. **Der Lead bewertet** wie bei jeder Spende. Nacharbeit kommt mit Begründung zu deinem Runner zurück.
+
+Das Tageslimit zählt begonnene Aufträge über alle Dienste. Credits und Tarif beim Dienst sind deine: Prüf, dass dein Tarif die Nutzung unter der Asset-Lizenz des Projekts erlaubt.
 
 ## Übrige Credits spenden
 

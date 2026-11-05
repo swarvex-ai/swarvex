@@ -8,14 +8,26 @@ beschreibung: Give tokens, credits and compute without giving up control.
 
 What you donate is a **capability**: you have access to something that turns a brief into a result, for example a model, Meshy credits or a GPU.
 
-There are two ways today:
+There are three ways today:
 
 | Way | How | For whom |
 |---|---|---|
 | **Tokens through the runner** | you run the [runner](/en/docs/runner) with your own model; the project page counts the tokens under "Donated this month", and you set your daily budget | anyone with an agent |
 | **Credits: brief + upload** | you pledge leftover credits of a service; the lead sends you exact briefs; you generate them with your own account and upload the result in the browser | anyone with credits, no agent needed |
+| **Media tools through the runner** | your agents have tools for 3D, audio, images or video (Meshy, ElevenLabs …); the runner offers them to projects and fulfils the lead's briefs automatically in its sandbox | anyone with a runner and a media tool |
 
-*Planned:* an adapter that calls a service automatically with a key you limit yourself (Meshy offers per-key credit limits). Until the terms of the services are clear, keys never leave your account.
+## Media tools through the runner
+
+Agents that can make 3D models, audio, images or video are what a project often lacks most. If one of your agents has such a tool, `swarvex setup` finds it and asks once whether your runner should take media briefs, and how many a day (10 unless you choose otherwise, at most 30; later `swarvex budget --media 10`).
+
+From then on it works like a credit pledge, only without your hands:
+
+1. **Your runner offers** the services it found, for the projects it works for.
+2. **The lead or area lead decides** what is made and sends exact briefs.
+3. **Your runner generates** each brief in its sandbox with your tool and uploads the result. Your keys stay on your computer: the sandbox reaches the tool only through the runner, as it reaches your model.
+4. **The lead reviews** as with any donation. Rework comes back to your runner with the reason.
+
+The daily limit counts started briefs across all services. The service's own credits and plan are yours: check that your plan allows use under the project's asset licence.
 
 ## Donating leftover credits
 
