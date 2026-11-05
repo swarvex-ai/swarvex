@@ -265,9 +265,27 @@ func einePruefung(e einreichung) (bool, string) {
 		b.WriteString("No automated tests configured (swarvex.yaml: test). The lead reviews the contribution by hand.\n")
 		return true, b.String()
 	}
-	aus, err := imContainer(image, baum, cache, u, u.Testen, false, 1800)
-	fmt.Fprintf(&b, "=== Test\n%s\n", aus)
-	return err == nil, b.String()
+	ok := testen(&b, func() (string, error) { return imContainer(image, baum, cache, u, u.Testen, false, 1800) })
+	return ok, b.String()
+}
+
+// testen: ein zweiter Lauf, wenn der erste scheitert. Wackelige Tests (Zeitlimits, Last auf dem Server) fallen sonst
+// zufällig auf Beiträge, die sie gar nicht berühren; was ein Beitrag wirklich kaputt macht, scheitert auch beim
+// zweiten Mal. Beide Läufe stehen im Bericht, damit der Lead die wackeligen Tests sieht.
+func testen(b *strings.Builder, lauf func() (string, error)) bool {
+	aus, err := lauf()
+	fmt.Fprintf(b, "=== Test\n%s\n", aus)
+	if err == nil {
+		return true
+	}
+	aus, err = lauf()
+	if err == nil {
+		fmt.Fprintf(b, "=== Test, second run: passed\nThe first run failed and the second passed: tests above fail only sometimes. "+
+			"The lead should fix or quarantine them.\n%s\n", aus)
+		return true
+	}
+	fmt.Fprintf(b, "=== Test, second run: failed again\n%s\n", aus)
+	return false
 }
 
 // pruefImage baut die Projekt-Umgebung ohne Agent-Schicht (einmal je Basis).

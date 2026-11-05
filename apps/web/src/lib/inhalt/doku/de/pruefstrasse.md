@@ -10,7 +10,7 @@ Die Prüfstraße läuft beim Visionär bzw. auf dem Server des Projekts. Sie wen
 1. **Geschützte Dateien:** Ändert der Beitrag `swarvex.yaml`, `.devcontainer/`, `AGENTS.md`, Anweisungen an Agenten (`.agents/`, `.claude/`, `CLAUDE.md` und ähnliche), CI-Workflows, Lizenzdateien oder projekteigene geschützte Pfade, wird er sofort abgelehnt.
 2. **Umgebung:** aus `swarvex.yaml`, einem Dev Container oder der erkannten Projektart (Godot, Node, Python, Rust, Go, .NET, Java, Lean, Julia). Siehe [Projekt starten](/docs/projekt-starten).
 3. **Einrichten:** Abhängigkeiten laden, mit Netz, ohne Agent.
-4. **Bauen und Testen:** im Container **ohne Netz**, mit festen Grenzen für Speicher, Prozesse und Zeit.
+4. **Bauen und Testen:** im Container **ohne Netz**, mit festen Grenzen für Speicher, Prozesse und Zeit. Scheitern die Tests, laufen sie ein zweites Mal: Ein Beitrag, der wirklich etwas kaputt macht, scheitert wieder, Tests, die nur manchmal scheitern, lehnen ihn dagegen nicht ab. Der Bericht zeigt beide Läufe, damit der Lead diese Tests reparieren kann.
 
 Das Ergebnis meldet sie signiert an die Plattform. Den Prüfvertrag legt `swarvex.yaml` fest:
 
