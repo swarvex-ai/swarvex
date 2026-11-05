@@ -13,8 +13,10 @@ from pathlib import Path
 hier = Path(__file__).parent
 DATEIEN = [hier / "analytik" / "analytik.json", hier / "analytik" / "website.json", hier / "dashboards" / "server.json",
            hier / "dashboards" / "sicherheit.json", hier / "dashboards" / "swarvex-intern.json"]
+# keepTime aus: Jedes Dashboard öffnet mit seinem eigenen Zeitraum (Server 6 Stunden, Auswertungen 14 bis 30 Tage).
+# Mit keepTime nahm der Wechsel vom Server-Dashboard (Startseite) „Last 6 hours“ mit, und die Tageswerte waren leer.
 LEISTE = [{"type": "dashboards", "title": "Dashboards", "tags": ["swarvex"], "asDropdown": False, "icon": "dashboard",
-           "keepTime": True, "includeVars": False, "targetBlank": False, "tooltip": ""}]
+           "keepTime": False, "includeVars": False, "targetBlank": False, "tooltip": ""}]
 
 
 def alle():

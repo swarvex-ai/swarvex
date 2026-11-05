@@ -10,6 +10,8 @@ Nach Änderungen neu erzeugen:  python3 infra/monitoring/grafana/sicherheit-dash
 import json
 from pathlib import Path
 
+from zeitraum import tagesfilter
+
 SQL = {"type": "grafana-postgresql-datasource", "uid": "analytik"}
 PROM = {"type": "prometheus", "uid": "prometheus"}
 LOKI = {"type": "loki", "uid": "loki"}
@@ -36,7 +38,7 @@ def schwellen(*stufen):
 
 def panel(typ, titel, ziel, x, w, h, quelle=SQL, einheit=None, beschreibung=None, optionen=None, felder=None, legende=None, fmt="time_series"):
     if quelle is SQL:
-        targets = [{"refId": "A", "datasource": SQL, "editorMode": "code", "rawQuery": True, "format": fmt, "rawSql": " ".join(ziel.split())}]
+        targets = [{"refId": "A", "datasource": SQL, "editorMode": "code", "rawQuery": True, "format": fmt, "rawSql": " ".join(tagesfilter(ziel).split())}]
     else:
         ziele = ziel if isinstance(ziel, list) else [(ziel, legende)]
         targets = [{"refId": chr(65 + i), "datasource": quelle, "expr": e, **({"legendFormat": l} if l else {}),

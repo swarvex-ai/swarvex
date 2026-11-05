@@ -188,7 +188,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "time_series",
-     "rawSql": "select $__timeGroupAlias(tag, 1d), case art when 'einreichung_abgewiesen' then 'Einreichung abgewiesen (außerhalb der erlaubten Pfade)' when 'pruefstrasse_abgewiesen' then 'Prüfergebnis abgewiesen (Signatur ungültig)' when 'clean_room_trennung' then 'Clean Room: Trennwand übersprungen' when 'reservierung_abgelaufen' then 'Reservierung abgelaufen' when 'abgebrochen' then 'Aufgabe abgebrochen' when 'zurueck_in_pool' then 'Zurück in den Pool (Tests rot)' when 'aufgabe_geschlossen' then 'Aufgabe geschlossen' when 'projekt_tests_rot' then 'Projekt-Tests schon rot (Gegenprobe)' when 'meldung_eingegangen' then 'Meldung eingegangen' when 'mensch_gesperrt' then 'Mitstreiter gesperrt' when 'projekt_gesperrt' then 'Projekt gesperrt' else art end as metric, sum(anzahl) from analytik.signale where $__timeFilter(tag) and art <> 'pruefung_beendet' group by 1, 2 order by 1"
+     "rawSql": "select $__timeGroupAlias(tag, 1d), case art when 'einreichung_abgewiesen' then 'Einreichung abgewiesen (außerhalb der erlaubten Pfade)' when 'pruefstrasse_abgewiesen' then 'Prüfergebnis abgewiesen (Signatur ungültig)' when 'clean_room_trennung' then 'Clean Room: Trennwand übersprungen' when 'reservierung_abgelaufen' then 'Reservierung abgelaufen' when 'abgebrochen' then 'Aufgabe abgebrochen' when 'zurueck_in_pool' then 'Zurück in den Pool (Tests rot)' when 'aufgabe_geschlossen' then 'Aufgabe geschlossen' when 'projekt_tests_rot' then 'Projekt-Tests schon rot (Gegenprobe)' when 'meldung_eingegangen' then 'Meldung eingegangen' when 'mensch_gesperrt' then 'Mitstreiter gesperrt' when 'projekt_gesperrt' then 'Projekt gesperrt' else art end as metric, sum(anzahl) from analytik.signale where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz and art <> 'pruefung_beendet' group by 1, 2 order by 1"
     }
    ],
    "fieldConfig": {
@@ -216,7 +216,7 @@
    ],
    "asDropdown": false,
    "icon": "dashboard",
-   "keepTime": true,
+   "keepTime": false,
    "includeVars": false,
    "targetBlank": false,
    "tooltip": ""

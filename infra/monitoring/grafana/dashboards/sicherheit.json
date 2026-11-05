@@ -546,7 +546,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select coalesce(sum(zweite_schranke), 0) as \"Treffer\" from analytik.sicherheit_pruefungen where $__timeFilter(tag)"
+     "rawSql": "select coalesce(sum(zweite_schranke), 0) as \"Treffer\" from analytik.sicherheit_pruefungen where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz"
     }
    ],
    "fieldConfig": {
@@ -628,7 +628,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "time_series",
-     "rawSql": "select $__timeGroupAlias(tag, 1d), art as metric, sum(anzahl) from analytik.sicherheit_ereignisse where $__timeFilter(tag) and art in ('neue Menschen', 'Anmeldung abgewiesen (Konto zu neu)', 'Anmeldung mit Ausnahme', 'Agent angebunden', 'Agent abgemeldet') group by 1, 2 order by 1"
+     "rawSql": "select $__timeGroupAlias(tag, 1d), art as metric, sum(anzahl) from analytik.sicherheit_ereignisse where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz and art in ('neue Menschen', 'Anmeldung abgewiesen (Konto zu neu)', 'Anmeldung mit Ausnahme', 'Agent angebunden', 'Agent abgemeldet') group by 1, 2 order by 1"
     }
    ],
    "fieldConfig": {
@@ -677,7 +677,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "time_series",
-     "rawSql": "select $__timeGroupAlias(tag, 1d), art as metric, sum(anzahl) from analytik.oauth_clients where $__timeFilter(tag) group by 1, 2 order by 1"
+     "rawSql": "select $__timeGroupAlias(tag, 1d), art as metric, sum(anzahl) from analytik.oauth_clients where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz group by 1, 2 order by 1"
     }
    ],
    "fieldConfig": {
@@ -834,7 +834,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "time_series",
-     "rawSql": "select $__timeGroupAlias(tag, 1d), grund as metric, sum(anzahl) from analytik.sicherheit_abweisungen where $__timeFilter(tag) group by 1, 2 order by 1"
+     "rawSql": "select $__timeGroupAlias(tag, 1d), grund as metric, sum(anzahl) from analytik.sicherheit_abweisungen where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz group by 1, 2 order by 1"
     }
    ],
    "fieldConfig": {
@@ -883,7 +883,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "time_series",
-     "rawSql": "select $__timeGroupAlias(tag, 1d), sum(pruefungen) - sum(fehlgeschlagen) as \"bestanden\", sum(fehlgeschlagen) as \"fehlgeschlagen\", sum(zweite_schranke) as \"zweite Schranke\" from analytik.sicherheit_pruefungen where $__timeFilter(tag) group by 1 order by 1"
+     "rawSql": "select $__timeGroupAlias(tag, 1d), sum(pruefungen) - sum(fehlgeschlagen) as \"bestanden\", sum(fehlgeschlagen) as \"fehlgeschlagen\", sum(zweite_schranke) as \"zweite Schranke\" from analytik.sicherheit_pruefungen where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz group by 1 order by 1"
     }
    ],
    "fieldConfig": {
@@ -1045,7 +1045,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "time_series",
-     "rawSql": "select $__timeGroupAlias(tag, 1d), art as metric, sum(anzahl) from analytik.sicherheit_ereignisse where $__timeFilter(tag) and art in ('Vertrauen gestiegen', 'Vertrauen gesunken', 'Regression gemeldet', 'Meldung eingegangen', 'Mensch gesperrt', 'Projekt gesperrt', 'Prüfstraße: falsche Signatur', 'Clean Room: Trennwand gegriffen', 'Bereichs-Lead ernannt', 'Bereichs-Lead beendet') group by 1, 2 order by 1"
+     "rawSql": "select $__timeGroupAlias(tag, 1d), art as metric, sum(anzahl) from analytik.sicherheit_ereignisse where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz and art in ('Vertrauen gestiegen', 'Vertrauen gesunken', 'Regression gemeldet', 'Meldung eingegangen', 'Mensch gesperrt', 'Projekt gesperrt', 'Prüfstraße: falsche Signatur', 'Clean Room: Trennwand gegriffen', 'Bereichs-Lead ernannt', 'Bereichs-Lead beendet') group by 1, 2 order by 1"
     }
    ],
    "fieldConfig": {
@@ -1315,7 +1315,7 @@
    ],
    "asDropdown": false,
    "icon": "dashboard",
-   "keepTime": true,
+   "keepTime": false,
    "includeVars": false,
    "targetBlank": false,
    "tooltip": ""

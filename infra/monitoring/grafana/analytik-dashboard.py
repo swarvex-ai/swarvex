@@ -12,6 +12,8 @@ Alle Werte sind Summen oder Pseudonyme, keine personenbezogenen Daten (migration
 import json
 from pathlib import Path
 
+from zeitraum import tagesfilter
+
 DS = {"type": "grafana-postgresql-datasource", "uid": "analytik"}
 # Filter, die fast jedes Panel nutzt (Dashboard-Variablen oben)
 F = "projektart in ($projektart) and engine in ($engine) and projekt in ($projekt)"
@@ -39,7 +41,7 @@ def zeile(titel):
 def panel(typ, titel, sql, x, w, h, fmt="table", einheit=None, beschreibung=None, optionen=None, felder=None):
     p = {
         "type": typ, "title": titel, "datasource": DS, "gridPos": {"x": x, "y": y, "w": w, "h": h},
-        "targets": [{"refId": "A", "datasource": DS, "editorMode": "code", "rawQuery": True, "format": fmt, "rawSql": " ".join(sql.split())}],
+        "targets": [{"refId": "A", "datasource": DS, "editorMode": "code", "rawQuery": True, "format": fmt, "rawSql": " ".join(tagesfilter(sql).split())}],
         "fieldConfig": {"defaults": {**({"unit": einheit} if einheit else {}), **(felder or {})}, "overrides": []},
     }
     if beschreibung:

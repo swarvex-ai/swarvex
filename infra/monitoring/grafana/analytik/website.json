@@ -112,7 +112,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select coalesce(sum(besucher), 0) from analytik.besucher where $__timeFilter(tag::timestamptz)"
+     "rawSql": "select coalesce(sum(besucher), 0) from analytik.besucher where tag between ($__timeFrom()::timestamptz at time zone 'Europe/Berlin')::date and ($__timeTo()::timestamptz at time zone 'Europe/Berlin')::date"
     }
    ],
    "fieldConfig": {
@@ -154,7 +154,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select round(avg(besucher)) from analytik.besucher where $__timeFilter(tag::timestamptz)"
+     "rawSql": "select round(avg(besucher)) from analytik.besucher where tag between ($__timeFrom()::timestamptz at time zone 'Europe/Berlin')::date and ($__timeTo()::timestamptz at time zone 'Europe/Berlin')::date"
     }
    ],
    "fieldConfig": {
@@ -195,7 +195,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select coalesce(sum(aufrufe), 0) from analytik.besuche where $__timeFilter(tag::timestamptz)"
+     "rawSql": "select coalesce(sum(aufrufe), 0) from analytik.besuche where tag between ($__timeFrom()::timestamptz at time zone 'Europe/Berlin')::date and ($__timeTo()::timestamptz at time zone 'Europe/Berlin')::date"
     }
    ],
    "fieldConfig": {
@@ -236,7 +236,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select round(1.0 * (select sum(aufrufe) from analytik.besuche where $__timeFilter(tag::timestamptz)) / nullif((select sum(besucher) from analytik.besucher where $__timeFilter(tag::timestamptz)), 0), 1)"
+     "rawSql": "select round(1.0 * (select sum(aufrufe) from analytik.besuche where tag between ($__timeFrom()::timestamptz at time zone 'Europe/Berlin')::date and ($__timeTo()::timestamptz at time zone 'Europe/Berlin')::date) / nullif((select sum(besucher) from analytik.besucher where tag between ($__timeFrom()::timestamptz at time zone 'Europe/Berlin')::date and ($__timeTo()::timestamptz at time zone 'Europe/Berlin')::date), 0), 1)"
     }
    ],
    "fieldConfig": {
@@ -334,7 +334,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select pfad as \"Seite\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where $__timeFilter(tag::timestamptz) group by 1 order by 2 desc limit 25"
+     "rawSql": "select pfad as \"Seite\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where tag between ($__timeFrom()::timestamptz at time zone 'Europe/Berlin')::date and ($__timeTo()::timestamptz at time zone 'Europe/Berlin')::date group by 1 order by 2 desc limit 25"
     }
    ],
    "fieldConfig": {
@@ -366,7 +366,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select quelle as \"Herkunft\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where $__timeFilter(tag::timestamptz) group by 1 order by 2 desc limit 25"
+     "rawSql": "select quelle as \"Herkunft\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where tag between ($__timeFrom()::timestamptz at time zone 'Europe/Berlin')::date and ($__timeTo()::timestamptz at time zone 'Europe/Berlin')::date group by 1 order by 2 desc limit 25"
     }
    ],
    "fieldConfig": {
@@ -399,7 +399,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select geraet as metric, sum(aufrufe) as value from analytik.besuche where $__timeFilter(tag::timestamptz) group by 1"
+     "rawSql": "select geraet as metric, sum(aufrufe) as value from analytik.besuche where tag between ($__timeFrom()::timestamptz at time zone 'Europe/Berlin')::date and ($__timeTo()::timestamptz at time zone 'Europe/Berlin')::date group by 1"
     }
    ],
    "fieldConfig": {
@@ -444,7 +444,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select sprache as metric, sum(aufrufe) as value from analytik.besuche where $__timeFilter(tag::timestamptz) group by 1"
+     "rawSql": "select sprache as metric, sum(aufrufe) as value from analytik.besuche where tag between ($__timeFrom()::timestamptz at time zone 'Europe/Berlin')::date and ($__timeTo()::timestamptz at time zone 'Europe/Berlin')::date group by 1"
     }
    ],
    "fieldConfig": {
@@ -489,7 +489,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select substring(pfad from '^/(?:en/)?(?:projekte|projects)/([^/]+)') as \"Projekt\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where $__timeFilter(tag::timestamptz) and pfad ~ '^/(en/)?(projekte|projects)/[^/]+' group by 1 order by 2 desc limit 15"
+     "rawSql": "select substring(pfad from '^/(?:en/)?(?:projekte|projects)/([^/]+)') as \"Projekt\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where tag between ($__timeFrom()::timestamptz at time zone 'Europe/Berlin')::date and ($__timeTo()::timestamptz at time zone 'Europe/Berlin')::date and pfad ~ '^/(en/)?(projekte|projects)/[^/]+' group by 1 order by 2 desc limit 15"
     }
    ],
    "fieldConfig": {
@@ -521,7 +521,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select pfad as \"Seite\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where $__timeFilter(tag::timestamptz) and pfad ~ '^/(en/)?docs' group by 1 order by 2 desc limit 15"
+     "rawSql": "select pfad as \"Seite\", sum(aufrufe) as \"Aufrufe\" from analytik.besuche where tag between ($__timeFrom()::timestamptz at time zone 'Europe/Berlin')::date and ($__timeTo()::timestamptz at time zone 'Europe/Berlin')::date and pfad ~ '^/(en/)?docs' group by 1 order by 2 desc limit 15"
     }
    ],
    "fieldConfig": {
@@ -540,7 +540,7 @@
    ],
    "asDropdown": false,
    "icon": "dashboard",
-   "keepTime": true,
+   "keepTime": false,
    "includeVars": false,
    "targetBlank": false,
    "tooltip": ""

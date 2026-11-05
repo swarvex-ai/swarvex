@@ -741,7 +741,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "table",
-     "rawSql": "select gleichzeitig as \"gleichzeitig\", einheiten as \"Einheiten\" from analytik.tageswerte where $__timeFilter(tag) and projektart in ($projektart) and projekt in ($projekt) order by 1"
+     "rawSql": "select gleichzeitig as \"gleichzeitig\", einheiten as \"Einheiten\" from analytik.tageswerte where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz and projektart in ($projektart) and projekt in ($projekt) order by 1"
     }
    ],
    "fieldConfig": {
@@ -783,7 +783,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "time_series",
-     "rawSql": "select tag as time, sum(gleichzeitig) as \"gleichzeitig (Ø Agenten)\", sum(einheiten) as \"Einheiten\" from analytik.tageswerte where $__timeFilter(tag) and projektart in ($projektart) and projekt in ($projekt) group by 1 order by 1"
+     "rawSql": "select tag as time, sum(gleichzeitig) as \"gleichzeitig (Ø Agenten)\", sum(einheiten) as \"Einheiten\" from analytik.tageswerte where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz and projektart in ($projektart) and projekt in ($projekt) group by 1 order by 1"
     }
    ],
    "fieldConfig": {
@@ -1066,7 +1066,7 @@
    ],
    "asDropdown": false,
    "icon": "dashboard",
-   "keepTime": true,
+   "keepTime": false,
    "includeVars": false,
    "targetBlank": false,
    "tooltip": ""
