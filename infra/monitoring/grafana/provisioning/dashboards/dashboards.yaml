@@ -1,7 +1,16 @@
 apiVersion: 1
+# Bereich „Betrieb“ (orgId 1, nur Admins) bekommt alle Dashboards: Server, Sicherheit, Leads und Moderation sowie
+# Marketing und Besucher. Den Bereich „Marketing“ (orgId 2) füllt infra/grafana-setup.sh mit den beiden letzten.
 providers:
   - name: swarvex
-    folder: swarvex
+    orgId: 1
+    folder: Betrieb
     type: file
     options:
       path: /var/lib/grafana/dashboards
+  - name: swarvex-marketing
+    orgId: 1
+    folder: Marketing
+    type: file
+    options:
+      path: /etc/grafana/analytik

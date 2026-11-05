@@ -2,11 +2,12 @@
 # Grafana with two areas and GitHub sign-in (docs/self-hosting.md, "Analytics"). Idempotent; deploy.sh runs it.
 #
 #   sh infra/grafana-setup.sh files   before Grafana starts: settings, secret files, Caddy site
-#   sh infra/grafana-setup.sh areas   after Grafana started: area "Auswertung" with its data source and dashboard
+#   sh infra/grafana-setup.sh areas   after Grafana started: area "Marketing" with its data source and dashboards
 #
-# Area "Betrieb" (org 1): server metrics, logs, lead balance and moderation signals; only team @swarvex-ai/admins.
-# Area "Auswertung" (org 2): only the analytics views; @swarvex-ai/marketing as viewer, admins as admin.
-# Marketing therefore cannot query Prometheus or Loki, not even through the API.
+# Area "Betrieb" (org 1): everything, for team @swarvex-ai/admins only: server, security, leads and moderation,
+#   marketing and visitors (one place, no switching; infra/monitoring/grafana/provisioning/dashboards).
+# Area "Marketing" (org 2): only the analytics views with the dashboards Marketing and Visitors; @swarvex-ai/marketing
+#   as viewer. Marketing therefore cannot query Prometheus or Loki, not even through the API.
 #
 # Inputs on the server (not in the repository):
 #   /opt/swarvex/infra/stack/.env      ANALYTICS_HOST=analytics.<domain>   (live only; the lab stays on the SSH tunnel)
@@ -36,7 +37,7 @@ GF_AUTH_GITHUB_CLIENT_SECRET__FILE=/run/secrets/grafana_github_secret
 GF_AUTH_GITHUB_SCOPES=user:email,read:org
 GF_AUTH_GITHUB_ALLOWED_ORGANIZATIONS=swarvex-ai
 GF_AUTH_GITHUB_ALLOW_SIGN_UP=true
-GF_AUTH_GITHUB_ORG_MAPPING=@swarvex-ai/admins:1:Admin,@swarvex-ai/admins:Auswertung:Admin,@swarvex-ai/marketing:Auswertung:Viewer
+GF_AUTH_GITHUB_ORG_MAPPING=@swarvex-ai/admins:1:Admin,@swarvex-ai/marketing:2:Viewer
 GF_AUTH_GITHUB_ROLE_ATTRIBUTE_STRICT=true
 GF_USERS_AUTO_ASSIGN_ORG_ID=2
 EOF
@@ -71,24 +72,36 @@ for i in $(seq 1 60); do curl -fs $G/api/health >/dev/null 2>&1 && break; sleep 
 curl -fs -u "$A" -H 'content-type: application/json' -X PUT $G/api/orgs/1 -d '{"name":"Betrieb"}' >/dev/null
 # Startseite im Bereich „Betrieb“: das Server-Dashboard statt der Grafana-Willkommensseite
 curl -fs -u "$A" -H 'X-Grafana-Org-Id: 1' -H 'content-type: application/json' -X PUT $G/api/org/preferences -d '{"homeDashboardUID":"swarvex-server","timezone":"Europe/Berlin"}' >/dev/null
-code=$(curl -s -o /dev/null -w '%{http_code}' -u "$A" $G/api/orgs/name/Auswertung)
-[ "$code" = 200 ] || curl -fs -u "$A" -H 'content-type: application/json' -X POST $G/api/orgs -d '{"name":"Auswertung"}' >/dev/null
-org=$(curl -fs -u "$A" $G/api/orgs/name/Auswertung | sed 's/.*"id":\([0-9]*\).*/\1/')
-[ "$org" = 2 ] || { echo "area Auswertung has id $org, expected 2 (GF_USERS_AUTO_ASSIGN_ORG_ID)"; exit 1; }
+# Bereich 2 heißt „Marketing“ (bis 5.11.2026 „Auswertung“); die GitHub-Zuordnung nutzt die Nummer 2
+if [ "$(curl -s -o /dev/null -w '%{http_code}' -u "$A" $G/api/orgs/2)" != 200 ]; then
+  curl -fs -u "$A" -H 'content-type: application/json' -X POST $G/api/orgs -d '{"name":"Marketing"}' >/dev/null
+fi
+curl -fs -u "$A" -H 'content-type: application/json' -X PUT $G/api/orgs/2 -d '{"name":"Marketing"}' >/dev/null
+org=2
 H="X-Grafana-Org-Id: $org"
 quelle=$(printf '{"name":"Analytik","uid":"analytik","type":"grafana-postgresql-datasource","access":"proxy","url":"postgres:5432","user":"analytik_leser","isDefault":true,"jsonData":{"database":"swarvex","sslmode":"disable","postgresVersion":1500,"timeInterval":"1h"},"secureJsonData":{"password":"%s"}}' "$(cat /run/secrets/analytics_db)")
+# Bereich „Betrieb“ hat dieselbe Quelle aus dem Datei-Provisioning (provisioning/datasources)
 if [ "$(curl -s -o /dev/null -w '%{http_code}' -u "$A" -H "$H" $G/api/datasources/uid/analytik)" = 200 ]; then
   printf '%s' "$quelle" | curl -fs -u "$A" -H "$H" -H 'content-type: application/json' -X PUT $G/api/datasources/uid/analytik -d @- >/dev/null
 else
   printf '%s' "$quelle" | curl -fs -u "$A" -H "$H" -H 'content-type: application/json' -X POST $G/api/datasources -d @- >/dev/null
 fi
+# Bis 5.11.2026 hieß der Ordner der Betriebs-Dashboards „swarvex“: leer zurückgeblieben, also weg
+alt=$(curl -fs -u "$A" -H 'X-Grafana-Org-Id: 1' "$G/api/folders" | tr '{' '\n' | grep '"title":"swarvex"' | grep -oE '"uid":"[^"]*"' | cut -d'"' -f4)
+if [ -n "$alt" ] && ! curl -fs -u "$A" -H 'X-Grafana-Org-Id: 1' "$G/api/search?folderUIDs=$alt" | grep -q '"uid"'; then
+  curl -fs -u "$A" -H 'X-Grafana-Org-Id: 1' -X DELETE "$G/api/folders/$alt" >/dev/null || true
+fi
+# Admins gehören nur noch in „Betrieb“ (dort sehen sie alles); Grafana gleicht das sonst erst bei der nächsten Anmeldung ab
+for u in $(curl -fs -u "$A" "$G/api/orgs/1/users" | tr '{' '\n' | grep '"role":"Admin"' | grep -v '"login":"admin"' | grep -oE '"userId":[0-9]+' | cut -d: -f2); do
+  curl -fs -u "$A" -X DELETE "$G/api/orgs/2/users/$u" >/dev/null 2>&1 || true
+done
 # Every dashboard of the area (analytik.json: usage and swarm, website.json: visitors of the website)
 for d in /etc/grafana/analytik/*.json; do
   { printf '{"overwrite":true,"dashboard":'; cat "$d"; printf '}'; } \
     | curl -fs -u "$A" -H "$H" -H 'content-type: application/json' -X POST $G/api/dashboards/db -d @- >/dev/null
 done
 curl -fs -u "$A" -H "$H" -H 'content-type: application/json' -X PUT $G/api/org/preferences -d '{"homeDashboardUID":"swarvex-analytik","timezone":"Europe/Berlin"}' >/dev/null
-echo "grafana: area Auswertung ready (org $org)"
+echo "grafana: areas Betrieb (all dashboards) and Marketing ready"
 EOF
 }
 

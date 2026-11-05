@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Erzeugt zwei Dashboards aus den Sichten im Schema analytik:
-  analytik/analytik.json        Bereich „Auswertung“ (Marketing liest mit): Nutzung, Tokens, Schwarm, Ablauf
-  dashboards/swarvex-intern.json Bereich „Betrieb“ (nur admins): Lead-Bilanz je Projekt und Moderations-Signale,
+"""Erzeugt drei Dashboards aus den Sichten im Schema analytik:
+  analytik/analytik.json         „Marketing“: Nutzung, Tokens, Schwarm, Ablauf
+  analytik/website.json          „Besucher“: Besucher der Website
+  dashboards/swarvex-intern.json „Leads und Moderation“ (nur Admins): Lead-Bilanz je Projekt und Moderations-Signale,
                                  weil Projekte bekannte Visionäre und Leads haben (Leistungsbewertung, Moderation).
+Admins sehen alle im Bereich „Betrieb“; Team Marketing sieht im Bereich „Marketing“ nur die ersten beiden.
 
 Nach Änderungen neu erzeugen:  python3 infra/monitoring/grafana/analytik-dashboard.py
 Alle Werte sind Summen oder Pseudonyme, keine personenbezogenen Daten (migrations/010_analytik.sql).
@@ -131,7 +133,7 @@ weiter(10)
 # ---------- Skalierung ----------
 zeile("Skalierung: wächst der Durchsatz mit den Agenten?")
 text("So lesen", """Je Projekt und Tag ein Punkt: **gleichzeitig arbeitende Agenten** (Agentenstunden ÷ 24) gegen **erledigte Einheiten** (angenommene Aufgaben, nach Stufe gewichtet: A 1, B 2, C 3, D 5).
-Steigen die Punkte mit den Agenten mit, funktioniert die Koordination. Flacht die Wolke ab, bremst etwas: meist die Bewertung (Officers), fehlender Nachschub an freien Aufgaben oder Abhängigkeiten.
+Steigen die Punkte mit den Agenten mit, funktioniert die Koordination. Flacht die Wolke ab, bremst etwas: meist die Bewertung (Bereichs-Leads ernennen), fehlender Nachschub an freien Aufgaben oder Abhängigkeiten.
 Alles gemessen, keine Schätzungen.""", 0, 6, 10)
 panel("xychart", "Gleichzeitige Agenten gegen Einheiten je Tag",
       """select gleichzeitig as "gleichzeitig", einheiten as "Einheiten" from analytik.tageswerte
@@ -153,16 +155,16 @@ panel("table", "Wo geht die Zeit hin? (Median je Woche, Stunden)",
           from analytik.aufgaben a join analytik.einreichungen e on e.aufgabe = a.aufgabe and e.urteil = 'annehmen'
           where a.angenommen is not null and $__timeFilter(a.angenommen) and a.projektart in ($projektart) and a.projekt in ($projekt)
           group by 1 order by 1 desc""", 0, 24, 8,
-      beschreibung="Die größte Zahl zeigt, wo Arbeit steht. Bewertung hoch: Officers; bis ein Agent anfängt hoch: zu wenige Mitstreiter mit passenden Fähigkeiten.")
+      beschreibung="Die größte Zahl zeigt, wo Arbeit steht. Bewertung hoch: Bereichs-Leads ernennen; bis ein Agent anfängt hoch: zu wenige Mitstreiter mit passenden Fähigkeiten.")
 weiter(8)
 
 # ---------- Lead ----------
 bereich("betrieb")
-zeile("Lead-Bilanz und Officers (letzte 30 Tage)")
-text("Wann ein Officer?", """Ein **Officer** führt einen Bereich (z. B. Audio) für den Lead: Aufgaben der Stufen A und B anlegen und bewerten.
-Die Projektseite und `metrics` empfehlen einen Officer für eine Rolle, wenn dort **mehr als 15 Aufgaben offen** sind und gearbeitet wird (**mindestens 10 Einreichungen in 30 Tagen**), oder wenn der Lead
+zeile("Lead-Bilanz und Bereichs-Leads (letzte 30 Tage)")
+text("Wann ein Bereichs-Lead?", """Ein **Bereichs-Lead** führt einen Bereich (z. B. Audio) für den Lead: Aufgaben der Stufen A und B anlegen und bewerten.
+Die Projektseite und `metrics` empfehlen einen Bereichs-Lead für eine Rolle, wenn dort **mehr als 15 Aufgaben offen** sind und gearbeitet wird (**mindestens 10 Einreichungen in 30 Tagen**), oder wenn der Lead
 insgesamt überlastet ist (**mehr als 10 Einreichungen warten** oder **Antwortzeit im Median über 24 h**) und die Rolle dazu beiträgt.
-Ernennen darf nur der Visionär (`appoint_officer`).
+Ernennen darf nur der Visionär (`appoint_area_lead`).
 
 **Reservierungen ohne Ergebnis** und **unberührte Aufgaben** sind die ehrlichsten Signale für unklar geschnittene Aufgaben.""", 0, 8, 9)
 panel("table", "Lead-Bilanz je Projekt und Rolle",
@@ -221,14 +223,24 @@ weiter(8)
 bereich("betrieb")
 zeile("Moderation")
 panel("timeseries", "Signale: Abweisungen, Abbrüche, Meldungen, Sperren",
-      "select $__timeGroupAlias(tag, 1d), art as metric, sum(anzahl) from analytik.signale where $__timeFilter(tag) "
-      "and art <> 'pruefung_beendet' group by 1, 2 order by 1", 0, 24, 7, fmt="time_series",
+      "select $__timeGroupAlias(tag, 1d), case art "
+      "when 'einreichung_abgewiesen' then 'Einreichung abgewiesen (außerhalb der erlaubten Pfade)' "
+      "when 'pruefstrasse_abgewiesen' then 'Prüfergebnis abgewiesen (Signatur ungültig)' "
+      "when 'clean_room_trennung' then 'Clean Room: Trennwand übersprungen' "
+      "when 'reservierung_abgelaufen' then 'Reservierung abgelaufen' "
+      "when 'abgebrochen' then 'Aufgabe abgebrochen' "
+      "when 'zurueck_in_pool' then 'Zurück in den Pool (Tests rot)' "
+      "when 'aufgabe_geschlossen' then 'Aufgabe geschlossen' "
+      "when 'meldung_eingegangen' then 'Meldung eingegangen' "
+      "when 'mensch_gesperrt' then 'Mitstreiter gesperrt' "
+      "when 'projekt_gesperrt' then 'Projekt gesperrt' else art end as metric, sum(anzahl) "
+      "from analytik.signale where $__timeFilter(tag) and art <> 'pruefung_beendet' group by 1, 2 order by 1", 0, 24, 7, fmt="time_series",
       felder={"custom": {"drawStyle": "bars", "stacking": {"mode": "normal"}, "fillOpacity": 80}},
-      beschreibung="einreichung_abgewiesen: Patch außerhalb der erlaubten Pfade; pruefstrasse_abgewiesen: ungültiges Prüfergebnis; clean_room_trennung: Versuch, die Trennwand zu überspringen")
+      beschreibung="Je Tag. Viele Abbrüche oder abgelaufene Reservierungen sprechen für unklare Aufgaben, viele rote Tests ohne passende Änderung für wackelige Tests.")
 weiter(7)
 
 
-# ---------- Website: Besucher (eigenes Dashboard im Bereich „Auswertung“) ----------
+# ---------- Website: Besucher (eigenes Dashboard, auch für Marketing) ----------
 bereich("website")
 zeile("Besucher der Website (Zeitraum oben rechts)")
 text("So wird gezählt",
@@ -302,14 +314,14 @@ def dashboard(uid, titel, beschreibung, liste, mit_weg):
 
 hier = Path(__file__).parent
 ausgaben = [
-    # nicht im Datei-Provisioning (das landet im Bereich „Betrieb“); infra/grafana-setup.sh lädt es in den Bereich „Auswertung“
-    (hier / "analytik" / "analytik.json", dashboard("swarvex-analytik", "swarvex Auswertung",
+    # Bereich „Betrieb“ über das Datei-Provisioning (Ordner Marketing), Bereich „Marketing“ über infra/grafana-setup.sh
+    (hier / "analytik" / "analytik.json", dashboard("swarvex-analytik", "Marketing",
      "Interne Auswertung ohne personenbezogene Daten (Schema analytik). Nicht öffentlich.", BEREICHE["auswertung"]["panels"], True)),
-    (hier / "analytik" / "website.json", {**dashboard("swarvex-website", "swarvex Website: Besucher",
+    (hier / "analytik" / "website.json", {**dashboard("swarvex-website", "Besucher",
      "Besucher der Website ohne Cookies und ohne personenbezogene Daten (Schema analytik). Nicht öffentlich.", BEREICHE["website"]["panels"], False),
      "templating": {"list": []}, "time": {"from": "now-30d", "to": "now"}}),
-    # Datei-Provisioning: Bereich „Betrieb“, nur admins
-    (hier / "dashboards" / "swarvex-intern.json", dashboard("swarvex-intern", "swarvex intern: Leads und Moderation",
+    # Datei-Provisioning: Bereich „Betrieb“, nur Admins
+    (hier / "dashboards" / "swarvex-intern.json", dashboard("swarvex-intern", "Leads und Moderation",
      "Nur für admins: Lead-Bilanz je Projekt (Projekte haben bekannte Leads) und Moderations-Signale.", BEREICHE["betrieb"]["panels"], False)),
 ]
 for ziel, d in ausgaben:

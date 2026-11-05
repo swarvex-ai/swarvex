@@ -1,6 +1,6 @@
 {
  "uid": "swarvex-server",
- "title": "swarvex server",
+ "title": "Server",
  "schemaVersion": 41,
  "time": {
   "from": "now-6h",
@@ -326,52 +326,17 @@
  ],
  "links": [
   {
-   "type": "link",
-   "title": "Analytics",
-   "url": "/d/swarvex-analytik?orgId=2",
-   "tooltip": "Bereich Auswertung",
+   "type": "dashboards",
+   "title": "Dashboards",
+   "tags": [
+    "swarvex"
+   ],
+   "asDropdown": false,
    "icon": "dashboard",
-   "keepTime": false,
+   "keepTime": true,
    "includeVars": false,
    "targetBlank": false,
-   "asDropdown": false,
-   "tags": []
-  },
-  {
-   "type": "link",
-   "title": "Website (Marketing)",
-   "url": "/d/swarvex-website?orgId=2",
-   "tooltip": "Bereich Auswertung",
-   "icon": "dashboard",
-   "keepTime": false,
-   "includeVars": false,
-   "targetBlank": false,
-   "asDropdown": false,
-   "tags": []
-  },
-  {
-   "type": "link",
-   "title": "Sicherheit",
-   "url": "/d/swarvex-sicherheit?orgId=1",
-   "tooltip": "Bereich Betrieb, nur Admins",
-   "icon": "dashboard",
-   "keepTime": false,
-   "includeVars": false,
-   "targetBlank": false,
-   "asDropdown": false,
-   "tags": []
-  },
-  {
-   "type": "link",
-   "title": "Leads und Moderation",
-   "url": "/d/swarvex-intern?orgId=1",
-   "tooltip": "Bereich Betrieb, nur Admins",
-   "icon": "dashboard",
-   "keepTime": false,
-   "includeVars": false,
-   "targetBlank": false,
-   "asDropdown": false,
-   "tags": []
+   "tooltip": ""
   }
  ]
 }

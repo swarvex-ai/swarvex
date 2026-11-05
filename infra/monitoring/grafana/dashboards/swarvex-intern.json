@@ -1,6 +1,6 @@
 {
  "uid": "swarvex-intern",
- "title": "swarvex intern: Leads und Moderation",
+ "title": "Leads und Moderation",
  "tags": [
   "swarvex",
   "intern"
@@ -94,7 +94,7 @@
  "panels": [
   {
    "type": "row",
-   "title": "Lead-Bilanz und Officers (letzte 30 Tage)",
+   "title": "Lead-Bilanz und Bereichs-Leads (letzte 30 Tage)",
    "collapsed": false,
    "gridPos": {
     "x": 0,
@@ -107,7 +107,7 @@
   },
   {
    "type": "text",
-   "title": "Wann ein Officer?",
+   "title": "Wann ein Bereichs-Lead?",
    "gridPos": {
     "x": 0,
     "y": 1,
@@ -116,7 +116,7 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "Ein **Officer** führt einen Bereich (z. B. Audio) für den Lead: Aufgaben der Stufen A und B anlegen und bewerten.\nDie Projektseite und `metrics` empfehlen einen Officer für eine Rolle, wenn dort **mehr als 15 Aufgaben offen** sind und gearbeitet wird (**mindestens 10 Einreichungen in 30 Tagen**), oder wenn der Lead\ninsgesamt überlastet ist (**mehr als 10 Einreichungen warten** oder **Antwortzeit im Median über 24 h**) und die Rolle dazu beiträgt.\nErnennen darf nur der Visionär (`appoint_officer`).\n\n**Reservierungen ohne Ergebnis** und **unberührte Aufgaben** sind die ehrlichsten Signale für unklar geschnittene Aufgaben."
+    "content": "Ein **Bereichs-Lead** führt einen Bereich (z. B. Audio) für den Lead: Aufgaben der Stufen A und B anlegen und bewerten.\nDie Projektseite und `metrics` empfehlen einen Bereichs-Lead für eine Rolle, wenn dort **mehr als 15 Aufgaben offen** sind und gearbeitet wird (**mindestens 10 Einreichungen in 30 Tagen**), oder wenn der Lead\ninsgesamt überlastet ist (**mehr als 10 Einreichungen warten** oder **Antwortzeit im Median über 24 h**) und die Rolle dazu beiträgt.\nErnennen darf nur der Visionär (`appoint_area_lead`).\n\n**Reservierungen ohne Ergebnis** und **unberührte Aufgaben** sind die ehrlichsten Signale für unklar geschnittene Aufgaben."
    },
    "id": 2
   },
@@ -188,7 +188,7 @@
      "editorMode": "code",
      "rawQuery": true,
      "format": "time_series",
-     "rawSql": "select $__timeGroupAlias(tag, 1d), art as metric, sum(anzahl) from analytik.signale where $__timeFilter(tag) and art <> 'pruefung_beendet' group by 1, 2 order by 1"
+     "rawSql": "select $__timeGroupAlias(tag, 1d), case art when 'einreichung_abgewiesen' then 'Einreichung abgewiesen (außerhalb der erlaubten Pfade)' when 'pruefstrasse_abgewiesen' then 'Prüfergebnis abgewiesen (Signatur ungültig)' when 'clean_room_trennung' then 'Clean Room: Trennwand übersprungen' when 'reservierung_abgelaufen' then 'Reservierung abgelaufen' when 'abgebrochen' then 'Aufgabe abgebrochen' when 'zurueck_in_pool' then 'Zurück in den Pool (Tests rot)' when 'aufgabe_geschlossen' then 'Aufgabe geschlossen' when 'meldung_eingegangen' then 'Meldung eingegangen' when 'mensch_gesperrt' then 'Mitstreiter gesperrt' when 'projekt_gesperrt' then 'Projekt gesperrt' else art end as metric, sum(anzahl) from analytik.signale where $__timeFilter(tag) and art <> 'pruefung_beendet' group by 1, 2 order by 1"
     }
    ],
    "fieldConfig": {
@@ -203,58 +203,23 @@
     },
     "overrides": []
    },
-   "description": "einreichung_abgewiesen: Patch außerhalb der erlaubten Pfade; pruefstrasse_abgewiesen: ungültiges Prüfergebnis; clean_room_trennung: Versuch, die Trennwand zu überspringen",
+   "description": "Je Tag. Viele Abbrüche oder abgelaufene Reservierungen sprechen für unklare Aufgaben, viele rote Tests ohne passende Änderung für wackelige Tests.",
    "id": 5
   }
  ],
  "links": [
   {
-   "type": "link",
-   "title": "Analytics",
-   "url": "/d/swarvex-analytik?orgId=2",
-   "tooltip": "Bereich Auswertung",
+   "type": "dashboards",
+   "title": "Dashboards",
+   "tags": [
+    "swarvex"
+   ],
+   "asDropdown": false,
    "icon": "dashboard",
-   "keepTime": false,
+   "keepTime": true,
    "includeVars": false,
    "targetBlank": false,
-   "asDropdown": false,
-   "tags": []
-  },
-  {
-   "type": "link",
-   "title": "Website (Marketing)",
-   "url": "/d/swarvex-website?orgId=2",
-   "tooltip": "Bereich Auswertung",
-   "icon": "dashboard",
-   "keepTime": false,
-   "includeVars": false,
-   "targetBlank": false,
-   "asDropdown": false,
-   "tags": []
-  },
-  {
-   "type": "link",
-   "title": "Betrieb",
-   "url": "/d/swarvex-server?orgId=1",
-   "tooltip": "Bereich Betrieb, nur Admins",
-   "icon": "dashboard",
-   "keepTime": false,
-   "includeVars": false,
-   "targetBlank": false,
-   "asDropdown": false,
-   "tags": []
-  },
-  {
-   "type": "link",
-   "title": "Sicherheit",
-   "url": "/d/swarvex-sicherheit?orgId=1",
-   "tooltip": "Bereich Betrieb, nur Admins",
-   "icon": "dashboard",
-   "keepTime": false,
-   "includeVars": false,
-   "targetBlank": false,
-   "asDropdown": false,
-   "tags": []
+   "tooltip": ""
   }
  ]
 }

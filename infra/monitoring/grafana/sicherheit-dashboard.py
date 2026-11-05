@@ -181,7 +181,7 @@ panel("table", "Agent-Programme und Versionen (letzte 30 Tage)",
 weiter(7)
 
 dashboard = {
-    "uid": "swarvex-sicherheit", "title": "swarvex Sicherheit", "tags": ["swarvex", "sicherheit"], "timezone": "browser",
+    "uid": "swarvex-sicherheit", "title": "Sicherheit", "tags": ["swarvex", "sicherheit"], "timezone": "browser",
     "schemaVersion": 41, "refresh": "5m", "time": {"from": "now-14d", "to": "now"}, "editable": True, "panels": panels,
     "description": "Anmeldung, fremder Code, Vertrauen, Server: nur Zahlen, keine Namen, keine Adressen (infra/monitoring/grafana/sicherheit-dashboard.py)",
 }

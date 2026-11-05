@@ -9,8 +9,8 @@ datasources:
     uid: loki
     type: loki
     url: http://loki:3100
-  # Bereich „Betrieb“: Lead-Bilanz und Moderation (dashboards/swarvex-intern.json); derselbe Leser ohne personenbezogene Daten
-  # wie im Bereich „Auswertung“ (dort legt infra/grafana-setup.sh die Quelle an)
+  # Bereich „Betrieb“: Leads und Moderation sowie Marketing und Besucher; derselbe Leser ohne personenbezogene Daten
+  # wie im Bereich „Marketing“ (dort legt infra/grafana-setup.sh die Quelle an)
   - name: Analytik
     uid: analytik
     orgId: 1
