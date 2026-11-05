@@ -123,7 +123,7 @@ func budgetBefehl(args []string) {
 	}
 	if *aufgabe == "" && *tag == "" {
 		w, ok := argWert(quelle, "budget-tokens")
-		fmt.Println("Per task:", grenzeText(w, ok, "400000"))
+		fmt.Println("Per task:", grenzeText(w, ok, "0"))
 		if mitDienst {
 			w, ok = argWert(dienst, "daily-budget-tokens")
 			fmt.Println("Per day: ", grenzeText(w, ok, "0"))
@@ -131,7 +131,7 @@ func budgetBefehl(args []string) {
 			fmt.Println("Per day:  only applies to the service (swarvex setup → as a service)")
 		}
 		fmt.Printf("Used today: %s tokens (cache hits count a tenth)\n", tausender(verbrauchAmTag(verbrauchsDatei(), time.Now())))
-		fmt.Println("Change: swarvex budget --task 1000000 --daily 0")
+		fmt.Println("Change: swarvex budget --daily 2000000 --task 0")
 		return
 	}
 	if gespeichert == nil && !mitDienst {

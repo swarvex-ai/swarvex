@@ -149,10 +149,11 @@ func TestEmpfehlung(t *testing.T) {
 		t.Error("Firmenkonto: nie von selbst")
 	}
 	lokal := modellWahl{Agent: "opencode", Modell: "qwen3", URL: "http://host.containers.internal:11434", Lokal: true}
-	if e := empfehlung(lokal, false, aboPlan{}, nil); !slices.Equal(e.args[len(e.args)-2:], []string{"--budget-tokens", "0"}) || slices.Contains(e.dienstArgs, "--daily-budget-tokens") {
+	if e := empfehlung(lokal, false, aboPlan{}, nil); slices.Contains(e.args, "--budget-tokens") || slices.Contains(e.dienstArgs, "--daily-budget-tokens") {
 		t.Errorf("lokal: %+v", e)
 	}
-	if e := empfehlung(modellWahl{Agent: "opencode", Modell: "m", URL: "https://openrouter.ai/api", Key: "/k"}, false, aboPlan{}, nil); !slices.Contains(e.dienstArgs, "2000000") {
+	// keine Grenze je Aufgabe: das Tagesbudget deckelt jede Aufgabe
+	if e := empfehlung(modellWahl{Agent: "opencode", Modell: "m", URL: "https://openrouter.ai/api", Key: "/k"}, false, aboPlan{}, nil); !slices.Contains(e.dienstArgs, "2000000") || slices.Contains(e.args, "--budget-tokens") {
 		t.Errorf("API-Schlüssel: %+v", e)
 	}
 }
@@ -174,7 +175,7 @@ func TestEigeneWerte(t *testing.T) {
 }
 
 func TestNachfrageFaireNutzung(t *testing.T) {
-	q := neueFragen[len(neueFragen)-1]
+	q := neueFragen[len(neueFragen)-2]
 	if q.Name != "fair-use" {
 		t.Fatal(q.Name)
 	}
@@ -217,13 +218,13 @@ func TestSetupDialog(t *testing.T) {
 		t.Setenv("OPENROUTER_API_KEY", "sk-or-test")
 		args := setupDialog(false)
 		text := strings.Join(args, " ")
-		if !strings.Contains(text, "--project auto") || !strings.Contains(text, "--model deepseek/deepseek-v4") || !strings.Contains(text, "--budget-tokens 1000000") {
+		if !strings.Contains(text, "--project auto") || !strings.Contains(text, "--model deepseek/deepseek-v4") || strings.Contains(text, "--budget-tokens") {
 			t.Fatalf("args: %v", args)
 		}
 		if g := gespeicherteArgs(); !slices.Equal(g, args) {
 			t.Errorf("gespeichert: %v", g)
 		}
-		if !gefragtLesen(gefragtDatei())["fair-use"] {
+		if g := gefragtLesen(gefragtDatei()); !g["fair-use"] || !g["task-budget"] {
 			t.Error("die Nachfrage zur fairen Nutzung gilt als gestellt")
 		}
 	})
@@ -263,4 +264,36 @@ func ausgabeVon(t *testing.T, f func()) string {
 	w.Close()
 	os.Stdout = alt
 	return <-fertig
+}
+
+// Bestehende Einrichtungen: einmal fragen, ob die Grenze je Aufgabe wegfällt (das Tagesbudget bleibt).
+func TestNachfrageAufgabenBudget(t *testing.T) {
+	q := neueFragen[len(neueFragen)-1]
+	if q.Name != "task-budget" {
+		t.Fatal(q.Name)
+	}
+	if q.offen(&einrichtungStand{work: []string{"--budget-tokens", "0"}}) || q.offen(&einrichtungStand{work: []string{"--project", "auto"}}) {
+		t.Error("ohne Grenze: nicht fragen")
+	}
+	e := &einrichtungStand{mitDienst: true, work: []string{"--project", "auto", "--budget-tokens", "1000000"},
+		dienst: []string{"--project", "auto", "--budget-tokens", "1000000", "--daily-budget-tokens", "2000000"}}
+	if !q.offen(e) {
+		t.Fatal("Grenze 1.000.000: fragen")
+	}
+	aus := ausgabeVon(t, func() { q.fragen(&frager{r: bufio.NewReader(strings.NewReader("\n"))}, e) })
+	if w, _ := argWert(e.work, "budget-tokens"); w != "0" || !e.workNeu {
+		t.Errorf("work: %v", e.work)
+	}
+	if w, _ := argWert(e.dienst, "budget-tokens"); w != "0" || !e.dienstNeu {
+		t.Errorf("dienst: %v", e.dienst)
+	}
+	if !strings.Contains(aus, "2,000,000 tokens") || strings.Contains(aus, "Without a daily budget") {
+		t.Errorf("Ausgabe: %q", aus)
+	}
+	// nein: nichts ändern
+	e2 := &einrichtungStand{work: []string{"--budget-tokens", "500000"}}
+	ausgabeVon(t, func() { q.fragen(&frager{r: bufio.NewReader(strings.NewReader("n\n"))}, e2) })
+	if w, _ := argWert(e2.work, "budget-tokens"); w != "500000" || e2.workNeu {
+		t.Errorf("nein: %v", e2.work)
+	}
 }

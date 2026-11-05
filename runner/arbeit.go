@@ -54,7 +54,7 @@ func arbeitenBefehl(args []string) {
 	upstream := fs.String("model-url", "", "base URL of the model API without /v1: OpenAI-compatible (opencode), Anthropic (claude) or OpenAI Responses (codex)")
 	keyDatei := fs.String("model-key-file", "", "file containing the model's API key; claude: also a subscription token from `claude setup-token`; codex: also your ChatGPT sign-in ~/.codex/auth.json (optional)")
 	skillsWert := fs.String("skills", "", `your own skills for the agent: "auto" (the usual folders) or folders separated by ":" (copied, read-only)`)
-	budget := fs.Int("budget-tokens", 400000, "token budget for this task (0 = no limit)")
+	budget := fs.Int("budget-tokens", 0, "token limit for one task (0 = none; the daily budget still caps every task)")
 	tagesbudget := fs.Int64("daily-budget-tokens", 0, "at most this many tokens per calendar day across all tasks (0 = no daily limit)")
 	zeit := fs.Duration("time-limit", 90*time.Minute, "maximum run time of the sandbox")
 	faehigkeiten := fs.String("capabilities", "", "comma-separated, e.g. code.gdscript,code.javascript")

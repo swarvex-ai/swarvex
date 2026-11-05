@@ -614,7 +614,7 @@ func setupDialog(ausfuehren bool) []string {
 		return anpassen(f, z, w, abo, plan, agenten, ausfuehren)
 	}
 	pruefen(argsSpeichern(e.args))
-	gefragtMerken(gefragtDatei(), "auto-update", "fair-use")
+	gefragtMerken(gefragtDatei(), "auto-update", "fair-use", "task-budget")
 	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
 	agentenVerbinden(z, agenten)
 	if !ausfuehren {
@@ -654,15 +654,12 @@ func empfehlung(w modellWahl, abo bool, plan aboPlan, agenten []mcpAgent) empfoh
 	case abo && plan.ZuKlein:
 		e.moeglich, e.grund = false, plan.Name+" has too little quota for tasks (a local model or an API key works better). Choose each setting yourself:"
 	case abo:
-		e.zeilen = append(e.zeilen, plan.Name+", fair use: "+plan.fairText(), "at most 1,000,000 tokens per task")
-		e.args = append(e.args, "--budget-tokens", "1000000")
+		e.zeilen = append(e.zeilen, plan.Name+", fair use: "+plan.fairText())
 		e.dienstArgs = append(e.dienstArgs, plan.fairArgs()...)
 	case w.Lokal:
 		e.zeilen = append(e.zeilen, "local model: no token limits")
-		e.args = append(e.args, "--budget-tokens", "0")
 	default:
-		e.zeilen = append(e.zeilen, "at most 1,000,000 tokens per task and 2,000,000 per day")
-		e.args = append(e.args, "--budget-tokens", "1000000")
+		e.zeilen = append(e.zeilen, "at most 2,000,000 tokens per day, however they split between tasks")
 		e.dienstArgs = append(e.dienstArgs, "--daily-budget-tokens", "2000000")
 	}
 	if len(agenten) > 0 {
@@ -757,19 +754,16 @@ func anpassen(f *frager, z *zugangsdaten, w modellWahl, abo bool, plan aboPlan, 
 			dienstArgs = append(dienstArgs, "--auto-update")
 		}
 	}
-	// Agenten schicken ihren Kontext bei jedem Schritt erneut; eine Textaufgabe braucht so leicht mehrere 100.000 Tokens
-	// 0 = keine Grenze (sinnvoll mit lokalen Modellen); sonst mindestens 50.000, darunter kommt kein Agent weit.
-	budgetVorschlag := "1000000"
-	if w.Lokal {
-		budgetVorschlag = "0"
-	}
-	aufgabenBudget := f.frage("Tokens per task at most (0 = no limit; agents resend their context with every step)", budgetVorschlag)
+	// Standard ohne Grenze je Aufgabe: Das Tagesbudget (bzw. der Restkontingent-Modus) deckelt jede Aufgabe ohnehin,
+	// eine eigene Grenze bricht nur große Aufgaben ab. Wer eine will: mindestens 50.000, darunter kommt kein Agent weit.
+	budgetVorschlag := "0"
+	aufgabenBudget := f.frage("Tokens per task at most (0 = no limit; the daily budget still caps every task)", budgetVorschlag)
 	for n, err := strconv.Atoi(aufgabenBudget); err != nil || (n != 0 && n < 50000); n, err = strconv.Atoi(aufgabenBudget) {
 		aufgabenBudget = f.frage("Tokens per task at most (0 = no limit, otherwise at least 50000)", budgetVorschlag)
 	}
 	args = append(args, "--budget-tokens", aufgabenBudget)
 	pruefen(argsSpeichern(args))
-	gefragtMerken(gefragtDatei(), "auto-update", "fair-use")
+	gefragtMerken(gefragtDatei(), "auto-update", "fair-use", "task-budget")
 	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
 
 	fmt.Println("\n-- Tasks without code")

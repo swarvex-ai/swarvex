@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -55,6 +56,36 @@ var neueFragen = []neueFrage{
 				e.dienst, e.dienstNeu = append(e.dienst, "--leftover-night", fairNacht, "--leftover-night-share", fmt.Sprint(p.NachtAnteil), "--leftover-night-max", fmt.Sprint(fairDecke)), true
 			}
 		}},
+	{Name: "task-budget", Seit: "0.9.5", Titel: "no token limit per task",
+		offen: func(e *einrichtungStand) bool { return aufgabenGrenze(e.work) > 0 || aufgabenGrenze(e.dienst) > 0 },
+		fragen: func(f *frager, e *einrichtungStand) {
+			tag, _ := argWert(e.dienst, "daily-budget-tokens")
+			deckel := "your daily budget (" + grenzeText(tag, tag != "", "0") + ")"
+			if hatFlag(e.dienst, "leftover") {
+				deckel = "leftover mode (only what your subscription allows)"
+			}
+			n := max(aufgabenGrenze(e.work), aufgabenGrenze(e.dienst))
+			fmt.Printf("  Your runner stops a task at %s tokens. Big tasks then end without a result, although %s already caps every task.\n", tausender(int64(n)), deckel)
+			if !f.jaNein("Drop the limit per task?", true) {
+				return
+			}
+			if aufgabenGrenze(e.work) > 0 {
+				e.work, e.workNeu = argSetzen(e.work, "budget-tokens", "0"), true
+			}
+			if aufgabenGrenze(e.dienst) > 0 {
+				e.dienst, e.dienstNeu = argSetzen(e.dienst, "budget-tokens", "0"), true
+			}
+			if e.mitDienst && !hatFlag(e.dienst, "leftover") && (tag == "" || tag == "0") {
+				fmt.Println("  Without a daily budget nothing caps a task any more; with a paid API key set one: swarvex budget --daily 2000000")
+			}
+		}},
+}
+
+// aufgabenGrenze: die gespeicherte Grenze je Aufgabe (0, wenn keine).
+func aufgabenGrenze(args []string) int {
+	w, _ := argWert(args, "budget-tokens")
+	n, _ := strconv.Atoi(w)
+	return n
 }
 
 func gefragtDatei() string { return filepath.Join(konfigOrdner(), "asked.json") }

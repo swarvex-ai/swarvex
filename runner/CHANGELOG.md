@@ -10,6 +10,9 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
 - Fix: a runner could sign itself out. The platform replaces the sign-in token at each refresh and revokes the
   sign-in when a used one comes again; a running task and `swarvex status` (or an old and a new runner during an
   update) could refresh at the same time. Refreshes now take turns and always use the latest saved token.
+- No token limit per task any more by default: the daily budget (or leftover mode for subscriptions) caps every task,
+  mid-task to what is left of the day, so big tasks no longer end without a result. `swarvex update` asks once whether
+  to drop a saved limit; `--budget-tokens` still sets one.
 - `swarvex login` works without `--platform`: it signs in to the platform you used before, else swarvex.ai.
 - The installer checks a saved sign-in instead of trusting the file and signs in again only when it no longer works.
 
