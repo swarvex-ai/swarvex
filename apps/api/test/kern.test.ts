@@ -573,6 +573,39 @@ describe("Zustandsmaschine", () => {
     expect(d.letzte_pruefung).toBeNull();
   });
 
+  it("Nacharbeit geht 24 Stunden an die Person zurück, die die Aufgabe gemacht hat", async () => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Nacharbeit mit Vorrang"));
+    await k.reservieren(db, mit, a.id);
+    const e = await k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "", eigene_tests: "", verbrauch: {} }) as any;
+    await k.pruefungStarten(db, e.einreichung_id);
+    await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
+    await k.bewerten(db, lead, e.einreichung_id, "nacharbeit", "Die Überschrift fehlt in Abschnitt 2");
+    const ids = async (w: typeof mit) => (await k.aufgabenPassend(db, w, "test") as any[]).map((x) => Number(x.id));
+    expect(await ids(fremd)).not.toContain(a.id);
+    await expect(k.reservieren(db, fremd, a.id)).rejects.toThrow(/held for its contributor's rework/);
+    const eigene = await k.aufgabenPassend(db, mit, "test") as any[];
+    expect(eigene.find((x) => Number(x.id) === a.id)?.nacharbeit_bis).toBeTruthy();
+    // eigene Nacharbeit zuerst (hier auch die aus dem Test davor)
+    const erste = eigene.findIndex((x) => !x.nacharbeit_bis);
+    expect(eigene.slice(erste).every((x) => !x.nacharbeit_bis)).toBe(true);
+    expect(erste).toBeGreaterThan(0);
+    // eine Chance: nach der ersten neuen Reservierung (hier abgebrochen) ist die Aufgabe wieder für alle offen
+    await k.reservieren(db, mit, a.id);
+    await k.abbrechen(db, mit, a.id, "schaffe ich nicht");
+    expect(await ids(fremd)).toContain(a.id);
+    // nach 24 Stunden ebenso
+    const b = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Nacharbeit abgelaufen"));
+    await k.reservieren(db, mit, b.id);
+    const e2 = await k.einreichen(db, mit, b.id, { patch: PATCH_OK, zusammenfassung: "", eigene_tests: "", verbrauch: {} }) as any;
+    await k.pruefungStarten(db, e2.einreichung_id);
+    await k.pruefungMelden(db, e2.einreichung_id, "ok", "grün", "sig");
+    await k.bewerten(db, lead, e2.einreichung_id, "nacharbeit", "Die Quelle fehlt");
+    expect(await ids(fremd)).not.toContain(b.id);
+    await db.query("update bewertungen set erstellt = now() - interval '25 hours' where einreichung_id = $1", [e2.einreichung_id]);
+    expect(await ids(fremd)).toContain(b.id);
+    await k.reservieren(db, fremd, b.id);
+  });
+
   it("Gegenprobe: Projekt-Tests schon ohne den Beitrag rot → Bewertung statt Pool, eine Nachricht an den Lead", async () => {
     const n = await import("../src/nachrichten.ts");
     const vorher = Number((await db.query("select count(*) from nachrichten where von_mensch is null")).rows[0].count);

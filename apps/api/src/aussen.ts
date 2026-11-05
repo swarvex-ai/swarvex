@@ -34,7 +34,7 @@ export const FELDER: Record<string, string> = {
   dein_vertrauen: "your_trust", vertrauen: "trust", nach: "to", anlass: "occasion",
   // preview feedback (feedback.ts)
   gut: "good", hakt: "problems", geraet: "device", neu: "new", rueckmeldungen: "feedback",
-  nacharbeit: "rework", abgelehnt: "rejected", untere_grenze_prozent: "lower_bound_percent", pruefung_ok_prozent: "check_passed_percent", tokens_median_je_annahme: "median_tokens_per_accepted",
+  nacharbeit: "rework", nacharbeit_bis: "rework_until", abgelehnt: "rejected", untere_grenze_prozent: "lower_bound_percent", pruefung_ok_prozent: "check_passed_percent", tokens_median_je_annahme: "median_tokens_per_accepted",
   familien: "kinds", familie: "kind", programme: "programs", programm: "program", anteil_prozent: "share_percent", ausgeblendet: "hidden", methode: "method",
   zeitraum_tage: "window_days", mindestens_bewertet: "min_reviewed", mindestens_mitstreiter: "min_contributors", mindestens_je_zeile: "min_per_row", schluessel: "key", weiterfuehren_regeln: "continuation_rules", deine_rollen: "your_roles", regeln: "rules", clean_room_regeln: "clean_room_rules",
   menschen_je_raum: "people_per_room", trennung_eingehalten: "separation_kept", verletzungen: "violations",
@@ -84,7 +84,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     offen: "open", reserviert: "reserved", in_arbeit: "in_progress", eingereicht: "submitted", pruefung: "checking",
     geprueft_ok: "checked_ok", geprueft_fehler: "check_failed", angenommen: "accepted", gemerged: "merged", geschlossen: "closed",
     neu: "new", gesehen: "seen", aufgabe: "task",
-    beantwortet: "answered", erledigt: "done", hochgeladen: "uploaded", nacharbeit: "rework", abgelehnt: "rejected", zurueckgezogen: "withdrawn", beendet: "ended",
+    beantwortet: "answered", erledigt: "done", hochgeladen: "uploaded", nacharbeit: "rework", nacharbeit_bis: "rework_until", abgelehnt: "rejected", zurueckgezogen: "withdrawn", beendet: "ended",
   },
   rolle: { visionaer: "visionary", lead: "lead", mitstreiter: "contributor" },
   urteil: { annehmen: "accept", nacharbeit: "rework", ablehnen: "reject", zustimmen: "approve", aenderungen: "request_changes" },

@@ -34,7 +34,8 @@ Die eigentliche Arbeit des Leads ist, so zu schneiden, dass möglichst viel von 
 offen → reserviert → in_arbeit → eingereicht → pruefung
   → geprueft_ok → angenommen → gemerged
   → geprueft_fehler → offen (zurück in den Pool)
-  → Nacharbeit oder Ablehnung (nach Bewertung) → offen
+  → Nacharbeit (nach Bewertung) → offen, 24 Stunden für den, der sie gemacht hat
+  → Ablehnung (nach Bewertung) → offen
 angenommen → offen (Merge-Konflikt: mit dem aktuellen Stand als neuem Basis-Commit)
 reserviert/in_arbeit ohne Lebenszeichen bis Lease-Ende → offen
 offen → geschlossen (durch den Lead oder den Bereichs-Lead des Bereichs, mit Begründung)
@@ -42,6 +43,8 @@ offen → gemerged (eigene Arbeit des Leads, Stufe D, mit Commit, ohne Fremdbewe
 ```
 
 Jeder Übergang ist ein Ereignis im Protokoll.
+
+Nach **Nacharbeit** geht die Aufgabe an die Person zurück, die sie gemacht hat: 24 Stunden lang kann nur sie die Aufgabe wieder reservieren (mit jedem ihrer Agenten), bei ihr steht sie in `matching_tasks` ganz vorn (mit `rework_until`), und der Auftrag enthält die Begründung des Leads (`last_review`). Ihre nächste Reservierung nutzt diese Chance; gibt sie die Aufgabe zurück oder sind die 24 Stunden um, ist sie wieder für alle offen. Eine Ablehnung gibt keinen Vorrang.
 
 ## Fluss ohne Warten
 

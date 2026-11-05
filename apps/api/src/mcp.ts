@@ -90,7 +90,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
   }, sicher(async ({ project }) => kennzahlen(db, project)));
 
   s.registerTool("matching_tasks", {
-    description: "Open tasks you may work on, optionally filtered by your capabilities (e.g. code.gdscript). Agents connected directly (without the swarvex runner) only see tasks that run no code: text, design, assets, review, data.",
+    description: "Open tasks you may work on, optionally filtered by your capabilities (e.g. code.gdscript). After `rework` a task is held for 24 hours for whoever made it (your own rework comes first, with `rework_until`); it opens to everyone after your next reservation or when the 24 hours are up. Agents connected directly (without the swarvex runner) only see tasks that run no code: text, design, assets, review, data.",
     inputSchema: { project: z.string(), capabilities: z.array(z.string()).optional() },
   }, sicher(async ({ project, capabilities }) => k.aufgabenPassend(db, wer, project, capabilities)));
 

@@ -177,22 +177,27 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
   if (wer.runner === true && !p.repo_git) return [];
   const m = (await db.query("select vertrauensstufe from menschen where id = $1", [wer.menschId])).rows[0];
   const r = await db.query(
-    `select id, titel, stufe, faehigkeiten, pfade, lease_minuten, raum from aufgaben a where projekt_id = $1 and zustand = 'offen' and min_vertrauen <= $2
+    `select id, titel, stufe, faehigkeiten, pfade, lease_minuten, raum, v.bis as nacharbeit_bis
+     from aufgaben a left join lateral nacharbeit_vorrang(a.id) v on true
+     where projekt_id = $1 and zustand = 'offen' and min_vertrauen <= $2
        and not aufgabe_blockiert(a.abhaengig_von, a.abhaengig_eins_von)
+       -- Nacharbeit: 24 Stunden nur für die Person, die die Aufgabe gemacht hat (nacharbeit_vorrang)
+       and (v.mensch_id is null or v.mensch_id = $4)
        -- zweimal in 24 Stunden von diesem Agenten abgebrochen: ihm vorerst nicht mehr anbieten, statt ihn im Kreis laufen zu lassen
        and (select count(*) from ereignisse ev where ev.bezug = 'aufgabe:' || a.id and ev.art = 'abgebrochen' and ev.akteur = $3
               and ev.zeit > now() - interval '24 hours') < 2
      order by id`,
-    [p.id, m.vertrauensstufe, akteur(wer)],
+    [p.id, m.vertrauensstufe, akteur(wer), wer.menschId],
   );
   // Clean Room: Aufgaben auf der anderen Seite der Trennwand gar nicht erst anbieten.
   const bisher = p.verfahren === "clean_room" ? await raeumeVon(db, wer.menschId, p.id) : [];
   const erlaubt = r.rows.filter((a) => (!a.raum || !trennwand(bisher, a.raum)) && (wer.runner !== false || ohneAusfuehrung(a.faehigkeiten)));
   const passend = faehigkeiten?.length ? erlaubt.filter((a) => a.faehigkeiten.every((f: string) => faehigkeiten.includes(f))) : erlaubt;
-  // Kritischer Pfad zuerst: was die meisten Folgeaufgaben (auch über mehrere Stufen) freischaltet, wird zuerst angeboten
+  // Eigene Nacharbeit zuerst (der Runner nimmt die erste), dann der kritische Pfad: was die meisten Folgeaufgaben
+  // (auch über mehrere Stufen) freischaltet, wird zuerst angeboten
   const folge = await folgeaufgaben(db, Number(p.id));
-  return passend.map((a) => ({ ...a, folgeaufgaben: folge.get(Number(a.id)) ?? 0 }))
-    .sort((x, y) => y.folgeaufgaben - x.folgeaufgaben || Number(x.id) - Number(y.id));
+  return passend.map(({ nacharbeit_bis, ...a }) => ({ ...a, folgeaufgaben: folge.get(Number(a.id)) ?? 0, ...(nacharbeit_bis ? { nacharbeit_bis } : {}) }))
+    .sort((x, y) => Number(!!y.nacharbeit_bis) - Number(!!x.nacharbeit_bis) || y.folgeaufgaben - x.folgeaufgaben || Number(x.id) - Number(y.id));
 }
 
 class TrennwandVerletzt extends Abgelehnt {
@@ -250,6 +255,9 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
     const wartet = await wartetAuf(tx, a);
     if (wartet.length) throw new Abgelehnt(`task waits for ${wartetText(wartet)} to be accepted first`);
     if (wer.runner === false && !ohneAusfuehrung(a.faehigkeiten)) throw new Abgelehnt(NUR_RUNNER);
+    const vorrang = (await tx.query("select mensch_id, bis from nacharbeit_vorrang($1)", [a.id])).rows[0];
+    if (vorrang && Number(vorrang.mensch_id) !== wer.menschId)
+      throw new Abgelehnt(`task is held for its contributor's rework until ${new Date(vorrang.bis).toISOString()}`);
     if (a.raum) {
       const grund = trennwand(await raeumeVon(tx, wer.menschId, Number(a.projekt_id)), a.raum);
       if (grund) throw new TrennwandVerletzt(grund, Number(a.projekt_id), a.raum);

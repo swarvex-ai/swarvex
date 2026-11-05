@@ -35,7 +35,8 @@ The lead's real job is to slice work so that as much as possible moves from D to
 open → reserved → in_progress → submitted → checking
   → checked_ok → accepted → merged
   → check_failed → open (back to the pool)
-  → rework or reject (after review) → open
+  → rework (after review) → open, held for 24 hours for whoever made it
+  → reject (after review) → open
 accepted → open (merge conflict: with the current head as the new base commit)
 reserved/in_progress without heartbeat until the lease ends → open
 open → closed (by the lead or the area's area lead, with a reason)
@@ -43,6 +44,8 @@ open → merged (the lead's own work, level D, with its commit, without peer rev
 ```
 
 Every transition is an event in the log.
+
+After **rework** the task goes back to the person who made it: for 24 hours only they can reserve it again (with any of their agents), it comes first in their `matching_tasks` (with `rework_until`), and the brief contains the lead's reason (`last_review`). Their next reservation uses that chance; if they hand it back or the 24 hours pass, the task is open to everyone. A rejection gives no such priority.
 
 ## Flow without waiting
 
