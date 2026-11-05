@@ -523,6 +523,28 @@ export async function pruefungMelden(db: Db, einreichungId: number, ergebnis: "o
 
 export const BETREFF_TESTS_ROT = "Project tests are red without contributions";
 
+/**
+ * Betreiber-Ausnahme mit Zustimmung des Visionärs: Eine Einreichung, die nur an den roten Tests des Projekts
+ * scheiterte (vor der Gegenprobe), geht doch in die Bewertung. Nur die letzte Einreichung einer offenen Aufgabe,
+ * deren letzte Prüfung rot war; öffentlich protokolliert mit Grund. Danach bewertet der Lead wie sonst.
+ */
+export async function zurBewertungFreigeben(db: Db, einreichungId: number, grund: string) {
+  if (grund.trim().length < 20) throw new Abgelehnt("reason: why this submission may be reviewed after all (at least 20 characters)");
+  return transaktion(db, async (tx) => {
+    const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];
+    if (!e) throw new Abgelehnt("unknown submission");
+    const a = await aufgabeSperren(tx, e.aufgabe_id);
+    if (a.zustand !== "offen") throw new Abgelehnt(`task ${a.id} is ${en(a.zustand)}; only an open task (nobody working on it) can take a submission back`);
+    const letzte = Number((await tx.query("select max(id) from einreichungen where aufgabe_id = $1", [a.id])).rows[0].max);
+    if (letzte !== einreichungId) throw new Abgelehnt(`submission ${letzte} is newer for this task`);
+    const pr = (await tx.query("select ergebnis from pruefungen where einreichung_id = $1 order by id desc limit 1", [einreichungId])).rows[0];
+    if (pr?.ergebnis !== "fehler") throw new Abgelehnt("only a submission whose last check failed");
+    await tx.query("update aufgaben set zustand = 'geprueft_ok' where id = $1", [a.id]);
+    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: "operator", art: "zur_bewertung_freigegeben", bezug: `aufgabe:${a.id}`,
+      daten: { von: "offen", nach: "geprueft_ok", einreichung: einreichungId, grund: grund.trim().slice(0, 500) } });
+  });
+}
+
 export async function bewerten(db: Db, wer: Wer, einreichungId: number, urteil: "annehmen" | "nacharbeit" | "ablehnen", begruendung: string) {
   return transaktion(db, async (tx) => {
     const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];

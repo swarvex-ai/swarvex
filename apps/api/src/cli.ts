@@ -17,6 +17,8 @@
 //                                             (without argument: our own table; better: the file from the anchor repo)
 //   publish-head                              sign the head hash now (otherwise daily)
 //   set-trust [provider:]<login> <0|1|2> <reason>  set a trust level by hand (logged; automation continues from there)
+//   release-for-review <submission-id> <reason>   with the visionary's consent: a submission rejected only by the
+//                                             project's red tests goes to review after all (open task, latest submission; logged)
 //   reports [all]                             open (or all) reports
 //   report <id> <in_review|done|rejected> <outcome>
 //   block person <[provider:]login> <reason> | block project <slug> <reason>
@@ -28,7 +30,7 @@ import { ketteVerifizieren, protokollieren } from "./ereignisse.ts";
 import { meldungAbschliessen, meldungenListe, sperren } from "./meldungen.ts";
 import { koepfeListe, kopfVeroeffentlichen, mitKoepfenVergleichen } from "./koepfe.ts";
 import { schluesselLaden } from "./auth/schluessel.ts";
-import { officerBeenden, officerErnennen } from "./aufgaben.ts";
+import { officerBeenden, officerErnennen, zurBewertungFreigeben } from "./aufgaben.ts";
 
 async function menschId(login: string): Promise<number> {
   const [anbieter, name] = login.includes(":") ? login.split(":", 2) : [null, login];
@@ -78,6 +80,13 @@ try {
       const [slug, bereich, ...grund] = args;
       await officerBeenden(db, "betrieb", slug, bereich, grund.join(" "));
       console.log(`area lead for ${bereich} in ${slug} ended`);
+      break;
+    }
+    case "release-for-review": {
+      const [idText, ...grund] = args;
+      if (!/^\d+$/.test(idText ?? "")) throw new Error("release-for-review <submission-id> <reason>");
+      await zurBewertungFreigeben(db, Number(idText), grund.join(" "));
+      console.log(`submission ${idText}: goes to review`);
       break;
     }
     case "set-trust": {

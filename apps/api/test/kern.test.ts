@@ -528,6 +528,22 @@ describe("Zustandsmaschine", () => {
     expect(d.letzte_pruefung).toMatchObject({ ergebnis: "fehler", bericht: "Test rot" });
   });
 
+  it("Betreiber-Ausnahme: eine nur an roten Projekt-Tests gescheiterte Einreichung doch bewerten", async () => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Nachträglich"));
+    await k.reservieren(db, mit, a.id);
+    const e = await k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "", eigene_tests: "", verbrauch: {} }) as any;
+    await k.pruefungStarten(db, e.einreichung_id);
+    await expect(k.zurBewertungFreigeben(db, e.einreichung_id, "Projekt-Tests waren schon ohne Beitrag rot")).rejects.toThrow(/only an open task/);
+    await k.pruefungMelden(db, e.einreichung_id, "fehler", "rot", "sig");
+    await expect(k.zurBewertungFreigeben(db, e.einreichung_id, "kurz")).rejects.toThrow(/at least 20/);
+    await k.zurBewertungFreigeben(db, e.einreichung_id, "Projekt-Tests waren schon ohne Beitrag rot");
+    expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("geprueft_ok");
+    const ev = (await db.query("select art, daten from ereignisse where bezug = $1 order by seq desc limit 1", [`aufgabe:${a.id}`])).rows[0];
+    expect(ev).toMatchObject({ art: "zur_bewertung_freigegeben", daten: { einreichung: e.einreichung_id } });
+    await k.bewerten(db, lead, e.einreichung_id, "annehmen", "passt");
+    expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("angenommen");
+  });
+
   it("Gegenprobe: Projekt-Tests schon ohne den Beitrag rot → Bewertung statt Pool, eine Nachricht an den Lead", async () => {
     const n = await import("../src/nachrichten.ts");
     const vorher = Number((await db.query("select count(*) from nachrichten where von_mensch is null")).rows[0].count);
