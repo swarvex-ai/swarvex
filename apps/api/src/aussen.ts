@@ -70,7 +70,7 @@ export const FELDER: Record<string, string> = {
   entscheidung: "decision", beantwortet_von: "answered_by", beantwortet_am: "answered_at", an_mich: "to_me", von_mir: "from_me",
   projektart: "project_type", deine_nachrichten: "your_messages",
   zusage_id: "pledge_id", zusagen: "pledges", dienst: "service", verfaellt: "expires", notiz: "note", spender: "donor", verplant: "planned", frei: "available",
-  auftrag_id: "brief_id", auftraege: "briefs", anleitung: "instructions", zielpfad: "target_path", dateitypen: "file_types", max_mb: "max_mb",
+  auftrag_id: "brief_id", auftraege: "briefs", weg: "channel", tageslimit: "daily_limit", heute_frei: "left_today", alle_projekte: "all_projects", heute: "today", dienste: "services", anleitung: "instructions", zielpfad: "target_path", dateitypen: "file_types", max_mb: "max_mb",
   dateiname: "file_name", sha256: "sha256", bytes: "bytes", hochgeladen: "uploaded", datei_url: "file_url",
   credit_spenden: "credit_donations", zugesagt: "pledged", credits_angenommen: "credits_accepted", credits: "credits",
   schwarm: "swarm", agenten_stunden: "agent_hours", einzel_agent_stunden: "single_agent_hours", kalender_stunden: "calendar_hours",
@@ -109,7 +109,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     anmeldung_abgewiesen: "sign_in_rejected", anmeldung_ausnahme: "sign_in_exemption", clean_room_trennung: "clean_room_separation", pruefstrasse_abgewiesen: "pipeline_rejected",
     gegenpruefung_reserviert: "cross_check_reserved", gegenpruefung_zurueckgegeben: "cross_check_returned", rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
     officer_ernannt: "area_lead_appointed", officer_beendet: "area_lead_ended", vertrauen_geaendert: "trust_changed", regression_gemeldet: "regression_reported", freigabe_angefragt: "approval_requested", freigabe_entschieden: "approval_decided",
-    zusage_eingegangen: "pledge_received", zusage_beendet: "pledge_ended", spendenauftrag_angelegt: "donation_brief_created", spende_hochgeladen: "donation_uploaded", spende_bewertet: "donation_reviewed",
+    zusage_eingegangen: "pledge_received", zusage_beendet: "pledge_ended", zusage_geaendert: "pledge_changed", spendenauftrag_begonnen: "donation_brief_started", spendenauftrag_abgebrochen: "donation_brief_abandoned", spendenauftrag_angelegt: "donation_brief_created", spende_hochgeladen: "donation_uploaded", spende_bewertet: "donation_reviewed",
     fremdpruefung: "peer_review", vom_lead_erledigt: "done_by_lead", merge_konflikt: "merge_conflict", mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
   },
 };

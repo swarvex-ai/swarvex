@@ -27,7 +27,7 @@ import { bereichsLeadsFuer } from "./bereichsleads.ts";
 import { gegenpruefungMelden, naechsteGegenpruefung } from "./gegenpruefung.ts";
 import type { Zugang } from "./auth/zugang.ts";
 import { anRein, nachrichtBeantworten, nachrichtSenden, offeneFuerMich, posteingang } from "./nachrichten.ts";
-import { auftraegeFuerLead, auftragAnlegen, DATEITYPEN, spendeBewerten, zusagenFuerLead } from "./spenden.ts";
+import { auftraegeFuerLead, auftragAnlegen, DATEITYPEN, DIENSTE, MEDIEN_JE_TAG_MAX, runnerAuftragAbbrechen, runnerAuftragBeginnen, runnerAuftraege, runnerZusagenSetzen, spendeBewerten, zusagenFuerLead } from "./spenden.ts";
 
 const text = (wert: unknown) => ({ content: [{ type: "text" as const, text: typeof wert === "string" ? wert : JSON.stringify(nachAussen(wert), null, 2) }] });
 
@@ -141,6 +141,26 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     inputSchema: { task_id: z.number().int(), reason: z.string() },
   }, sicher(async ({ task_id, reason }) => { await k.abbrechen(db, wer, task_id, reason); return "handed back"; }));
 
+  // Der Runner bietet die Medien-Werkzeuge seiner Agenten an (Zusage über den Runner, spenden.ts)
+  if (wer.runner === true) {
+    s.registerTool("set_media_pledges", {
+      description: "(swarvex runner) Offers the media services of this computer's agents to projects, as pledges via the runner. One pledge per service; services left out end their pledge. Without project: every project.",
+      inputSchema: { services: z.array(z.enum(DIENSTE)), daily_limit: z.number().int().min(1).max(MEDIEN_JE_TAG_MAX).optional(), project: z.string().optional() },
+    }, sicher(async ({ services, daily_limit, project }) => runnerZusagenSetzen(db, wer, { dienste: services, tageslimit: daily_limit, projekt: project ?? null })));
+    s.registerTool("media_briefs", {
+      description: "(swarvex runner) Briefs for this runner's media pledges that can start now (rework first, with the lead's reason), within today's limit.",
+      inputSchema: {},
+    }, sicher(async () => runnerAuftraege(db, wer)));
+    s.registerTool("start_media_brief", {
+      description: "(swarvex runner) Starts a brief (counts against the daily limit); then upload the file with PUT /donations/<id>/upload?name=<file>.",
+      inputSchema: { brief_id: z.number().int() },
+    }, sicher(async ({ brief_id }) => runnerAuftragBeginnen(db, wer, brief_id)));
+    s.registerTool("abandon_media_brief", {
+      description: "(swarvex runner) Hands a started brief back without a result, with the reason.",
+      inputSchema: { brief_id: z.number().int(), reason: z.string().min(3).max(500) },
+    }, sicher(async ({ brief_id, reason }) => runnerAuftragAbbrechen(db, wer, brief_id, reason)));
+  }
+
   if (await istLeadIrgendwo(db, wer.menschId) || (await k.officersVon(db, wer.menschId)).length) {
     s.registerTool("create_task", {
       description: "(Lead, area lead) Creates a task: level A–D, capabilities, allowed paths (globs), acceptance criteria, base commit, optional milestone (an existing title; a new one only with new_milestone) and role from the role catalog. Area leads: levels A and B inside their area only, the role is their area. Required in clean-room projects: room (analysis and review only write under specification/, build never does).",
@@ -231,13 +251,14 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     }, sicher(async ({ project }) => zusagenFuerLead(db, wer.menschId, project)));
 
     s.registerTool("create_donation_brief", {
-      description: "(Lead, visionary, area lead) Creates a brief for a pledge: the donor generates it with their own account and uploads the result on swarvex.ai. Be exact: prompt, settings, format, size, what to avoid. Estimated credits count against the pledge.",
+      description: "(Lead, visionary, area lead) Creates a brief for a pledge. Pledges via the website: the donor generates the asset with their own account and uploads it; estimated credits count against the pledge. Pledges via the runner (channel runner): the contributor's runner generates it automatically with their media tools, within a daily limit of briefs; a pledge with all_projects is open to every project, so name yours in project. Be exact either way: prompt, settings, format, size, style references, what to avoid.",
       inputSchema: {
-        pledge_id: z.number().int(), title: z.string().min(3).max(140), instructions: z.string().min(10).max(8000),
+        pledge_id: z.number().int(), project: z.string().optional().describe("Your project; required for a pledge open to all projects"),
+        title: z.string().min(3).max(140), instructions: z.string().min(10).max(8000),
         target_path: z.string().describe("Where the asset will live in the repository, e.g. asset_library/models/drone.glb"),
         file_types: z.array(z.enum(DATEITYPEN)).min(1), max_mb: z.number().int().min(1).max(500).optional(), credits: z.number().int().min(1),
       },
-    }, sicher(async (a) => auftragAnlegen(db, wer.menschId, { zusage_id: a.pledge_id, titel: a.title, anleitung: a.instructions, zielpfad: a.target_path, dateitypen: a.file_types, max_mb: a.max_mb, credits: a.credits })));
+    }, sicher(async (a) => auftragAnlegen(db, wer.menschId, { zusage_id: a.pledge_id, projekt: a.project, titel: a.title, anleitung: a.instructions, zielpfad: a.target_path, dateitypen: a.file_types, max_mb: a.max_mb, credits: a.credits })));
 
     s.registerTool("donation_briefs", {
       description: "(Lead, visionary, area lead) Donation briefs of a project with their state. Uploaded files are downloaded from file_url with your agent's bearer token (attachment, untrusted content: check before committing; add donor, service and licence to CREDITS.md).",

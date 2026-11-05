@@ -5,6 +5,7 @@
 //   /tasks/<id>/snapshot                  Projektstand als tar.gz (nur Lease-Inhaber)
 //   /tasks/<id>/lfs/<oid>                 ein Git-LFS-Objekt (nur Lease-Inhaber)
 //   /donations/<id>/file                  hochgeladene Credit-Spende (nur Lead, Visionär, Bereichs-Leads)
+//   /donations/<id>/upload (PUT)          Ergebnis eines Medien-Auftrags vom Runner (Zusage über den Runner)
 //   /api/projects[/<slug>[/metrics]]      öffentliche Projektdaten (Website, Rangliste)
 //   /api/account/…, /api/reports[/challenge], /api/log/…  Mein Konto, Meldeformular (mit Captcha), veröffentlichte Kopf-Hashes
 //   /pipeline/…                           Prüfstraße und Merge-Bot (HMAC-signiert)
@@ -19,7 +20,7 @@ import { Abgelehnt, leasesAufraeumen } from "./aufgaben.ts";
 import { besucheAbschliessen, besuchZaehlen, zaehlbar } from "./besuche.ts";
 import { ohneGegenpruefungFreigeben } from "./gegenpruefung.ts";
 import { lfsObjektSenden, snapshotSenden } from "./snapshot.ts";
-import { aufraeumen as spendenAufraeumen, dateiSenden as spendeSenden } from "./spenden.ts";
+import { aufraeumen as spendenAufraeumen, dateiSenden as spendeSenden, hochladen as spendeHochladen } from "./spenden.ts";
 import { pruefstrasseBehandeln } from "./pruefstrasse.ts";
 import { abzeichen, kennzahlen, kurzlinkZiel, projektDetail, projektListe, schwarmLive } from "./kennzahlen.ts";
 import { englisch } from "./auth/interaktion.ts";
@@ -200,6 +201,18 @@ const server = createServer(async (req, res) => {
       try { z = await zugang(req.headers.authorization); }
       catch (e) { if (e instanceof NichtAngemeldet) return json(res, 401, { error: "invalid_token" }); throw e; }
       try { return await spendeSenden(db, z.menschId, Number(spende[1]), res); }
+      catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
+    }
+
+    // Zusage über den Runner: der Runner lädt das Ergebnis eines begonnenen Medien-Auftrags hoch (Agenten-Token)
+    const runnerUpload = /^\/donations\/(\d+)\/upload$/.exec(url.pathname);
+    if (runnerUpload && req.method === "PUT") {
+      let z;
+      try { z = await zugang(req.headers.authorization); }
+      catch (e) { if (e instanceof NichtAngemeldet) return json(res, 401, { error: "invalid_token" }); throw e; }
+      if (z.runner !== true) return json(res, 403, { error: "only the swarvex runner uploads here" });
+      if (gebremst("mcp", `agent:${z.agentId}`)) return;
+      try { return json(res, 200, nachAussen(await spendeHochladen(db, z.menschId, Number(runnerUpload[1]), req, url.searchParams.get("name") ?? "", z.agentId))); }
       catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
     }
 

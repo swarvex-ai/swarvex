@@ -5,7 +5,7 @@ import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, rename, rm, stat } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { extname, join } from "node:path";
-import { transaktion, type Db } from "./db.ts";
+import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, officersVon, projektPerSlug, rollenVon } from "./aufgaben.ts";
 
@@ -17,6 +17,11 @@ export const DIENSTE = ["meshy", "higgsfield", "elevenlabs", "suno", "runway", "
 export const DATEITYPEN = ["glb", "gltf", "fbx", "obj", "zip", "png", "jpg", "jpeg", "webp", "svg", "mp4", "webm", "mov", "wav", "mp3", "ogg", "flac", "txt", "md"] as const;
 export const ZUSAGEN_JE_MENSCH = 10;
 export const UPLOADS_JE_TAG = 30;
+/** Zusage über den Runner: Medien-Aufträge je Tag (über alle Dienste des Agenten), Standard und Höchstwert. */
+export const MEDIEN_JE_TAG = 10;
+export const MEDIEN_JE_TAG_MAX = 30;
+/** So lange gilt ein begonnener Auftrag als in Arbeit; danach darf der Runner ihn neu beginnen. */
+const BEGONNEN_SPERRE = "3 hours";
 const offen = ["offen", "hochgeladen", "nacharbeit", "angenommen"];
 
 async function darfSteuern(db: Db, menschId: number, projektId: number) {
@@ -58,12 +63,12 @@ export async function zusageBeenden(db: Db, menschId: number, zusageId: number) 
 /** Für „Mein Konto“: eigene Zusagen mit ihren Aufträgen. */
 export async function meineZusagen(db: Db, menschId: number) {
   const z = (await db.query(
-    `select z.id as zusage_id, p.slug as projekt, p.name as projekt_name, z.dienst, z.credits, z.verfaellt, z.notiz, z.zustand, z.erstellt
-     from zusagen z join projekte p on p.id = z.projekt_id where z.mensch_id = $1 order by z.zustand, z.erstellt desc limit 50`, [menschId])).rows;
+    `select z.id as zusage_id, p.slug as projekt, p.name as projekt_name, z.dienst, z.credits, z.verfaellt, z.notiz, z.zustand, z.erstellt, z.weg, z.tageslimit
+     from zusagen z left join projekte p on p.id = z.projekt_id where z.mensch_id = $1 order by z.zustand, z.erstellt desc limit 50`, [menschId])).rows;
   const a = (await db.query(
     `select a.id as auftrag_id, a.zusage_id, a.titel, a.anleitung, a.zielpfad, a.dateitypen, a.max_mb, a.credits, a.zustand, a.dateiname, a.hochgeladen, a.begruendung, a.erstellt
      from spendenauftraege a join zusagen z on z.id = a.zusage_id where z.mensch_id = $1 order by a.erstellt`, [menschId])).rows;
-  return z.map((x) => ({ ...x, zusage_id: Number(x.zusage_id), verfaellt: String(x.verfaellt instanceof Date ? x.verfaellt.toISOString().slice(0, 10) : x.verfaellt),
+  return z.map((x) => ({ ...x, zusage_id: Number(x.zusage_id), verfaellt: datumText(x.verfaellt),
     auftraege: a.filter((y) => Number(y.zusage_id) === Number(x.zusage_id)).map((y) => ({ ...y, auftrag_id: Number(y.auftrag_id), zusage_id: Number(y.zusage_id) })) }));
 }
 
@@ -72,14 +77,29 @@ export async function zusagenFuerLead(db: Db, menschId: number, projektSlug: str
   const p = await projektPerSlug(db, projektSlug);
   await darfSteuern(db, menschId, Number(p.id));
   const r = await db.query(
-    `select z.id as zusage_id, m.login as spender, z.dienst, z.credits, z.verfaellt, z.notiz, z.erstellt,
+    `select z.id as zusage_id, m.login as spender, z.dienst, z.credits, z.verfaellt, z.notiz, z.erstellt, z.weg, z.agent_id, z.tageslimit,
+            (z.projekt_id is null) as alle_projekte,
             coalesce((select sum(a.credits) from spendenauftraege a where a.zusage_id = z.id and a.zustand = any($2)), 0)::int as verplant
      from zusagen z join menschen m on m.id = z.mensch_id
-     where z.projekt_id = $1 and z.zustand = 'offen' and z.verfaellt >= current_date order by z.verfaellt`, [p.id, offen]);
-  return r.rows.map((x) => ({ ...x, zusage_id: Number(x.zusage_id), verfaellt: x.verfaellt instanceof Date ? x.verfaellt.toISOString().slice(0, 10) : x.verfaellt, frei: x.credits - x.verplant }));
+     where (z.projekt_id = $1 or (z.weg = 'runner' and z.projekt_id is null)) and z.zustand = 'offen'
+       and (z.verfaellt is null or z.verfaellt >= current_date)
+     order by z.weg = 'runner' desc, z.verfaellt nulls first`, [p.id, offen]);
+  const heute = new Map<number, number>();
+  for (const x of r.rows) if (x.weg === "runner" && !heute.has(Number(x.agent_id))) heute.set(Number(x.agent_id), await heuteBegonnen(db, Number(x.agent_id)));
+  return r.rows.map(({ agent_id, verplant, ...x }) => x.weg === "runner"
+    ? { ...x, zusage_id: Number(x.zusage_id), verfaellt: null, credits: null, heute_frei: Math.max(0, x.tageslimit - (heute.get(Number(agent_id)) ?? 0)) }
+    : { ...x, zusage_id: Number(x.zusage_id), verfaellt: datumText(x.verfaellt), tageslimit: undefined, alle_projekte: undefined, verplant, frei: x.credits - verplant });
 }
 
-export async function auftragAnlegen(db: Db, menschId: number, a: { zusage_id: number; titel: string; anleitung: string; zielpfad: string; dateitypen: string[]; max_mb?: number; credits: number }) {
+const datumText = (d: unknown) => d === null || d === undefined ? null : d instanceof Date ? d.toISOString().slice(0, 10) : String(d);
+
+/** Wie viele Medien-Aufträge der Runner-Agent heute (UTC) begonnen hat. */
+async function heuteBegonnen(db: Db | Tx, agentId: number): Promise<number> {
+  return Number((await db.query(
+    "select count(*) from ereignisse where akteur = $1 and art = 'spendenauftrag_begonnen' and zeit >= date_trunc('day', now())", [`agent:${agentId}`])).rows[0].count);
+}
+
+export async function auftragAnlegen(db: Db, menschId: number, a: { zusage_id: number; titel: string; anleitung: string; zielpfad: string; dateitypen: string[]; max_mb?: number; credits: number; projekt?: string }) {
   const typen = a.dateitypen.map((t) => t.toLowerCase().replace(/^\./, ""));
   if (!typen.length || typen.some((t) => !DATEITYPEN.includes(t as never))) throw new Abgelehnt(`file types: ${DATEITYPEN.join(", ")}`);
   if (a.zielpfad.includes("..") || a.zielpfad.startsWith("/")) throw new Abgelehnt("target path: relative path inside the repository");
@@ -87,14 +107,24 @@ export async function auftragAnlegen(db: Db, menschId: number, a: { zusage_id: n
   return transaktion(db, async (tx) => {
     const z = (await tx.query("select * from zusagen where id = $1 for update", [a.zusage_id])).rows[0];
     if (!z) throw new Abgelehnt("unknown pledge");
-    await darfSteuern(tx as unknown as Db, menschId, Number(z.projekt_id));
-    if (z.zustand !== "offen" || new Date(z.verfaellt) < new Date(new Date().toISOString().slice(0, 10))) throw new Abgelehnt("the pledge is no longer open");
-    const verplant = Number((await tx.query("select coalesce(sum(credits), 0) as s from spendenauftraege where zusage_id = $1 and zustand = any($2)", [z.id, offen])).rows[0].s);
-    if (verplant + a.credits > z.credits) throw new Abgelehnt(`the pledge has ${z.credits - verplant} credits left`);
+    // Eine Runner-Zusage ohne Projekt gilt für jedes Projekt: der Auftrag nennt es
+    let projektId = z.projekt_id === null ? null : Number(z.projekt_id);
+    if (a.projekt) {
+      const p = await projektPerSlug(tx, a.projekt);
+      if (projektId !== null && projektId !== Number(p.id)) throw new Abgelehnt(`this pledge is for another project`);
+      projektId = Number(p.id);
+    }
+    if (projektId === null) throw new Abgelehnt("project: this pledge is open to every project, so name yours");
+    await darfSteuern(tx as unknown as Db, menschId, projektId);
+    if (z.zustand !== "offen" || (z.verfaellt && new Date(z.verfaellt) < new Date(new Date().toISOString().slice(0, 10)))) throw new Abgelehnt("the pledge is no longer open");
+    if (z.weg === "website") {
+      const verplant = Number((await tx.query("select coalesce(sum(credits), 0) as s from spendenauftraege where zusage_id = $1 and zustand = any($2)", [z.id, offen])).rows[0].s);
+      if (verplant + a.credits > z.credits) throw new Abgelehnt(`the pledge has ${z.credits - verplant} credits left`);
+    }
     const r = (await tx.query(
       `insert into spendenauftraege(zusage_id, projekt_id, von_mensch, titel, anleitung, zielpfad, dateitypen, max_mb, credits) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id`,
-      [z.id, z.projekt_id, menschId, a.titel, a.anleitung, a.zielpfad, typen, Math.min(Math.max(a.max_mb ?? 200, 1), 500), a.credits])).rows[0];
-    await protokollieren(tx, { projekt_id: Number(z.projekt_id), akteur: `mensch:${menschId}`, art: "spendenauftrag_angelegt", bezug: `spendenauftrag:${r.id}`, daten: { zusage: Number(z.id), titel: a.titel, credits: a.credits } });
+      [z.id, projektId, menschId, a.titel, a.anleitung, a.zielpfad, typen, Math.min(Math.max(a.max_mb ?? 200, 1), 500), a.credits])).rows[0];
+    await protokollieren(tx, { projekt_id: projektId, akteur: `mensch:${menschId}`, art: "spendenauftrag_angelegt", bezug: `spendenauftrag:${r.id}`, daten: { zusage: Number(z.id), titel: a.titel, credits: a.credits } });
     return { auftrag_id: Number(r.id) };
   });
 }
@@ -112,18 +142,21 @@ export async function auftraegeFuerLead(db: Db, menschId: number, projektSlug: s
 }
 
 /** Upload vom Spender (Website, eigene Herkunft und Sitzung geprüft): als Strom auf die Platte, mit SHA-256 und Größenlimit. */
-export async function hochladen(db: Db, menschId: number, auftragId: number, req: IncomingMessage, dateiname: string) {
+export async function hochladen(db: Db, menschId: number, auftragId: number, req: IncomingMessage, dateiname: string, runnerAgent?: number) {
   const a = (await db.query(
-    "select a.*, z.mensch_id as spender, p.slug from spendenauftraege a join zusagen z on z.id = a.zusage_id join projekte p on p.id = a.projekt_id where a.id = $1", [auftragId])).rows[0];
+    `select a.*, z.mensch_id as spender, z.weg, z.agent_id as zusage_agent, p.slug
+     from spendenauftraege a join zusagen z on z.id = a.zusage_id join projekte p on p.id = a.projekt_id where a.id = $1`, [auftragId])).rows[0];
   if (!a || Number(a.spender) !== menschId) throw new Abgelehnt("unknown brief");
   if (!["offen", "nacharbeit"].includes(a.zustand)) throw new Abgelehnt("this brief takes no upload right now");
+  // Der Runner lädt nur zu Aufträgen seiner eigenen Zusage hoch, die er begonnen hat (das Tageslimit zählt beim Beginnen)
+  if (runnerAgent !== undefined && (a.weg !== "runner" || Number(a.zusage_agent) !== runnerAgent || !a.begonnen)) throw new Abgelehnt("start the brief first (start_media_brief)");
   const endung = extname(dateiname).toLowerCase().replace(/^\./, "");
   if (!a.dateitypen.includes(endung)) throw new Abgelehnt(`file type .${endung} is not allowed here (allowed: ${a.dateitypen.join(", ")})`);
   const max = a.max_mb * 1024 * 1024;
   const laenge = Number(req.headers["content-length"] ?? 0);
   if (!laenge || laenge > max) throw new Abgelehnt(`file too large or size unknown (at most ${a.max_mb} MB)`);
   const heute = Number((await db.query("select count(*) from spendenauftraege a join zusagen z on z.id = a.zusage_id where z.mensch_id = $1 and a.hochgeladen > now() - interval '1 day'", [menschId])).rows[0].count);
-  if (heute >= UPLOADS_JE_TAG) throw new Abgelehnt(`at most ${UPLOADS_JE_TAG} uploads per day`);
+  if (runnerAgent === undefined && heute >= UPLOADS_JE_TAG) throw new Abgelehnt(`at most ${UPLOADS_JE_TAG} uploads per day`);
   const ordner = join(speicher(), a.slug);
   await mkdir(ordner, { recursive: true });
   const tmp = join(ordner, `.${auftragId}-${randomBytes(6).toString("hex")}.part`);
@@ -146,9 +179,10 @@ export async function hochladen(db: Db, menschId: number, auftragId: number, req
   await rename(tmp, ziel);
   const alt = a.datei as string | null;
   await transaktion(db, async (tx) => {
-    await tx.query("update spendenauftraege set zustand = 'hochgeladen', datei = $2, dateiname = $3, sha256 = $4, bytes = $5, hochgeladen = now() where id = $1",
+    await tx.query("update spendenauftraege set zustand = 'hochgeladen', datei = $2, dateiname = $3, sha256 = $4, bytes = $5, hochgeladen = now(), begonnen = null where id = $1",
       [auftragId, ziel, dateiname.slice(0, 200), sha, bytes]);
-    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: `mensch:${menschId}`, art: "spende_hochgeladen", bezug: `spendenauftrag:${auftragId}`, daten: { sha256: sha, bytes } });
+    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: runnerAgent !== undefined ? `agent:${runnerAgent}` : `mensch:${menschId}`, art: "spende_hochgeladen",
+      bezug: `spendenauftrag:${auftragId}`, daten: { sha256: sha, bytes, ...(runnerAgent !== undefined ? { weg: "runner" } : {}) } });
   });
   if (alt && alt !== ziel) await rm(alt, { force: true });
   return { auftrag_id: auftragId, sha256: sha, bytes };
@@ -194,7 +228,93 @@ export async function aufraeumen(db: Db) {
 /** Öffentliche Zahlen je Projekt (Projektseite, metrics): zugesagte Credits je Dienst und angenommene Spenden. */
 export async function creditSpenden(db: Db, projektId: number) {
   const zugesagt = (await db.query(
-    "select dienst, sum(credits)::int as credits, count(distinct mensch_id)::int as spender from zusagen where projekt_id = $1 and zustand = 'offen' and verfaellt >= current_date group by dienst order by 2 desc", [projektId])).rows;
+    "select dienst, sum(credits)::int as credits, count(distinct mensch_id)::int as spender from zusagen where projekt_id = $1 and weg = 'website' and zustand = 'offen' and verfaellt >= current_date group by dienst order by 2 desc", [projektId])).rows;
   const angenommen = (await db.query("select count(*)::int as n, coalesce(sum(credits), 0)::int as credits from spendenauftraege where projekt_id = $1 and zustand = 'angenommen'", [projektId])).rows[0];
   return { zugesagt, angenommen: angenommen.n, credits_angenommen: angenommen.credits };
+}
+
+// ── Zusage über den Runner ────────────────────────────────────────────────────────────────────────────────────────
+// Der Runner meldet, welche Medien-Dienste seine Agenten haben (swarvex setup), holt Aufträge, beginnt sie (zählt gegen
+// das Tageslimit), erzeugt in der Sandbox und lädt hoch (PUT /donations/<id>/upload). Bewertet wird wie jede Spende.
+
+type RunnerWer = { menschId: number; agentId: number; runner?: boolean | null };
+function nurRunner(wer: RunnerWer) {
+  if (wer.runner !== true) throw new Abgelehnt("only the swarvex runner offers media tools (swarvex setup)");
+}
+
+/** Gleicht die Runner-Zusagen des Agenten ab: je Dienst eine offene Zusage; fehlende Dienste beenden ihre Zusage. */
+export async function runnerZusagenSetzen(db: Db, wer: RunnerWer, e: { dienste: string[]; tageslimit?: number; projekt?: string | null }) {
+  nurRunner(wer);
+  const dienste = [...new Set(e.dienste)];
+  if (dienste.some((d) => !DIENSTE.includes(d as never) || d === "andere")) throw new Abgelehnt(`services: ${DIENSTE.filter((d) => d !== "andere").join(", ")}`);
+  const limit = e.tageslimit ?? MEDIEN_JE_TAG;
+  if (!Number.isInteger(limit) || limit < 1 || limit > MEDIEN_JE_TAG_MAX) throw new Abgelehnt(`daily limit: 1 to ${MEDIEN_JE_TAG_MAX} briefs`);
+  return transaktion(db, async (tx) => {
+    const projektId = e.projekt ? Number((await projektPerSlug(tx, e.projekt)).id) : null;
+    const alt = (await tx.query("select * from zusagen where agent_id = $1 and weg = 'runner' and zustand = 'offen' for update", [wer.agentId])).rows;
+    for (const z of alt) {
+      if (dienste.includes(z.dienst) && (z.projekt_id === null ? null : Number(z.projekt_id)) === projektId) {
+        if (z.tageslimit !== limit) {
+          await tx.query("update zusagen set tageslimit = $2 where id = $1", [z.id, limit]);
+          await protokollieren(tx, { projekt_id: projektId, akteur: `agent:${wer.agentId}`, art: "zusage_geaendert", bezug: `zusage:${z.id}`, daten: { dienst: z.dienst, tageslimit: limit } });
+        }
+        continue;
+      }
+      await tx.query("update zusagen set zustand = 'beendet' where id = $1", [z.id]);
+      await tx.query("update spendenauftraege set zustand = 'zurueckgezogen', entschieden = now() where zusage_id = $1 and zustand in ('offen', 'nacharbeit')", [z.id]);
+      await protokollieren(tx, { projekt_id: z.projekt_id === null ? null : Number(z.projekt_id), akteur: `agent:${wer.agentId}`, art: "zusage_beendet", bezug: `zusage:${z.id}`, daten: { dienst: z.dienst, weg: "runner" } });
+    }
+    const bleiben = new Set(alt.filter((z) => dienste.includes(z.dienst) && (z.projekt_id === null ? null : Number(z.projekt_id)) === projektId).map((z) => z.dienst));
+    for (const d of dienste.filter((x) => !bleiben.has(x))) {
+      const r = (await tx.query("insert into zusagen(mensch_id, projekt_id, dienst, weg, agent_id, tageslimit) values ($1,$2,$3,'runner',$4,$5) returning id",
+        [wer.menschId, projektId, d, wer.agentId, limit])).rows[0];
+      await protokollieren(tx, { projekt_id: projektId, akteur: `agent:${wer.agentId}`, art: "zusage_eingegangen", bezug: `zusage:${r.id}`, daten: { dienst: d, weg: "runner", tageslimit: limit } });
+    }
+    return { dienste, tageslimit: limit, projekt: e.projekt ?? null };
+  });
+}
+
+/** Aufträge für die Runner-Zusagen des Agenten, die er jetzt beginnen kann (Nacharbeit zuerst, mit Begründung). */
+export async function runnerAuftraege(db: Db, wer: RunnerWer) {
+  nurRunner(wer);
+  const limit = Number((await db.query("select max(tageslimit) as l from zusagen where agent_id = $1 and weg = 'runner' and zustand = 'offen'", [wer.agentId])).rows[0].l ?? 0);
+  const heute = await heuteBegonnen(db, wer.agentId);
+  const r = limit - heute <= 0 ? [] : (await db.query(
+    `select a.id as auftrag_id, p.slug as projekt, z.dienst, a.titel, a.anleitung, a.zielpfad, a.dateitypen, a.max_mb, a.zustand,
+            case when a.zustand = 'nacharbeit' then a.begruendung end as begruendung
+     from spendenauftraege a join zusagen z on z.id = a.zusage_id join projekte p on p.id = a.projekt_id
+     where z.agent_id = $1 and z.weg = 'runner' and z.zustand = 'offen' and a.zustand in ('offen', 'nacharbeit')
+       and (a.begonnen is null or a.begonnen < now() - interval '${BEGONNEN_SPERRE}')
+     order by a.zustand = 'nacharbeit' desc, a.erstellt limit $2`, [wer.agentId, limit - heute])).rows;
+  return { tageslimit: limit, heute, auftraege: r.map((x) => ({ ...x, auftrag_id: Number(x.auftrag_id) })) };
+}
+
+export async function runnerAuftragBeginnen(db: Db, wer: RunnerWer, auftragId: number) {
+  nurRunner(wer);
+  return transaktion(db, async (tx) => {
+    const a = (await tx.query(
+      `select a.*, z.agent_id as zusage_agent, z.weg, z.zustand as zusage_zustand, z.tageslimit
+       from spendenauftraege a join zusagen z on z.id = a.zusage_id where a.id = $1 for update of a`, [auftragId])).rows[0];
+    if (!a || a.weg !== "runner" || Number(a.zusage_agent) !== wer.agentId) throw new Abgelehnt("unknown brief");
+    if (a.zusage_zustand !== "offen" || !["offen", "nacharbeit"].includes(a.zustand)) throw new Abgelehnt("this brief takes no work right now");
+    if (a.begonnen && (await tx.query(`select $1::timestamptz > now() - interval '${BEGONNEN_SPERRE}' as s`, [a.begonnen])).rows[0].s) throw new Abgelehnt("already started");
+    // Sperre je Agent, damit zwei gleichzeitige Beginne das Tageslimit nicht überholen
+    await tx.query("select pg_advisory_xact_lock(hashtext('medien:' || $1::text))", [wer.agentId]);
+    const limit = Number((await tx.query("select max(tageslimit) as l from zusagen where agent_id = $1 and weg = 'runner' and zustand = 'offen'", [wer.agentId])).rows[0].l ?? 0);
+    if (await heuteBegonnen(tx, wer.agentId) >= limit) throw new Abgelehnt(`daily limit reached (${limit} briefs); change it with swarvex budget --media`);
+    await tx.query("update spendenauftraege set begonnen = now() where id = $1", [auftragId]);
+    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: `agent:${wer.agentId}`, art: "spendenauftrag_begonnen", bezug: `spendenauftrag:${auftragId}`, daten: { nacharbeit: a.zustand === "nacharbeit" } });
+    return { auftrag_id: auftragId };
+  });
+}
+
+export async function runnerAuftragAbbrechen(db: Db, wer: RunnerWer, auftragId: number, grund: string) {
+  nurRunner(wer);
+  return transaktion(db, async (tx) => {
+    const a = (await tx.query("select a.*, z.agent_id as zusage_agent from spendenauftraege a join zusagen z on z.id = a.zusage_id where a.id = $1 for update of a", [auftragId])).rows[0];
+    if (!a || Number(a.zusage_agent) !== wer.agentId) throw new Abgelehnt("unknown brief");
+    if (!a.begonnen) throw new Abgelehnt("this brief was not started");
+    await tx.query("update spendenauftraege set begonnen = null where id = $1", [auftragId]);
+    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: `agent:${wer.agentId}`, art: "spendenauftrag_abgebrochen", bezug: `spendenauftrag:${auftragId}`, daten: { grund: grund.slice(0, 500) } });
+  });
 }

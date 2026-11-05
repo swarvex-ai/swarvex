@@ -331,6 +331,61 @@ describe("Credit-Spenden (Auftrag + Upload)", () => {
   });
 });
 
+describe("Zusage über den Runner (Medien)", () => {
+  it("Runner bietet Dienste an, Lead beauftragt, Tageslimit, Upload nur begonnener Aufträge, Nacharbeit mit Grund", async () => {
+    const sp = await import("../src/spenden.ts");
+    const { Readable } = await import("node:stream");
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    process.env.SPENDEN_DIR = mkdtempSync(join(tmpdir(), "swx-medien-"));
+    const runnerId = Number((await db.query("insert into agenten(mensch_id, client_id, name, runner) values ($1, 'runner-medien', 'swarvex runner (test)', true) returning id", [mit.menschId])).rows[0].id);
+    const runner = { menschId: mit.menschId, agentId: runnerId, runner: true };
+    await expect(sp.runnerZusagenSetzen(db, { ...mit, runner: false }, { dienste: ["meshy"] })).rejects.toThrow(/only the swarvex runner/);
+    await expect(sp.runnerZusagenSetzen(db, runner, { dienste: ["meshy"], tageslimit: 31 })).rejects.toThrow(/daily limit/);
+    expect(await sp.runnerZusagenSetzen(db, runner, { dienste: ["meshy", "elevenlabs"], tageslimit: 2 })).toMatchObject({ tageslimit: 2 });
+    const zusagen = (await sp.zusagenFuerLead(db, lead.menschId, "test")).filter((z: any) => z.weg === "runner");
+    expect(zusagen.map((z: any) => z.dienst).sort()).toEqual(["elevenlabs", "meshy"]);
+    expect(zusagen[0]).toMatchObject({ alle_projekte: true, tageslimit: 2, heute_frei: 2, credits: null });
+    const meshy = zusagen.find((z: any) => z.dienst === "meshy").zusage_id;
+    const audio = zusagen.find((z: any) => z.dienst === "elevenlabs").zusage_id;
+    const brief = { zusage_id: meshy, titel: "Drohne", anleitung: "low poly Drohne, PBR, unter 5000 Dreiecke", zielpfad: "asset_library/models/drohne.glb", dateitypen: ["glb"], credits: 30 };
+    await expect(sp.auftragAnlegen(db, lead.menschId, brief)).rejects.toThrow(/name yours/);
+    const b1 = (await sp.auftragAnlegen(db, lead.menschId, { ...brief, projekt: "test" })).auftrag_id;
+    const b2 = (await sp.auftragAnlegen(db, lead.menschId, { ...brief, titel: "Schild", projekt: "test" })).auftrag_id;
+    const b3 = (await sp.auftragAnlegen(db, lead.menschId, { ...brief, titel: "Wache", projekt: "test" })).auftrag_id;
+    const b4 = (await sp.auftragAnlegen(db, lead.menschId, { ...brief, zusage_id: audio, titel: "Schritte", zielpfad: "audio/steps.ogg", dateitypen: ["ogg"], projekt: "test" })).auftrag_id;
+    expect((await sp.runnerAuftraege(db, runner)).auftraege.map((a: any) => a.auftrag_id)).toEqual([b1, b2]);
+    await expect(sp.runnerAuftraege(db, mit)).rejects.toThrow(/only the swarvex runner/);
+    // Upload nur nach dem Beginnen; Beginnen zählt gegen das Tageslimit
+    const anfrage = (b: Buffer) => Object.assign(Readable.from([b]), { headers: { "content-length": String(b.length) } }) as never;
+    await expect(sp.hochladen(db, mit.menschId, b1, anfrage(Buffer.from("glTF")), "drohne.glb", runnerId)).rejects.toThrow(/start the brief first/);
+    await sp.runnerAuftragBeginnen(db, runner, b1);
+    await expect(sp.runnerAuftragBeginnen(db, runner, b1)).rejects.toThrow(/already started/);
+    await sp.runnerAuftragBeginnen(db, runner, b2);
+    await expect(sp.runnerAuftragBeginnen(db, runner, b3)).rejects.toThrow(/daily limit reached/);
+    expect((await sp.runnerAuftraege(db, runner)).auftraege).toEqual([]);
+    await expect(sp.runnerAuftragBeginnen(db, { ...runner, agentId: lead.agentId }, b3)).rejects.toThrow(/unknown brief/);
+    const h = await sp.hochladen(db, mit.menschId, b1, anfrage(Buffer.from("glTF-Drohne")), "drohne.glb", runnerId);
+    expect((await db.query("select zustand, begonnen from spendenauftraege where id = $1", [b1])).rows[0]).toMatchObject({ zustand: "hochgeladen", begonnen: null });
+    expect(h.bytes).toBe(11);
+    await sp.runnerAuftragAbbrechen(db, runner, b2, "Meshy antwortete nicht");
+    // Nacharbeit kommt zuerst, mit der Begründung des Leads (Limit höher gestellt)
+    await sp.spendeBewerten(db, lead.menschId, lead.agentId, b1, "nacharbeit", "Zu viele Dreiecke: unter 5000 bleiben");
+    await sp.runnerZusagenSetzen(db, runner, { dienste: ["meshy", "elevenlabs"], tageslimit: 5 });
+    const jetzt = (await sp.runnerAuftraege(db, runner)).auftraege;
+    expect(jetzt[0]).toMatchObject({ auftrag_id: b1, zustand: "nacharbeit", begruendung: "Zu viele Dreiecke: unter 5000 bleiben", projekt: "test" });
+    expect(jetzt.map((a: any) => a.auftrag_id)).toEqual([b1, b2, b3]); // b2 nach Abbruch wieder frei
+    // Dienst fällt weg: seine Zusage endet, offene Aufträge werden zurückgezogen
+    await sp.runnerZusagenSetzen(db, runner, { dienste: ["meshy"], tageslimit: 5 });
+    expect((await db.query("select zustand from spendenauftraege where id = $1", [b4])).rows[0].zustand).toBe("zurueckgezogen");
+    expect((await sp.zusagenFuerLead(db, lead.menschId, "test")).filter((z: any) => z.weg === "runner").map((z: any) => z.dienst)).toEqual(["meshy"]);
+    const arten = (await db.query("select art from ereignisse where bezug = $1 order by seq", [`spendenauftrag:${b1}`])).rows.map((r) => r.art);
+    expect(arten).toEqual(["spendenauftrag_angelegt", "spendenauftrag_begonnen", "spende_hochgeladen", "spende_bewertet"]);
+    await sp.runnerZusagenSetzen(db, runner, { dienste: [] });
+  });
+});
+
 describe("Übersetzung von Vision und Ziel", () => {
   it("nur Lead oder Visionär, nicht in die Sprache des Originals, Original bleibt, im Protokoll", async () => {
     const v = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea','uebersetzerin','uebersetzerin') returning id")).rows[0].id);

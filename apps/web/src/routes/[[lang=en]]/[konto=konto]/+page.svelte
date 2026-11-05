@@ -25,7 +25,8 @@
                  now: { available: number; blocked: number; active: number; awaiting_review: number }; hints: Hinweis[] };
   type Auftrag = { brief_id: number; title: string; instructions: string; target_path: string; file_types: string[]; max_mb: number; credits: number;
                    state: string; file_name: string | null; uploaded: string | null; reason: string | null };
-  type Zusage = { pledge_id: number; project: string; project_name: string; service: string; credits: number; expires: string; note: string; state: string; briefs: Auftrag[] };
+  type Zusage = { pledge_id: number; project: string | null; project_name: string | null; service: string; credits: number | null; expires: string | null; note: string; state: string;
+    channel: "website" | "runner"; daily_limit: number | null; briefs: Auftrag[] };
   type Freigabe = { message_id: number; project: string; project_name: string; subject: string; text: string; tasks: number[]; created: string; from: string };
 
   const s = $derived(sprache());
@@ -358,8 +359,13 @@
           {#each konto.pledges as z (z.pledge_id)}
             <li class="zusage-eintrag" class:aus={z.state !== "open"}>
               <div class="zusage-kopf">
-                <strong>{z.credits} {t.spende.dienste[z.service] ?? z.service}-Credits</strong>
-                <span class="leise">{t.spende.fuer} <a href={pfad(s, `${projektPfad}/${z.project}`)}>{z.project_name}</a> · {t.spende.bis} {datum(z.expires)}</span>
+                {#if z.channel === "runner"}
+                  <strong>{t.spende.dienste[z.service] ?? z.service} {t.spende.ueberRunner}</strong>
+                  <span class="leise">{#if z.project}{t.spende.fuer} <a href={pfad(s, `${projektPfad}/${z.project}`)}>{z.project_name}</a>{:else}{t.spende.alleProjekte}{/if} · {t.spende.hoechstens} {z.daily_limit} {t.spende.amTag}</span>
+                {:else}
+                  <strong>{z.credits} {t.spende.dienste[z.service] ?? z.service}-Credits</strong>
+                  <span class="leise">{t.spende.fuer} <a href={pfad(s, `${projektPfad}/${z.project}`)}>{z.project_name}</a> · {t.spende.bis} {datum(z.expires ?? "")}</span>
+                {/if}
                 {#if z.state === "open"}<button class="knopf" disabled={arbeitet} onclick={() => zusageBeenden(z)}>{t.spende.beenden}</button>{:else}<span class="leise">{t.spende.beendet}</span>{/if}
               </div>
               {#if z.briefs.length === 0}
