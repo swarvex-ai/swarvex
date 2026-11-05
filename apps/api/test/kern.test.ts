@@ -1082,7 +1082,7 @@ describe("Anmeldung: Zustimmung und Geräte-Bestätigung", () => {
       const [k, ...v] = paar.split("=");
       if (attr.some((a) => /max-age=0|expires=thu, 01 jan 1970/i.test(a.trim()))) keks.delete(k.trim()); else keks.set(k.trim(), v.join("="));
     }
-    return { status: r.status, ort: r.headers.get("location") ?? "", text: await r.text() };
+    return { status: r.status, ort: r.headers.get("location") ?? "", csp: r.headers.get("content-security-policy") ?? "", text: await r.text() };
   }
   const folgen = async (start: { status: number; ort: string; text: string }) => {
     let r = start;
@@ -1145,6 +1145,12 @@ describe("Anmeldung: Zustimmung und Geräte-Bestätigung", () => {
     expect(leer.text).toMatch(/type="text" name="user_code"/);
     expect(leer.text).not.toMatch(/\son[a-z]+="/); // keine Inline-Handler: die CSP würde sie sperren
     const eingabe = await holen(`/device?user_code=${encodeURIComponent(d.user_code)}`);
+    // Die Zwischenseite schickt ihr Formular per Inline-Skript ab: Die CSP muss genau dieses Skript erlauben
+    const skript = /<script>([\s\S]*?)<\/script>/.exec(eingabe.text)![1];
+    const hash = createHash("sha256").update(skript).digest("base64");
+    expect(eingabe.csp).toMatch(new RegExp(`script-src[^;]*'sha256-${hash.replace(/[+/]/g, "\\$&")}'`));
+    expect(eingabe.csp).toMatch(/default-src 'none'/);
+    expect(leer.csp).toMatch(/script-src(;|$)/); // ohne Skript: nichts erlaubt
     const xsrf = /name="xsrf" value="([^"]+)"/.exec(eingabe.text)![1];
     const r = await folgen(await holen("/device", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ xsrf, user_code: d.user_code }).toString() }));
     expect(r.text).toMatch(/Confirm the device|Gerät bestätigen/);

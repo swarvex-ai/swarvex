@@ -13,6 +13,7 @@ import type { Schluessel } from "./schluessel.ts";
 import { oeffentlicheAdresse } from "./netz.ts";
 import { esc } from "./interaktion.ts";
 
+export const CSP_ANMELDUNG = "default-src 'none'; script-src; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'";
 const englisch = (ctx: { get(name: string): string }) => !/^de\b/i.test(ctx.get("accept-language") ?? "");
 const seite = (titel: string, inhalt: string, en = true) => `<!doctype html><html lang="${en ? "en" : "de"}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(titel)}</title>
@@ -125,6 +126,13 @@ export function anbieterErstellen(db: Db, schluessel: Schluessel) {
       const en = englisch(ctx);
       ctx.body = seite(en ? "Sign-in failed" : "Anmeldung fehlgeschlagen", `<p>${Object.values(out).map((v) => String(v).replace(/[<>&]/g, "")).join("<br>")}</p>`, en);
     },
+  });
+  // Eigene CSP der Anmelde-Seiten (Caddy setzt sie sonst nur als Rückfall): kein Skript, mit einer Ausnahme, die die
+  // Bibliothek selbst einträgt. Die Zwischenseite für /device?user_code=… schickt ihr Formular per Inline-Skript ab und
+  // ergänzt dafür dessen Hash in script-src; das leere script-src erlaubt sonst nichts.
+  anbieter.use(async (ctx, next) => {
+    ctx.set("content-security-policy", CSP_ANMELDUNG);
+    await next();
   });
   anbieter.proxy = true; // hinter Caddy: X-Forwarded-Proto/Host vertrauen
   return anbieter;

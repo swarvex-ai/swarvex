@@ -62,8 +62,13 @@
 	}
 	handle {
 		# Seiten der API (Anmeldung, Zustimmung, Geräte-Bestätigung, Fehler) brauchen kein Skript und nichts von außen.
+		# Die Anmeldung setzt ihre eigene, gleich strenge Richtlinie (apps/api/src/auth/anbieter.ts): Nur dort kann die
+		# Bibliothek den Hash ihres einen Inline-Skripts eintragen. Hier nur, wo die API keine mitbringt.
 		# Die Website setzt ihre eigene Richtlinie (apps/web/svelte.config.js).
-		header Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'"
+		header {
+			?Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'"
+			defer
+		}
 		reverse_proxy api:3000
 	}
 }
