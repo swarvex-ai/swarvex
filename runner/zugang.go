@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -79,8 +81,34 @@ func zugangSpeichern(z *zugangsdaten) error {
 		return err
 	}
 	roh, _ := json.MarshalIndent(z, "", "  ")
-	return os.WriteFile(filepath.Join(konfigOrdner(), "access.json"), roh, 0o600)
+	// Erst ganz schreiben, dann umbenennen: Wer gleichzeitig liest, sieht nie eine halbe Datei.
+	ziel := filepath.Join(konfigOrdner(), "access.json")
+	if err := os.WriteFile(ziel+".neu", roh, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(ziel+".neu", ziel)
 }
+
+// zugangSperren: Es erneuert immer nur ein Prozess zugleich (Dienst, laufende Aufgabe, swarvex status, Gegenprüfung).
+// Die Plattform tauscht das Refresh-Token bei jeder Erneuerung aus und widerruft die ganze Anmeldung, sobald ein
+// schon verbrauchtes noch einmal kommt (Schutz gegen gestohlene Tokens).
+func zugangSperren() func() {
+	if os.MkdirAll(konfigOrdner(), 0o700) != nil {
+		return func() {}
+	}
+	f, err := os.OpenFile(filepath.Join(konfigOrdner(), "access.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return func() {}
+	}
+	if syscall.Flock(int(f.Fd()), syscall.LOCK_EX) != nil {
+		f.Close()
+		return func() {}
+	}
+	return func() { syscall.Flock(int(f.Fd()), syscall.LOCK_UN); f.Close() }
+}
+
+// errAbgemeldet: Die Plattform hat die Anmeldung abgelehnt (abgelaufen oder widerrufen), kein Netzfehler.
+var errAbgemeldet = errors.New("token refresh failed")
 
 // httpClient vertraut zusätzlich der lokalen CA der Plattform (Machbarkeitsnachweis).
 func httpClient(caPfad string) *http.Client {
@@ -107,13 +135,34 @@ func formPost(c *http.Client, ziel string, werte url.Values, aus any) (int, erro
 
 func loginBefehl(args []string) {
 	fs := flag.NewFlagSet("login", flag.ExitOnError)
-	plattform := fs.String("platform", "", "address of the platform, e.g. https://swarvex.ai")
+	plattform := fs.String("platform", "", "address of the platform (default: the one you are signed in to, else "+standardPlattform+")")
 	ca := fs.String("ca", "", "PEM file of the platform CA (local tests only)")
+	wennNoetig := fs.Bool("if-needed", false, "keep a saved sign-in that still works; sign in only otherwise")
 	fs.Parse(args)
+	alt, _ := zugangLaden()
 	if *plattform == "" {
-		fehlerAus("--platform is missing")
+		*plattform = standardPlattform
+		if alt != nil && alt.Plattform != "" {
+			*plattform = alt.Plattform
+		}
 	}
 	basis := strings.TrimRight(*plattform, "/")
+	if alt != nil && alt.Plattform == basis && *ca == "" {
+		*ca = alt.CAPfad
+	}
+	if *wennNoetig && alt != nil && alt.Plattform == basis && alt.RefreshToken != "" {
+		_, err := zugriffstoken(alt)
+		switch {
+		case err == nil:
+			fmt.Println("   already signed in (to sign in again: swarvex login)")
+			return
+		case !errors.Is(err, errAbgemeldet):
+			// Netz weg: Die Anmeldung kann trotzdem gültig sein, also nichts überschreiben
+			fmt.Println("   could not check the saved sign-in (" + err.Error() + "); if tasks fail, run: swarvex login")
+			return
+		}
+		fmt.Println("   the saved sign-in no longer works (expired or revoked); signing in again")
+	}
 	c := httpClient(*ca)
 
 	// 1. Als nativer Client registrieren (einmal pro Gerät).
@@ -190,6 +239,12 @@ func loginBefehl(args []string) {
 
 // zugriffstoken holt mit dem Refresh-Token ein frisches Access-Token (und speichert das rotierte Refresh-Token).
 func zugriffstoken(z *zugangsdaten) (string, error) {
+	frei := zugangSperren()
+	defer frei()
+	// Hat ein anderer Prozess inzwischen erneuert, gilt dessen Token: das eigene im Speicher ist dann schon verbraucht.
+	if aktuell, err := zugangLaden(); err == nil && aktuell.Plattform == z.Plattform && aktuell.ClientID == z.ClientID && aktuell.RefreshToken != "" {
+		z.RefreshToken = aktuell.RefreshToken
+	}
 	var tok struct {
 		AccessToken  string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
@@ -202,7 +257,7 @@ func zugriffstoken(z *zugangsdaten) (string, error) {
 		return "", err
 	}
 	if tok.AccessToken == "" {
-		return "", fmt.Errorf("token refresh failed: %s; sign in again with `swarvex login`", tok.Error)
+		return "", fmt.Errorf("%w: %s; sign in again with `swarvex login`", errAbgemeldet, tok.Error)
 	}
 	if tok.RefreshToken != "" && tok.RefreshToken != z.RefreshToken {
 		z.RefreshToken = tok.RefreshToken

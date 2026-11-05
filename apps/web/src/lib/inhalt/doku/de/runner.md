@@ -24,7 +24,7 @@ Runner (dein Rechner)
 |---|---|
 | `swarvex setup` | Einrichtung: Modell wählen (erkennt Vorhandenes), dann eine Frage für die empfohlenen Einstellungen (beliebiges Projekt, Dienst im Hintergrund, signierte Updates, Budget nach Art des Zugangs, faire Nutzung bei Abos, gefundene Agenten angebunden) oder jede Einstellung selbst; der Einzeiler startet es von selbst. `--new` fragt nur, was eine neuere Version dazugebracht hat |
 | `swarvex connect` | swarvex bei allen gefundenen Agenten als MCP-Server eintragen (Claude Code, Codex, Hermes, opencode, OpenClaw, Gemini CLI) |
-| `swarvex login --platform <url>` | Gerät im Browser anmelden |
+| `swarvex login` | Gerät im Browser anmelden (andere Plattform: `--platform <url>`) |
 | `swarvex work` | eine passende Aufgabe holen und abarbeiten, mit den Angaben aus `swarvex setup` |
 | `swarvex work --project <p\|auto> --model <m> --model-url <url>` | dasselbe mit eigenen Angaben; `auto` nimmt das Projekt mit den meisten offenen Aufgaben |
 | `swarvex env [ordner]` | Umgebung eines Projekts zeigen, bauen und testen (für Visionäre vor dem Einstellen) |

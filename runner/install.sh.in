@@ -135,11 +135,12 @@ echo "   images and isolated network ready"
 step "Signing in"
 CA_ARG=""
 [ -n "$CA_SOURCE" ] && CA_ARG="--ca $CONFIG/ca.crt"
-if [ -f "$CONFIG/access.json" ] || [ -f "$CONFIG/zugang.json" ]; then
-  echo "   already signed in (to sign in again: swarvex login --platform $PLATFORM)"
+if [ -n "${SWARVEX_NO_SETUP:-}" ] && { [ -f "$CONFIG/access.json" ] || [ -f "$CONFIG/zugang.json" ]; }; then
+  echo "   already signed in"   # Update im Hintergrund: niemand da, der eine neue Anmeldung bestätigen könnte
 else
+  # Eine gespeicherte Anmeldung wird geprüft (sie kann abgelaufen oder widerrufen sein); nur dann neu anmelden
   # shellcheck disable=SC2086
-  "$BIN/swarvex" login --platform "$PLATFORM" $CA_ARG
+  "$BIN/swarvex" login --if-needed --platform "$PLATFORM" $CA_ARG
 fi
 
 # ~/.local/bin fehlt im PATH oft, bis man sich neu anmeldet: beim ersten Einrichten selbst in die Shell-Konfiguration

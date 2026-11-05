@@ -2,7 +2,7 @@
 //
 //	swarvex setup                                 Einrichtung mit Fragen (Modell, Projekt, Betrieb); danach reicht `swarvex work`
 //	swarvex connect                               swarvex bei allen gefundenen Agenten als MCP-Server eintragen
-//	swarvex login --platform https://…           Anmeldung per Device Flow
+//	swarvex login [--platform https://…]         Anmeldung per Device Flow
 //	swarvex work --project <slug> …              eine Aufgabe in der Sandbox bearbeiten
 //	swarvex service <wie work>                    als Dienst im Dauerbetrieb einrichten (start, stop, status)
 //	swarvex update                                neueste Version von der Plattform holen (Einstellungen bleiben)

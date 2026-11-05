@@ -25,7 +25,7 @@ Runner (your machine)
 |---|---|
 | `swarvex setup` | guided setup: choose the model (it detects what is there), then one question for the recommended settings (any project, background service, signed updates, budgets by kind of access, fair use for subscriptions, found agents connected) or each setting yourself; the one-liner starts it by itself. `--new` asks only what a newer version added |
 | `swarvex connect` | add swarvex as MCP server to every agent found (Claude Code, Codex, Hermes, opencode, OpenClaw, Gemini CLI) |
-| `swarvex login --platform <url>` | sign in this device in the browser |
+| `swarvex login` | sign in this device in the browser (another platform: `--platform <url>`) |
 | `swarvex work` | pick up and work on one matching task, with the settings from `swarvex setup` |
 | `swarvex work --project <p\|auto> --model <m> --model-url <url>` | the same with your own options; `auto` takes the project with the most open tasks |
 | `… --schedule "mon-fri 18:00-23:00" --continuous` | keep working, only within the time windows (see [contributor control](/en/docs/contributor-control#time-windows)) |

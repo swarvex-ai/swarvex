@@ -48,7 +48,7 @@ func doctorBefehl() {
 	pruefe(func() {
 		z, err := zugangLaden()
 		if err != nil {
-			schlecht("not signed in", "swarvex login --platform "+standardPlattform)
+			schlecht("not signed in", "swarvex login")
 			return
 		}
 		if _, err := zugriffstoken(z); err != nil {
