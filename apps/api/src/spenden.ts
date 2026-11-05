@@ -2,12 +2,13 @@
 // Kein Schlüssel verlässt das Konto des Spenders; die Plattform speichert nur die hochgeladene Datei.
 import { createHash, randomBytes } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, rename, rm, stat } from "node:fs/promises";
+import { mkdir, open, rename, rm, stat } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { extname, join } from "node:path";
 import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, officersVon, projektPerSlug, rollenVon } from "./aufgaben.ts";
+import { inhaltPasst, RUNNER_TYPEN } from "./medien.ts";
 
 /** Upload-Speicher (Docker-Volume spenden); beim Aufruf gelesen, damit Tests ihn umlenken können. */
 export const speicher = () => process.env.SPENDEN_DIR ?? "/data/spenden";
@@ -117,6 +118,8 @@ export async function auftragAnlegen(db: Db, menschId: number, a: { zusage_id: n
     if (projektId === null) throw new Abgelehnt("project: this pledge is open to every project, so name yours");
     await darfSteuern(tx as unknown as Db, menschId, projektId);
     if (z.zustand !== "offen" || (z.verfaellt && new Date(z.verfaellt) < new Date(new Date().toISOString().slice(0, 10)))) throw new Abgelehnt("the pledge is no longer open");
+    if (z.weg === "runner" && typen.some((t) => !RUNNER_TYPEN.includes(t)))
+      throw new Abgelehnt(`file types via the runner: ${RUNNER_TYPEN.join(", ")} (their content is checked; texts and archives come through the website)`);
     if (z.weg === "website") {
       const verplant = Number((await tx.query("select coalesce(sum(credits), 0) as s from spendenauftraege where zusage_id = $1 and zustand = any($2)", [z.id, offen])).rows[0].s);
       if (verplant + a.credits > z.credits) throw new Abgelehnt(`the pledge has ${z.credits - verplant} credits left`);
@@ -152,6 +155,7 @@ export async function hochladen(db: Db, menschId: number, auftragId: number, req
   if (runnerAgent !== undefined && (a.weg !== "runner" || Number(a.zusage_agent) !== runnerAgent || !a.begonnen)) throw new Abgelehnt("start the brief first (start_media_brief)");
   const endung = extname(dateiname).toLowerCase().replace(/^\./, "");
   if (!a.dateitypen.includes(endung)) throw new Abgelehnt(`file type .${endung} is not allowed here (allowed: ${a.dateitypen.join(", ")})`);
+  if (runnerAgent !== undefined && !RUNNER_TYPEN.includes(endung)) throw new Abgelehnt(`file type .${endung} does not come through the runner (${RUNNER_TYPEN.join(", ")})`);
   const max = a.max_mb * 1024 * 1024;
   const laenge = Number(req.headers["content-length"] ?? 0);
   if (!laenge || laenge > max) throw new Abgelehnt(`file too large or size unknown (at most ${a.max_mb} MB)`);
@@ -174,6 +178,14 @@ export async function hochladen(db: Db, menschId: number, auftragId: number, req
     aus.on("error", fehler);
     req.on("error", fehler);
   }).catch(async (e) => { await rm(tmp, { force: true }); throw e; });
+  // Passt der Inhalt zur Endung (medien.ts)? Sonst bleibt nichts liegen.
+  const f = await open(tmp, "r");
+  const kopf = Buffer.alloc(Math.min(bytes, 65536));
+  await f.read(kopf, 0, kopf.length, 0).finally(() => f.close());
+  if (inhaltPasst(endung, kopf) === false) {
+    await rm(tmp, { force: true });
+    throw new Abgelehnt(`the file's content is not a .${endung} file`);
+  }
   const sha = hash.digest("hex");
   const ziel = join(ordner, `${auftragId}-${sha.slice(0, 16)}.${endung}`);
   await rename(tmp, ziel);

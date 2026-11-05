@@ -288,6 +288,20 @@ describe("Nachrichten (Lead, Visionär, Officers)", () => {
   });
 });
 
+describe("Inhalt von Medien-Dateien", () => {
+  it("erkennt Modelle, Bilder und Klänge am Anfang der Datei", async () => {
+    const { inhaltPasst } = await import("../src/medien.ts");
+    expect(inhaltPasst("png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]))).toBe(true);
+    expect(inhaltPasst("png", Buffer.from("PNG? nein"))).toBe(false);
+    expect(inhaltPasst("wav", Buffer.from("RIFF\u0000\u0000\u0000\u0000WAVEfmt "))).toBe(true);
+    expect(inhaltPasst("webp", Buffer.from("RIFF\u0000\u0000\u0000\u0000WAVEfmt "))).toBe(false);
+    expect(inhaltPasst("obj", Buffer.from("# Kiste\nmtllib kiste.mtl\no Kiste\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"))).toBe(true);
+    expect(inhaltPasst("obj", Buffer.from("export OPENAI_API_KEY=sk-geheim\nv 1 2 3\n"))).toBe(false);
+    expect(inhaltPasst("mp4", Buffer.from("\u0000\u0000\u0000\u0018ftypmp42"))).toBe(true);
+    expect(inhaltPasst("md", Buffer.from("# Notiz"))).toBeNull();
+  });
+});
+
 describe("Credit-Spenden (Auftrag + Upload)", () => {
   it("Zusage, Auftrag des Leads, Upload mit Prüfsumme, Bewertung; Budget der Zusage hält", async () => {
     const sp = await import("../src/spenden.ts");
@@ -369,6 +383,10 @@ describe("Zusage über den Runner (Medien)", () => {
     const h = await sp.hochladen(db, mit.menschId, b1, anfrage(Buffer.from("glTF-Drohne")), "drohne.glb", runnerId);
     expect((await db.query("select zustand, begonnen from spendenauftraege where id = $1", [b1])).rows[0]).toMatchObject({ zustand: "hochgeladen", begonnen: null });
     expect(h.bytes).toBe(11);
+    // Der Inhalt muss zur Endung passen (sonst bleibt nichts liegen); über den Runner keine Texte oder Archive
+    await expect(sp.hochladen(db, mit.menschId, b2, anfrage(Buffer.from("-----BEGIN OPENSSH PRIVATE KEY-----")), "drohne.glb", runnerId)).rejects.toThrow(/content is not a \.glb/);
+    expect((await db.query("select zustand from spendenauftraege where id = $1", [b2])).rows[0].zustand).toBe("offen");
+    await expect(sp.auftragAnlegen(db, lead.menschId, { ...brief, titel: "Notiz", dateitypen: ["txt"], projekt: "test" })).rejects.toThrow(/file types via the runner/);
     await sp.runnerAuftragAbbrechen(db, runner, b2, "Meshy antwortete nicht");
     // Nacharbeit kommt zuerst, mit der Begründung des Leads (Limit höher gestellt)
     await sp.spendeBewerten(db, lead.menschId, lead.agentId, b1, "nacharbeit", "Zu viele Dreiecke: unter 5000 bleiben");
