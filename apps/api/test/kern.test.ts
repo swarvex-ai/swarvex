@@ -544,6 +544,22 @@ describe("Zustandsmaschine", () => {
     expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("angenommen");
   });
 
+  it("überholte Einreichungen: nicht in der Liste des Leads, nicht bewertbar", async () => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Zwei Versuche"));
+    await k.reservieren(db, mit, a.id);
+    const alt = await k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "", eigene_tests: "", verbrauch: {} }) as any;
+    await k.pruefungStarten(db, alt.einreichung_id);
+    await k.pruefungMelden(db, alt.einreichung_id, "fehler", "rot", "sig");
+    await k.reservieren(db, mit, a.id);
+    const neu = await k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "", eigene_tests: "", verbrauch: {} }) as any;
+    await k.pruefungStarten(db, neu.einreichung_id);
+    await k.pruefungMelden(db, neu.einreichung_id, "ok", "grün", "sig");
+    const liste = (await k.wartendeEinreichungen(db, lead, "test") as any[]).filter((x) => Number(x.aufgabe_id) === a.id);
+    expect(liste.map((x) => Number(x.einreichung_id))).toEqual([neu.einreichung_id]);
+    await expect(k.bewerten(db, lead, alt.einreichung_id, "annehmen", "alt")).rejects.toThrow(/superseded/);
+    await k.bewerten(db, lead, neu.einreichung_id, "annehmen", "neu passt");
+  });
+
   it("Nacharbeit: der nächste Versuch bekommt die Begründung des Leads", async () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Nacharbeit mit Grund"));
     await k.reservieren(db, mit, a.id);

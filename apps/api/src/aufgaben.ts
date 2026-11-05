@@ -561,6 +561,9 @@ export async function bewerten(db: Db, wer: Wer, einreichungId: number, urteil: 
     const autor = (await tx.query("select mensch_id from agenten where id = $1", [e.agent_id])).rows[0];
     if (Number(autor.mensch_id) === wer.menschId) throw new Abgelehnt("nobody reviews their own submission, not even through a second agent");
     if (a.zustand !== "geprueft_ok") throw new Abgelehnt(`review only after a passing check (task is ${en(a.zustand)})`);
+    // Bewertet wird nur die neueste Einreichung: eine ältere ist überholt, ihr Urteil gälte sonst für die Aufgabe
+    const neueste = Number((await tx.query("select max(id) from einreichungen where aufgabe_id = $1", [a.id])).rows[0].max);
+    if (neueste !== einreichungId) throw new Abgelehnt(`submission ${einreichungId} is superseded by ${neueste}; review that one`);
     await tx.query("insert into bewertungen(einreichung_id, agent_id, urteil, begruendung) values ($1,$2,$3,$4)", [einreichungId, wer.agentId, urteil, begruendung]);
     await wechseln(tx, a, urteil === "annehmen" ? "angenommen" : "offen", akteur(wer), "bewertet", { einreichung: einreichungId, urteil, begruendung });
     if (urteil === "annehmen") await variantenSchliessen(tx, a);
@@ -667,7 +670,8 @@ export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: strin
           from fremdpruefungen f join menschen m on m.id = f.mensch_id where f.einreichung_id = e.id) as fremdpruefungen
      from einreichungen e join aufgaben a on a.id = e.aufgabe_id
      left join lateral (select ergebnis, bericht from pruefungen where einreichung_id = e.id order by id desc limit 1) p on true
-     where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok') order by e.id`, [p.id]);
+     where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok')
+       and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id`, [p.id]);   // nur die neueste je Aufgabe
   // Vorschau dieser Einreichung zum Ausprobieren vor der Bewertung (pipeline/vorschau.go)
   const zeilen = r.rows.map(({ vorschau_status, ...z }) => ({ ...z, ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: einreichungsVorschauUrl(Number(z.einreichung_id)) } : {}) }));
   return officers ? zeilen.filter((a) => officers.some((o) => imBereich(o, a))) : zeilen;
