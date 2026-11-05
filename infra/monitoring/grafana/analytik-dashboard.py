@@ -315,3 +315,6 @@ ausgaben = [
 for ziel, d in ausgaben:
     ziel.write_text(json.dumps(d, ensure_ascii=False, indent=1) + "\n")
     print(f"{ziel}: {len(d['panels'])} panels")
+
+import navigation  # noqa: E402  (Leiste zu den anderen Dashboards)
+navigation.alle()

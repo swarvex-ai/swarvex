@@ -1305,5 +1305,55 @@
    "description": "Aus dem MCP-Handshake. Zeigt, ob Sicherheitsupdates ankommen (Runner ab v0.9.3 melden ihre echte Version)."
   }
  ],
- "description": "Anmeldung, fremder Code, Vertrauen, Server: nur Zahlen, keine Namen, keine Adressen (infra/monitoring/grafana/sicherheit-dashboard.py)"
+ "description": "Anmeldung, fremder Code, Vertrauen, Server: nur Zahlen, keine Namen, keine Adressen (infra/monitoring/grafana/sicherheit-dashboard.py)",
+ "links": [
+  {
+   "type": "link",
+   "title": "Analytics",
+   "url": "/d/swarvex-analytik?orgId=2",
+   "tooltip": "Bereich Auswertung",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  },
+  {
+   "type": "link",
+   "title": "Website (Marketing)",
+   "url": "/d/swarvex-website?orgId=2",
+   "tooltip": "Bereich Auswertung",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  },
+  {
+   "type": "link",
+   "title": "Betrieb",
+   "url": "/d/swarvex-server?orgId=1",
+   "tooltip": "Bereich Betrieb, nur Admins",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  },
+  {
+   "type": "link",
+   "title": "Leads und Moderation",
+   "url": "/d/swarvex-intern?orgId=1",
+   "tooltip": "Bereich Betrieb, nur Admins",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  }
+ ]
 }

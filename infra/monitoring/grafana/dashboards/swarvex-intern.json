@@ -206,5 +206,55 @@
    "description": "einreichung_abgewiesen: Patch außerhalb der erlaubten Pfade; pruefstrasse_abgewiesen: ungültiges Prüfergebnis; clean_room_trennung: Versuch, die Trennwand zu überspringen",
    "id": 5
   }
+ ],
+ "links": [
+  {
+   "type": "link",
+   "title": "Analytics",
+   "url": "/d/swarvex-analytik?orgId=2",
+   "tooltip": "Bereich Auswertung",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  },
+  {
+   "type": "link",
+   "title": "Website (Marketing)",
+   "url": "/d/swarvex-website?orgId=2",
+   "tooltip": "Bereich Auswertung",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  },
+  {
+   "type": "link",
+   "title": "Betrieb",
+   "url": "/d/swarvex-server?orgId=1",
+   "tooltip": "Bereich Betrieb, nur Admins",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  },
+  {
+   "type": "link",
+   "title": "Sicherheit",
+   "url": "/d/swarvex-sicherheit?orgId=1",
+   "tooltip": "Bereich Betrieb, nur Admins",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  }
  ]
 }

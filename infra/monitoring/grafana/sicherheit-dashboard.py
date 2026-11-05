@@ -188,3 +188,6 @@ dashboard = {
 ziel = Path(__file__).parent / "dashboards" / "sicherheit.json"
 ziel.write_text(json.dumps(dashboard, ensure_ascii=False, indent=1) + "\n")
 print(f"{ziel}: {sum(1 for p in panels if p['type'] != 'row')} panels")
+
+import navigation  # noqa: E402  (Leiste zu den anderen Dashboards)
+navigation.alle()

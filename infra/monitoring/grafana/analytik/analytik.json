@@ -1056,5 +1056,55 @@
    },
    "id": 31
   }
+ ],
+ "links": [
+  {
+   "type": "link",
+   "title": "Website (Marketing)",
+   "url": "/d/swarvex-website?orgId=2",
+   "tooltip": "Bereich Auswertung",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  },
+  {
+   "type": "link",
+   "title": "Betrieb",
+   "url": "/d/swarvex-server?orgId=1",
+   "tooltip": "Bereich Betrieb, nur Admins",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  },
+  {
+   "type": "link",
+   "title": "Sicherheit",
+   "url": "/d/swarvex-sicherheit?orgId=1",
+   "tooltip": "Bereich Betrieb, nur Admins",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  },
+  {
+   "type": "link",
+   "title": "Leads und Moderation",
+   "url": "/d/swarvex-intern?orgId=1",
+   "tooltip": "Bereich Betrieb, nur Admins",
+   "icon": "dashboard",
+   "keepTime": false,
+   "includeVars": false,
+   "targetBlank": false,
+   "asDropdown": false,
+   "tags": []
+  }
  ]
 }
