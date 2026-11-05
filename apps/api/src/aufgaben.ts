@@ -267,11 +267,17 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
       await tx.query("insert into projekt_rollen(projekt_id, mensch_id, rolle) values ($1,$2,'mitstreiter')", [a.projekt_id, wer.menschId]);
       await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: `mensch:${wer.menschId}`, art: "mitstreiter_beigetreten", bezug: `mensch:${wer.menschId}`, daten: {} });
     }
+    // Jeder Versuch arbeitet auf dem neuesten Stand von main (die Prüfstraße meldet ihn, migrations/040): Fixes und
+    // angenommene Vorgänger sind dabei. Eine reservierte Aufgabe behält ihre Basis bis zur Einreichung.
+    const kopf: string | null = (await tx.query("select kopf_commit from projekte where id = $1", [a.projekt_id])).rows[0]?.kopf_commit ?? null;
+    const neueBasis = kopf && kopf !== a.basis_commit ? kopf : null;
+    if (neueBasis) await tx.query("update aufgaben set basis_commit = $2 where id = $1", [a.id, neueBasis]);
     const lease = (await tx.query(
       "insert into leases(aufgabe_id, agent_id, laeuft_ab) values ($1,$2, now() + make_interval(mins => $3)) returning *",
       [a.id, wer.agentId, a.lease_minuten],
     )).rows[0];
-    await wechseln(tx, a, "reserviert", akteur(wer), "aufgabe_reserviert", { lease: Number(lease.id), laeuft_ab: lease.laeuft_ab.toISOString(), ...(a.raum ? { raum: a.raum, mensch: wer.menschId } : {}) });
+    await wechseln(tx, a, "reserviert", akteur(wer), "aufgabe_reserviert", { lease: Number(lease.id), laeuft_ab: lease.laeuft_ab.toISOString(),
+      ...(neueBasis ? { neue_basis: neueBasis } : {}), ...(a.raum ? { raum: a.raum, mensch: wer.menschId } : {}) });
     return { lease_id: Number(lease.id), laeuft_ab: lease.laeuft_ab };
   });
 }

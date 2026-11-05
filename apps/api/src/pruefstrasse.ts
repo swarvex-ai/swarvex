@@ -104,6 +104,20 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
            where a.zustand = 'angenommen' order by e.id`);
         return json(res, 200, nachAussen(await mitToken(r.rows, true)));
       }
+      // Stand von main je Projekt (pipeline/vorschau.go, alle fünf Minuten): beim Reservieren wird er zur Basis der Aufgabe
+      if (req.method === "GET" && url.pathname === "/pipeline/heads") {
+        const r = await db.query(
+          `select slug, repo_git, github_installation, kopf_commit as letzter_commit from projekte
+           where repo_git is not null and not gesperrt and not entwurf order by slug`);
+        return json(res, 200, nachAussen(await mitToken(r.rows, false)));
+      }
+      const kopf = /^\/pipeline\/heads\/([a-z0-9-]+)$/.exec(url.pathname);
+      if (req.method === "POST" && kopf) {
+        const commit = String(daten.commit ?? "");
+        if (!/^[0-9a-f]{40}$/.test(commit)) return json(res, 400, { error: "commit: a full commit hash" });
+        await db.query("update projekte set kopf_commit = $2 where slug = $1", [kopf[1], commit]);
+        return json(res, 200, { ok: true });
+      }
       // Vorschauen (pipeline/vorschau.go): nur wenn eine eigene Adresse dafür eingerichtet ist; Unity und Unreal baut die Plattform nicht
       if (req.method === "GET" && url.pathname === "/pipeline/previews") {
         if (!vorschauUrl("x")) return json(res, 200, []);

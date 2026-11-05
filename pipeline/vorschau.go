@@ -31,7 +31,32 @@ type vorschauProjekt struct {
 	Commit   string `json:"last_commit"` // Stand der letzten Vorschau
 }
 
+// koepfeMelden: der Stand von main je Projekt an die Plattform (für alle Projekte, auch ohne Vorschau). Beim
+// Reservieren wird er zur Basis der Aufgabe, damit jeder Versuch Fixes und angenommene Vorgänger enthält.
+func koepfeMelden() {
+	var liste []vorschauProjekt
+	if err := signiert("GET", "/pipeline/heads", nil, &liste); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	for _, p := range liste {
+		sp, err := spiegel(einreichung{Slug: p.Slug, RepoGit: p.RepoGit, GitToken: p.GitToken})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %v\n", p.Slug, err)
+			continue
+		}
+		kopf, err := befehl(sp, nil, "git", "rev-parse", "HEAD")
+		if kopf = strings.TrimSpace(kopf); err != nil || kopf == p.Commit {
+			continue
+		}
+		if err := signiert("POST", "/pipeline/heads/"+p.Slug, map[string]any{"commit": kopf}, nil); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+	}
+}
+
 func vorschauen() {
+	koepfeMelden()
 	var liste []vorschauProjekt
 	if err := signiert("GET", "/pipeline/previews", nil, &liste); err != nil {
 		fmt.Fprintln(os.Stderr, err)

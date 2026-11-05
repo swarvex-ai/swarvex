@@ -25,7 +25,7 @@ The lead's real job is to slice work so that as much as possible moves from D to
 - level, capabilities, minimum trust level
 - **allowed paths:** the patch may only change files there; runner and platform check this
 - acceptance criteria, executable where possible (tests, measurements)
-- base commit and lease duration
+- base commit (every reservation moves it to the current state of main, so each attempt has the latest fixes and accepted predecessors) and lease duration
 - the **role** the task serves (e.g. `audio`, `ux`; see [Roles and area leads](/en/docs/roles-and-area-leads)) and its milestone
 - in clean-room projects the **room** (`analysis`, `review` or `build`)
 

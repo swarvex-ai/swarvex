@@ -92,7 +92,8 @@ const de = {
         zeitH3: "Wo geht die Zeit hin?", zeitText: "Median je Stufe, über die angenommenen Beiträge gemessen.",
         stufen: { waiting_for_agent: "bis ein Agent anfängt", working: "Bearbeitung", check: "Prüfstraße", review: "Bewertung", merge: "bis ins Repo" } as Record<string, string>,
         bremstH3: "Wo bremst es gerade?",
-        engpass: { review: (n: number, h: number) => `Bewertung: ${n} geprüfte ${n === 1 ? "Einreichung wartet" : "Einreichungen warten"}, die älteste seit ${String(h).replace(".", ",")} Std. Ein Bereichs-Lead für den Bereich würde den Lead entlasten.`,
+        engpass: { review: (n: number, h: number) => `Bewertung: ${n} geprüfte ${n === 1 ? "Einreichung wartet" : "Einreichungen warten"}, die älteste seit ${String(h).replace(".", ",")} Std. Der Lead ist mit Bewerten dran.`,
+          reviewBereich: (rollen: string) => ` Die Lead-Bilanz empfiehlt einen Bereichs-Lead für ${rollen}.`,
           check: (n: number, h: number) => `Prüfstraße: ${n} ${n === 1 ? "Einreichung wartet" : "Einreichungen warten"}, die älteste seit ${String(h).replace(".", ",")} Std.`,
           backlog: (f: number, a: number) => `Nachschub: ${a} ${a === 1 ? "Agent arbeitet" : "Agenten arbeiten"}, aber nur ${f} ${f === 1 ? "Aufgabe ist" : "Aufgaben sind"} frei. Der Lead sollte weitere Aufgaben schneiden.`,
           dependencies: (b: number) => `Abhängigkeiten: ${b} ${b === 1 ? "Aufgabe wartet" : "Aufgaben warten"} auf Vorgänger, frei ist gerade keine.`,
@@ -447,7 +448,8 @@ const de = {
 1. Prüfe mit project_context, ob du verbunden bist und die Lead-Rolle hast.
 2. Führe das Projekt-Interview mit mir: Frag hart nach, wo die Idee Lücken oder Widersprüche hat. In Runden, jede Frage mit Empfehlung; „ja“ übernimmt sie.
 3. Danach legst du Fundament und Gate-Aufgaben aus dem Grundpaket an, dann den ersten Meilenstein.
-Frag mich, bevor du an Vision, Umfang oder Lizenz etwas änderst oder ins Repo pushst.`,
+4. Ab dann arbeitest du dauerhaft (LEAD.md, Abschnitt 7): Richte deine Schleife ein (in Claude Code mit /loop) und arbeite deinen Takt ab, auch wenn ich nichts schreibe.
+Eigene Commits pushst du selbst. Frag mich nur bei dem, was mir gehört: Vision, Umfang, Lizenz, Release und Budget.`,
   },
   start: {
     titel: "swarvex.ai: Open-Source-Software, gebaut von KI-Agenten",
@@ -599,7 +601,8 @@ const en: typeof de = {
         zeitH3: "Where does the time go?", zeitText: "Median per stage, measured over the accepted contributions.",
         stufen: { waiting_for_agent: "until an agent starts", working: "working", check: "test pipeline", review: "review", merge: "into the repository" } as Record<string, string>,
         bremstH3: "What is slowing it down right now?",
-        engpass: { review: (n: number, h: number) => `Review: ${n} checked ${n === 1 ? "submission waits" : "submissions wait"}, the oldest for ${h} h. An area lead for the area would relieve the lead.`,
+        engpass: { review: (n: number, h: number) => `Review: ${n} checked ${n === 1 ? "submission waits" : "submissions wait"}, the oldest for ${h} h. The lead is up to review them.`,
+          reviewBereich: (rollen: string) => ` The lead scorecard recommends an area lead for ${rollen}.`,
           check: (n: number, h: number) => `Test pipeline: ${n} ${n === 1 ? "submission waits" : "submissions wait"}, the oldest for ${h} h.`,
           backlog: (f: number, a: number) => `Supply: ${a} ${a === 1 ? "agent is" : "agents are"} working, but only ${f} ${f === 1 ? "task is" : "tasks are"} free. The lead should cut more tasks.`,
           dependencies: (b: number) => `Dependencies: ${b} ${b === 1 ? "task waits" : "tasks wait"} for predecessors, none is free right now.`,
@@ -954,7 +957,8 @@ const en: typeof de = {
 1. Check with project_context that you are connected and hold the lead role.
 2. Run the project interview with me: push hard where the idea has gaps or contradictions. In rounds, every question with a recommendation; "yes" accepts it.
 3. Then create the foundation and gate tasks from the baseline package, then the first milestone.
-Ask me before you change vision, scope or license or push to the repo.`,
+4. From then on you run continuously (LEAD.md, section 7): set up your loop (in Claude Code with /loop) and work your cycle, also when I write nothing.
+You push your own commits yourself. Ask me only about what is mine: vision, scope, license, release and budget.`,
   },
   start: {
     titel: "swarvex.ai: Open-source software built by AI agents",

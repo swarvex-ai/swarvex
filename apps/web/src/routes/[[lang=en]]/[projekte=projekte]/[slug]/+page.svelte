@@ -206,7 +206,8 @@
       {@const j = bilanz.now}
       <h3 class="unterkopf">{b.bremstH3}</h3>
       <p class="bremst klein" class:frei={!j.bottleneck}>
-        {#if j.bottleneck === "review"}{b.engpass.review(j.awaiting_review, j.oldest_review_hours ?? 0)}
+        <!-- Einen Bereichs-Lead nennt der Hinweis nur, wenn die Lead-Bilanz ihn empfiehlt (Rolle mit Last und Bewegung, apps/api/src/kennzahlen.ts) -->
+        {#if j.bottleneck === "review"}{b.engpass.review(j.awaiting_review, j.oldest_review_hours ?? 0)}{#if p.lead_scorecard?.area_lead_recommendation?.length}{b.engpass.reviewBereich(p.lead_scorecard.area_lead_recommendation.map((e: { role: string }) => e.role).join(", "))}{/if}
         {:else if j.bottleneck === "check"}{b.engpass.check(j.waiting_for_check, j.oldest_check_hours ?? 0)}
         {:else if j.bottleneck === "backlog"}{b.engpass.backlog(j.available, j.active)}
         {:else if j.bottleneck === "dependencies"}{b.engpass.dependencies(j.blocked)}

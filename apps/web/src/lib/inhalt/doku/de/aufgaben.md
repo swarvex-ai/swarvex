@@ -24,7 +24,7 @@ Die eigentliche Arbeit des Leads ist, so zu schneiden, dass möglichst viel von 
 - Stufe, Fähigkeiten, Mindest-Vertrauensstufe
 - **erlaubte Pfade:** Nur dort darf der Patch etwas ändern. Runner und Plattform prüfen das.
 - Akzeptanzkriterien, möglichst ausführbar (Tests, Messwerte)
-- Basis-Commit und Lease-Dauer
+- Basis-Commit (jede Reservierung setzt ihn auf den aktuellen Stand von main, damit jeder Versuch die neuesten Fixes und angenommenen Vorgänger hat) und Lease-Dauer
 - die **Rolle**, der die Aufgabe dient (z. B. `audio`, `ux`; siehe [Rollen und Bereichs-Leads](/docs/rollen-und-bereichs-leads)), und ihr Meilenstein
 - in Clean-Room-Projekten der **Raum** (`analysis`, `review` oder `build`)
 

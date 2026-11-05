@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -303,20 +304,65 @@ func gegenprobe(b *strings.Builder, ohneBeitrag func() (aus string, bestanden bo
 
 // testen: ein zweiter Lauf, wenn der erste scheitert. Wackelige Tests (Zeitlimits, Last auf dem Server) fallen sonst
 // zufällig auf Beiträge, die sie gar nicht berühren; was ein Beitrag wirklich kaputt macht, scheitert auch beim
-// zweiten Mal. Beide Läufe stehen im Bericht, damit der Lead die wackeligen Tests sieht.
+// zweiten Mal, und zwar an denselben Tests. Scheitern beide Läufe an ganz verschiedenen Tests, wackeln die Tests.
+// Beide Läufe stehen im Bericht, damit der Lead die wackeligen Tests sieht.
 func testen(b *strings.Builder, lauf func() (string, error)) bool {
-	aus, err := lauf()
-	fmt.Fprintf(b, "=== Test\n%s\n", aus)
+	erster, err := lauf()
+	fmt.Fprintf(b, "=== Test\n%s\n", erster)
 	if err == nil {
 		return true
 	}
-	aus, err = lauf()
+	zweiter, err := lauf()
 	if err == nil {
 		fmt.Fprintf(b, "=== Test, second run: passed\nThe first run failed and the second passed: tests above fail only sometimes. "+
-			"The lead should fix or quarantine them.\n%s\n", aus)
+			"The lead should fix or quarantine them.\n%s\n", zweiter)
 		return true
 	}
-	fmt.Fprintf(b, "=== Test, second run: failed again\n%s\n", aus)
+	if a, z := fehlschlaege(erster), fehlschlaege(zweiter); len(a) > 0 && len(z) > 0 && !gemeinsam(a, z) {
+		fmt.Fprintf(b, "=== Test, second run: failed on other tests\nThe two runs failed on different tests (first: %s; second: %s): "+
+			"they fail only sometimes, not because of this contribution. It goes on to review; the lead should fix or quarantine them.\n%s\n",
+			strings.Join(a, ", "), strings.Join(z, ", "), zweiter)
+		return true
+	}
+	fmt.Fprintf(b, "=== Test, second run: failed again\n%s\n", zweiter)
+	return false
+}
+
+var (
+	fehlZeile   = regexp.MustCompile(`\bFAIL(ED)?\b`)
+	zaehlZeile  = regexp.MustCompile(`^\d+ FAIL`)                      // Zusammenfassung wie „3 FAIL headless“
+	dauerAmEnde = regexp.MustCompile(` ?\(?\d+(\.\d+)? ?(ms|s|m)\)?$`) // „(0.01s)“, „0.012s“
+)
+
+// fehlschlaege: die Zeilen, die einen gescheiterten Test nennen (FAIL oder FAILED mit Namen, wie bei go test, pytest,
+// jest, cargo und den Testskripten der Projekte), ohne Zeitangaben und Zusammenfassungen. Erkennt das nichts, bleibt
+// es beim strengen Weg: zweimal rot heißt rot.
+func fehlschlaege(aus string) []string {
+	gesehen := map[string]bool{}
+	var liste []string
+	for _, z := range strings.Split(aus, "\n") {
+		z = strings.Join(strings.Fields(z), " ")
+		if !fehlZeile.MatchString(z) || zaehlZeile.MatchString(z) {
+			continue
+		}
+		z = dauerAmEnde.ReplaceAllString(z, "")
+		if z == "FAIL" || z == "FAILED" || gesehen[z] {
+			continue
+		}
+		gesehen[z] = true
+		liste = append(liste, z)
+	}
+	return liste
+}
+
+func gemeinsam(a, z []string) bool {
+	for _, x := range a {
+		for _, y := range z {
+			if x == y {
+				return true
+			}
+		}
+	}
 	return false
 }
 

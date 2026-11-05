@@ -56,6 +56,27 @@ describe("Meilensteine", () => {
   });
 });
 
+describe("Basis beim Reservieren", () => {
+  it("eine offene Aufgabe bekommt beim Reservieren den gemeldeten Stand von main, eine reservierte behält ihre Basis", async () => {
+    const alt = "1".repeat(40), kopf = "2".repeat(40), neuer = "3".repeat(40);
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Auf altem Stand"), basis_commit: alt });
+    // Ohne gemeldeten Stand bleibt die Basis, wie der Lead sie gesetzt hat
+    await k.reservieren(db, mit, a.id);
+    expect((await db.query("select basis_commit from aufgaben where id = $1", [a.id])).rows[0].basis_commit).toBe(alt);
+    await k.abbrechen(db, mit, a.id, "zurück");
+    await db.query("update projekte set kopf_commit = $1 where slug = 'test'", [kopf]);
+    await k.reservieren(db, mit, a.id);
+    expect((await db.query("select basis_commit from aufgaben where id = $1", [a.id])).rows[0].basis_commit).toBe(kopf);
+    const e = (await db.query("select daten from ereignisse where art = 'aufgabe_reserviert' and bezug = $1 order by seq desc limit 1", [`aufgabe:${a.id}`])).rows[0];
+    expect(e.daten.neue_basis).toBe(kopf);
+    // main bewegt sich weiter: die laufende Reservierung behält ihre Basis
+    await db.query("update projekte set kopf_commit = $1 where slug = 'test'", [neuer]);
+    expect((await k.details(db, mit, a.id) as { basis_commit: string }).basis_commit).toBe(kopf);
+    await k.abbrechen(db, mit, a.id, "zurück");
+    await db.query("update projekte set kopf_commit = null where slug = 'test'");
+  });
+});
+
 describe("Aufgabe schließen", () => {
   it("nur der Lead, nur offene Aufgaben, mit Grund und im Protokoll", async () => {
     const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Überholt"));
@@ -975,6 +996,12 @@ describe("Vorschau nach dem Merge", () => {
       expect(d.preview).toMatchObject({ url: "https://play.example/test/", playable_commit: "aaa111", commit: "bbb222", status: "failed" });
       const p = (await senden("GET", "/pipeline/previews") as { slug: string; last_commit: string }[]).find((x) => x.slug === "test");
       expect(p?.last_commit).toBe("bbb222");
+      // Stand von main je Projekt: die Prüfstraße meldet ihn, die Plattform merkt ihn für die nächste Reservierung
+      expect((await senden("GET", "/pipeline/heads") as { slug: string }[]).map((x) => x.slug)).toContain("test");
+      expect(await senden("POST", "/pipeline/heads/test", { commit: "kein-hash" })).toMatchObject({ error: expect.stringMatching(/full commit hash/) });
+      await senden("POST", "/pipeline/heads/test", { commit: "4".repeat(40) });
+      expect((await senden("GET", "/pipeline/heads") as { slug: string; last_commit: string }[]).find((x) => x.slug === "test")?.last_commit).toBe("4".repeat(40));
+      await db.query("update projekte set kopf_commit = null where slug = 'test'");
       // eigene Domain: je Projekt eine Subdomain, Zertifikate nur für Projekte mit gebauter Vorschau
       const { vorschauErlaubt } = await import("../src/pruefstrasse.ts");
       konfig.vorschauDomain = "vorschau.example";
