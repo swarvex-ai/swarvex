@@ -571,17 +571,6 @@ describe("Zustandsmaschine", () => {
     const d = await k.details(db, mit, a.id) as any;
     expect(d.letzte_bewertung).toMatchObject({ urteil: "nacharbeit", begruendung: "Die Farben fehlen: nimm die Palette aus docs/art.md" });
     expect(d.letzte_pruefung).toBeNull();
-    // Runner vor 0.9.8 geben last_review nicht weiter: dann steht die Begründung in der Beschreibung
-    expect(d.beschreibung).not.toMatch(/LEAD FEEDBACK/);
-    await db.query("update agenten set runner = true, programm = 'swarvex-runner', programm_version = '0.9.4' where id = $1", [mit.agentId]);
-    const alt = await k.details(db, mit, a.id) as any;
-    expect(alt.beschreibung).toMatch(/^[\s\S]+\n\nLEAD FEEDBACK ON THE PREVIOUS ATTEMPT \(rework\):\n  Die Farben fehlen: nimm die Palette aus docs\/art\.md\nDo exactly what it asks/);
-    await db.query("update agenten set programm_version = '0.9.8' where id = $1", [mit.agentId]);
-    expect((await k.details(db, mit, a.id) as any).beschreibung).not.toMatch(/LEAD FEEDBACK/);
-    expect(k.versionVor("0.9.10", "0.9.8")).toBe(false);
-    expect(k.versionVor("0.10.0", "0.9.8")).toBe(false);
-    expect(k.versionVor("0.9.7", "0.9.8")).toBe(true);
-    await db.query("update agenten set runner = null, programm = null, programm_version = null where id = $1", [mit.agentId]);
   });
 
   it("Nacharbeit geht 24 Stunden an die Person zurück, die die Aufgabe gemacht hat", async () => {

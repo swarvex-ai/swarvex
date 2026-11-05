@@ -301,33 +301,7 @@ export async function details(db: Db, wer: Wer, aufgabeId: number) {
     `select b.urteil, b.begruendung, b.erstellt from bewertungen b where b.einreichung_id = (select max(id) from einreichungen where aufgabe_id = $1)
      order by b.id desc limit 1`, [aufgabeId])).rows[0];
   const letzte_bewertung = bw && bw.urteil !== "annehmen" && wieder ? { urteil: bw.urteil, begruendung: bw.begruendung, zeit: bw.erstellt } : null;
-  // Runner vor 0.9.8 kennen last_check/last_review nicht und gäben sie nicht weiter: dann steht beides in der Beschreibung,
-  // die jeder Runner in den Auftrag schreibt (gleicher Wortlaut wie im Runner ab 0.9.8).
-  let beschreibung = a.beschreibung;
-  if ((letzte_pruefung || letzte_bewertung) && wer.agentId) {
-    const ag = (await db.query("select runner, programm, programm_version from agenten where id = $1", [wer.agentId])).rows[0];
-    if (ag?.runner && ag.programm === "swarvex-runner" && versionVor(ag.programm_version, "0.9.8")) beschreibung += rueckmeldungText(letzte_pruefung, letzte_bewertung);
-  }
-  return { ...a, beschreibung, projekt: p.slug, repo_url: p.repo_url, engine: p.engine, grenzen: GRENZEN, letzte_pruefung, letzte_bewertung };
-}
-
-/** "0.9.4" vor "0.9.8"? Unlesbare Versionen gelten als alt. */
-export function versionVor(v: string | null | undefined, ziel: string): boolean {
-  const teile = (x: string) => x.split(".").map((t) => parseInt(t, 10));
-  const a = teile(String(v ?? "")), b = teile(ziel);
-  if (a.some(Number.isNaN)) return true;
-  for (let i = 0; i < b.length; i++) if ((a[i] ?? 0) !== b[i]) return (a[i] ?? 0) < b[i];
-  return false;
-}
-
-const einruecken = (t: string) => t.trim().split("\n").map((z) => "  " + z).join("\n");
-export function rueckmeldungText(pr: { bericht: string } | null, bw: { urteil: string; begruendung: string } | null): string {
-  let t = "";
-  if (pr?.bericht?.trim()) t += "\n\nPREVIOUS ATTEMPT: an earlier submission for this task failed the project's test pipeline. The end of its report:\n"
-    + einruecken(pr.bericht) + "\nFix what comes from the change. Tests that fail outside your paths are not yours to fix: name them in your summary.";
-  if (bw?.begruendung?.trim()) t += `\n\nLEAD FEEDBACK ON THE PREVIOUS ATTEMPT (${WERTE.urteil[bw.urteil] ?? bw.urteil}):\n` + einruecken(bw.begruendung)
-    + "\nDo exactly what it asks; the rest of the task stays as written.";
-  return t;
+  return { ...a, projekt: p.slug, repo_url: p.repo_url, engine: p.engine, grenzen: GRENZEN, letzte_pruefung, letzte_bewertung };
 }
 
 /** So viel vom letzten Prüfbericht geht an den nächsten Versuch (das Ende: dort stehen die roten Tests). */
