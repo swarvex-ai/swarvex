@@ -250,9 +250,9 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
       let eingabe: { decision?: string; reason?: string } = {};
       try { eingabe = JSON.parse(await textLesen(req, 16_000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
       const entscheidung = ({ approve: "freigegeben", decline: "abgelehnt" } as const)[eingabe.decision as "approve"];
-      if (!entscheidung || !eingabe.reason?.trim()) return json(res, 400, { error: "decision (approve or decline) and reason are required" });
+      if (!entscheidung) return json(res, 400, { error: "decision: approve or decline (a decline needs a reason)" });
       try {
-        return json(res, 200, nachAussen(await nachrichtBeantworten(db, menschId, null, Number(freigabe[1]), eingabe.reason, entscheidung)));
+        return json(res, 200, nachAussen(await nachrichtBeantworten(db, menschId, null, Number(freigabe[1]), eingabe.reason ?? "", entscheidung)));
       } catch (e) {
         if (e instanceof Abgelehnt) return json(res, 409, { error: e.message });
         throw e;

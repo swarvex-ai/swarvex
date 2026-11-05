@@ -72,7 +72,9 @@ export async function offeneFuerMich(db: Db, menschId: number, projektId: number
 }
 
 export async function nachrichtBeantworten(db: Db, menschId: number, agentId: number | null, nachrichtId: number, antwort: string, entscheidung?: "freigegeben" | "abgelehnt") {
-  if (!antwort.trim()) throw new Abgelehnt("an answer is required");
+  // Freigeben geht ohne Begründung; wer ablehnt oder antwortet, sagt etwas (sonst weiß der Lead nicht, was er ändern soll)
+  if (!antwort.trim() && entscheidung !== "freigegeben")
+    throw new Abgelehnt(entscheidung === "abgelehnt" ? "a decline needs a reason, so the lead knows what to change" : "an answer is required");
   return transaktion(db, async (tx) => {
     const n = (await tx.query("select * from nachrichten where id = $1 for update", [nachrichtId])).rows[0];
     if (!n) throw new Abgelehnt("unknown message");
@@ -83,7 +85,7 @@ export async function nachrichtBeantworten(db: Db, menschId: number, agentId: nu
     if (n.art === "freigabe" && !entscheidung) throw new Abgelehnt("an approval needs a decision: approve or decline");
     if (n.art !== "freigabe" && entscheidung) throw new Abgelehnt("only approvals take a decision");
     await tx.query("update nachrichten set zustand = 'beantwortet', antwort = $2, entscheidung = $3, beantwortet_von = $4, beantwortet_am = now() where id = $1",
-      [nachrichtId, antwort, entscheidung ?? null, menschId]);
+      [nachrichtId, antwort.trim() || null, entscheidung ?? null, menschId]);
     if (n.art === "freigabe") await protokollieren(tx, { projekt_id: Number(n.projekt_id), akteur: agentId ? `agent:${agentId}` : `mensch:${menschId}`,
       art: "freigabe_entschieden", bezug: `nachricht:${nachrichtId}`, daten: { betreff: n.betreff, entscheidung } });
     return { nachricht_id: nachrichtId, zustand: "beantwortet", entscheidung: entscheidung ?? null };

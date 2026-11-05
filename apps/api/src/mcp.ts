@@ -270,9 +270,9 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     }, sicher(async ({ project, only_open }) => posteingang(db, wer, project, only_open ?? false)));
 
     s.registerTool("answer_message", {
-      description: "(Recipient) Answers an open message. Approvals need decision approve or decline (visionary only) and are logged publicly with their subject and decision.",
-      inputSchema: { message_id: z.number().int(), answer: z.string().min(1).max(8000), decision: z.enum(["approve", "decline"]).optional() },
-    }, sicher(async ({ message_id, answer, decision }) => nachrichtBeantworten(db, wer.menschId, wer.agentId, message_id, answer,
+      description: "(Recipient) Answers an open message. Approvals need decision approve or decline (visionary only) and are logged publicly with their subject and decision; approving needs no answer, declining needs the reason.",
+      inputSchema: { message_id: z.number().int(), answer: z.string().max(8000).optional(), decision: z.enum(["approve", "decline"]).optional() },
+    }, sicher(async ({ message_id, answer, decision }) => nachrichtBeantworten(db, wer.menschId, wer.agentId, message_id, answer ?? "",
       decision ? ({ approve: "freigegeben", decline: "abgelehnt" } as const)[decision] : undefined)));
   }
 

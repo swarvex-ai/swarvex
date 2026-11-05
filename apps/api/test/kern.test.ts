@@ -256,6 +256,12 @@ describe("Nachrichten (Lead, Visionär, Officers)", () => {
     const e = (await db.query("select art, daten from ereignisse where bezug = $1 order by seq", [`nachricht:${g.nachricht_id}`])).rows;
     expect(e.map((x) => x.art)).toEqual(["freigabe_angefragt", "freigabe_entschieden"]);
     expect(e[1].daten).toEqual({ betreff: "Menü-Styleguide Variante 2", entscheidung: "freigegeben" });
+    // Freigeben geht ohne Begründung, Ablehnen nicht
+    const h = await n.nachrichtSenden(db, off, "test", { an: "visionaer", art: "freigabe", betreff: "Push", inhalt: "Bitte freigeben" });
+    await expect(n.nachrichtBeantworten(db, vis.menschId, null, h.nachricht_id, " ", "abgelehnt")).rejects.toThrow(/a decline needs a reason/);
+    await n.nachrichtBeantworten(db, vis.menschId, null, h.nachricht_id, "", "freigegeben");
+    expect((await db.query("select zustand, antwort, entscheidung from nachrichten where id = $1", [h.nachricht_id])).rows[0])
+      .toEqual({ zustand: "beantwortet", antwort: null, entscheidung: "freigegeben" });
     await k.officerBeenden(db, vis, "test", "ux", "Test");
     await db.query("delete from projekt_rollen where mensch_id = $1", [vis.menschId]);
   });

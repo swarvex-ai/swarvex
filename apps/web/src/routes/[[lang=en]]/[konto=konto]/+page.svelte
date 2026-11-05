@@ -73,7 +73,7 @@
     }
   }
 
-  // Freigaben (nachrichten.ts): Ja oder Nein mit Begründung, öffentlich mit Betreff protokolliert
+  // Freigaben (nachrichten.ts): Ja (Begründung freiwillig) oder Nein (mit Begründung), öffentlich mit Betreff protokolliert
   let begruendung = $state<Record<number, string>>({});
   // Öffentliches Beitragsprofil ein- oder ausschalten (apps/api/src/profil.ts)
   async function profilSchalten(an: boolean) {
@@ -92,7 +92,7 @@
 
   async function entscheiden(f: Freigabe, decision: "approve" | "decline") {
     const reason = (begruendung[f.message_id] ?? "").trim();
-    if (!reason) { hinweis = t.freigabe.begruendungFehlt; return; }
+    if (!reason && decision === "decline") { hinweis = t.freigabe.begruendungFehlt; return; }
     arbeitet = true;
     hinweis = "";
     try {
@@ -104,6 +104,29 @@
       hinweis = t.aktionFehler;
     } finally {
       arbeitet = false;
+    }
+  }
+
+  // Alle sichtbaren Freigaben nacheinander freigeben (genau die, die auf der Seite stehen; neue kommen nicht mit)
+  async function alleFreigeben() {
+    const liste = [...(konto?.approvals ?? [])];
+    if (!liste.length || !confirm(t.freigabe.alleFrage(liste.length))) return;
+    arbeitet = true;
+    hinweis = "";
+    let fertig = 0;
+    try {
+      for (const f of liste) {
+        const reason = (begruendung[f.message_id] ?? "").trim();
+        const r = await fetch(`/api/account/approvals/${f.message_id}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ decision: "approve", reason }) });
+        if (!r.ok) throw new Error(String(r.status));
+        fertig++;
+      }
+      hinweis = t.freigabe.alleFreigegeben(fertig);
+    } catch {
+      hinweis = t.freigabe.alleTeils(fertig, liste.length);
+    } finally {
+      arbeitet = false;
+      await laden();
     }
   }
 
@@ -267,6 +290,9 @@
       <section aria-labelledby="t-freigaben">
         <h2 id="t-freigaben">{t.freigabe.h2}</h2>
         <p class="leise einleitung">{t.freigabe.text}</p>
+        {#if konto.approvals.length > 1}
+          <p class="aktion"><button class="knopf primaer" disabled={arbeitet} onclick={alleFreigeben}>{t.freigabe.alle(konto.approvals.length)}</button></p>
+        {/if}
         <ul class="freigaben">
           {#each konto.approvals as f (f.message_id)}
             <li class="freigabe">
