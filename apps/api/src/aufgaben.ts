@@ -279,8 +279,18 @@ export async function details(db: Db, wer: Wer, aufgabeId: number) {
   const a = (await db.query("select * from aufgaben where id = $1", [aufgabeId])).rows[0];
   if (!a) throw new Abgelehnt(`task ${aufgabeId} does not exist`);
   const p = (await db.query("select slug, repo_url, engine from projekte where id = $1", [a.projekt_id])).rows[0];
-  return { ...a, projekt: p.slug, repo_url: p.repo_url, engine: p.engine, grenzen: GRENZEN };
+  // Ging der letzte Versuch an der Prüfstraße zurück in den Pool, bekommt der nächste Agent den Bericht: Er soll den
+  // Fehler beheben können, statt blind von vorn anzufangen. Nur die Testausgabe, nicht der frühere Patch.
+  const pr = (await db.query(
+    `select p.ergebnis, p.bericht, p.erstellt from pruefungen p join einreichungen e on e.id = p.einreichung_id
+     where e.aufgabe_id = $1 and p.quelle = 'projekt' order by p.id desc limit 1`, [aufgabeId])).rows[0];
+  const letzte_pruefung = pr?.ergebnis === "fehler" && ["offen", "reserviert", "in_arbeit"].includes(a.zustand)
+    ? { ergebnis: pr.ergebnis, zeit: pr.erstellt, bericht: String(pr.bericht).slice(-LETZTER_BERICHT) } : null;
+  return { ...a, projekt: p.slug, repo_url: p.repo_url, engine: p.engine, grenzen: GRENZEN, letzte_pruefung };
 }
+
+/** So viel vom letzten Prüfbericht geht an den nächsten Versuch (das Ende: dort stehen die roten Tests). */
+export const LETZTER_BERICHT = 6000;
 
 export async function fortschritt(db: Db, wer: Wer, aufgabeId: number, notiz: string, verbrauch: Record<string, number>,
   womit: { agent_programm?: string; modell?: string } = {}) {
@@ -487,7 +497,7 @@ export async function pruefungStarten(db: Db, einreichungId: number) {
   });
 }
 
-export async function pruefungMelden(db: Db, einreichungId: number, ergebnis: "ok" | "fehler", bericht: string, signatur: string, quelle: "projekt" | "stichprobe" = "projekt") {
+export async function pruefungMelden(db: Db, einreichungId: number, ergebnis: "ok" | "fehler", bericht: string, signatur: string, quelle: "projekt" | "stichprobe" = "projekt", basisRot = false) {
   return transaktion(db, async (tx) => {
     const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];
     if (!e) throw new Abgelehnt("unknown submission");
@@ -496,8 +506,22 @@ export async function pruefungMelden(db: Db, einreichungId: number, ergebnis: "o
     await wechseln(tx, a, ergebnis === "ok" ? "geprueft_ok" : "geprueft_fehler", "pruefstrasse", "pruefung_beendet", { einreichung: einreichungId, ergebnis, quelle });
     // Eine gescheiterte Prüfung gibt die Aufgabe automatisch zurück in den Pool.
     if (ergebnis === "fehler") await wechseln(tx, { ...a, zustand: "geprueft_fehler" }, "offen", "system", "zurueck_in_pool", { einreichung: einreichungId });
+    // Gegenprobe der Prüfstraße: Die Tests sind schon ohne den Beitrag rot. Der Beitrag geht in die Bewertung, der Lead
+    // bekommt eine Nachricht (höchstens eine je Tag und Projekt, solange das Projekt rot bleibt).
+    if (ergebnis === "ok" && basisRot && quelle === "projekt") {
+      await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: "pruefstrasse", art: "projekt_tests_rot", bezug: `aufgabe:${a.id}`, daten: { einreichung: einreichungId } });
+      const schon = (await tx.query(`select 1 from nachrichten where projekt_id = $1 and von_mensch is null and betreff = $2 and erstellt > now() - interval '1 day'`,
+        [a.projekt_id, BETREFF_TESTS_ROT])).rowCount;
+      if (!schon) await tx.query(
+        `insert into nachrichten(projekt_id, von_mensch, an, art, betreff, inhalt, aufgaben, zustand) values ($1, null, 'lead', 'info', $2, $3, $4, 'erledigt')`,
+        [a.projekt_id, BETREFF_TESTS_ROT, `The project's tests fail at base commit ${String(a.basis_commit ?? "").slice(0, 12) || "(unknown)"} without any contribution `
+          + `(counter-check on submission ${einreichungId}, task ${a.id}). Contributions are not rejected for it, but nobody can rely on the tests `
+          + `until they are green again. The end of the report:\n\n${bericht.slice(-3000)}`, [Number(a.id)]]);
+    }
   });
 }
+
+export const BETREFF_TESTS_ROT = "Project tests are red without contributions";
 
 export async function bewerten(db: Db, wer: Wer, einreichungId: number, urteil: "annehmen" | "nacharbeit" | "ablehnen", begruendung: string) {
   return transaktion(db, async (tx) => {

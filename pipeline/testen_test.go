@@ -26,3 +26,22 @@ func TestTestenZweiterLauf(t *testing.T) {
 		}
 	}
 }
+
+func TestGegenprobe(t *testing.T) {
+	for _, f := range []struct {
+		name      string
+		bestanden bool
+		err       error
+		rot       bool
+		enthaelt  string
+	}{
+		{"Projekt schon rot", false, nil, true, "failed too"},
+		{"nur mit Beitrag rot", true, nil, false, "fail only with this contribution"},
+		{"Gegenprobe unmöglich", false, errors.New("patch -R"), false, "not possible"},
+	} {
+		var b strings.Builder
+		if rot := gegenprobe(&b, func() (string, bool, error) { return "lauf", f.bestanden, f.err }); rot != f.rot || !strings.Contains(b.String(), f.enthaelt) {
+			t.Errorf("%s: rot=%v report=%q", f.name, rot, b.String())
+		}
+	}
+}

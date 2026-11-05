@@ -1,10 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/swarvex-ai/swarvex/runner/umgebung"
 )
 
 func TestSkillsKopieren(t *testing.T) {
@@ -90,5 +93,22 @@ func TestAgentStart(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(ordner, "skills", "wurzel", "SKILL.md")); err != nil {
 		t.Error("Wurzel-Skill nicht kopiert")
+	}
+}
+
+// Ging der letzte Versuch an der Prüfstraße zurück, steht deren Bericht im Auftrag (sonst nichts davon).
+func TestAuftragMitLetzterPruefung(t *testing.T) {
+	var a aufgabe
+	if err := json.Unmarshal([]byte(`{"id":38,"title":"Style guide","description":"d","paths":["docs/x.md"],"acceptance":["k"],
+		"last_check":{"result":"fail","report":"=== Test\nFAIL headless dash_visual_test"}}`), &a); err != nil {
+		t.Fatal(err)
+	}
+	text := auftragstext(a, umgebung.Umgebung{})
+	if !strings.Contains(text, "PREVIOUS ATTEMPT") || !strings.Contains(text, "    FAIL headless dash_visual_test") || !strings.Contains(text, "not yours to fix") {
+		t.Fatalf("brief: %s", text)
+	}
+	a.LetztePruefung = nil
+	if strings.Contains(auftragstext(a, umgebung.Umgebung{}), "PREVIOUS ATTEMPT") {
+		t.Fatal("without a failed check: no previous attempt")
 	}
 }

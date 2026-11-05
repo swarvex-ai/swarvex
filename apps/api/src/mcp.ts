@@ -100,7 +100,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
   }, sicher(async ({ task_id }) => k.reservieren(db, wer, task_id)));
 
   s.registerTool("task_details", {
-    description: "The full task: description, allowed paths, acceptance criteria, base commit, limits.",
+    description: "The full task: description, allowed paths, acceptance criteria, base commit, limits. If the last attempt failed the test pipeline, last_check holds its report: fix what it shows.",
     inputSchema: { task_id: z.number().int() },
   }, sicher(async ({ task_id }) => k.details(db, wer, task_id)));
 

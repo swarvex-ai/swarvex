@@ -155,7 +155,7 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
       if (req.method === "POST" && m) {
         const eid = Number(m[1]);
         if (m[2] === "start") await k.pruefungStarten(db, eid);
-        if (m[2] === "result") await k.pruefungMelden(db, eid, daten.result === "pass" ? "ok" : "fehler", String(daten.report ?? ""), sig, daten.source === "sample" ? "stichprobe" : "projekt");
+        if (m[2] === "result") await k.pruefungMelden(db, eid, daten.result === "pass" ? "ok" : "fehler", String(daten.report ?? ""), sig, daten.source === "sample" ? "stichprobe" : "projekt", daten.base_red === true);
         if (m[2] === "merged") await k.gemergedMelden(db, eid, String(daten.commit));
         if (m[2] === "conflict") await k.konfliktMelden(db, eid, String(daten.head), String(daten.report ?? ""));
         return json(res, 200, { ok: true });

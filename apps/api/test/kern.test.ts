@@ -523,6 +523,29 @@ describe("Zustandsmaschine", () => {
     await k.pruefungStarten(db, e.einreichung_id);
     await k.pruefungMelden(db, e.einreichung_id, "fehler", "Test rot", "sig");
     expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("offen");
+    // Der nächste Versuch bekommt den Bericht, damit er den Fehler beheben kann
+    const d = await k.details(db, mit, a.id) as any;
+    expect(d.letzte_pruefung).toMatchObject({ ergebnis: "fehler", bericht: "Test rot" });
+  });
+
+  it("Gegenprobe: Projekt-Tests schon ohne den Beitrag rot → Bewertung statt Pool, eine Nachricht an den Lead", async () => {
+    const n = await import("../src/nachrichten.ts");
+    const vorher = Number((await db.query("select count(*) from nachrichten where von_mensch is null")).rows[0].count);
+    for (const titel of ["Basis rot 1", "Basis rot 2"]) {
+      const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe(titel));
+      await k.reservieren(db, mit, a.id);
+      const e = await k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "", eigene_tests: "", verbrauch: {} }) as any;
+      await k.pruefungStarten(db, e.einreichung_id);
+      await k.pruefungMelden(db, e.einreichung_id, "ok", "=== Counter-check without the contribution: failed too\nFAIL nav_test", "sig", "projekt", true);
+      expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("geprueft_ok");
+      expect((await k.details(db, mit, a.id) as any).letzte_pruefung).toBeNull();
+    }
+    // höchstens eine je Tag und Projekt
+    expect(Number((await db.query("select count(*) from nachrichten where von_mensch is null")).rows[0].count)).toBe(vorher + 1);
+    const post = await n.posteingang(db, lead, "test") as any[];
+    const info = post.find((x) => x.betreff === k.BETREFF_TESTS_ROT);
+    expect(info).toMatchObject({ von: "swarvex", an: "lead", nachricht_art: "info" });
+    expect(info.inhalt).toMatch(/FAIL nav_test/);
   });
 });
 

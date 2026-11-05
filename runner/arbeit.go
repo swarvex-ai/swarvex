@@ -42,6 +42,10 @@ type aufgabe struct {
 		Zeilen  int `json:"lines"`
 		Dateien int `json:"files"`
 	} `json:"limits"`
+	// Der letzte Versuch ging an der Prüfstraße zurück in den Pool: deren Bericht (nur Testausgabe)
+	LetztePruefung *struct {
+		Bericht string `json:"report"`
+	} `json:"last_check"`
 }
 
 func arbeitenBefehl(args []string) {
@@ -681,6 +685,11 @@ func auftragstext(a aufgabe, u umgebung.Umgebung) string {
 	b.WriteString("ACCEPTANCE CRITERIA:\n")
 	for _, k := range a.Akzeptanz {
 		fmt.Fprintf(&b, "- %s\n", k)
+	}
+	if a.LetztePruefung != nil && strings.TrimSpace(a.LetztePruefung.Bericht) != "" {
+		b.WriteString("\nPREVIOUS ATTEMPT: an earlier submission for this task failed the project's test pipeline. The end of its report:\n")
+		b.WriteString(einruecken(strings.TrimSpace(a.LetztePruefung.Bericht)))
+		b.WriteString("\nFix what comes from the change. Tests that fail outside your paths are not yours to fix: name them in your summary.\n")
 	}
 	// Pfade sind relativ zur Wurzel des Repos; mit dir startet der Agent in einem Unterordner und
 	// legte Dateien sonst dort an (game/docs/... statt docs/...). Deshalb volle Pfade nennen.

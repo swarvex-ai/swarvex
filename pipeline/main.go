@@ -171,7 +171,7 @@ func pruefen() {
 			fmt.Fprintln(os.Stderr, err)
 			continue
 		}
-		ok, bericht := einePruefung(e)
+		ok, bericht, basisRot := einePruefung(e)
 		ergebnis := "fail"
 		if ok {
 			ergebnis = "pass"
@@ -179,46 +179,46 @@ func pruefen() {
 		if len(bericht) > 20000 {
 			bericht = bericht[len(bericht)-20000:]
 		}
-		if err := signiert("POST", fmt.Sprintf("/pipeline/%d/result", e.EinreichungID), map[string]any{"result": ergebnis, "report": bericht}, nil); err != nil {
+		if err := signiert("POST", fmt.Sprintf("/pipeline/%d/result", e.EinreichungID), map[string]any{"result": ergebnis, "report": bericht, "base_red": basisRot}, nil); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
 		fmt.Printf("  → %s\n", ergebnis)
 	}
 }
 
-func einePruefung(e einreichung) (bool, string) {
+func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 	var b strings.Builder
 	summe := sha256.Sum256([]byte(e.Patch))
 	if hex.EncodeToString(summe[:]) != e.PatchSHA {
-		return false, "patch checksum does not match"
+		return false, "patch checksum does not match", false
 	}
 	sp, err := spiegel(e)
 	if err != nil {
-		return false, err.Error()
+		return false, err.Error(), false
 	}
 	dir, _ := os.MkdirTemp(filepath.Join(arbeit), "check-")
 	defer os.RemoveAll(dir)
 	baum := filepath.Join(dir, "tree")
 	// Basis-Commit mit echten Git-LFS-Dateien auschecken (Worktree am Spiegel).
 	if aus, err := befehl(sp, gitEnv(leseKey, e), "git", "lfs", "fetch", "origin", e.BasisCommit); err != nil {
-		return false, "LFS: " + aus
+		return false, "LFS: " + aus, false
 	}
 	if aus, err := befehl(sp, gitEnv(leseKey, e), "git", "worktree", "add", "--detach", "--force", baum, e.BasisCommit); err != nil {
-		return false, "base commit: " + aus
+		return false, "base commit: " + aus, false
 	}
 	defer befehl(sp, nil, "git", "worktree", "remove", "--force", baum)
 	patchDatei := filepath.Join(dir, "contribution.patch")
 	os.WriteFile(patchDatei, []byte(e.Patch), 0o644)
 	if aus, err := befehl(baum, nil, "git", "apply", "--check", patchDatei); err != nil {
-		return false, "patch does not apply to the base commit:\n" + aus
+		return false, "patch does not apply to the base commit:\n" + aus, false
 	}
 	befehl(baum, nil, "git", "apply", patchDatei)
 	// Maßgeblich ist, was sich im Baum wirklich geändert hat, nicht was im Text des Patches steht.
 	if p, err := geschuetztGeaendert(baum); err != nil || p != "" {
 		if err != nil {
-			return false, "could not list the changed files: " + err.Error()
+			return false, "could not list the changed files: " + err.Error(), false
 		}
-		return false, "contribution changes a protected file: " + p
+		return false, "contribution changes a protected file: " + p, false
 	}
 	exec.Command("chmod", "-R", "a+rwX", baum).Run()
 
@@ -226,24 +226,24 @@ func einePruefung(e einreichung) (bool, string) {
 	// Netz laden, dann Bauen und Testen ohne Netz. Geschützte Dateien darf ein Beitrag nicht ändern.
 	u, err := umgebung.Ermitteln(baum)
 	if err != nil {
-		return false, "environment: " + err.Error()
+		return false, "environment: " + err.Error(), false
 	}
 	fmt.Fprintf(&b, "Environment: %s (%s)\n", u.Vorlage, u.Quelle)
 	if u.Engine != nil {
 		// Proprietäre Engines prüfen die Runner der Mitstreiter (eigener Lauf + Gegenprüfung, E-31).
-		return false, b.String() + fmt.Sprintf("this project needs %s; the platform has contributor runners check it, not the test pipeline", u.Engine)
+		return false, b.String() + fmt.Sprintf("this project needs %s; the platform has contributor runners check it, not the test pipeline", u.Engine), false
 	}
 	// Projekteigene geschützte Pfade (swarvex.yaml protect:) kennt erst die Umgebung
 	if pfade, err := geaendertePfade(baum); err == nil {
 		for _, p := range pfade {
 			if u.Gesperrt(p) {
-				return false, b.String() + "contribution changes a protected file: " + p
+				return false, b.String() + "contribution changes a protected file: " + p, false
 			}
 		}
 	}
 	image, err := pruefImage(u, baum)
 	if err != nil {
-		return false, b.String() + err.Error()
+		return false, b.String() + err.Error(), false
 	}
 	cache := filepath.Join(arbeit, "cache", e.Slug)
 	os.MkdirAll(cache, 0o777)
@@ -251,22 +251,54 @@ func einePruefung(e einreichung) (bool, string) {
 	if strings.TrimSpace(u.Einrichten) != "" {
 		aus, err := imContainer(image, baum, cache, u, u.Einrichten, true, 1200)
 		if err != nil {
-			return false, b.String() + "setup failed:\n" + aus
+			return false, b.String() + "setup failed:\n" + aus, false
 		}
 	}
 	if u.Bauen != "" {
 		aus, err := imContainer(image, baum, cache, u, u.Bauen, false, 1800)
 		fmt.Fprintf(&b, "=== Build\n%s\n", aus)
 		if err != nil {
-			return false, b.String() + "build failed"
+			return false, b.String() + "build failed", false
 		}
 	}
 	if u.Testen == "" {
 		b.WriteString("No automated tests configured (swarvex.yaml: test). The lead reviews the contribution by hand.\n")
-		return true, b.String()
+		return true, b.String(), false
 	}
-	ok := testen(&b, func() (string, error) { return imContainer(image, baum, cache, u, u.Testen, false, 1800) })
-	return ok, b.String()
+	if testen(&b, func() (string, error) { return imContainer(image, baum, cache, u, u.Testen, false, 1800) }) {
+		return true, b.String(), false
+	}
+	basisRot = gegenprobe(&b, func() (string, bool, error) {
+		if aus, err := befehl(baum, nil, "git", "apply", "-R", patchDatei); err != nil {
+			return aus, false, err
+		}
+		if u.Bauen != "" {
+			if aus, err := imContainer(image, baum, cache, u, u.Bauen, false, 1800); err != nil {
+				return "build failed:\n" + aus, false, nil
+			}
+		}
+		aus, err := imContainer(image, baum, cache, u, u.Testen, false, 1800)
+		return aus, err == nil, nil
+	})
+	return basisRot, b.String(), basisRot
+}
+
+// gegenprobe: Bleiben die Tests auch im zweiten Lauf rot, laufen sie auf dem Basis-Commit ohne den Beitrag. Sind sie
+// dort ebenfalls rot, ist nicht der Beitrag schuld, sondern das Projekt: Er geht in die Bewertung, der Lead erfährt
+// es. Abgelehnt wird nur, was erst durch den Beitrag rot wird. Liefert true, wenn der Stand ohne Beitrag rot ist.
+func gegenprobe(b *strings.Builder, ohneBeitrag func() (aus string, bestanden bool, err error)) bool {
+	aus, bestanden, err := ohneBeitrag()
+	switch {
+	case err != nil:
+		fmt.Fprintf(b, "=== Counter-check without the contribution: not possible (%v)\n%s\n", err, aus)
+		return false
+	case bestanden:
+		b.WriteString("=== Counter-check without the contribution: passed\nThe tests fail only with this contribution.\n")
+		return false
+	}
+	fmt.Fprintf(b, "=== Counter-check without the contribution: failed too\nThe project's tests are already red at the base commit, "+
+		"so they do not count against this contribution; it goes on to review, and the lead is told.\n%s\n", aus)
+	return true
 }
 
 // testen: ein zweiter Lauf, wenn der erste scheitert. Wackelige Tests (Zeitlimits, Last auf dem Server) fallen sonst

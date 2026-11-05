@@ -51,9 +51,9 @@ export async function posteingang(db: Db, wer: Wer, projektSlug: string, nurOffe
   if (!ich.beteiligt) throw new Abgelehnt("only the project's lead, visionary and area leads use messages");
   const r = await db.query(
     `select n.id as nachricht_id, n.an, n.art as nachricht_art, n.betreff, n.inhalt, n.aufgaben, n.zustand, n.antwort, n.entscheidung,
-            n.erstellt, n.beantwortet_am, m.login as von, b.login as beantwortet_von,
+            n.erstellt, n.beantwortet_am, coalesce(m.login, 'swarvex') as von, b.login as beantwortet_von,
             n.an = any($3) as an_mich, n.von_mensch = $2 as von_mir
-     from nachrichten n join menschen m on m.id = n.von_mensch left join menschen b on b.id = n.beantwortet_von
+     from nachrichten n left join menschen m on m.id = n.von_mensch left join menschen b on b.id = n.beantwortet_von
      where n.projekt_id = $1 and (n.an = any($3) or n.von_mensch = $2)
        and ($4::boolean is false or n.zustand = 'offen')
        and (n.zustand = 'offen' or n.erstellt > now() - interval '30 days')
@@ -93,8 +93,8 @@ export async function nachrichtBeantworten(db: Db, menschId: number, agentId: nu
 /** Offene Freigaben für den Visionär (Website „Mein Konto“). */
 export async function offeneFreigaben(db: Db, menschId: number) {
   const r = await db.query(
-    `select n.id as nachricht_id, p.slug as projekt, p.name as projekt_name, n.betreff, n.inhalt, n.aufgaben, n.erstellt, m.login as von
-     from nachrichten n join projekte p on p.id = n.projekt_id join menschen m on m.id = n.von_mensch
+    `select n.id as nachricht_id, p.slug as projekt, p.name as projekt_name, n.betreff, n.inhalt, n.aufgaben, n.erstellt, coalesce(m.login, 'swarvex') as von
+     from nachrichten n join projekte p on p.id = n.projekt_id left join menschen m on m.id = n.von_mensch
      where n.art = 'freigabe' and n.zustand = 'offen'
        and exists (select 1 from projekt_rollen r where r.projekt_id = n.projekt_id and r.mensch_id = $1 and r.rolle = 'visionaer')
      order by n.erstellt`, [menschId]);

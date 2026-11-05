@@ -459,7 +459,7 @@
                 <div class="marken">
                   {#each b.kinds as k}<span class="marke">{g.sorte[k] ?? k}</span>{/each}
                   <span class="ton {b.check ?? 'leer'}">{`${t.spalten.pruefung} ${b.check ? t.pruefung[b.check] : t.offen}`}</span>
-                  <span class="urteil {b.verdict ?? 'leer'}">{b.verdict ? t.urteil[b.verdict] : `${t.spalten.urteil} ${t.offen}`}</span>
+                  <span class="urteil {b.verdict ?? 'leer'}">{b.verdict ? t.urteil[b.verdict] : b.check === "fail" ? t.zurueck : `${t.spalten.urteil} ${t.offen}`}</span>
                 </div>
               </div>
               {#if b.files.some((f) => f.preview)}

@@ -13,6 +13,8 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
 - No token limit per task any more by default: the daily budget (or leftover mode for subscriptions) caps every task,
   mid-task to what is left of the day, so big tasks no longer end without a result. `swarvex update` asks once whether
   to drop a saved limit; `--budget-tokens` still sets one.
+- A task that failed the test pipeline before gives the next attempt the report: the agent's brief shows the end of it
+  and says that tests outside its paths are not its to fix.
 - `swarvex login` works without `--platform`: it signs in to the platform you used before, else swarvex.ai.
 - The installer checks a saved sign-in instead of trusting the file and signs in again only when it no longer works.
 

@@ -231,6 +231,7 @@ panel("timeseries", "Signale: Abweisungen, Abbrüche, Meldungen, Sperren",
       "when 'abgebrochen' then 'Aufgabe abgebrochen' "
       "when 'zurueck_in_pool' then 'Zurück in den Pool (Tests rot)' "
       "when 'aufgabe_geschlossen' then 'Aufgabe geschlossen' "
+      "when 'projekt_tests_rot' then 'Projekt-Tests schon rot (Gegenprobe)' "
       "when 'meldung_eingegangen' then 'Meldung eingegangen' "
       "when 'mensch_gesperrt' then 'Mitstreiter gesperrt' "
       "when 'projekt_gesperrt' then 'Projekt gesperrt' else art end as metric, sum(anzahl) "
