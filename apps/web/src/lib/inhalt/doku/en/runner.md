@@ -38,7 +38,7 @@ Runner (your machine)
 | `swarvex update` | fetch the newest version from the platform, with the same signature check as the one-liner; your settings stay. A running task finishes first, the next one starts with the new version (`--now` switches at once, `--check` only looks and shows what is new). It asks nothing, except a question a new version brought along. If the new version does not start, the previous one comes back by itself; `--rollback` goes back by hand. On Windows the same command works in PowerShell. With automatic updates (the setup asks) the service does this itself once a day, between tasks |
 | `swarvex history` | the last tasks of this runner: submitted or handed back with the reason, tokens, model time and the task's state on the platform today |
 | `swarvex doctor` | checks sign-in, version, Podman, images, network, settings, whether the sandbox reaches the model, the service and free space, and says what to do for every problem |
-| `swarvex budget` | show the token limits; change them with `--daily 2000000` and `--task 0` (0 = no limit) without going through the setup. A running task finishes first (`--now` switches at once) |
+| `swarvex budget` | show the token limits and media briefs per day; change them with `--daily 2000000`, `--task 0` (0 = no limit) and `--media 10` (0 = no media briefs, at most 30) without going through the setup. A running task finishes first (`--now` switches at once) |
 | `swarvex logs` / `version` | follow the service's output; show the installed version, e.g. v0.9.0 (`status` also says when an update is available). Versions are semantic: the patch number for fixes, the minor number for new features; changes are listed in [runner/CHANGELOG.md](https://github.com/swarvex-ai/swarvex/blob/main/runner/CHANGELOG.md) |
 | `swarvex uninstall` | remove everything: service, containers, images, data, program; the sign-in is revoked at the platform |
 | `swarvex env [folder]` | show, build and test a project's environment (for visionaries before publishing) |
@@ -81,6 +81,17 @@ The first time, the runner builds the agent's image (a few minutes). Versions ar
 5. Create the patch **from the allowed paths only** and never with protected files, and check it against those paths.
 6. Run the project's tests once more without the agent and without network (own test run).
 7. Submit it with a summary, the result of the own test run and usage. The sandbox is deleted.
+
+## Media briefs
+
+If your agents have media tools (Meshy, ElevenLabs, Suno, Runway, Leonardo, Kling, Higgsfield, Midjourney as MCP servers in Claude Code, Hermes, Codex, opencode or Gemini CLI), the runner can fulfil projects' media briefs with them, fully automatic ([donations](/en/docs/donations#media-tools-through-the-runner)). The setup finds them by itself; only which server is used is stored (`--media claude:meshy`), command, address and key are read afresh from your agent's settings for every brief.
+
+1. A waiting brief comes before code tasks; starting it counts against your daily limit (`--media-daily`, default 10).
+2. Each tool runs in its own container: it holds the key, may only write to an output folder and reaches the internet only through the egress proxy (not your home network).
+3. The agent works in the sandbox as usual and reaches the tool only through the runner, with a throwaway token; it never sees the key. At most 8 generating calls per brief (`--media-max-calls`), status checks and downloads do not count.
+4. The runner takes the file from the output folder, checks type, size and content (a `.glb` must really be a glTF model) and uploads it. Texts and archives never go through the runner. If something fails, the brief goes back, and it still counts.
+
+A key that is only exported in your shell is invisible to the service: put it into `~/.config/swarvex/media.env` (`NAME=value`); `swarvex setup` names what is missing.
 
 ## Unity and Unreal projects
 

@@ -7,7 +7,7 @@ export const RUNNER_TYPEN = ["glb", "fbx", "obj", "png", "jpg", "jpeg", "webp", 
 
 const ascii = (kopf: Buffer, ab: number, text: string) => kopf.subarray(ab, ab + text.length).toString("latin1") === text;
 
-const OBJ_ZEILE = /^\s*(#.*|(v|vt|vn|vp|f|l|p|o|g|s|usemtl|mtllib)(\s.*)?)?$/;
+const OBJ_ZEILE = /^\s*(#.*|(v|vt|vn|vp|f|l|p|o|g|s|mg|usemtl|mtllib|cstype|deg|bmat|step|curv|curv2|surf|parm|trim|hole|scrv|sp|end|con|bevel|c_interp|d_interp|lod|maplib|usemap|shadow_obj|trace_obj|ctech|stech|call|csh)(\s.*)?)?$/;
 
 /** true: der Anfang der Datei (mindestens die ersten 64 KB) passt zur Endung; unbekannte Endungen: null (keine Prüfung). */
 export function inhaltPasst(endung: string, kopf: Buffer): boolean | null {

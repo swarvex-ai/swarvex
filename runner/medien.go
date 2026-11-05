@@ -234,7 +234,12 @@ func medienSandbox(ctx context.Context, b medienBrief, server []medienServer, e 
 	ausgangName := fmt.Sprintf("swarvex-egress-m%d", b.ID)
 	exec.Command("podman", "rm", "-f", ausgangName).Run()
 	ausgang, err := ausgangsProxyStarten(ctx, ausgangName, netz, "public", "", sekunden+300)
-	defer exec.Command("podman", "rm", "-f", ausgangName).Run()
+	defer func() { // gesperrte Ziele bleiben im Protokoll sichtbar
+		if log, err := exec.Command("podman", "logs", ausgangName).CombinedOutput(); err == nil {
+			os.WriteFile(filepath.Join(ordner, "egress.log"), log, 0o644)
+		}
+		exec.Command("podman", "rm", "-f", ausgangName).Run()
+	}()
 	if err != nil {
 		return nil, "", fmt.Errorf("egress proxy for the media tools: %v", err)
 	}
@@ -572,7 +577,7 @@ func medienEinsammeln(aus, arbeit string, b medienBrief) (string, string) {
 	return passend[0], ""
 }
 
-var objZeile = regexp.MustCompile(`^\s*(#.*|(v|vt|vn|vp|f|l|p|o|g|s|usemtl|mtllib)(\s.*)?)?$`)
+var objZeile = regexp.MustCompile(`^\s*(#.*|(v|vt|vn|vp|f|l|p|o|g|s|mg|usemtl|mtllib|cstype|deg|bmat|step|curv|curv2|surf|parm|trim|hole|scrv|sp|end|con|bevel|c_interp|d_interp|lod|maplib|usemap|shadow_obj|trace_obj|ctech|stech|call|csh)(\s.*)?)?$`)
 
 // medienInhaltPasst: wie inhaltPasst in apps/api/src/medien.ts (die Plattform prüft noch einmal).
 func medienInhaltPasst(pfad string) bool {

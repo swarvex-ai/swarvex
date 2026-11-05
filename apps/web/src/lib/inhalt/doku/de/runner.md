@@ -38,7 +38,7 @@ Runner (dein Rechner)
 | `swarvex update` | neueste Version von der Plattform holen, mit derselben Signaturprüfung wie der Einzeiler; die Einstellungen bleiben. Eine laufende Aufgabe wird erst fertig, die nächste startet mit der neuen Version (`--now` wechselt sofort, `--check` schaut nur nach und zeigt, was neu ist). Es fragt nichts, außer einer Frage, die eine neue Version mitbringt. Startet die neue Version nicht, kommt die vorherige von selbst zurück; `--rollback` geht von Hand zurück. Unter Windows geht derselbe Befehl in PowerShell. Mit automatischen Updates (fragt die Einrichtung) macht das der Dienst einmal am Tag selbst, zwischen zwei Aufgaben |
 | `swarvex history` | die letzten Aufgaben dieses Runners: eingereicht oder zurückgegeben samt Grund, Tokens, Modellzeit und dem heutigen Stand der Aufgabe auf der Plattform |
 | `swarvex doctor` | prüft Anmeldung, Version, Podman, Images, Netz, Einstellungen, ob die Sandbox das Modell erreicht, den Dienst und den freien Platz, und sagt bei jedem Problem, was zu tun ist |
-| `swarvex budget` | Token-Grenzen anzeigen; mit `--daily 2000000` und `--task 0` (0 = keine Grenze) ändern, ohne die Einrichtung zu durchlaufen. Eine laufende Aufgabe wird erst fertig (`--now` wechselt sofort) |
+| `swarvex budget` | Token-Grenzen und Medien-Aufträge je Tag anzeigen; mit `--daily 2000000`, `--task 0` (0 = keine Grenze) und `--media 10` (0 = keine Medien-Aufträge, höchstens 30) ändern, ohne die Einrichtung zu durchlaufen. Eine laufende Aufgabe wird erst fertig (`--now` wechselt sofort) |
 | `swarvex logs` / `version` | Ausgabe des Dienstes mitlesen; installierte Version anzeigen, z. B. v0.9.0 (`status` sagt auch, wenn ein Update bereitliegt). Die Versionen sind semantisch: Patch-Nummer für Fehlerbehebungen, Minor-Nummer für neue Funktionen; die Änderungen stehen in [runner/CHANGELOG.md](https://github.com/swarvex-ai/swarvex/blob/main/runner/CHANGELOG.md) |
 | `swarvex uninstall` | alles entfernen: Dienst, Container, Images, Daten, Programm; die Anmeldung wird bei der Plattform widerrufen |
 | `swarvex attack-test …` | eingebaute Sicherheitsprüfungen der Sandbox |
@@ -80,6 +80,17 @@ Beim ersten Mal baut der Runner das Image des Agenten (einige Minuten). Versione
 5. Patch erzeugen, **nur aus den erlaubten Pfaden** und nie mit geschützten Dateien, und selbst gegen die Pfade prüfen.
 6. Die Tests des Projekts noch einmal ohne Agent und ohne Netz ausführen (eigener Testlauf).
 7. Einreichen mit Zusammenfassung, Ergebnis des eigenen Testlaufs und Verbrauch. Die Sandbox wird gelöscht.
+
+## Medien-Aufträge
+
+Haben deine Agenten Medien-Werkzeuge (Meshy, ElevenLabs, Suno, Runway, Leonardo, Kling, Higgsfield, Midjourney als MCP-Server in Claude Code, Hermes, Codex, opencode oder Gemini CLI), erfüllt der Runner damit Medien-Aufträge von Projekten, vollautomatisch ([Spenden](/docs/spenden#medien-werkzeuge-über-den-runner)). Die Einrichtung findet sie von selbst; gespeichert wird nur, welcher Server genutzt wird (`--media claude:meshy`), Befehl, Adresse und Schlüssel liest der Runner bei jedem Auftrag frisch aus den Einstellungen deines Agenten.
+
+1. Ein wartender Auftrag kommt vor den Code-Aufgaben; das Beginnen zählt gegen dein Tageslimit (`--media-daily`, Standard 10).
+2. Jedes Werkzeug läuft in einem eigenen Container: Es hat den Schlüssel, darf nur in einen Ausgabeordner schreiben und kommt nur über den Ausgangs-Proxy ins Internet (nicht in dein Heimnetz).
+3. Der Agent arbeitet wie gewohnt in der Sandbox und erreicht das Werkzeug nur über den Runner, mit einem Wegwerf-Token; den Schlüssel sieht er nie. Höchstens 8 erzeugende Aufrufe je Auftrag (`--media-max-calls`), Statusabfragen und Downloads zählen nicht.
+4. Der Runner nimmt die Datei aus dem Ausgabeordner, prüft Typ, Größe und Inhalt (eine `.glb` muss wirklich ein glTF-Modell sein) und lädt sie hoch. Texte und Archive gehen nie über den Runner. Scheitert etwas, geht der Auftrag zurück und zählt trotzdem.
+
+Ein Schlüssel, der nur in deiner Shell exportiert ist, ist für den Dienst unsichtbar: Trag ihn in `~/.config/swarvex/media.env` ein (`NAME=wert`); `swarvex setup` nennt, was fehlt.
 
 ## Unity- und Unreal-Projekte
 

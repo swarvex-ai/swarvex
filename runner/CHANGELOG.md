@@ -5,6 +5,23 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.10.0 (6 Nov 2026)
+
+- Media briefs: your agents' media tools (Meshy, ElevenLabs, Suno, Runway, Leonardo, Kling, Higgsfield, Midjourney)
+  can now deliver 3D models, images, sounds and videos to projects, fully automatic. `swarvex setup` finds them in the
+  MCP settings of Claude Code, Hermes, Codex, opencode and Gemini CLI and offers them in the quick start: at most 10
+  briefs a day (`swarvex budget --media N`, 0 = off, at most 30). Existing runners get one question after the update.
+- Only which server is used is stored; command, address and key are read afresh from your agent's settings for every
+  brief and stay there. A key the service cannot see (exported only in your shell) goes into
+  `~/.config/swarvex/media.env`.
+- Each tool runs in its own container: it holds the key, writes only to an output folder and reaches the internet
+  only through the egress proxy (no home network). The agent in the sandbox reaches it only through the runner, with a
+  throwaway token, and never sees the key. At most 8 generating calls per brief (`--media-max-calls`); status checks
+  and downloads do not count.
+- The runner checks the result before the upload (type, size, and that the content really is a model, image or
+  sound), and the platform checks it again. Texts and archives never go through the runner.
+- Media briefs come before code tasks; a failed brief is handed back and still counts against the daily limit.
+
 ## 0.9.8 (5 Nov 2026)
 
 - Fix: a runner could sign itself out. The platform replaces the sign-in token at each refresh and revokes the
