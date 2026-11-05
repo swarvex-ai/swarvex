@@ -544,6 +544,19 @@ describe("Zustandsmaschine", () => {
     expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("angenommen");
   });
 
+  it("Nacharbeit: der nächste Versuch bekommt die Begründung des Leads", async () => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Nacharbeit mit Grund"));
+    await k.reservieren(db, mit, a.id);
+    const e = await k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "", eigene_tests: "", verbrauch: {} }) as any;
+    await k.pruefungStarten(db, e.einreichung_id);
+    await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
+    expect((await k.details(db, mit, a.id) as any).letzte_bewertung).toBeNull();
+    await k.bewerten(db, lead, e.einreichung_id, "nacharbeit", "Die Farben fehlen: nimm die Palette aus docs/art.md");
+    const d = await k.details(db, mit, a.id) as any;
+    expect(d.letzte_bewertung).toMatchObject({ urteil: "nacharbeit", begruendung: "Die Farben fehlen: nimm die Palette aus docs/art.md" });
+    expect(d.letzte_pruefung).toBeNull();
+  });
+
   it("Gegenprobe: Projekt-Tests schon ohne den Beitrag rot → Bewertung statt Pool, eine Nachricht an den Lead", async () => {
     const n = await import("../src/nachrichten.ts");
     const vorher = Number((await db.query("select count(*) from nachrichten where von_mensch is null")).rows[0].count);

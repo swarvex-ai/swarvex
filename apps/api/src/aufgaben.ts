@@ -284,9 +284,16 @@ export async function details(db: Db, wer: Wer, aufgabeId: number) {
   const pr = (await db.query(
     `select p.ergebnis, p.bericht, p.erstellt from pruefungen p join einreichungen e on e.id = p.einreichung_id
      where e.aufgabe_id = $1 and p.quelle = 'projekt' order by p.id desc limit 1`, [aufgabeId])).rows[0];
-  const letzte_pruefung = pr?.ergebnis === "fehler" && ["offen", "reserviert", "in_arbeit"].includes(a.zustand)
+  const wieder = ["offen", "reserviert", "in_arbeit"].includes(a.zustand);
+  const letzte_pruefung = pr?.ergebnis === "fehler" && wieder
     ? { ergebnis: pr.ergebnis, zeit: pr.erstellt, bericht: String(pr.bericht).slice(-LETZTER_BERICHT) } : null;
-  return { ...a, projekt: p.slug, repo_url: p.repo_url, engine: p.engine, grenzen: GRENZEN, letzte_pruefung };
+  // Ebenso die Bewertung: Schickte der Lead die letzte Einreichung mit Nacharbeit (oder Ablehnung) zurück, bekommt der
+  // nächste Versuch seine Begründung, damit er genau das verbessert.
+  const bw = (await db.query(
+    `select b.urteil, b.begruendung, b.erstellt from bewertungen b where b.einreichung_id = (select max(id) from einreichungen where aufgabe_id = $1)
+     order by b.id desc limit 1`, [aufgabeId])).rows[0];
+  const letzte_bewertung = bw && bw.urteil !== "annehmen" && wieder ? { urteil: bw.urteil, begruendung: bw.begruendung, zeit: bw.erstellt } : null;
+  return { ...a, projekt: p.slug, repo_url: p.repo_url, engine: p.engine, grenzen: GRENZEN, letzte_pruefung, letzte_bewertung };
 }
 
 /** So viel vom letzten Prüfbericht geht an den nächsten Versuch (das Ende: dort stehen die roten Tests). */

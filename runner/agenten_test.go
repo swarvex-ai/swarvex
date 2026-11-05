@@ -111,4 +111,10 @@ func TestAuftragMitLetzterPruefung(t *testing.T) {
 	if strings.Contains(auftragstext(a, umgebung.Umgebung{}), "PREVIOUS ATTEMPT") {
 		t.Fatal("without a failed check: no previous attempt")
 	}
+	if err := json.Unmarshal([]byte(`{"last_review":{"verdict":"rework","reason":"Use the palette from docs/art.md"}}`), &a); err != nil {
+		t.Fatal(err)
+	}
+	if text := auftragstext(a, umgebung.Umgebung{}); !strings.Contains(text, "LEAD FEEDBACK ON THE PREVIOUS ATTEMPT (rework)") || !strings.Contains(text, "    Use the palette") {
+		t.Fatalf("brief: %s", text)
+	}
 }

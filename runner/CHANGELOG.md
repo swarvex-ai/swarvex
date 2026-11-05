@@ -15,6 +15,8 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   to drop a saved limit; `--budget-tokens` still sets one.
 - A task that failed the test pipeline before gives the next attempt the report: the agent's brief shows the end of it
   and says that tests outside its paths are not its to fix.
+- When the lead sent the last attempt back (rework or reject), the brief carries the lead's reason, so the next agent
+  improves exactly that.
 - `swarvex login` works without `--platform`: it signs in to the platform you used before, else swarvex.ai.
 - The installer checks a saved sign-in instead of trusting the file and signs in again only when it no longer works.
 
