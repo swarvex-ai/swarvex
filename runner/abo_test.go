@@ -175,10 +175,7 @@ func TestEigeneWerte(t *testing.T) {
 }
 
 func TestNachfrageFaireNutzung(t *testing.T) {
-	q := neueFragen[len(neueFragen)-2]
-	if q.Name != "fair-use" {
-		t.Fatal(q.Name)
-	}
+	q := frageNamens(t, "fair-use")
 	if !q.offen(&einrichtungStand{mitDienst: true, dienst: []string{"--agent", "claude", "--leftover"}}) {
 		t.Error("Restkontingent ohne Nachtanteil: fragen")
 	}
@@ -268,10 +265,7 @@ func ausgabeVon(t *testing.T, f func()) string {
 
 // Bestehende Einrichtungen: einmal fragen, ob die Grenze je Aufgabe wegfällt (das Tagesbudget bleibt).
 func TestNachfrageAufgabenBudget(t *testing.T) {
-	q := neueFragen[len(neueFragen)-1]
-	if q.Name != "task-budget" {
-		t.Fatal(q.Name)
-	}
+	q := frageNamens(t, "task-budget")
 	if q.offen(&einrichtungStand{work: []string{"--budget-tokens", "0"}}) || q.offen(&einrichtungStand{work: []string{"--project", "auto"}}) {
 		t.Error("ohne Grenze: nicht fragen")
 	}
@@ -296,4 +290,15 @@ func TestNachfrageAufgabenBudget(t *testing.T) {
 	if w, _ := argWert(e2.work, "budget-tokens"); w != "500000" || e2.workNeu {
 		t.Errorf("nein: %v", e2.work)
 	}
+}
+
+func frageNamens(t *testing.T, name string) neueFrage {
+	t.Helper()
+	for _, q := range neueFragen {
+		if q.Name == name {
+			return q
+		}
+	}
+	t.Fatalf("no question %q", name)
+	return neueFrage{}
 }

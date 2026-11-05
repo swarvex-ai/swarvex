@@ -162,25 +162,14 @@ func einrichten(ctx context.Context, u umgebung.Umgebung, image, baum, cache, pr
 			return err
 		}
 		ausgangName = "swarvex-egress-" + zufall(6)
-		start := []string{"run", "-d", "--rm", "--name", ausgangName, "--network", netz, "--network", "podman", "--timeout", "1500",
-			"--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges", "--memory", "256m", "--pids-limit", "128",
-			"-e", "SWARVEX_EGRESS_MODE=" + modus, "-e", "SWARVEX_EGRESS_ALLOW=" + erlaubt, "swarvex-proxy", "egress"}
-		if aus, err := exec.CommandContext(ctx, "podman", start...).CombinedOutput(); err != nil {
-			return fmt.Errorf("starting the egress proxy for the setup: %s", strings.TrimSpace(string(aus)))
-		}
+		ausgang, err := ausgangsProxyStarten(ctx, ausgangName, netz, modus, erlaubt, 1500)
 		defer exec.Command("podman", "rm", "-f", ausgangName).Run()
-		proxy := "http://" + ausgangName + ":3128"
-		hosts, err := proxyHost(ctx, ausgangName)
 		if err != nil {
-			return err
+			return fmt.Errorf("the egress proxy for the setup: %v", err)
 		}
-		args = append(append(args, "--network", netz), hosts...)
-		for _, v := range []string{"HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"} {
-			args = append(args, "-e", v+"="+proxy)
-		}
-		args = append(args, "-e", "NO_PROXY=localhost,127.0.0.1", "-e", "no_proxy=localhost,127.0.0.1",
-			// Java-Werkzeuge (Gradle, Maven) lesen keine Proxy-Variablen, nur Systemeigenschaften
-			"-e", fmt.Sprintf("JAVA_TOOL_OPTIONS=-Dhttp.proxyHost=%s -Dhttp.proxyPort=3128 -Dhttps.proxyHost=%s -Dhttps.proxyPort=3128", ausgangName, ausgangName))
+		args = append(append(args, "--network", netz), ausgang...)
+		// Java-Werkzeuge (Gradle, Maven) lesen keine Proxy-Variablen, nur Systemeigenschaften
+		args = append(args, "-e", fmt.Sprintf("JAVA_TOOL_OPTIONS=-Dhttp.proxyHost=%s -Dhttp.proxyPort=3128 -Dhttps.proxyHost=%s -Dhttps.proxyPort=3128", ausgangName, ausgangName))
 	default:
 		return fmt.Errorf("--setup-network: public, lan or open, not %q", modus)
 	}
@@ -205,6 +194,27 @@ func einrichten(ctx context.Context, u umgebung.Umgebung, image, baum, cache, pr
 		return fmt.Errorf("setup failed (%v): %s", err, letzteZeilen(string(aus), 15))
 	}
 	return nil
+}
+
+// ausgangsProxyStarten: ein Ausgangs-Proxy (ausgang.go) im Sandbox-Netz. Liefert die Podman-Argumente für einen
+// Container, der darüber ins Internet soll: /etc/hosts-Eintrag und Proxy-Variablen. Aufräumen: podman rm -f name.
+func ausgangsProxyStarten(ctx context.Context, name, netz, modus, erlaubt string, sekunden int) ([]string, error) {
+	start := []string{"run", "-d", "--rm", "--name", name, "--network", netz, "--network", "podman", "--timeout", fmt.Sprint(sekunden),
+		"--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges", "--memory", "256m", "--pids-limit", "128",
+		"-e", "SWARVEX_EGRESS_MODE=" + modus, "-e", "SWARVEX_EGRESS_ALLOW=" + erlaubt, "swarvex-proxy", "egress"}
+	if aus, err := exec.CommandContext(ctx, "podman", start...).CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("starting it: %s", strings.TrimSpace(string(aus)))
+	}
+	hosts, err := proxyHost(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	proxy := "http://" + name + ":3128"
+	args := hosts
+	for _, v := range []string{"HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"} {
+		args = append(args, "-e", v+"="+proxy)
+	}
+	return append(args, "-e", "NO_PROXY=localhost,127.0.0.1", "-e", "no_proxy=localhost,127.0.0.1"), nil
 }
 
 // ohneNetz führt einen Befehl der Umgebung ohne jedes Netz aus (Bauen, Testen).

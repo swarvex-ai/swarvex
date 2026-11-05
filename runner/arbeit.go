@@ -81,6 +81,9 @@ func arbeitenBefehl(args []string) {
 	restNacht := fs.String("leftover-night", "", "with --leftover: also work in these time windows before the reset, e.g. \"daily 01:00-06:00\" (default with a night share)")
 	restNachtAnteil := fs.Float64("leftover-night-share", 0, "with --leftover: percent of the weekly window the agent may use per night (0 = no night work, 100 = no limit)")
 	restNachtDecke := fs.Float64("leftover-night-max", 80, "with --leftover: no night work once this percent of the weekly window is used")
+	medien := fs.String("media", "", "media tools of your agents for projects' media briefs (found by `swarvex setup`, e.g. claude:meshy,hermes:elevenlabs); empty or none = off")
+	medienTag := fs.Int("media-daily", medienStandard, fmt.Sprintf("media briefs per day at most (1–%d; 0 = none)", medienHoechstens))
+	medienAufrufe := fs.Int("media-max-calls", 8, "generating tool calls per media brief at most (status checks and downloads do not count)")
 	fs.StringVar(&setupNetz, "setup-network", "", "network while installing dependencies: public (default, only public addresses through a filtering proxy), lan (also your local network), open (no proxy, like before 0.9.3)")
 	fs.StringVar(&setupErlaubt, "setup-allow", "", "with public: exceptions for the setup, e.g. a package mirror in your network (IP, CIDR or host name, comma-separated)")
 	fs.Parse(args)
@@ -193,6 +196,22 @@ func arbeitenBefehl(args []string) {
 			if gegenpruefenWennMoeglich(basis, m, z, p) {
 				return
 			}
+		}
+	}
+
+	// 0b. Medien-Aufträge (Zusage über den Runner, medien.go): Zusagen abgleichen; wartet ein Auftrag, kommt er vor den
+	// Code-Aufgaben (es gibt weniger davon, und das Tageslimit begrenzt sie ohnehin).
+	if *nur == 0 && (*medien != "" || lesen(filepath.Join(datenOrdner(), "media-pledges.json")) != "") {
+		auswahl := medienAuswahl(*medien, medienServerFinden())
+		medienZusagenAbgleichen(m, auswahl, *medienTag, *projekt)
+		for _, s := range auswahl {
+			if s.Fehlt != "" {
+				fmt.Printf("Media tool %s is not usable right now: %s\n", s.Titel(), s.Fehlt)
+			}
+		}
+		if len(auswahl) > 0 && *medienTag > 0 && medienRunde(basis, m, z, medienEinstellung{server: auswahl, agent: agent, modell: *modell,
+			upstream: *upstream, keyDatei: *keyDatei, budget: *budget, zeit: *zeit, skills: skills, maxAufrufe: max(*medienAufrufe, 1)}) {
+			return
 		}
 	}
 
@@ -595,31 +614,9 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	if err != nil {
 		return nil, "", err
 	}
-	tok := zufall(36)
-	if zugang.chatgpt() {
-		tok = codexSandboxToken(tok) // Codex prüft, dass sein Zugangstoken ein gültiges JWT ist
-	}
 	proxyName := fmt.Sprintf("swarvex-proxy-%d", a.ID)
-	podman("rm", "-f", proxyName)
-	proxyArgs := []string{"run", "-d", "--name", proxyName, "--network", netz, "--network", "podman", "--timeout", "86400",
-		"--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges", "--memory", "256m", "--pids-limit", "64",
-		"-e", "SWARVEX_UPSTREAM=" + zugang.URL, "-e", "SWARVEX_API=" + agent.API, "-e", "SWARVEX_MODEL=" + modell, "-e", "SWARVEX_TASK_TOKEN=" + tok,
-		"-e", fmt.Sprintf("SWARVEX_BUDGET_TOKENS=%d", budget)}
-	if zugang.Key != "" {
-		proxyArgs = append(proxyArgs, "-e", "SWARVEX_UPSTREAM_KEY="+zugang.Key)
-	}
-	if zugang.chatgpt() {
-		proxyArgs = append(proxyArgs, "-e", "SWARVEX_ACCOUNT_ID="+zugang.Konto)
-	}
-	if restModus != nil {
-		k, _ := kontingentLesen(kontingentDatei())
-		proxyArgs = append(proxyArgs, "-e", "SWARVEX_LEFTOVER="+restModus.fuer(k, time.Now()).String())
-	}
-	if aus, err := podman(append(proxyArgs, "swarvex-proxy")...); err != nil {
-		return nil, "", fmt.Errorf("starting the proxy: %s", aus)
-	}
+	tok, proxyHosts, err := schluesselProxyStarten(ctx, proxyName, netz, agent, zugang, modell, budget)
 	defer exec.Command("podman", "rm", "-f", proxyName).Run()
-	proxyHosts, err := proxyHost(ctx, proxyName)
 	if err != nil {
 		return nil, "", err
 	}
@@ -651,17 +648,7 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	exec.Command("podman", "rm", "-f", sandboxName).Run()
 	os.WriteFile(filepath.Join(ordner, "agent.log"), aus, 0o644)
 
-	// Verbrauch aus dem Proxy-Protokoll.
-	proxyLog, _ := exec.Command("podman", "logs", proxyName).CombinedOutput()
-	os.WriteFile(filepath.Join(ordner, "proxy.log"), proxyLog, 0o644)
-	// Stand der Abo-Fenster für die nächste Entscheidung im Restkontingent-Modus und für `swarvex status`
-	if k, ok := kontingentAusProtokoll(string(proxyLog)); ok {
-		if alt, ok := kontingentLesen(kontingentDatei()); ok && k.Nacht == nil {
-			k.Nacht = alt.Nacht // der Beginn der Nacht bleibt, auch wenn diese Aufgabe ihn nicht neu gesetzt hat
-		}
-		kontingentMerken(kontingentDatei(), k)
-	}
-	verbrauch := verbrauchAusProxy(string(proxyLog))
+	verbrauch := proxyAuswerten(proxyName, ordner)
 	if ctx.Err() != nil {
 		return verbrauch, string(aus), fmt.Errorf("time limit reached")
 	}
@@ -669,6 +656,49 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 		return verbrauch, string(aus), fmt.Errorf("agent exited with an error: %v", err)
 	}
 	return verbrauch, string(aus), nil
+}
+
+// schluesselProxyStarten: der Schlüssel-Proxy einer Aufgabe im Sandbox-Netz (und nach außen). Liefert das Wegwerf-Token
+// der Sandbox und den /etc/hosts-Eintrag, unter dem sie ihn erreicht. Aufräumen: podman rm -f name.
+func schluesselProxyStarten(ctx context.Context, name, netz string, agent agentArt, zugang modellZugang, modell string, budget int) (string, []string, error) {
+	tok := zufall(36)
+	if zugang.chatgpt() {
+		tok = codexSandboxToken(tok) // Codex prüft, dass sein Zugangstoken ein gültiges JWT ist
+	}
+	exec.CommandContext(ctx, "podman", "rm", "-f", name).Run()
+	proxyArgs := []string{"run", "-d", "--name", name, "--network", netz, "--network", "podman", "--timeout", "86400",
+		"--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges", "--memory", "256m", "--pids-limit", "64",
+		"-e", "SWARVEX_UPSTREAM=" + zugang.URL, "-e", "SWARVEX_API=" + agent.API, "-e", "SWARVEX_MODEL=" + modell, "-e", "SWARVEX_TASK_TOKEN=" + tok,
+		"-e", fmt.Sprintf("SWARVEX_BUDGET_TOKENS=%d", budget)}
+	if zugang.Key != "" {
+		proxyArgs = append(proxyArgs, "-e", "SWARVEX_UPSTREAM_KEY="+zugang.Key)
+	}
+	if zugang.chatgpt() {
+		proxyArgs = append(proxyArgs, "-e", "SWARVEX_ACCOUNT_ID="+zugang.Konto)
+	}
+	if restModus != nil {
+		k, _ := kontingentLesen(kontingentDatei())
+		proxyArgs = append(proxyArgs, "-e", "SWARVEX_LEFTOVER="+restModus.fuer(k, time.Now()).String())
+	}
+	if aus, err := exec.CommandContext(ctx, "podman", append(proxyArgs, "swarvex-proxy")...).CombinedOutput(); err != nil {
+		return "", nil, fmt.Errorf("starting the proxy: %s", strings.TrimSpace(string(aus)))
+	}
+	hosts, err := proxyHost(ctx, name)
+	return tok, hosts, err
+}
+
+// proxyAuswerten: Verbrauch aus dem Protokoll des Schlüssel-Proxys, das Protokoll in den Aufgabenordner, und der
+// Stand der Abo-Fenster für die nächste Entscheidung im Restkontingent-Modus und für `swarvex status`.
+func proxyAuswerten(name, ordner string) map[string]float64 {
+	proxyLog, _ := exec.Command("podman", "logs", name).CombinedOutput()
+	os.WriteFile(filepath.Join(ordner, "proxy.log"), proxyLog, 0o644)
+	if k, ok := kontingentAusProtokoll(string(proxyLog)); ok {
+		if alt, ok := kontingentLesen(kontingentDatei()); ok && k.Nacht == nil {
+			k.Nacht = alt.Nacht // der Beginn der Nacht bleibt, auch wenn diese Aufgabe ihn nicht neu gesetzt hat
+		}
+		kontingentMerken(kontingentDatei(), k)
+	}
+	return verbrauchAusProxy(string(proxyLog))
 }
 
 func auftragstext(a aufgabe, u umgebung.Umgebung) string {

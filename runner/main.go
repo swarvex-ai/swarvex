@@ -10,7 +10,7 @@
 //	swarvex logs                                  Ausgabe des Dienstes laufend anzeigen
 //	swarvex history                               letzte Aufgaben mit Ergebnis, Grund und Verbrauch
 //	swarvex doctor                                alles prüfen, was der Runner braucht, mit Rat bei Problemen
-//	swarvex budget [--task N] [--daily N]         Token-Grenzen anzeigen oder ändern
+//	swarvex budget [--task N] [--daily N] [--media N]  Token-Grenzen und Medien-Aufträge je Tag anzeigen oder ändern
 //	swarvex help [befehl]                         alle Befehle bzw. die Optionen eines Befehls (auch -h, --help, -?, ?)
 //	swarvex uninstall                             alles entfernen, Gerät abmelden
 //	swarvex proxy                                 Schlüssel-Proxy (läuft im Proxy-Container)
@@ -33,6 +33,8 @@ func main() {
 	case "proxy":
 		if len(os.Args) > 2 && os.Args[2] == "egress" {
 			ausgangStarten() // Ausgangs-Proxy fürs Einrichten (gleiches Image, eigener Modus)
+		} else if len(os.Args) > 2 && os.Args[2] == "tool" {
+			brueckeStarten() // Werkzeug-Brücke im Werkzeug-Container (bruecke.go)
 		} else {
 			proxyStarten()
 		}

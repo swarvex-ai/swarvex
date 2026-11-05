@@ -602,6 +602,7 @@ func setupDialog(ausfuehren bool) []string {
 		agenten = mcpAgentenGefunden()
 	}
 	e := empfehlung(w, abo, plan, agenten)
+	medienEmpfehlen(&e, medienServerFinden())
 	if !e.moeglich {
 		fmt.Println(e.grund)
 		return anpassen(f, z, w, abo, plan, agenten, ausfuehren)
@@ -614,7 +615,7 @@ func setupDialog(ausfuehren bool) []string {
 		return anpassen(f, z, w, abo, plan, agenten, ausfuehren)
 	}
 	pruefen(argsSpeichern(e.args))
-	gefragtMerken(gefragtDatei(), "auto-update", "fair-use", "task-budget")
+	gefragtMerken(gefragtDatei(), "auto-update", "fair-use", "task-budget", "media")
 	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
 	agentenVerbinden(z, agenten)
 	if !ausfuehren {
@@ -762,8 +763,9 @@ func anpassen(f *frager, z *zugangsdaten, w modellWahl, abo bool, plan aboPlan, 
 		aufgabenBudget = f.frage("Tokens per task at most (0 = no limit, otherwise at least 50000)", budgetVorschlag)
 	}
 	args = append(args, "--budget-tokens", aufgabenBudget)
+	args = append(args, medienFragen(f, medienServerFinden())...)
 	pruefen(argsSpeichern(args))
-	gefragtMerken(gefragtDatei(), "auto-update", "fair-use", "task-budget")
+	gefragtMerken(gefragtDatei(), "auto-update", "fair-use", "task-budget", "media")
 	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
 
 	fmt.Println("\n-- Tasks without code")

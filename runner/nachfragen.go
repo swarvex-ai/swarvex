@@ -79,6 +79,22 @@ var neueFragen = []neueFrage{
 				fmt.Println("  Without a daily budget nothing caps a task any more; with a paid API key set one: swarvex budget --daily 2000000")
 			}
 		}},
+	{Name: "media", Seit: "0.9.9", Titel: "media tools for projects' briefs",
+		offen: func(e *einrichtungStand) bool {
+			return !hatFlag(e.work, "media") && !hatFlag(e.dienst, "media") && len(nutzbareServer(medienServerFinden())) > 0
+		},
+		fragen: func(f *frager, e *einrichtungStand) {
+			mehr := medienFragen(f, medienServerFinden())
+			if len(mehr) == 0 {
+				return
+			}
+			if e.work != nil {
+				e.work, e.workNeu = append(e.work, mehr...), true
+			}
+			if e.mitDienst {
+				e.dienst, e.dienstNeu = append(e.dienst, mehr...), true
+			}
+		}},
 }
 
 // aufgabenGrenze: die gespeicherte Grenze je Aufgabe (0, wenn keine).

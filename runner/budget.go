@@ -111,6 +111,7 @@ func budgetBefehl(args []string) {
 	fs := flag.NewFlagSet("budget", flag.ExitOnError)
 	aufgabe := fs.String("task", "", "tokens per task at most (0 = no limit, otherwise at least 50000)")
 	tag := fs.String("daily", "", "tokens per day at most, across all tasks (0 = no limit)")
+	medienTag := fs.String("media", "", fmt.Sprintf("media briefs per day at most (1–%d, 0 = no media briefs)", medienHoechstens))
 	sofort := fs.Bool("now", false, "restart the service right away, even during a task (the task is handed back)")
 	fs.Parse(args)
 
@@ -121,7 +122,7 @@ func budgetBefehl(args []string) {
 	if mitDienst {
 		quelle = dienst
 	}
-	if *aufgabe == "" && *tag == "" {
+	if *aufgabe == "" && *tag == "" && *medienTag == "" {
 		w, ok := argWert(quelle, "budget-tokens")
 		fmt.Println("Per task:", grenzeText(w, ok, "0"))
 		if mitDienst {
@@ -131,7 +132,8 @@ func budgetBefehl(args []string) {
 			fmt.Println("Per day:  only applies to the service (swarvex setup → as a service)")
 		}
 		fmt.Printf("Used today: %s tokens (cache hits count a tenth)\n", tausender(verbrauchAmTag(verbrauchsDatei(), time.Now())))
-		fmt.Println("Change: swarvex budget --daily 2000000 --task 0")
+		fmt.Println("Media:   ", medienText(quelle))
+		fmt.Println("Change: swarvex budget --daily 2000000 --task 0 --media 10")
 		return
 	}
 	if gespeichert == nil && !mitDienst {
@@ -158,12 +160,55 @@ func budgetBefehl(args []string) {
 		}
 		dienst = argSetzen(dienst, "daily-budget-tokens", *tag)
 	}
+	if *medienTag != "" {
+		n, err := strconv.Atoi(*medienTag)
+		if err != nil || n < 0 || n > medienHoechstens {
+			fehlerAus(fmt.Sprintf("--media: 0 (no media briefs) to %d briefs per day", medienHoechstens))
+		}
+		spec, ok := argWert(quelle, "media")
+		if n > 0 && (!ok || len(medienKennungen(spec)) == 0) {
+			// noch keine Werkzeuge gewählt: die gefundenen nehmen
+			if spec = medienSpec(nutzbareServer(medienServerFinden())); spec == "" {
+				fehlerAus("No usable media tools (Meshy, ElevenLabs …) found in your agents' MCP settings.")
+			}
+		}
+		setzen := func(args []string) []string {
+			if spec != "" {
+				args = argSetzen(args, "media", spec)
+			}
+			return argSetzen(args, "media-daily", fmt.Sprint(n))
+		}
+		if gespeichert != nil {
+			gespeichert = setzen(gespeichert)
+			pruefen(argsSpeichern(gespeichert))
+		}
+		if mitDienst {
+			dienst = setzen(dienst)
+		}
+	}
 	fmt.Println("Saved.")
 	if !mitDienst {
 		return
 	}
 	einheitSchreiben(string(einheit), dienst)
 	dienstNeuStarten(*sofort, "the new limits")
+}
+
+// medienText: was der Runner bei Medien-Aufträgen tut („3 a day with Meshy (Claude Code)“ oder „off“).
+func medienText(args []string) string {
+	spec, _ := argWert(args, "media")
+	tag, ok := argWert(args, "media-daily")
+	if !ok {
+		tag = fmt.Sprint(medienStandard)
+	}
+	auswahl := medienAuswahl(spec, medienServerFinden())
+	if len(medienKennungen(spec)) == 0 || tag == "0" {
+		return "off"
+	}
+	if len(auswahl) == 0 {
+		return "the chosen tools (" + spec + ") are no longer in your agents' settings"
+	}
+	return fmt.Sprintf("at most %s briefs a day with %s", tag, serverTitel(auswahl))
 }
 
 // einheitSchreiben: die Dienst-Einheit mit neuen Argumenten, für dasselbe Programm wie bisher.
