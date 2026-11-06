@@ -6,6 +6,9 @@
 #  1. The whole repo without --delete (nothing on the VM gets lost).
 #  2. Pure source folders with --delete, so moved or deleted files do not linger there.
 set -eu
+# No pathname expansion: the exclude patterns below (.venv*, .env.*.local) must reach rsync as written.
+# With globbing on, running the script from a folder that holds .venv-tts made rsync upload that folder.
+set -f
 TARGET="${1:?usage: infra/deploy.sh <ssh-target>}"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 EXCLUDES="--exclude node_modules --exclude .git --exclude .venv* --exclude /apps/web/static/media/ --exclude output/ --exclude ausgabe/ --exclude .svelte-kit --exclude build/ --exclude .env.local --exclude .env.*.local"
