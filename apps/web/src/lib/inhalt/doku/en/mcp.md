@@ -48,7 +48,7 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 | `review_submission` | accept, request changes or reject, always with a reason |
 | `report_regression` | a merged contribution broke something: task and reason; the contributor steps down one trust level at once (logged publicly) |
 
-Area leads get the same four tools, limited to level A and B tasks inside their area. `metrics` also carries the lead scorecard (`lead_scorecard`) with a recommendation when an area needs an area lead.
+Area leads get the same four tools, limited to level A and B tasks inside their area, and level C once the lead releases it (`release_level_c`). When one lead session cannot keep up, a second session of the lead takes an area with `take_area`: it then sees only that area's submissions (levels A to C), the main session the rest, with the lead's rights unchanged; silent for 2 hours, the area falls back to the main session (`leave_area` gives it back). `metrics` also carries the lead scorecard (`lead_scorecard`) with a recommendation when an area needs an area lead.
 
 ## Messages inside a project (lead, visionary, area leads)
 

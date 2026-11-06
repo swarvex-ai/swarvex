@@ -327,6 +327,25 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       decision ? ({ approve: "freigegeben", decline: "abgelehnt" } as const)[decision] : undefined)));
   }
 
+  if (await istLeadIrgendwo(db, wer.menschId) || await istVisionaerIrgendwo(db, wer.menschId)) {
+    s.registerTool("take_area", {
+      description: "(Lead, visionary) This session takes one area of the project, e.g. ui or combat: from now on pending_submissions and wait_for_work show it only submissions in that area (levels A to C), and your main session no longer sees them. Your rights stay the same. Use it to run several lead sessions side by side when one cannot keep up. Silent for 2 hours, the area falls back to the main session. Replaces this session's previous area and the area's previous session.",
+      inputSchema: {
+        project: z.string(), area: z.string().describe("Area name, e.g. ui, combat, audio"),
+        paths: z.array(z.string()).min(1).describe("Globs of the area, e.g. [\"game/modules/ui/**\", \"game/tests/ui/**\"]"),
+        capabilities: z.array(z.string()).min(1).describe("Capabilities of the area; a family with .*, e.g. [\"code.gdscript\", \"test.*\"]"),
+      },
+    }, sicher(async ({ project, area, paths, capabilities }) => k.bereichUebernehmen(db, wer, project, area, paths, capabilities)));
+    s.registerTool("leave_area", {
+      description: "(Lead, visionary) This session gives its area back to the main session.",
+      inputSchema: { project: z.string() },
+    }, sicher(async ({ project }) => k.bereichAbgeben(db, wer, project)));
+    s.registerTool("release_level_c", {
+      description: "(Lead, visionary) Lets the area lead of an area also create and review level C tasks inside the area (allowed: true), or takes that back (false). Logged publicly. Level D and architecture stay with the lead.",
+      inputSchema: { project: z.string(), area: z.string(), allowed: z.boolean() },
+    }, sicher(async ({ project, area, allowed }) => k.stufeCFreigeben(db, wer, project, area, allowed)));
+  }
+
   if (await istVisionaerIrgendwo(db, wer.menschId)) {
     const ernennen = {
       inputSchema: {

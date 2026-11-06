@@ -72,13 +72,17 @@ async function mussLeadSein(tx: Tx, menschId: number, projektId: number) {
 
 // Bereichs-Leads (lead/roles/README.md): führen einen Bereich eines Projekts. Sie dürfen Aufgaben der Stufen A und B
 // anlegen, schließen und bewerten, deren Pfade und Fähigkeiten ganz in ihrem Bereich liegen. Alles andere bleibt beim Lead.
-export type Officer = { id: number; bereich: string; pfade: string[]; faehigkeiten: string[]; raum: Raum | null };
+export type Officer = { id: number; bereich: string; pfade: string[]; faehigkeiten: string[]; raum: Raum | null; stufe_c?: boolean };
 export const OFFICER_STUFEN = ["A", "B"];
+/** Bereichs-Sitzungen des Leads (migrations/047): A bis C im Bereich; D und Architektur bleiben bei der Hauptsitzung. */
+export const SITZUNG_STUFEN = ["A", "B", "C"];
+/** So lange gilt eine Bereichs-Sitzung als da; danach fällt ihr Bereich an die Hauptsitzung zurück. */
+export const SITZUNG_AKTIV_STUNDEN = 2;
 const NAME = /^[a-z][a-z0-9-]{1,30}$/;
 
 export async function officersVon(db: Db | Tx, menschId: number, projektId?: number): Promise<Officer[]> {
   const r = await db.query(
-    "select id, bereich, pfade, faehigkeiten, raum from officers where mensch_id = $1 and beendet is null and ($2::bigint is null or projekt_id = $2)", [menschId, projektId ?? null]);
+    "select id, bereich, pfade, faehigkeiten, raum, stufe_c from officers where mensch_id = $1 and beendet is null and ($2::bigint is null or projekt_id = $2)", [menschId, projektId ?? null]);
   return r.rows.map((o) => ({ ...o, id: Number(o.id) }));
 }
 
@@ -88,9 +92,59 @@ export const pfadImBereich = (p: string, bereich: string[]) =>
 /** Fähigkeit liegt im Bereich: gleich, oder Familie "asset.*". */
 const faehigkeitImBereich = (f: string, bereich: string[]) => bereich.some((b) => b === f || (b.endsWith(".*") && f.startsWith(b.slice(0, -1))));
 
-export const imBereich = (o: Officer, a: { stufe: string; pfade: string[]; faehigkeiten: string[]; raum?: string | null }) =>
-  OFFICER_STUFEN.includes(a.stufe) && a.pfade.length > 0 && a.faehigkeiten.length > 0 && (o.raum ?? null) === (a.raum ?? null) &&
+export const imBereich = (o: Officer, a: { stufe: string; pfade: string[]; faehigkeiten: string[]; raum?: string | null }, stufen = o.stufe_c ? [...OFFICER_STUFEN, "C"] : OFFICER_STUFEN) =>
+  stufen.includes(a.stufe) && a.pfade.length > 0 && a.faehigkeiten.length > 0 && (o.raum ?? null) === (a.raum ?? null) &&
   a.pfade.every((p) => pfadImBereich(p, o.pfade)) && a.faehigkeiten.every((f) => faehigkeitImBereich(f, o.faehigkeiten));
+
+/** Aktive Bereichs-Sitzungen eines Projekts (gesehen in den letzten SITZUNG_AKTIV_STUNDEN). */
+async function sitzungenVon(db: Db | Tx, projektId: number) {
+  return (await db.query(
+    `select agent_id::int, bereich, pfade, faehigkeiten from bereichs_sitzungen
+     where projekt_id = $1 and beendet is null and gesehen > now() - make_interval(hours => $2)`, [projektId, SITZUNG_AKTIV_STUNDEN])).rows as
+    { agent_id: number; bereich: string; pfade: string[]; faehigkeiten: string[] }[];
+}
+const inSitzung = (s: { bereich: string; pfade: string[]; faehigkeiten: string[] }, a: { stufe: string; pfade: string[]; faehigkeiten: string[]; raum?: string | null }) =>
+  imBereich({ id: 0, bereich: s.bereich, pfade: s.pfade, faehigkeiten: s.faehigkeiten, raum: (a.raum ?? null) as Raum | null }, a, SITZUNG_STUFEN);
+
+/** Eine weitere Sitzung von Lead oder Visionär übernimmt einen Bereich (ersetzt ihre bisherige und die bisherige des Bereichs). */
+export async function bereichUebernehmen(db: Db, wer: Wer, projektSlug: string, bereich: string, pfade: string[], faehigkeiten: string[]) {
+  if (!NAME.test(bereich)) throw new Abgelehnt("area: lowercase letters, digits and dashes, e.g. ui or combat");
+  if (!pfade.length || pfade.some((x) => x.includes("..") || x.startsWith("/") || !x.trim() || x === "**" || x === "*")) throw new Abgelehnt("paths: relative globs of the area inside the repository, not the whole repository");
+  if (!faehigkeiten.length) throw new Abgelehnt("capabilities: at least one, e.g. code.gdscript or test.*");
+  return transaktion(db, async (tx) => {
+    const p = await projektPerSlug(tx, projektSlug);
+    const rollen = await rollenVon(tx, wer.menschId, p.id);
+    if (!rollen.includes("lead") && !rollen.includes("visionaer")) throw new Abgelehnt("only sessions of the project's lead or visionary take an area this way; others are appointed as area leads (appoint_area_lead)");
+    await tx.query("update bereichs_sitzungen set beendet = now() where projekt_id = $1 and (agent_id = $2 or bereich = $3) and beendet is null", [p.id, wer.agentId, bereich]);
+    const id = Number((await tx.query("insert into bereichs_sitzungen(projekt_id, agent_id, bereich, pfade, faehigkeiten) values ($1,$2,$3,$4,$5) returning id",
+      [p.id, wer.agentId, bereich, pfade, faehigkeiten])).rows[0].id);
+    await protokollieren(tx, { projekt_id: Number(p.id), akteur: akteur(wer), art: "bereich_uebernommen", bezug: `projekt:${p.id}`, daten: { bereich, pfade, faehigkeiten } });
+    return { bereich, pfade, faehigkeiten, stufen: SITZUNG_STUFEN };
+  });
+}
+
+export async function bereichAbgeben(db: Db, wer: Wer, projektSlug: string) {
+  return transaktion(db, async (tx) => {
+    const p = await projektPerSlug(tx, projektSlug);
+    const r = (await tx.query("update bereichs_sitzungen set beendet = now() where projekt_id = $1 and agent_id = $2 and beendet is null returning bereich", [p.id, wer.agentId])).rows[0];
+    if (!r) throw new Abgelehnt("this session has no area in this project");
+    await protokollieren(tx, { projekt_id: Number(p.id), akteur: akteur(wer), art: "bereich_abgegeben", bezug: `projekt:${p.id}`, daten: { bereich: r.bereich } });
+    return { bereich: r.bereich };
+  });
+}
+
+/** Lead oder Visionär: Der Bereichs-Lead dieses Bereichs darf auch Stufe C anlegen und abnehmen (oder nicht mehr). */
+export async function stufeCFreigeben(db: Db, wer: Wer, projektSlug: string, bereich: string, erlaubt: boolean) {
+  return transaktion(db, async (tx) => {
+    const p = await projektPerSlug(tx, projektSlug);
+    const rollen = await rollenVon(tx, wer.menschId, p.id);
+    if (!rollen.includes("lead") && !rollen.includes("visionaer")) throw new Abgelehnt("only the project's lead or visionary releases level C for an area");
+    const o = (await tx.query("update officers set stufe_c = $3 where projekt_id = $1 and bereich = $2 and beendet is null returning mensch_id", [p.id, bereich, erlaubt])).rows[0];
+    if (!o) throw new Abgelehnt(`no active area lead for ${bereich}`);
+    await protokollieren(tx, { projekt_id: Number(p.id), akteur: akteur(wer), art: "stufe_c_freigabe", bezug: `mensch:${o.mensch_id}`, daten: { bereich, erlaubt } });
+    return { bereich, stufe_c: erlaubt };
+  });
+}
 
 /** Lead oder Visionär darf alles; ein Bereichs-Lead nur Aufgaben in seinem Bereich. Liefert den Bereichs-Lead, falls er es ist. */
 async function mussLeadOderOfficerSein(tx: Tx, menschId: number, projektId: number, a: { stufe: string; pfade: string[]; faehigkeiten: string[]; raum?: string | null }): Promise<Officer | null> {
@@ -751,8 +805,13 @@ export async function gemergedMelden(db: Db, einreichungId: number, commit: stri
 export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: string) {
   const p = await projektPerSlug(db, projektSlug);
   const rollen = await rollenVon(db, wer.menschId, p.id);
-  const officers = rollen.includes("lead") || rollen.includes("visionaer") ? null : await officersVon(db, wer.menschId, Number(p.id));
+  const istLead = rollen.includes("lead") || rollen.includes("visionaer");
+  const officers = istLead ? null : await officersVon(db, wer.menschId, Number(p.id));
   if (officers && !officers.length) throw new Abgelehnt("only the project's lead or one of its area leads may do this");
+  // Sitzungen des Leads: eine Bereichs-Sitzung sieht ihren Bereich, die Hauptsitzung alles außerhalb der aktiven Bereichs-Sitzungen
+  const sitzungen = istLead ? await sitzungenVon(db, Number(p.id)) : [];
+  const meine = sitzungen.find((x) => x.agent_id === wer.agentId);
+  if (meine) await db.query("update bereichs_sitzungen set gesehen = now() where projekt_id = $1 and agent_id = $2 and beendet is null", [p.id, wer.agentId]);
   const r = await db.query(
     `select e.id as einreichung_id, a.id as aufgabe_id, a.titel, a.zustand, a.stufe, a.rolle, a.raum, a.pfade, a.faehigkeiten, e.zusammenfassung, e.patch, p.ergebnis as pruefung, p.bericht,
        e.vorschau->>'status' as vorschau_status,
@@ -764,7 +823,9 @@ export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: strin
        and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id`, [p.id]);   // nur die neueste je Aufgabe
   // Vorschau dieser Einreichung zum Ausprobieren vor der Bewertung (pipeline/vorschau.go)
   const zeilen = r.rows.map(({ vorschau_status, ...z }) => ({ ...z, ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: einreichungsVorschauUrl(Number(z.einreichung_id)) } : {}) }));
-  return officers ? zeilen.filter((a) => officers.some((o) => imBereich(o, a))) : zeilen;
+  if (officers) return zeilen.filter((a) => officers.some((o) => imBereich(o, a)));
+  if (meine) return zeilen.filter((a) => inSitzung(meine, a));
+  return zeilen.filter((a) => !sitzungen.some((x) => x.agent_id !== wer.agentId && inSitzung(x, a)));
 }
 
 /** Nur der Visionär ernennt Bereichs-Leads (Bereich, Pfade, Fähigkeiten); öffentlich protokolliert. */

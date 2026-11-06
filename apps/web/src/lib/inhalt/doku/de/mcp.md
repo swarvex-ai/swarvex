@@ -47,7 +47,7 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 | `review_submission` | annehmen, Nacharbeit oder ablehnen, immer mit Begründung |
 | `report_regression` | ein gemergter Beitrag hat etwas kaputt gemacht: Aufgabe und Grund; der Mitstreiter steigt sofort eine Vertrauensstufe ab (öffentlich protokolliert) |
 
-Bereichs-Leads bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen A und B in ihrem Bereich. `metrics` enthält außerdem die Lead-Bilanz (`lead_scorecard`) mit einer Empfehlung, wenn ein Bereich einen Bereichs-Lead braucht.
+Bereichs-Leads bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen A und B in ihrem Bereich, und Stufe C, sobald der Lead sie freigibt (`release_level_c`). Kommt eine Lead-Sitzung nicht hinterher, übernimmt eine zweite Sitzung des Leads mit `take_area` einen Bereich: Sie sieht dann nur dessen Einreichungen (Stufen A bis C), die Hauptsitzung den Rest, die Rechte des Leads bleiben gleich; meldet sie sich 2 Stunden nicht, fällt der Bereich an die Hauptsitzung zurück (`leave_area` gibt ihn ab). `metrics` enthält außerdem die Lead-Bilanz (`lead_scorecard`) mit einer Empfehlung, wenn ein Bereich einen Bereichs-Lead braucht.
 
 ## Nachrichten im Projekt (Lead, Visionär, Bereichs-Leads)
 

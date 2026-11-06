@@ -1252,6 +1252,52 @@ new file mode 100644
   });
 });
 
+describe("Bereichs-Sitzungen des Leads und Stufe C für Bereichs-Leads", () => {
+  const eingereichtGeprueft = async (titel: string, stufe: "A" | "B" | "C", pfade: string[]) => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe(titel), stufe, pfade });
+    // direkt geprüft, ohne Zuteilung: der Stand vor der Bewertung zählt
+    const l = Number((await db.query("insert into leases(aufgabe_id, agent_id, laeuft_ab, beendet) values ($1,$2, now() + interval '1 hour', now()) returning id", [a.id, mit.agentId])).rows[0].id);
+    const e = Number((await db.query("insert into einreichungen(aufgabe_id, lease_id, agent_id, patch, patch_sha256, zusammenfassung, eigene_tests, verbrauch) values ($1,$2,$3,'x','x','z','t','{}') returning id", [a.id, l, mit.agentId])).rows[0].id);
+    await db.query("insert into pruefungen(einreichung_id, quelle, ergebnis, bericht, signatur) values ($1,'projekt','ok','grün','sig')", [e]);
+    await db.query("update aufgaben set zustand = 'geprueft_ok' where id = $1", [a.id]);
+    return { a, eid: e };
+  };
+  it("eine zweite Lead-Sitzung übernimmt UI; die Hauptsitzung sieht den Rest; still geworden fällt der Bereich zurück", async () => {
+    const zweite = { menschId: lead.menschId, agentId: Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'lead-ui','Lead UI') returning id", [lead.menschId])).rows[0].id) };
+    await expect(k.bereichUebernehmen(db, mit, "test", "ui", ["game/modules/ui/**"], ["code.gdscript"])).rejects.toThrow(/only sessions of the project's lead/);
+    await expect(k.bereichUebernehmen(db, zweite, "test", "ui", ["**"], ["code.gdscript"])).rejects.toThrow(/paths/);
+    await k.bereichUebernehmen(db, zweite, "test", "ui", ["game/modules/ui/**"], ["code.gdscript"]);
+    const ui = await eingereichtGeprueft("UI-Screen", "C", ["game/modules/ui/pause.gd"]);
+    const sonst = await eingereichtGeprueft("Kampf", "B", ["game/modules/vfx/hit.gd"]);
+    const sieht = async (wer: typeof lead) => (await k.wartendeEinreichungen(db, wer, "test")).map((x) => Number(x.einreichung_id));
+    expect(await sieht(zweite)).toEqual([ui.eid]);
+    expect(await sieht(lead)).toContain(sonst.eid);
+    expect(await sieht(lead)).not.toContain(ui.eid);
+    // Die Bereichs-Sitzung hat die Rechte des Leads: sie nimmt C im Bereich an
+    await k.bewerten(db, zweite, ui.eid, "annehmen", "UI-Screen passt zum Stilleitfaden");
+    const ui2 = await eingereichtGeprueft("UI-Screen 2", "B", ["game/modules/ui/optionen.gd"]);
+    await db.query("update bereichs_sitzungen set gesehen = now() - interval '3 hours' where agent_id = $1", [zweite.agentId]);
+    expect(await sieht(lead)).toContain(ui2.eid);   // still geworden: zurück an die Hauptsitzung
+    await k.bereichAbgeben(db, zweite, "test");
+    await expect(k.bereichAbgeben(db, zweite, "test")).rejects.toThrow(/no area/);
+    for (const a of [sonst.a, ui2.a]) { await db.query("update aufgaben set zustand = 'geschlossen' where id = $1", [a.id]); }
+  });
+  it("Stufe C für einen Bereichs-Lead erst nach Freigabe durch den Lead", async () => {
+    const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login, vertrauensstufe) values ('gitea','bereich-c','bereich-c',2) returning id")).rows[0].id);
+    const bl = { menschId: m, agentId: Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'bc','bc') returning id", [m])).rows[0].id) };
+    await db.query("insert into projekt_rollen(projekt_id, mensch_id, rolle) values ((select id from projekte where slug='test'), $1, 'mitstreiter') on conflict do nothing", [m]);
+    await k.officerErnennen(db, "betrieb", "test", "gitea:bereich-c", "kampf", ["game/modules/vfx/**"], ["code.gdscript"]);
+    const c = await eingereichtGeprueft("Treffer-Effekt", "C", ["game/modules/vfx/treffer.gd"]);
+    expect((await k.wartendeEinreichungen(db, bl, "test")).map((x) => Number(x.einreichung_id))).not.toContain(c.eid);
+    await expect(k.bewerten(db, bl, c.eid, "annehmen", "sieht gut aus")).rejects.toThrow(/area lead/);
+    await expect(k.stufeCFreigeben(db, bl, "test", "kampf", true)).rejects.toThrow(/only the project's lead/);
+    expect(await k.stufeCFreigeben(db, lead, "test", "kampf", true)).toEqual({ bereich: "kampf", stufe_c: true });
+    expect((await k.wartendeEinreichungen(db, bl, "test")).map((x) => Number(x.einreichung_id))).toContain(c.eid);
+    await k.bewerten(db, bl, c.eid, "annehmen", "Effekt passt, Tests grün");
+    await k.officerBeenden(db, "betrieb", "test", "kampf", "Test vorbei");
+  });
+});
+
 describe("Zuteilung nach nachgewiesener Stufe", () => {
   const neuerAgent = async (login: string) => {
     const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea',$1,$1) returning id", [login])).rows[0].id);
