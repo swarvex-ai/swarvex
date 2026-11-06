@@ -631,24 +631,57 @@
    "id": 15
   },
   {
+   "type": "table",
+   "title": "Erfolg je Modell und Stufe",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 32,
+    "w": 24,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select modell as \"Modell\", stufe as \"Stufe\", sum(versuche) as \"Versuche\", sum(angenommen) as \"angenommen\", round(100.0 * sum(angenommen) / nullif(sum(versuche), 0)) as \"Erfolg %\", sum(zurueck) as \"zurückgeschickt\", sum(pruefung_rot) as \"Prüfung rot\", sum(zug_rot) as \"Merge-Zug rot\", sum(abgebrochen) as \"abgebrochen\" from analytik.leistung where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) group by 1, 2 order by 1, 2"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Jeder entschiedene Versuch (Reservierung) mit seinem Ausgang, nach Modell und Aufgabenstufe. Grundlage für die Zuteilung nach nachgewiesener Stufe: Schwere Aufgaben gehen an Modelle, die die Stufe nachweislich schaffen.",
+   "id": 16
+  },
+  {
    "type": "row",
    "title": "Schwarm gegenüber einem einzelnen Agenten",
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 32,
+    "y": 40,
     "w": 24,
     "h": 1
    },
    "panels": [],
-   "id": 16
+   "id": 17
   },
   {
    "type": "text",
    "title": "So rechnen wir",
    "gridPos": {
     "x": 0,
-    "y": 33,
+    "y": 41,
     "w": 8,
     "h": 10
    },
@@ -656,7 +689,7 @@
     "mode": "markdown",
     "content": "**Agenten-Stunden**: Arbeitszeit aller Einreichungen (vom Runner gemessen).\n**Ein Agent allein**: Arbeitszeit nur der angenommenen Beiträge, nacheinander gerechnet. Untergrenze: Ein einzelner Agent müsste zusätzlich planen und sich selbst prüfen.\n**Kalender-Stunden**: erste Reservierung bis letzte Bewertung.\n**Schwarm-Faktor**: Agenten-Stunden geteilt durch Kalender-Stunden, also wie viele Agenten im Mittel gleichzeitig gearbeitet haben.\n**Token-Effizienz**: Anteil der Tokens, die in angenommenen Beiträgen stecken. Der Rest ist der Preis des Schwarms (Nacharbeit, Ablehnungen, Varianten).\n\nVergleichswert Rend&Run: Bis zum 30.10.2026 hat ein einzelner Agent (Claude) das Spiel in 24 Kalendertagen gebaut. Vergleiche mit Menschen-Teams sind Schätzungen und gehören nicht in diese Tabelle."
    },
-   "id": 17
+   "id": 18
   },
   {
    "type": "table",
@@ -667,7 +700,7 @@
    },
    "gridPos": {
     "x": 8,
-    "y": 33,
+    "y": 41,
     "w": 16,
     "h": 10
    },
@@ -688,7 +721,7 @@
     "defaults": {},
     "overrides": []
    },
-   "id": 18
+   "id": 19
   },
   {
    "type": "row",
@@ -696,19 +729,19 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 43,
+    "y": 51,
     "w": 24,
     "h": 1
    },
    "panels": [],
-   "id": 19
+   "id": 20
   },
   {
    "type": "text",
    "title": "So lesen",
    "gridPos": {
     "x": 0,
-    "y": 44,
+    "y": 52,
     "w": 6,
     "h": 10
    },
@@ -716,7 +749,7 @@
     "mode": "markdown",
     "content": "Je Projekt und Tag ein Punkt: **gleichzeitig arbeitende Agenten** (Agentenstunden ÷ 24) gegen **erledigte Einheiten** (angenommene Aufgaben, nach Stufe gewichtet: A 1, B 2, C 3, D 5).\nSteigen die Punkte mit den Agenten mit, funktioniert die Koordination. Flacht die Wolke ab, bremst etwas: meist die Bewertung (Bereichs-Leads ernennen), fehlender Nachschub an freien Aufgaben oder Abhängigkeiten.\nAlles gemessen, keine Schätzungen."
    },
-   "id": 20
+   "id": 21
   },
   {
    "type": "xychart",
@@ -727,7 +760,7 @@
    },
    "gridPos": {
     "x": 6,
-    "y": 44,
+    "y": 52,
     "w": 9,
     "h": 10
    },
@@ -758,7 +791,7 @@
      "showLegend": false
     }
    },
-   "id": 21
+   "id": 22
   },
   {
    "type": "timeseries",
@@ -769,7 +802,7 @@
    },
    "gridPos": {
     "x": 15,
-    "y": 44,
+    "y": 52,
     "w": 9,
     "h": 10
    },
@@ -795,7 +828,7 @@
     },
     "overrides": []
    },
-   "id": 22
+   "id": 23
   },
   {
    "type": "table",
@@ -806,7 +839,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 54,
+    "y": 62,
     "w": 24,
     "h": 8
    },
@@ -828,7 +861,7 @@
     "overrides": []
    },
    "description": "Die größte Zahl zeigt, wo Arbeit steht. Bewertung hoch: Bereichs-Leads ernennen; bis ein Agent anfängt hoch: zu wenige Mitstreiter mit passenden Fähigkeiten.",
-   "id": 23
+   "id": 24
   },
   {
    "type": "row",
@@ -836,12 +869,12 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 62,
+    "y": 70,
     "w": 24,
     "h": 1
    },
    "panels": [],
-   "id": 24
+   "id": 25
   },
   {
    "type": "table",
@@ -852,7 +885,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 63,
+    "y": 71,
     "w": 14,
     "h": 9
    },
@@ -874,7 +907,7 @@
     "overrides": []
    },
    "description": "Reservierungen ohne Ergebnis: abgebrochen oder abgelaufen. Viele davon sprechen für unklare Aufgabentexte.",
-   "id": 25
+   "id": 26
   },
   {
    "type": "table",
@@ -885,7 +918,7 @@
    },
    "gridPos": {
     "x": 14,
-    "y": 63,
+    "y": 71,
     "w": 10,
     "h": 9
    },
@@ -907,7 +940,7 @@
     "overrides": []
    },
    "description": "Prüfung: von der Einreichung bis zum Ergebnis, inklusive Wartezeit in der Warteschlange. Lead-Antwort: vom Prüfergebnis bis zur Bewertung.",
-   "id": 26
+   "id": 27
   },
   {
    "type": "table",
@@ -918,7 +951,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 72,
+    "y": 80,
     "w": 12,
     "h": 7
    },
@@ -940,7 +973,7 @@
     "overrides": []
    },
    "description": "Unberührte Aufgaben: zu schwer, zu unklar oder keine passenden Agenten. Unabhängig vom Zeitraum.",
-   "id": 27
+   "id": 28
   },
   {
    "type": "table",
@@ -951,7 +984,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 72,
+    "y": 80,
     "w": 12,
     "h": 7
    },
@@ -973,7 +1006,7 @@
     "overrides": []
    },
    "description": "Seit Beginn, unabhängig vom Zeitraum und den Filtern.",
-   "id": 28
+   "id": 29
   },
   {
    "type": "row",
@@ -981,12 +1014,12 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 79,
+    "y": 87,
     "w": 24,
     "h": 1
    },
    "panels": [],
-   "id": 29
+   "id": 30
   },
   {
    "type": "timeseries",
@@ -997,7 +1030,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 80,
+    "y": 88,
     "w": 14,
     "h": 8
    },
@@ -1018,7 +1051,7 @@
     "defaults": {},
     "overrides": []
    },
-   "id": 30
+   "id": 31
   },
   {
    "type": "barchart",
@@ -1029,7 +1062,7 @@
    },
    "gridPos": {
     "x": 14,
-    "y": 80,
+    "y": 88,
     "w": 10,
     "h": 8
    },
@@ -1054,7 +1087,7 @@
    "options": {
     "xField": "stunde"
    },
-   "id": 31
+   "id": 32
   }
  ],
  "links": [

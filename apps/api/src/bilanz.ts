@@ -10,15 +10,20 @@ import { angebot } from "./fluss.ts";
 
 type Zeile = {
   einreichung: number; aufgabe: number; stufe: string; meilenstein: string | null; mensch: number; agent: number; modell: string | null;
-  sekunden: number; urteil: string | null; bewertet: Date | null; bewerter: number | null; pruefung: string | null; zustand: string;
+  sekunden: number; tokens: number; urteil: string | null; bewertet: Date | null; bewerter: number | null; pruefung: string | null; zustand: string;
 };
+
+/** Je Aufgabe: Regressionen und rote Merge-Züge (Qualität) sowie Aktionen des Leads (Last), für die Gruppen-Bilanz. */
+type JeAufgabe = Map<number, { regressionen: number; zug_rot: number; lead_aktionen: number }>;
+/** Was der Lead selbst erledigt hat (Stufe D, ohne Einreichung): zählt nicht als Schwarm-Arbeit, aber als Lead-Last. */
+type LeadEigen = { meilenstein: string | null; stufe: string }[];
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 /** Werte je Kalendertag erst ab dieser Messdauer: kürzere Zeiten auf einen Tag hochzurechnen ergäbe Zahlen ohne Aussage. */
 export const MIN_TAGE = 3;
 
 /** Bilanz einer Gruppe von Einreichungen (ganzes Projekt oder ein Meilenstein). start: erste Reservierung der Gruppe. */
-export function gruppenBilanz(zeilen: Zeile[], start: Date | null) {
+export function gruppenBilanz(zeilen: Zeile[], start: Date | null, jeAufgabe: JeAufgabe = new Map(), leadEigen: LeadEigen = []) {
   const fertig = new Map(zeilen.filter((z) => z.zustand === "angenommen" || z.zustand === "gemerged").map((z) => [z.aufgabe, z.stufe]));
   if (fertig.size === 0) return null;
   const angenommen = zeilen.filter((z) => z.urteil === "annehmen" && fertig.has(z.aufgabe));
@@ -48,7 +53,39 @@ export function gruppenBilanz(zeilen: Zeile[], start: Date | null) {
     // jeder angenommene Beitrag von einem anderen Menschen bewertet als dem, der ihn eingereicht hat
     vier_augen_prozent: angenommen.length ? Math.round((100 * angenommen.filter((z) => z.bewerter !== null && z.bewerter !== z.mensch).length) / angenommen.length) : null,
     pruefstrasse_prozent: angenommen.length ? Math.round((100 * angenommen.filter((z) => z.pruefung === "ok").length) / angenommen.length) : null,
+    // Geschwindigkeit nur mit gleicher Qualität: zurückgeschickte Bewertungen, Regressionen nach dem Merge, rote Merge-Züge
+    qualitaet: qualitaetVon(zeilen, fertig, jeAufgabe),
+    // Was eine fertige Einheit kostet: alle Tokens der Versuche an den fertigen Aufgaben (auch der verworfenen)
+    kosten: { tokens_je_einheit: einheiten ? Math.round(zeilen.filter((z) => fertig.has(z.aufgabe)).reduce((n, z) => n + z.tokens, 0) / einheiten) : null },
+    // Der Engpass der Koordination: Wie viel tut der Lead je Einheit des Schwarms, und wie viel baut er selbst?
+    lead_last: {
+      eigene_einheiten: leadEigen.reduce((n, l) => n + (STUFEN_GEWICHT[l.stufe] ?? 1), 0),
+      aktionen_je_einheit: einheiten ? r1([...new Set(zeilen.map((z) => z.aufgabe))].reduce((n, a) => n + (jeAufgabe.get(a)?.lead_aktionen ?? 0), 0) / einheiten) : null,
+    },
   };
+}
+
+function qualitaetVon(zeilen: Zeile[], fertig: Map<number, string>, jeAufgabe: JeAufgabe) {
+  const bewertet = zeilen.filter((z) => z.urteil);
+  const aufgaben = [...new Set(zeilen.map((z) => z.aufgabe))];
+  return {
+    nacharbeit_prozent: bewertet.length ? Math.round((100 * bewertet.filter((z) => z.urteil !== "annehmen").length) / bewertet.length) : null,
+    regressionen: [...fertig.keys()].reduce((n, a) => n + (jeAufgabe.get(a)?.regressionen ?? 0), 0),
+    zug_rot: aufgaben.reduce((n, a) => n + (jeAufgabe.get(a)?.zug_rot ?? 0), 0),
+  };
+}
+
+/** Erfolg je Modell und Stufe (leistung_versuche): entschiedene Versuche, angenommen und wie die anderen ausgingen. */
+async function leistung(db: Db, projektId: number) {
+  return (await db.query(
+    `select coalesce(modell, 'unknown') as modell, stufe, count(*)::int as versuche,
+       count(*) filter (where ausgang = 'angenommen')::int as angenommen,
+       count(*) filter (where ausgang = 'zurueck')::int as zurueck,
+       count(*) filter (where ausgang in ('pruefung_rot', 'zug_rot'))::int as pruefung_rot,
+       count(*) filter (where ausgang = 'abgebrochen')::int as abgebrochen
+     from leistung_versuche where projekt_id = $1 and ausgang not in ('laeuft', 'offen')
+     group by 1, 2 order by 1, 2`, [projektId])).rows
+    .map((r) => ({ ...r, erfolg_prozent: r.versuche ? Math.round((100 * r.angenommen) / r.versuche) : null }));
 }
 
 const median = (xs: number[]) => {
@@ -84,25 +121,30 @@ async function jetzt(db: Db, projektId: number, fluss: Awaited<ReturnType<typeof
     `select count(*) filter (where a.zustand in ('eingereicht', 'pruefung'))::int as warten_auf_pruefung,
        round(max(extract(epoch from now() - e.eingereicht)) filter (where a.zustand in ('eingereicht', 'pruefung')) / 3600, 1) as aelteste_pruefung_h,
        count(*) filter (where a.zustand = 'geprueft_ok')::int as warten_auf_bewertung,
-       round(max(extract(epoch from now() - coalesce(pr.erstellt, e.eingereicht))) filter (where a.zustand = 'geprueft_ok') / 3600, 1) as aelteste_bewertung_h
+       round(max(extract(epoch from now() - coalesce(pr.erstellt, e.eingereicht))) filter (where a.zustand = 'geprueft_ok') / 3600, 1) as aelteste_bewertung_h,
+       count(*) filter (where a.zustand = 'angenommen')::int as warten_auf_merge,
+       round(max(extract(epoch from now() - b.erstellt)) filter (where a.zustand = 'angenommen') / 3600, 1) as aelteste_merge_h
      from aufgaben a join lateral (select id, eingereicht from einreichungen where aufgabe_id = a.id order by id desc limit 1) e on true
      left join lateral (select erstellt from pruefungen where einreichung_id = e.id order by id desc limit 1) pr on true
-     where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok')`, [projektId])).rows[0];
+     left join lateral (select erstellt from bewertungen where einreichung_id = e.id order by id desc limit 1) b on true
+     where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok', 'angenommen')`, [projektId])).rows[0];
   const n = (x: unknown) => (x === null || x === undefined ? null : Number(x));
-  const bewertungH = n(w.aelteste_bewertung_h), pruefungH = n(w.aelteste_pruefung_h);
+  const bewertungH = n(w.aelteste_bewertung_h), pruefungH = n(w.aelteste_pruefung_h), mergeH = n(w.aelteste_merge_h);
   const engpass = w.warten_auf_bewertung > 0 && (bewertungH ?? 0) >= Math.max(2, fluss?.bearbeitung ?? 0) ? "bewertung"
     : w.warten_auf_pruefung > 0 && (pruefungH ?? 0) >= 1 ? "pruefung"
+    : w.warten_auf_merge > 0 && (mergeH ?? 0) >= 1 ? "merge"
     : a.aktiv > 0 && a.frei < a.aktiv ? "nachschub"
     : a.frei === 0 && a.blockiert > 0 ? "abhaengigkeiten"
     : a.frei > 0 && a.aktiv === 0 ? "mitstreiter" : null;
   return { ...a, warten_auf_pruefung: w.warten_auf_pruefung, aelteste_pruefung_h: pruefungH, warten_auf_bewertung: w.warten_auf_bewertung,
-    aelteste_bewertung_h: bewertungH, engpass };
+    aelteste_bewertung_h: bewertungH, warten_auf_merge: w.warten_auf_merge, aelteste_merge_h: mergeH, engpass };
 }
 
 export async function schwarmBilanz(db: Db, projektId: number) {
   const zeilen: Zeile[] = (await db.query(
     `select e.id::int as einreichung, a.id::int as aufgabe, a.stufe, m.titel as meilenstein, ag.mensch_id::int as mensch, e.agent_id::int as agent, e.modell,
        coalesce((e.verbrauch->>'sekunden')::numeric, (e.verbrauch->>'seconds')::numeric, 0)::float as sekunden,
+       coalesce((e.verbrauch->>'tokens')::numeric, 0)::float as tokens,
        b.urteil, b.erstellt as bewertet, ba.mensch_id::int as bewerter, a.zustand,
        (select pr.ergebnis from pruefungen pr where pr.einreichung_id = e.id and pr.quelle = 'projekt' order by pr.id desc limit 1) as pruefung
      from einreichungen e join aufgaben a on a.id = e.aufgabe_id join agenten ag on ag.id = e.agent_id
@@ -119,7 +161,19 @@ export async function schwarmBilanz(db: Db, projektId: number) {
   const offen = new Map((await db.query(
     `select m.titel, count(*) filter (where a.zustand not in ('angenommen', 'gemerged', 'geschlossen'))::int as offen
      from aufgaben a join meilensteine m on m.id = a.meilenstein_id where a.projekt_id = $1 group by m.titel`, [projektId])).rows.map((r) => [r.titel, r.offen]));
-  const gesamt = gruppenBilanz(zeilen, gesamtStart);
+  // Je Aufgabe: Regressionen, rote Merge-Züge und Aktionen des Leads (Bewerten, Anlegen, Schließen, selbst Erledigen)
+  const jeAufgabe: JeAufgabe = new Map((await db.query(
+    `select a.id::int as aufgabe,
+       count(*) filter (where ev.art = 'regression_gemeldet')::int as regressionen,
+       count(*) filter (where ev.art = 'merge_zug_rot')::int as zug_rot,
+       count(*) filter (where ev.art in ('bewertet', 'aufgabe_angelegt', 'aufgabe_geschlossen', 'vom_lead_erledigt')
+         and ev.akteur in (select 'agent:' || ag.id from agenten ag join projekt_rollen r on r.mensch_id = ag.mensch_id where r.projekt_id = $1 and r.rolle = 'lead'))::int as lead_aktionen
+     from aufgaben a join ereignisse ev on ev.bezug = 'aufgabe:' || a.id where a.projekt_id = $1 group by a.id`, [projektId])).rows
+    .map((r) => [r.aufgabe, { regressionen: r.regressionen, zug_rot: r.zug_rot, lead_aktionen: r.lead_aktionen }]));
+  const leadEigen: LeadEigen = (await db.query(
+    `select m.titel as meilenstein, a.stufe from aufgaben a left join meilensteine m on m.id = a.meilenstein_id
+     where a.projekt_id = $1 and exists (select 1 from ereignisse ev where ev.bezug = 'aufgabe:' || a.id and ev.art = 'vom_lead_erledigt')`, [projektId])).rows;
+  const gesamt = gruppenBilanz(zeilen, gesamtStart, jeAufgabe, leadEigen);
   // Vergleich mit einem früheren Stand über den Durchsatz in Einheiten je Kalendertag (nur mit öffentlichem Beleg der Einordnung)
   const vergleich = (await db.query("select vergleich from projekte where id = $1", [projektId])).rows[0]?.vergleich ?? null;
   if (vergleich?.einheiten && vergleich?.kalender_tage && vergleich?.beleg) {
@@ -131,8 +185,10 @@ export async function schwarmBilanz(db: Db, projektId: number) {
     gesamt,
     zeitfluss: fluss,
     jetzt: await jetzt(db, projektId, fluss),
-    meilensteine: titel.map((t) => ({ titel: t, abgeschlossen: (offen.get(t) ?? 0) === 0, ...gruppenBilanz(zeilen.filter((z) => z.meilenstein === t), startVon(t)) }))
+    meilensteine: titel.map((t) => ({ titel: t, abgeschlossen: (offen.get(t) ?? 0) === 0,
+      ...gruppenBilanz(zeilen.filter((z) => z.meilenstein === t), startVon(t), jeAufgabe, leadEigen.filter((l) => l.meilenstein === t)) }))
       .filter((m) => m.aufgaben_fertig),
+    leistung: await leistung(db, projektId),
     vergleich,
   };
 }

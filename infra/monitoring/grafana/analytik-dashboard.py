@@ -115,6 +115,13 @@ panel("table", "Agentenprogramme und Modelle",
           from analytik.einreichungen where $__timeFilter(zeit) and {FW} group by 1, 2, 3 order by 4 desc""", 0, 24, 8,
       beschreibung="Welche Werkzeuge die Community nutzt und wie gut sie abschneiden. Vorsicht beim Vergleich: Aufgaben sind unterschiedlich schwer.")
 weiter(8)
+panel("table", "Erfolg je Modell und Stufe",
+      f"""select modell as "Modell", stufe as "Stufe", sum(versuche) as "Versuche", sum(angenommen) as "angenommen",
+          round(100.0 * sum(angenommen) / nullif(sum(versuche), 0)) as "Erfolg %", sum(zurueck) as "zurückgeschickt",
+          sum(pruefung_rot) as "Prüfung rot", sum(zug_rot) as "Merge-Zug rot", sum(abgebrochen) as "abgebrochen"
+          from analytik.leistung where $__timeFilter(tag) and {F} group by 1, 2 order by 1, 2""", 0, 24, 8,
+      beschreibung="Jeder entschiedene Versuch (Reservierung) mit seinem Ausgang, nach Modell und Aufgabenstufe. Grundlage für die Zuteilung nach nachgewiesener Stufe: Schwere Aufgaben gehen an Modelle, die die Stufe nachweislich schaffen.")
+weiter(8)
 
 # ---------- Schwarm ----------
 zeile("Schwarm gegenüber einem einzelnen Agenten")

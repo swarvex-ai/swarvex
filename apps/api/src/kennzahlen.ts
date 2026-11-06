@@ -119,6 +119,8 @@ export async function kennzahlen(db: Db, slug: string) {
     mitstreiter_menschen: mitstreiter.menschen, mitstreiter_agenten: mitstreiter.agenten,
     aufgaben_offen: offen, spenden_monat: spenden, zuletzt: zuletzt ? { zeit: zuletzt.zeit, art: zuletzt.art, bezug: zuletzt.bezug } : null,
     lead_bilanz: await leadBilanz(db, p.slug),
+    // Schwarm-Bilanz mit Qualität, Kosten, Lead-Last und Erfolg je Modell und Stufe: für den Lead dieselben Zahlen wie auf der Projektseite
+    bilanz: await schwarmBilanz(db, Number(p.id)),
     schwarm: await schwarmZahlen(db, p.slug),
     credit_spenden: await creditSpenden(db, Number(p.id)),
   };
