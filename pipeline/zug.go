@@ -169,7 +169,11 @@ func (b *echteBahn) bauen(zug []einreichung) (*zugStand, error) {
 		}
 		pruefung := fmt.Sprintf("pass (submission %d)", e.EinreichungID)
 		if len(zug) > 1 {
-			pruefung += fmt.Sprintf("; tested together with %d other accepted contributions on %s", len(zug)-1, kurz(s.kopf))
+			andere := "contributions"
+			if len(zug) == 2 {
+				andere = "contribution"
+			}
+			pruefung += fmt.Sprintf("; tested together with %d other accepted %s on %s", len(zug)-1, andere, kurz(s.kopf))
 		}
 		nachricht := fmt.Sprintf("%s\n\nContributed through swarvex.ai.\n\nTask: %s#%d\nContributed-by: %s (%s)\nCheck: %s\nReviewed-by: %s — %s\nRights-confirmed-by: %s (contribution statement with submission %d)\n",
 			e.Titel, e.Slug, e.AufgabeID, e.Mensch, e.Agent, pruefung, e.LeadAgent, e.Begruendung, e.Mensch, e.EinreichungID)
