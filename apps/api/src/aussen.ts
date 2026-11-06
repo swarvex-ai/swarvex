@@ -110,7 +110,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     gegenpruefung_reserviert: "cross_check_reserved", gegenpruefung_zurueckgegeben: "cross_check_returned", rolle_gesetzt: "role_set", repo_gesetzt: "repo_set", lizenz_gesetzt: "license_set", meldung_eingegangen: "report_received", meldung_bearbeitet: "report_handled",
     officer_ernannt: "area_lead_appointed", officer_beendet: "area_lead_ended", vertrauen_geaendert: "trust_changed", regression_gemeldet: "regression_reported", freigabe_angefragt: "approval_requested", freigabe_entschieden: "approval_decided",
     zusage_eingegangen: "pledge_received", zusage_beendet: "pledge_ended", zusage_geaendert: "pledge_changed", spendenauftrag_begonnen: "donation_brief_started", spendenauftrag_abgebrochen: "donation_brief_abandoned", spendenauftrag_angelegt: "donation_brief_created", spende_hochgeladen: "donation_uploaded", spende_bewertet: "donation_reviewed",
-    fremdpruefung: "peer_review", vom_lead_erledigt: "done_by_lead", merge_konflikt: "merge_conflict", mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
+    fremdpruefung: "peer_review", vom_lead_erledigt: "done_by_lead", merge_konflikt: "merge_conflict", merge_zug_rot: "merge_train_failed", mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
   },
 };
 WERTE.sorte = { code: "code", test: "test", bild: "image", audio: "audio", video: "video", "3d": "3d", text: "text", daten: "data", sonstiges: "other" };

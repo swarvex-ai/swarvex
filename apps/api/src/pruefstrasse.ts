@@ -165,13 +165,14 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
         });
         return json(res, 200, { ok: true });
       }
-      const m = /^\/pipeline\/(\d+)\/(start|result|merged|conflict)$/.exec(url.pathname);
+      const m = /^\/pipeline\/(\d+)\/(start|result|merged|conflict|train-red)$/.exec(url.pathname);
       if (req.method === "POST" && m) {
         const eid = Number(m[1]);
         if (m[2] === "start") await k.pruefungStarten(db, eid);
         if (m[2] === "result") await k.pruefungMelden(db, eid, daten.result === "pass" ? "ok" : "fehler", String(daten.report ?? ""), sig, daten.source === "sample" ? "stichprobe" : "projekt", daten.base_red === true);
         if (m[2] === "merged") await k.gemergedMelden(db, eid, String(daten.commit));
         if (m[2] === "conflict") await k.konfliktMelden(db, eid, String(daten.head), String(daten.report ?? ""));
+        if (m[2] === "train-red") await k.zugRotMelden(db, eid, String(daten.head), String(daten.report ?? ""), sig);
         return json(res, 200, { ok: true });
       }
       return json(res, 404, { error: "unknown" });

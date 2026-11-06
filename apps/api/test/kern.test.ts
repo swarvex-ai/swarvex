@@ -542,6 +542,20 @@ describe("Bewertung durch den Schwarm", () => {
     expect((await db.query("select zustand, basis_commit from aufgaben where id = $1", [a.id])).rows[0]).toEqual({ zustand: "offen", basis_commit: kopf });
     await k.schliessen(db, lead, a.id, "Test");
   });
+  it("Merge-Zug rot: zurück in den Pool mit neuem Stand, der nächste Versuch bekommt den Bericht", async () => {
+    const { a, eid } = await geprueft("Zug rot", "A");
+    await expect(k.zugRotMelden(db, eid, "b".repeat(40), "FAIL x", "sig")).rejects.toThrow(/task is/);   // noch nicht angenommen
+    await k.bewerten(db, lead, eid, "annehmen", "passt, ab in den Zug damit");
+    await expect(k.zugRotMelden(db, eid, "kein-hash", "FAIL x", "sig")).rejects.toThrow(/head/);
+    const kopf = "b".repeat(40);
+    await k.zugRotMelden(db, eid, kopf, "Merge train: 3 accepted contributions\nFAIL headless pause_test", "sig");
+    expect((await db.query("select zustand, basis_commit from aufgaben where id = $1", [a.id])).rows[0]).toEqual({ zustand: "offen", basis_commit: kopf });
+    const d: any = await k.details(db, mit, a.id);
+    expect(d.letzte_pruefung?.bericht).toContain("FAIL headless pause_test");
+    const ev = (await db.query("select daten from ereignisse where bezug = $1 and art = 'merge_zug_rot'", [`aufgabe:${a.id}`])).rows[0].daten;
+    expect(ev).toMatchObject({ von: "angenommen", nach: "offen", neue_basis: kopf });
+    await k.schliessen(db, lead, a.id, "Test");
+  });
   it("Varianten: wird eine angenommen, schließen sich die nicht begonnenen; Nacharbeit-Muster bündeln Gründe je Rolle", async () => {
     const v: any = await k.variantenAnlegen(db, lead, "test", { ...neueAufgabe("Klickgeräusch"), stufe: "B", rolle: "audio" }, 3);
     expect(v.varianten).toHaveLength(3);

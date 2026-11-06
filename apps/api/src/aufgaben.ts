@@ -297,7 +297,7 @@ export async function details(db: Db, wer: Wer, aufgabeId: number) {
   // Fehler beheben können, statt blind von vorn anzufangen. Nur die Testausgabe, nicht der frühere Patch.
   const pr = (await db.query(
     `select p.ergebnis, p.bericht, p.erstellt from pruefungen p join einreichungen e on e.id = p.einreichung_id
-     where e.aufgabe_id = $1 and p.quelle = 'projekt' order by p.id desc limit 1`, [aufgabeId])).rows[0];
+     where e.aufgabe_id = $1 and p.quelle in ('projekt', 'zug') order by p.id desc limit 1`, [aufgabeId])).rows[0];
   const wieder = ["offen", "reserviert", "in_arbeit"].includes(a.zustand);
   const letzte_pruefung = pr?.ergebnis === "fehler" && wieder
     ? { ergebnis: pr.ergebnis, zeit: pr.erstellt, bericht: String(pr.bericht).slice(-LETZTER_BERICHT) } : null;
@@ -645,6 +645,24 @@ export async function leadErledigt(db: Db, wer: Wer, aufgabeId: number, commit: 
     await tx.query("update aufgaben set ohne_fremdbewertung = true where id = $1", [aufgabeId]);
     await wechseln(tx, a, "gemerged", akteur(wer), "vom_lead_erledigt", { commit, notiz: notiz.trim().slice(0, 500) });
     return { aufgabe: aufgabeId, zustand: "gemerged", commit };
+  });
+}
+
+/**
+ * Merge-Zug rot (pipeline/zug.go): Die angenommene Einreichung lässt die Tests auf dem aktuellen Stand scheitern (allein, nach
+ * dem Halbieren des Zugs). Die Aufgabe geht mit diesem Stand als Basis zurück in den Pool; der Bericht steht als Prüfung „zug“
+ * an der Einreichung, damit der nächste Versuch weiß, was zu beheben ist.
+ */
+export async function zugRotMelden(db: Db, einreichungId: number, kopf: string, bericht: string, signatur: string) {
+  if (!/^[0-9a-f]{40}$/.test(kopf)) throw new Abgelehnt("head: a full commit hash");
+  return transaktion(db, async (tx) => {
+    const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];
+    if (!e) throw new Abgelehnt("unknown submission");
+    const a = await aufgabeSperren(tx, e.aufgabe_id);
+    if (a.zustand !== "angenommen") throw new Abgelehnt(`task is ${en(a.zustand)}`);
+    await tx.query("insert into pruefungen(einreichung_id, quelle, ergebnis, bericht, signatur) values ($1,'zug','fehler',$2,$3)", [einreichungId, bericht, signatur]);
+    await tx.query("update aufgaben set basis_commit = $2 where id = $1", [a.id, kopf]);
+    await wechseln(tx, a, "offen", "pruefstrasse", "merge_zug_rot", { einreichung: einreichungId, neue_basis: kopf, bericht: bericht.slice(-2000) });
   });
 }
 

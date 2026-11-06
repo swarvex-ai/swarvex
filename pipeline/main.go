@@ -2,7 +2,7 @@
 // (swarvex.yaml, Dev Container oder erkannte Projektart) kommt aus dem Paket umgebung, wie beim Runner.
 //
 //	swarvex-pipeline check   offene Einreichungen prüfen (Patch auf Basis-Commit, Tests im Container ohne Netz)
-//	swarvex-pipeline merge   angenommene Einreichungen mit Herkunfts-Trailern in den Hauptzweig übernehmen
+//	swarvex-pipeline merge   angenommene Einreichungen als Merge-Zug zusammen testen und mit Herkunfts-Trailern in den Hauptzweig übernehmen (zug.go)
 //	swarvex-pipeline preview spielbare Web-Vorschau des Hauptzweigs bauen, wenn er sich geändert hat (vorschau.go)
 //
 // Getrennte Schlüssel: Der Prüfdienst liest nur (Deploy-Key read-only); allein der Merge-Bot
@@ -19,7 +19,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -144,21 +143,7 @@ func gitEnv(key string, e einreichung) []string {
 }
 
 // spiegel hält einen Bare-Klon aktuell (nur lesend).
-func spiegel(e einreichung) (string, error) {
-	ziel := filepath.Join(arbeit, "mirror", e.Slug+".git")
-	if _, err := os.Stat(ziel); err != nil {
-		os.MkdirAll(filepath.Dir(ziel), 0o755)
-		if aus, err := befehl("", gitEnv(leseKey, e), "git", "clone", "--quiet", "--bare", e.RepoGit, ziel); err != nil {
-			return "", fmt.Errorf("clone: %s", aus)
-		}
-		befehl(ziel, nil, "git", "lfs", "install", "--local") // Checkout löst LFS-Zeiger auf
-	} else if aus, err := befehl(ziel, nil, "git", "remote", "set-url", "origin", e.RepoGit); err != nil {
-		return "", fmt.Errorf("remote: %s", aus)
-	} else if aus, err := befehl(ziel, gitEnv(leseKey, e), "git", "fetch", "--quiet", "origin", "+refs/heads/*:refs/heads/*"); err != nil {
-		return "", fmt.Errorf("fetch: %s", aus)
-	}
-	return ziel, nil
-}
+func spiegel(e einreichung) (string, error) { return spiegelIn(e, "mirror") }
 
 func pruefen() {
 	var offen []einreichung
@@ -403,81 +388,6 @@ func imContainer(image, baum, cache string, u umgebung.Umgebung, skript string, 
 	}
 	args = append(append(args, extra...), image, "timeout", fmt.Sprint(sekunden), "sh", "-ec", skript)
 	return befehl("", nil, "docker", args...)
-}
-
-func mergen() {
-	var liste []einreichung
-	if err := signiert("GET", "/pipeline/accepted", nil, &liste); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	for _, e := range liste {
-		if e.Pruefung != "pass" {
-			fmt.Fprintf(os.Stderr, "submission %d has no passing check, skipped\n", e.EinreichungID)
-			continue
-		}
-		commit, err := einMerge(e)
-		var k *konflikt
-		if errors.As(err, &k) {
-			// Passt nicht mehr auf den neuen Stand: die Aufgabe geht mit diesem Stand als Basis zurück in den Pool
-			if err := signiert("POST", fmt.Sprintf("/pipeline/%d/conflict", e.EinreichungID), map[string]any{"head": k.kopf, "report": k.bericht}, nil); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-			}
-			fmt.Printf("submission %d conflicts with %s, back to the pool\n", e.EinreichungID, k.kopf)
-			continue
-		}
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "merge %d: %v\n", e.EinreichungID, err)
-			continue
-		}
-		if err := signiert("POST", fmt.Sprintf("/pipeline/%d/merged", e.EinreichungID), map[string]any{"commit": commit}, nil); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		}
-		fmt.Printf("submission %d merged: %s\n", e.EinreichungID, commit)
-	}
-}
-
-// konflikt: der Patch lässt sich auf den aktuellen Stand (kopf) nicht mehr anwenden.
-type konflikt struct{ kopf, bericht string }
-
-func (k *konflikt) Error() string { return "conflict with " + k.kopf + ": " + k.bericht }
-
-func einMerge(e einreichung) (string, error) {
-	dir, _ := os.MkdirTemp(filepath.Join(arbeit), "merge-")
-	defer os.RemoveAll(dir)
-	env := gitEnv(schreibKey, e)
-	if aus, err := befehl("", env, "git", "clone", "--quiet", "--depth", "50", e.RepoGit, dir); err != nil {
-		return "", fmt.Errorf("clone: %s", aus)
-	}
-	patchDatei := filepath.Join(dir, ".git", "contribution.patch")
-	os.WriteFile(patchDatei, []byte(e.Patch), 0o644)
-	if aus, err := befehl(dir, env, "git", "apply", "--index", "--3way", patchDatei); err != nil {
-		kopf, _ := befehl(dir, nil, "git", "rev-parse", "HEAD")
-		bericht := aus
-		if len(bericht) > 2000 {
-			bericht = bericht[:2000]
-		}
-		return "", &konflikt{kopf: strings.TrimSpace(kopf), bericht: strings.TrimSpace(bericht)}
-	}
-	// Zweite Schranke vor dem Push: geschützte Dateien nie in den Hauptzweig, egal wie der Patch geschrieben ist
-	if p, err := geschuetztGeaendert(dir); err != nil || p != "" {
-		if err != nil {
-			return "", fmt.Errorf("listing the changed files: %v", err)
-		}
-		return "", fmt.Errorf("refused: the contribution changes the protected file %s", p)
-	}
-	nachricht := fmt.Sprintf("%s\n\nContributed through swarvex.ai.\n\nTask: %s#%d\nContributed-by: %s (%s)\nCheck: pass (submission %d)\nReviewed-by: %s — %s\nRights-confirmed-by: %s (contribution statement with submission %d)\n",
-		e.Titel, e.Slug, e.AufgabeID, e.Mensch, e.Agent, e.EinreichungID, e.LeadAgent, e.Begruendung, e.Mensch, e.EinreichungID)
-	if aus, err := befehl(dir, append(env, "GIT_AUTHOR_NAME="+e.Mensch, "GIT_AUTHOR_EMAIL="+e.Mensch+"@swarvex.invalid",
-		"GIT_COMMITTER_NAME=swarvex merge bot", "GIT_COMMITTER_EMAIL=merge-bot@swarvex.invalid"),
-		"git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", nachricht); err != nil {
-		return "", fmt.Errorf("commit: %s", aus)
-	}
-	if aus, err := befehl(dir, env, "git", "push", "-q", "origin", "HEAD"); err != nil {
-		return "", fmt.Errorf("push: %s", aus)
-	}
-	aus, _ := befehl(dir, nil, "git", "rev-parse", "HEAD")
-	return strings.TrimSpace(aus), nil
 }
 
 // geaendertePfade: alle Dateien, die sich im Baum gegenüber HEAD geändert haben (angelegt, geändert, gelöscht,
