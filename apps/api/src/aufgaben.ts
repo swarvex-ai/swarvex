@@ -175,6 +175,37 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
   });
 }
 
+// Zuteilung nach nachgewiesener Stufe: Schwere Aufgaben gehen an Agenten, die die Stufe nachweislich schaffen. Jeder
+// Agent bekommt A und B; darüber bis zu der Stufe, auf der er (oder sein Modell auf der ganzen Plattform, als Vorschuss)
+// in den letzten 30 Tagen mindestens ZUTEILUNG.annahmen Annahmen bei ZUTEILUNG.erfolg Erfolg hat. Eine Stufe darüber gibt
+// es als Probe, höchstens jeder ZUTEILUNG.probe_jeder-te Versuch, oder wenn sonst nichts anliegt: So steigen Agenten auf.
+// Lead und Visionär des Projekts sind ausgenommen.
+export const STUFEN = ["A", "B", "C", "D"] as const;
+export const ZUTEILUNG = { annahmen: 3, erfolg: 0.6, tage: 30, probe_jeder: 5, probe_tage: 7 };
+
+export async function stufenFreigabe(db: Db | Tx, agentId: number) {
+  const r = (await db.query(
+    `with ich as (select (select modell from einreichungen where agent_id = $1 and modell is not null order by id desc limit 1) as modell)
+     select v.stufe,
+       count(*) filter (where v.agent_id = $1 and v.ausgang not in ('laeuft', 'offen'))::int as agent_entschieden,
+       count(*) filter (where v.agent_id = $1 and v.ausgang = 'angenommen')::int as agent_angenommen,
+       count(*) filter (where v.modell is not null and v.modell = ich.modell and v.ausgang not in ('laeuft', 'offen'))::int as modell_entschieden,
+       count(*) filter (where v.modell is not null and v.modell = ich.modell and v.ausgang = 'angenommen')::int as modell_angenommen,
+       count(*) filter (where v.agent_id = $1 and v.erstellt > now() - make_interval(days => $3))::int as agent_versuche_kurz
+     from leistung_versuche v, ich where v.erstellt > now() - make_interval(days => $2) group by v.stufe`,
+    [agentId, ZUTEILUNG.tage, ZUTEILUNG.probe_tage])).rows;
+  const je = new Map(r.map((z) => [z.stufe, z]));
+  const geschafft = (n: number, von: number) => n >= ZUTEILUNG.annahmen && n >= ZUTEILUNG.erfolg * von;
+  let bis = 1;   // B
+  for (let i = 0; i < STUFEN.length; i++) {
+    const z = je.get(STUFEN[i]);
+    if (z && (geschafft(z.agent_angenommen, z.agent_entschieden) || geschafft(z.modell_angenommen, z.modell_entschieden))) bis = Math.max(bis, i);
+  }
+  const versucheKurz = r.reduce((n, z) => n + z.agent_versuche_kurz, 0);
+  const probenKurz = r.filter((z) => STUFEN.indexOf(z.stufe) > bis).reduce((n, z) => n + z.agent_versuche_kurz, 0);
+  return { bis: STUFEN[bis], probe: bis < STUFEN.length - 1 ? STUFEN[bis + 1] : null, probe_dran: probenKurz * ZUTEILUNG.probe_jeder <= versucheKurz };
+}
+
 /** Offene Aufgaben, die der Mensch nach Vertrauensstufe bearbeiten darf (optional nach Fähigkeiten gefiltert). */
 export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, faehigkeiten?: string[]) {
   const p = await projektPerSlug(db, projektSlug);
@@ -198,11 +229,23 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
   const bisher = p.verfahren === "clean_room" ? await raeumeVon(db, wer.menschId, p.id) : [];
   const erlaubt = r.rows.filter((a) => (!a.raum || !trennwand(bisher, a.raum)) && (wer.runner !== false || ohneAusfuehrung(a.faehigkeiten)));
   const passend = faehigkeiten?.length ? erlaubt.filter((a) => a.faehigkeiten.every((f: string) => faehigkeiten.includes(f))) : erlaubt;
-  // Eigene Nacharbeit zuerst (der Runner nimmt die erste), dann der kritische Pfad: was die meisten Folgeaufgaben
-  // (auch über mehrere Stufen) freischaltet, wird zuerst angeboten
+  // Nach nachgewiesener Stufe (stufenFreigabe): bis zur Freigabe normal, eine Stufe darüber nur als Probe
+  const rollen = await rollenVon(db, wer.menschId, p.id);
+  const frei = rollen.includes("lead") || rollen.includes("visionaer") ? null : await stufenFreigabe(db, wer.agentId);
+  const normal = frei ? passend.filter((a) => STUFEN.indexOf(a.stufe) <= STUFEN.indexOf(frei.bis)) : passend;
+  const proben = frei ? passend.filter((a) => a.stufe === frei.probe) : [];
+  const probeVorn = proben.length > 0 && (frei!.probe_dran || normal.length === 0);
+  // Eigene Nacharbeit zuerst (der Runner nimmt die erste), dann eine fällige Probe, dann der kritische Pfad: was die
+  // meisten Folgeaufgaben (auch über mehrere Stufen) freischaltet, dann die schwerere Stufe (starke Agenten an schwere Arbeit)
   const folge = await folgeaufgaben(db, Number(p.id));
-  return passend.map(({ nacharbeit_bis, ...a }) => ({ ...a, folgeaufgaben: folge.get(Number(a.id)) ?? 0, ...(nacharbeit_bis ? { nacharbeit_bis } : {}) }))
-    .sort((x, y) => Number(!!y.nacharbeit_bis) - Number(!!x.nacharbeit_bis) || y.folgeaufgaben - x.folgeaufgaben || Number(x.id) - Number(y.id));
+  const zeile = ({ nacharbeit_bis, ...a }: any, probe: boolean) => ({ ...a, folgeaufgaben: folge.get(Number(a.id)) ?? 0, ...(nacharbeit_bis ? { nacharbeit_bis } : {}), ...(probe ? { probe: true } : {}) });
+  const reihe = (x: any, y: any) => Number(!!y.nacharbeit_bis) - Number(!!x.nacharbeit_bis) || y.folgeaufgaben - x.folgeaufgaben
+    || STUFEN.indexOf(y.stufe) - STUFEN.indexOf(x.stufe) || Number(x.id) - Number(y.id);
+  const n = normal.map((a) => zeile(a, false)).sort(reihe);
+  const pr = probeVorn ? proben.map((a) => zeile(a, true)).sort(reihe) : [];
+  // Eigene Nacharbeit bleibt vorn, auch vor einer Probe
+  const eigene = n.filter((a) => a.nacharbeit_bis);
+  return [...eigene, ...pr, ...n.filter((a) => !a.nacharbeit_bis)];
 }
 
 class TrennwandVerletzt extends Abgelehnt {
@@ -260,6 +303,15 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
     const wartet = await wartetAuf(tx, a);
     if (wartet.length) throw new Abgelehnt(`task waits for ${wartetText(wartet)} to be accepted first`);
     if (wer.runner === false && !ohneAusfuehrung(a.faehigkeiten)) throw new Abgelehnt(NUR_RUNNER);
+    const eigeneRollen = await rollenVon(tx, wer.menschId, a.projekt_id);
+    if (!eigeneRollen.includes("lead") && !eigeneRollen.includes("visionaer")) {
+      const frei = await stufenFreigabe(tx, wer.agentId);
+      const stufe = STUFEN.indexOf(a.stufe), bis = STUFEN.indexOf(frei.bis);
+      if (stufe > bis + 1 || (stufe === bis + 1 && !frei.probe_dran && (await aufgabenPassend(db, wer, (await tx.query("select slug from projekte where id = $1", [a.projekt_id])).rows[0].slug)).some((x) => !x.probe)))
+        throw new Abgelehnt(stufe > bis + 1
+          ? `level ${a.stufe} needs an agent that has shown level ${STUFEN[stufe - 1]}: at least ${ZUTEILUNG.annahmen} accepted with ${ZUTEILUNG.erfolg * 100}% success in ${ZUTEILUNG.tage} days (yours: up to ${frei.bis})`
+          : `level ${a.stufe} is a trial for this agent (proven up to ${frei.bis}); trials come at most every ${ZUTEILUNG.probe_jeder}th attempt while other tasks are open`);
+    }
     const vorrang = (await tx.query("select mensch_id, bis from nacharbeit_vorrang($1)", [a.id])).rows[0];
     if (vorrang && Number(vorrang.mensch_id) !== wer.menschId)
       throw new Abgelehnt(`task is held for its contributor's rework until ${new Date(vorrang.bis).toISOString()}`);

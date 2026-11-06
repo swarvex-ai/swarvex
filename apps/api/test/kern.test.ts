@@ -585,7 +585,9 @@ describe("Bewertung durch den Schwarm", () => {
     await expect(k.leadErledigt(db, lead, einzeln.id, "abc1234", "keine D-Aufgabe, nicht so")).rejects.toThrow(/level D/);
     await expect(k.leadErledigt(db, lead, d.id, "kein-hash", "Architektur steht jetzt")).rejects.toThrow(/commit/);
     // vorher: D schaltet zwei Aufgaben frei und steht vor der Aufgabe ohne Folgen
-    const vorher = await k.aufgabenPassend(db, mit, "test");
+    // Ein neuer Agent bekommt D nicht angeboten (Zuteilung nach nachgewiesener Stufe); der Lead sieht die Reihenfolge
+    expect((await k.aufgabenPassend(db, mit, "test")).map((x) => Number(x.id))).not.toContain(Number(d.id));
+    const vorher = await k.aufgabenPassend(db, lead, "test");
     const dZeile = vorher.find((x) => Number(x.id) === Number(d.id))!;
     expect(dZeile.folgeaufgaben).toBe(2);
     expect(vorher.findIndex((x) => Number(x.id) === Number(d.id))).toBeLessThan(vorher.findIndex((x) => Number(x.id) === Number(einzeln.id)));
@@ -1247,6 +1249,53 @@ new file mode 100644
     expect(await g.ohneGegenpruefungFreigeben(db)).toBe(1);
     expect(await zustand(b.id)).toBe("geprueft_ok");
     expect(await ketteVerifizieren(db)).toMatchObject({ ok: true });
+  });
+});
+
+describe("Zuteilung nach nachgewiesener Stufe", () => {
+  const neuerAgent = async (login: string) => {
+    const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea',$1,$1) returning id", [login])).rows[0].id);
+    const ag = Number((await db.query("insert into agenten(mensch_id, client_id, name, runner) values ($1,$2,$2,true) returning id", [m, `${login}-runner`])).rows[0].id);
+    return { menschId: m, agentId: ag, runner: true };
+  };
+  // Ein angenommener Versuch auf Stufe s, ohne die ganze Strecke (Lease, Einreichung, Bewertung direkt)
+  const geschafft = async (wer: { menschId: number; agentId: number }, stufe: string, modell: string, urteil = "annehmen") => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe(`Nachweis ${stufe}`), stufe: stufe as "A" });
+    const l = Number((await db.query("insert into leases(aufgabe_id, agent_id, laeuft_ab, beendet) values ($1,$2, now() + interval '1 hour', now()) returning id", [a.id, wer.agentId])).rows[0].id);
+    const e = Number((await db.query("insert into einreichungen(aufgabe_id, lease_id, agent_id, patch, patch_sha256, zusammenfassung, eigene_tests, verbrauch, modell) values ($1,$2,$3,'x','x','z','t','{}',$4) returning id", [a.id, l, wer.agentId, modell])).rows[0].id);
+    await db.query("insert into bewertungen(einreichung_id, agent_id, urteil, begruendung) values ($1,$2,$3,'Test')", [e, lead.agentId, urteil]);
+    await db.query("update aufgaben set zustand = 'geschlossen' where id = $1", [a.id]);
+  };
+  it("neu: A und B, C nur als Probe, D nie; nach drei Annahmen auf B ist B nachgewiesen, C weiter Probe; nach C auch C", async () => {
+    const neu = await neuerAgent("zuteilung-neu");
+    expect(await k.stufenFreigabe(db, neu.agentId)).toEqual({ bis: "B", probe: "C", probe_dran: true });
+    const b = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Zuteilung B"), stufe: "B" });
+    const c = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Zuteilung C"), stufe: "C" });
+    const d = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Zuteilung D"), stufe: "D" });
+    const ids = async (wer: typeof neu) => (await k.aufgabenPassend(db, wer, "test")).map((x: any) => [Number(x.id), !!x.probe]);
+    let liste = await ids(neu);
+    expect(liste).toContainEqual([Number(c.id), true]);      // Probe fällig (noch keine Versuche)
+    expect(liste.map(([id]) => id)).not.toContain(Number(d.id));
+    expect(liste[0]).toEqual([Number(c.id), true]);          // fällige Probe kommt vorn
+    await expect(k.reservieren(db, neu, d.id)).rejects.toThrow(/level D needs an agent that has shown level C/);
+    // Vier Versuche, keiner davon Probe: die nächste Probe ist dran; nach einer Probe erst nach vier weiteren
+    for (let i = 0; i < 3; i++) await geschafft(neu, "B", "modell-x");
+    expect(await k.stufenFreigabe(db, neu.agentId)).toMatchObject({ bis: "B", probe: "C" });
+    await geschafft(neu, "C", "modell-x", "nacharbeit");
+    expect((await k.stufenFreigabe(db, neu.agentId)).probe_dran).toBe(false);   // 1 Probe auf 4 Versuche
+    liste = await ids(neu);
+    expect(liste.map(([id]) => id)).not.toContain(Number(c.id));
+    await expect(k.reservieren(db, neu, c.id)).rejects.toThrow(/trial/);
+    for (let i = 0; i < 3; i++) await geschafft(neu, "C", "modell-x");
+    expect(await k.stufenFreigabe(db, neu.agentId)).toMatchObject({ bis: "C", probe: "D" });   // 3 von 4 auf C angenommen
+    // Vorschuss über das Modell: ein neuer Agent mit demselben Modell startet bei C
+    const zweiter = await neuerAgent("zuteilung-gleiches-modell");
+    expect((await k.stufenFreigabe(db, zweiter.agentId)).bis).toBe("B");   // noch ohne Modell
+    await geschafft(zweiter, "A", "modell-x", "nacharbeit");
+    expect((await k.stufenFreigabe(db, zweiter.agentId)).bis).toBe("C");
+    // Der Lead ist ausgenommen und sieht alles
+    expect((await k.aufgabenPassend(db, lead, "test")).map((x) => Number(x.id))).toEqual(expect.arrayContaining([Number(b.id), Number(c.id), Number(d.id)]));
+    for (const a of [b, c, d]) await k.schliessen(db, lead, a.id, "Test");
   });
 });
 
