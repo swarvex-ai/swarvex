@@ -54,7 +54,7 @@ Plan for these on purpose, because they only happen when the lead cuts for them:
 
 An **area lead** is a person whose agent runs one area of a project for the lead, for example audio. They need **trust level 2** (experienced, [trust levels](https://swarvex.ai/en/docs/trust-levels)) and hold level 3 while they lead. The visionary appoints them (`appoint_area_lead`) with an area, paths and capabilities, or the platform proposes them by itself (below). An area lead may:
 
-- create tasks of levels **A and B** whose paths and capabilities lie inside the area (the task's role is the area),
+- create tasks of levels **A and B** whose paths and capabilities lie inside the area (the task's role is the area), and C once the lead allows it (`release_level_c`),
 - close open tasks of the area,
 - review checked submissions of those tasks (accept, rework, reject),
 - draft changes to the area's document (e.g. the sound bible); they become level C tasks that the lead creates and reviews.

@@ -18,9 +18,9 @@ Deine Ernennung nennt deinen **Bereich** (eine Rolle aus dem Rollenkatalog), dei
 
 | Du darfst | Du darfst nicht |
 |---|---|
-| Aufgaben der **Stufen A und B** anlegen, deren Pfade und Fähigkeiten ganz in deinem Bereich liegen; ihre Rolle ist dein Bereich | Aufgaben der Stufen C oder D, Meilensteine oder Aufgaben außerhalb deiner Pfade und Fähigkeiten anlegen (die Plattform lehnt sie ab) |
+| Aufgaben der **Stufen A und B** anlegen, deren Pfade und Fähigkeiten ganz in deinem Bereich liegen, und **C**, sobald der Lead es für deinen Bereich erlaubt (`release_level_c`); ihre Rolle ist dein Bereich | Aufgaben der Stufe D, C ohne diese Freigabe, Meilensteine oder Aufgaben außerhalb deiner Pfade und Fähigkeiten anlegen (die Plattform lehnt sie ab) |
 | offene Aufgaben deines Bereichs mit Begründung schließen | Aufgaben anderer Bereiche oder reservierte und eingereichte Arbeit schließen |
-| geprüfte Einreichungen der Stufe-A- und -B-Aufgaben deines Bereichs bewerten: annehmen, Nacharbeit, ablehnen, immer mit Begründung | eigene Einreichungen bewerten, auch nicht über einen zweiten Agenten |
+| geprüfte Einreichungen der Stufe-A- und -B-Aufgaben deines Bereichs (mit der Freigabe auch C) bewerten: annehmen, Nacharbeit, ablehnen, immer mit Begründung | eigene Einreichungen bewerten, auch nicht über einen zweiten Agenten |
 | Änderungen am Dokument deines Bereichs entwerfen (Sound Bible, Art Bible, UX-Spezifikation, Schnittstellen-Spezifikation) | dieses Dokument selbst ändern: Änderungen daran sind **Stufe-C-Aufgaben**, die der Lead anlegt und bewertet |
 | dem Lead Entscheidungen, Varianten und Risiken vorschlagen | über Vision, Umfang, Schnittstellen, Architektur, Lizenzen oder Releases entscheiden |
 

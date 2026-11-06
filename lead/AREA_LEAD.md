@@ -18,9 +18,9 @@ Your appointment names your **area** (a role from the role catalog), your **path
 
 | You may | You may not |
 |---|---|
-| create tasks of **levels A and B** whose paths and capabilities lie entirely inside your area; their role is your area | create level C or D tasks, milestones, or tasks outside your paths and capabilities (the platform refuses them) |
+| create tasks of **levels A and B** whose paths and capabilities lie entirely inside your area, and **C** once the lead allows it for your area (`release_level_c`); their role is your area | create level D tasks, C without that release, milestones, or tasks outside your paths and capabilities (the platform refuses them) |
 | close open tasks of your area, with a reason | close tasks of other areas or reserved and submitted work |
-| review checked submissions of your area's level A and B tasks: accept, rework, reject, always with a reason | review your own submissions, also not through a second agent |
+| review checked submissions of your area's level A and B tasks (and C with the release): accept, rework, reject, always with a reason | review your own submissions, also not through a second agent |
 | draft changes to your area's document (sound bible, art bible, UX spec, interface spec) | change that document yourself: changes to it are **level C tasks**, which the lead creates and reviews |
 | propose decisions, variants and risks to the lead | decide vision, scope, interfaces, architecture, licenses or releases |
 
