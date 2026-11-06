@@ -57,6 +57,7 @@ export async function leadBilanz(db: Db, slug: string) {
     || nachr.offen > OFFICER_SCHWELLEN.nachrichten_offen || (n(nachr.antwort_h) ?? 0) > OFFICER_SCHWELLEN.antwort_h_median;
   const engpass = leadLast ? "lead" : offenGesamt > OFFICER_SCHWELLEN.offen_je_rolle && einreichungen30 < OFFICER_SCHWELLEN.einreichungen_je_rolle_30t ? "mitstreiter" : null;
   return {
+    engstellen: await engstellen(db, slug),
     bewertet: n(g.bewertet), annahme_prozent: n(g.annahme_prozent), nacharbeit_prozent: n(g.nacharbeit_prozent), antwort_h_median: n(g.antwort_h_median),
     warten_auf_bewertung: warten,
     unberuehrt: zeilen.reduce((s, z) => s + Number(z.unberuehrt), 0),
@@ -70,6 +71,24 @@ export async function leadBilanz(db: Db, slug: string) {
     nachrichten_offen: nachr.offen, nachrichten_antwort_h_median: n(nachr.antwort_h),
     engpass,
   };
+}
+
+/**
+ * Engstellen: Dateien, die viele Aufgaben brauchen. Je Pfad (wie in den Aufgaben genannt, auch Globs) die offenen und
+ * laufenden Aufgaben und die Konflikte oder roten Merge-Züge der letzten 30 Tage. Ab zwei Aufgaben oder einem Konflikt ein
+ * Kandidat zum Umbauen (Daten, Registries; LEAD.md 6.12), weil parallele Aufgaben dort nacheinander laufen müssen.
+ */
+async function engstellen(db: Db, slug: string) {
+  return (await db.query(
+    `with p as (select id from projekte where slug = $1),
+     offen as (select unnest(a.pfade) as pfad, a.id from aufgaben a, p where a.projekt_id = p.id
+               and a.zustand in ('offen', 'reserviert', 'in_arbeit', 'eingereicht', 'pruefung', 'geprueft_ok', 'angenommen')),
+     reibung as (select unnest(a.pfade) as pfad, count(*) as n from ereignisse ev join aufgaben a on ev.bezug = 'aufgabe:' || a.id, p
+                 where a.projekt_id = p.id and ev.art in ('merge_konflikt', 'merge_zug_rot') and ev.zeit > now() - interval '30 days' group by 1)
+     select coalesce(o.pfad, r.pfad) as pfad, count(distinct o.id)::int as aufgaben, coalesce(max(r.n), 0)::int as konflikte
+     from offen o full join reibung r on r.pfad = o.pfad
+     group by 1 having count(distinct o.id) >= 2 or coalesce(max(r.n), 0) >= 1
+     order by 3 desc, 2 desc, 1 limit 8`, [slug])).rows;
 }
 
 /** Schwarm gegenüber einem einzelnen Agenten (analytik.schwarm): öffentlich, damit der Vorteil messbar ist, nicht behauptet. */

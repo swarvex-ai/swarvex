@@ -1292,6 +1292,12 @@ describe("Bereichs-Sitzungen des Leads und Stufe C für Bereichs-Leads", () => {
     await expect(k.bewerten(db, bl, c.eid, "annehmen", "sieht gut aus")).rejects.toThrow(/area lead/);
     await expect(k.stufeCFreigeben(db, bl, "test", "kampf", true)).rejects.toThrow(/only the project's lead/);
     expect(await k.stufeCFreigeben(db, lead, "test", "kampf", true)).toEqual({ bereich: "kampf", stufe_c: true });
+    // Engstelle: zwei offene Aufgaben auf derselben Datei erscheinen in der Lead-Bilanz
+    const { leadBilanz } = await import("../src/kennzahlen.ts");
+    const e1 = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Engstelle 1"), pfade: ["game/pause_controller.gd"] });
+    const e2 = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Engstelle 2"), pfade: ["game/pause_controller.gd"] });
+    expect((await leadBilanz(db, "test")).engstellen).toContainEqual({ pfad: "game/pause_controller.gd", aufgaben: 2, konflikte: 0 });
+    for (const a of [e1, e2]) await k.schliessen(db, lead, a.id, "Test");
     expect((await k.wartendeEinreichungen(db, bl, "test")).map((x) => Number(x.einreichung_id))).toContain(c.eid);
     await k.bewerten(db, bl, c.eid, "annehmen", "Effekt passt, Tests grün");
     await k.officerBeenden(db, "betrieb", "test", "kampf", "Test vorbei");
