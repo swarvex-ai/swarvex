@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.11.0 (unreleased)
+## 0.11.0 (6 Nov 2026)
 
 - Cross-checks in every project, not only Unity and Unreal: at the start of a round the runner re-runs the tests of
   another person's submission (base commit + patch, no network, no model, no tokens). Your green run together with

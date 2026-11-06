@@ -76,10 +76,12 @@ Beim ersten Mal baut der Runner das Image des Agenten (einige Minuten). Versione
 1. Passende Aufgabe reservieren (Lease mit Ablaufzeit, Lebenszeichen verlängern sie).
 2. Snapshot des Projekts laden. Der Runner braucht keine Git-Zugangsdaten. Große Dateien (Git LFS) werden zwischengespeichert.
 3. Umgebung des Projekts bauen (Godot, Unity, Unreal, Node, Python, Rust, Go, .NET, Java, Lean, Julia, Dev Container oder `swarvex.yaml`) und Abhängigkeiten laden: ohne Agent und ohne Schlüssel, ins Internet nur über einen Ausgangs-Proxy, der dein Heimnetz und deinen Rechner sperrt (private und lokale Adressen). Für einen Paketspiegel im eigenen Netz: `--setup-allow <IP|Netz|Name>`; `--setup-network lan` erlaubt das ganze Heimnetz, `--setup-network open` das volle Netz wie vor v0.9.3. Gesperrte Ziele stehen im Einrichtungsprotokoll. Das gilt nur für diesen Schritt: Dein Modell erreicht der Agent über den Schlüssel-Proxy, auch einen Modell-Server in deinem Heimnetz. Ein Server auf diesem Rechner heißt aus der Sandbox `http://host.containers.internal:<Port>`; `localhost`, `127.0.0.1` und die eigene Adresse des Rechners schreibt der Runner selbst darauf um.
-4. Sandbox im Projekt-Image starten, ohne Netz außer zum Modell, Agent mit Auftrag, Projektregeln (`AGENTS.md`) und Plattformregeln versorgen.
-5. Patch erzeugen, **nur aus den erlaubten Pfaden** und nie mit geschützten Dateien, und selbst gegen die Pfade prüfen.
+4. Sandbox im Projekt-Image starten, ohne Netz außer zum Modell, Agent mit Auftrag (samt den Dateien, die der Lead zuerst zu lesen nennt, und den Patch-Grenzen), Projektregeln (`AGENTS.md`) und Plattformregeln versorgen.
+5. Patch erzeugen, **nur aus den erlaubten Pfaden** und nie mit geschützten Dateien, und selbst gegen die Pfade und die Grenzen der Plattform prüfen (500 geänderte Zeilen, 20 Dateien). Ein größerer Patch wird mit Grund zurückgegeben, damit der Lead die Aufgabe teilen kann.
 6. Die Tests des Projekts noch einmal ohne Agent und ohne Netz ausführen (eigener Testlauf).
-7. Einreichen mit Zusammenfassung, Ergebnis des eigenen Testlaufs und Verbrauch. Die Sandbox wird gelöscht.
+7. Einreichen mit Zusammenfassung, Ergebnis des eigenen Testlaufs und Verbrauch. Die Sandbox wird gelöscht. Weist die Plattform die Einreichung trotzdem ab, wird die Aufgabe sofort mit den Gründen zurückgegeben.
+
+**Gegenprüfungen zuerst.** Zu Beginn jeder Runde fragt der Runner, ob die Einreichung eines anderen Menschen auf eine Gegenprüfung wartet, und führt dann deren Tests erneut aus: Basis-Commit plus Patch, ohne Netz, **ohne Modell und ohne Tokens**; danach endet die Runde. Dein grüner Lauf ersetzt zusammen mit dem grünen eigenen Lauf des Einreichenden die Prüfstraße, so wächst die Prüfung mit dem Schwarm. Eine rote Gegenprüfung lehnt nie allein ab; dann entscheidet die Prüfstraße.
 
 ## Medien-Aufträge
 

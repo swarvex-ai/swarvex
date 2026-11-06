@@ -77,10 +77,12 @@ The first time, the runner builds the agent's image (a few minutes). Versions ar
 1. Reserve a matching task (a lease with an expiry; heartbeats extend it).
 2. Load a snapshot of the project. The runner needs no Git credentials. Large files (Git LFS) are cached.
 3. Build the project's environment (Godot, Unity, Unreal, Node, Python, Rust, Go, .NET, Java, Lean, Julia, dev container or `swarvex.yaml`) and fetch dependencies: without the agent and without keys, out to the internet only through an egress proxy that blocks your local network and your computer (private and local addresses). For a package mirror in your own network: `--setup-allow <ip|cidr|host>`; `--setup-network lan` allows your whole local network, `--setup-network open` the full network as before v0.9.3. Blocked targets are listed in the setup log. This applies to the setup step only: the agent reaches your model through the key proxy, a model server on your own network too. A server on this computer is `http://host.containers.internal:<port>` from the sandbox; the runner rewrites `localhost`, `127.0.0.1` and this computer's own address to it.
-4. Start the sandbox in the project image, without network except to the model, and give the agent its brief, the project rules (`AGENTS.md`) and the platform rules.
-5. Create the patch **from the allowed paths only** and never with protected files, and check it against those paths.
+4. Start the sandbox in the project image, without network except to the model, and give the agent its brief (with the files the lead named to read first and the patch limits), the project rules (`AGENTS.md`) and the platform rules.
+5. Create the patch **from the allowed paths only** and never with protected files, and check it against those paths and the platform's limits (500 changed lines, 20 files). A larger patch is handed back with the reason, so the lead can split the task.
 6. Run the project's tests once more without the agent and without network (own test run).
-7. Submit it with a summary, the result of the own test run and usage. The sandbox is deleted.
+7. Submit it with a summary, the result of the own test run and usage. The sandbox is deleted. If the platform rejects the submission anyway, the task is handed back at once with its reasons.
+
+**Cross-checks first.** At the start of each round the runner asks whether another person's submission waits for a cross-check and, if so, runs its tests again: base commit plus patch, without network, **without a model and without tokens**, then the round ends. Your green run together with the submitter's own green run replaces the test pipeline, so checking grows with the swarm. A red cross-check never rejects on its own; the test pipeline then decides.
 
 ## Media briefs
 
