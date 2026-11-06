@@ -1,5 +1,6 @@
 # Baukontext der Website ist die Repo-Wurzel: Großes und Lokales draußen lassen
 **/node_modules
+**/.venv*
 **/.svelte-kit
 apps/web/build
 apps/web/static/media
