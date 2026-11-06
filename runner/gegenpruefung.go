@@ -1,13 +1,13 @@
 package main
 
-// Eigener Testlauf und Gegenprüfung (E-31). Für Projekte mit proprietärer Engine (Unity, Unreal)
-// kann die Prüfstraße nicht testen. Deshalb:
+// Eigener Testlauf und Gegenprüfung (E-31). Die Prüfkapazität wächst mit dem Schwarm, statt an der Prüfstraße
+// zu hängen:
 //   - Nach der Arbeit des Agenten führt der Runner den Testbefehl des Projekts selbst aus und
-//     reicht das Ergebnis mit ein (own_test_result). Das gilt für alle Projekte; zählen tut es
-//     nur bei Engine-Projekten.
-//   - Hat der Runner gerade nichts zu tun und ist eine passende Engine installiert, prüft er die
-//     Einreichung eines anderen Menschen gegen: Basis-Commit + Patch, Einrichten, Bauen, Testen
-//     ohne Netz. Kein Modell, keine Tokens.
+//     reicht das Ergebnis mit ein (own_test_result).
+//   - Zu Beginn jeder Runde prüft der Runner die Einreichung eines anderen Menschen gegen: Basis-Commit
+//     + Patch, Einrichten, Bauen, Testen ohne Netz. Kein Modell, keine Tokens. Bei Unity und Unreal nur
+//     mit passender Engine (die Prüfstraße hat keine Lizenz); in allen anderen Projekten ersetzen der
+//     eigene grüne Lauf und eine grüne Gegenprüfung die Prüfstraße, die bei Rot entscheidet.
 
 import (
 	"context"
@@ -61,11 +61,11 @@ func gegenpruefenWennMoeglich(ctx context.Context, m *mcpClient, z *zugangsdaten
 			namen = append(namen, i.Name)
 		}
 	}
-	if len(namen) == 0 {
-		return false
+	if namen == nil {
+		namen = []string{}
 	}
 	var job *gegenpruefungsAuftrag
-	if err := m.werkzeug("next_check", map[string]any{"project": projekt, "engines": namen}, &job); err != nil || job == nil || job.ID == 0 {
+	if err := m.werkzeug("next_check", map[string]any{"project": projekt, "engines": namen, "any": true}, &job); err != nil || job == nil || job.ID == 0 {
 		return false
 	}
 	fmt.Printf("Cross-check %d: submission %d of task %d (%s), no model involved\n", job.ID, job.Einreichung, job.Aufgabe, job.Titel)
@@ -111,9 +111,6 @@ func gegenpruefen(ctx context.Context, m *mcpClient, z *zugangsdaten, projekt st
 	if err != nil {
 		return "unable", "environment: " + err.Error()
 	}
-	if u.Engine == nil {
-		return "unable", "the project does not use a proprietary engine; the test pipeline checks it"
-	}
 	image, err := umgebungsImage(ctx, u, baum, "")
 	if err != nil {
 		return "unable", err.Error()
@@ -126,7 +123,11 @@ func gegenpruefen(ctx context.Context, m *mcpClient, z *zugangsdaten, projekt st
 	if ergebnis == "" {
 		return "unable", bericht
 	}
-	return ergebnis, fmt.Sprintf("Environment: %s, %s\n%s", u.Vorlage, u.Engine, bericht)
+	umgebungText := u.Vorlage
+	if u.Engine != nil {
+		umgebungText += fmt.Sprintf(", %s", u.Engine)
+	}
+	return ergebnis, fmt.Sprintf("Environment: %s\n%s", umgebungText, bericht)
 }
 
 func enthaelt(liste []string, s string) bool {

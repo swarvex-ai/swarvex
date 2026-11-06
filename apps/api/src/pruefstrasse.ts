@@ -8,6 +8,7 @@ import type { Db } from "./db.ts";
 import { transaktion } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import * as k from "./aufgaben.ts";
+import { WARTET_AUF_GEGENPRUEFUNG } from "./gegenpruefung.ts";
 import { nachAussen } from "./aussen.ts";
 import { repoToken } from "./github.ts";
 import { einreichungsVorschauUrl, konfig, vorschauUrl } from "./konfig.ts";
@@ -88,8 +89,10 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
       if (req.method === "GET" && url.pathname === "/pipeline/pending") {
         const r = await db.query(
           `select e.id as einreichung_id, e.patch, e.patch_sha256, a.id as aufgabe_id, a.basis_commit, a.pfade, p.slug, p.repo_git, p.github_installation
-           from einreichungen e join aufgaben a on a.id = e.aufgabe_id join projekte p on p.id = a.projekt_id
-           where a.zustand = 'eingereicht' and p.engine !~* '(unity|unreal)' and not exists (select 1 from pruefungen x where x.einreichung_id = e.id)
+           from einreichungen e join aufgaben a on a.id = e.aufgabe_id join projekte p on p.id = a.projekt_id join agenten ag on ag.id = e.agent_id
+           where a.zustand = 'eingereicht' and p.engine !~* '(unity|unreal)'
+           and not exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'projekt')
+           and not ${WARTET_AUF_GEGENPRUEFUNG}
            and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id`);
         return json(res, 200, nachAussen(await mitToken(r.rows, false)));
       }

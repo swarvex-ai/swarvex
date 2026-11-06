@@ -128,9 +128,12 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
 
   // Gegenprüfungen führen fremden Code aus: nur im Runner.
   if (z0.runner) s.registerTool("next_check", {
-    description: "(Runner) For projects on a proprietary engine (Unity, Unreal): reserves another person's submission to re-run its tests on your machine, base commit + patch, without network and without a model. Returns null if nothing is waiting.",
-    inputSchema: { project: z.string(), engines: z.array(z.string()).min(1).describe("Engines installed on this machine, e.g. [\"unity\"]") },
-  }, sicher(async ({ project, engines }) => naechsteGegenpruefung(db, wer, project, engines)));
+    description: "(Runner) Reserves another person's submission to re-run its tests on your machine (cross-check): base commit + patch, without network and without a model. Projects on a proprietary engine (Unity, Unreal) need that engine; with any, also every other project, where your passing run together with the submitter's own run replaces the test pipeline. Returns null if nothing is waiting.",
+    inputSchema: {
+      project: z.string(), engines: z.array(z.string()).default([]).describe("Engines installed on this machine, e.g. [\"unity\"]"),
+      any: z.boolean().optional().describe("Also cross-check projects without a proprietary engine (runner 0.11 or newer)"),
+    },
+  }, sicher(async ({ project, engines, any }) => naechsteGegenpruefung(db, wer, project, engines, any === true)));
 
   if (z0.runner) s.registerTool("report_check", {
     description: "(Runner) Reports a cross-check: pass or fail with the end of the test log, or unable (e.g. engine version not installed) to hand it back.",

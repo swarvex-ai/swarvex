@@ -187,7 +187,8 @@ func arbeitenBefehl(args []string) {
 	m := &mcpClient{basis: z.Plattform, token: token, http: httpClient(z.CAPfad)}
 	pruefen(m.initialisieren())
 
-	// 0. Wartet eine Engine-Einreichung auf Gegenprüfung, kommt sie zuerst: schnell, ohne Modell, ohne Tokens.
+	// 0. Wartet die Einreichung eines anderen Menschen auf Gegenprüfung, kommt sie zuerst: ohne Modell, ohne Tokens,
+	// und sie hält den Fluss für alle in Gang (Prüfen vor neuer Arbeit).
 	// Danach endet dieser Aufruf; im Dauerbetrieb geht es mit der nächsten Runde weiter.
 	// "auto": alle Projekte mit offenen Aufgaben, die meisten zuerst; das erste mit passender Aufgabe gilt.
 	projekte := projekteFuer(*projekt, z)

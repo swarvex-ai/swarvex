@@ -1250,6 +1250,90 @@ new file mode 100644
   });
 });
 
+describe("Gegenprüfung für alle Projekte (Runner ab 0.11)", () => {
+  const zustand = async (id: number) => (await db.query("select zustand from aufgaben where id = $1", [id])).rows[0].zustand;
+  const mitPruefstrasse = async (lauf: (senden: (m: string, p: string, k?: unknown) => Promise<any>) => Promise<void>) => {
+    const { createServer } = await import("node:http");
+    const { pruefstrasseBehandeln, signatur } = await import("../src/pruefstrasse.ts");
+    const geheim = "gegenpruefung-alle";
+    const h = pruefstrasseBehandeln(db, geheim);
+    const server = createServer((req, res) => h(req, res, new URL(req.url!, "http://x")));
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const basis = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    try {
+      await lauf(async (methode, pfad, koerper) => {
+        const text = koerper ? JSON.stringify(koerper) : "", zeit = String(Date.now()), nonce = `n${Math.random().toString(36).slice(2)}${Date.now()}`;
+        const r = await fetch(basis + pfad, { method: methode, body: text || undefined, headers: { "x-time": zeit, "x-nonce": nonce, "x-signature": signatur(geheim, zeit, nonce, methode, pfad, text) } });
+        return r.json();
+      });
+    } finally {
+      server.close();
+    }
+  };
+  const einreichen = async (titel: string, eigenes?: "ok" | "fehler") => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe(titel));
+    await k.reservieren(db, mit, a.id);
+    const e: any = await k.einreichen(db, mit, a.id, { patch: PATCH_OK, zusammenfassung: "z", eigene_tests: "node --test: 3 passed", verbrauch: {}, eigenes_ergebnis: eigenes });
+    return { a, eid: Number(e.einreichung_id) };
+  };
+  const wartend = async (senden: (m: string, p: string) => Promise<any>) => ((await senden("GET", "/pipeline/pending")) as { submission_id: number }[]).map((x) => Number(x.submission_id));
+
+  it("ohne aktiven Gegenprüfer prüft die Prüfstraße sofort; mit einem wartet die Einreichung auf ihn, zwei grüne Läufe genügen", async () => {
+    await mitPruefstrasse(async (senden) => {
+      await db.query("update agenten set gegenpruefer_gesehen = null");
+      const { eid: e1 } = await einreichen("Kein Gegenprüfer da", "ok");
+      expect(await wartend(senden)).toContain(e1);
+      // Runner ab 0.11 fragt (any): ab jetzt wartet eine neue Einreichung auf ihn statt auf die Prüfstraße
+      expect(await g.naechsteGegenpruefung(db, fremd, "test", [], false)).toBeNull();   // alter Runner: nur Engine-Projekte
+      const erster: any = await g.naechsteGegenpruefung(db, fremd, "test", [], true);
+      expect(erster.einreichung_id).toBe(e1);
+      await g.gegenpruefungMelden(db, fremd, erster.gegenpruefung_id, "nicht_moeglich", "podman fehlt");
+      const { a, eid } = await einreichen("Gegenprüfer da", "ok");
+      expect(await wartend(senden)).not.toContain(eid);
+      expect(await g.naechsteGegenpruefung(db, mit, "test", [], true)).toBeNull();   // nicht die eigene
+      const job: any = await g.naechsteGegenpruefung(db, fremd, "test", [], true);
+      expect(job.einreichung_id).toBe(eid);
+      expect(await g.gegenpruefungAktiv(db, fremd.agentId, Number(a.id))).toBe(true);
+      await g.gegenpruefungMelden(db, fremd, job.gegenpruefung_id, "ok", "node --test: 3 passed");
+      expect(await zustand(a.id)).toBe("geprueft_ok");
+      expect(await wartend(senden)).not.toContain(eid);
+      const quellen = (await db.query("select quelle, ergebnis from pruefungen where einreichung_id = $1 order by id", [eid])).rows;
+      expect(quellen).toEqual([{ quelle: "selbst", ergebnis: "ok" }, { quelle: "gegenpruefung", ergebnis: "ok" }]);
+      // Danach wie immer: Bewertung, und der Merge-Zug sieht die Prüfung als bestanden
+      await k.bewerten(db, lead, eid, "annehmen", "zwei grüne Läufe, Akzeptanz erfüllt");
+      const angenommen = ((await senden("GET", "/pipeline/accepted")) as { submission_id: number; check: string }[]).find((x) => Number(x.submission_id) === eid);
+      expect(angenommen?.check).toBe("pass");
+    });
+  });
+
+  it("rote Gegenprüfung, kein grüner eigener Lauf oder abgelaufene Wartezeit: die Prüfstraße entscheidet", async () => {
+    await mitPruefstrasse(async (senden) => {
+      await g.naechsteGegenpruefung(db, fremd, "test", [], true);   // aktiver Gegenprüfer
+      const { a, eid } = await einreichen("Gegenprüfung rot", "ok");
+      const job: any = await g.naechsteGegenpruefung(db, fremd, "test", [], true);
+      expect(job.einreichung_id).toBe(eid);
+      expect(await wartend(senden)).not.toContain(eid);   // läuft gerade
+      expect(await g.gegenpruefungMelden(db, fremd, job.gegenpruefung_id, "fehler", "1 failed")).toMatchObject({ entscheidet: "test_pipeline" });
+      expect(await zustand(a.id)).toBe("eingereicht");   // eine Gegenprüfung allein lehnt nie ab
+      expect(await wartend(senden)).toContain(eid);
+      expect((await g.naechsteGegenpruefung(db, lead, "test", [], true))?.einreichung_id).not.toBe(eid);   // kein zweiter Versuch über Runner
+      await senden("POST", `/pipeline/${eid}/start`, {});
+      await senden("POST", `/pipeline/${eid}/result`, { result: "pass", report: "grün auf der Prüfstraße" });
+      expect(await zustand(a.id)).toBe("geprueft_ok");
+
+      const { eid: ohneSelbst } = await einreichen("Ohne eigenen Lauf");
+      const { eid: selbstRot } = await einreichen("Eigener Lauf rot", "fehler");
+      const { eid: wartetZuLange } = await einreichen("Wartet zu lange", "ok");
+      const liste = await wartend(senden);
+      expect(liste).toContain(ohneSelbst);
+      expect(liste).toContain(selbstRot);
+      expect(liste).not.toContain(wartetZuLange);
+      await db.query("update einreichungen set eingereicht = now() - interval '16 minutes' where id = $1", [wartetZuLange]);
+      expect(await wartend(senden)).toContain(wartetZuLange);
+    });
+  });
+});
+
 describe("Besucherstatistik in der Datenbank", () => {
   it("zählt Aufrufe und eindeutige Besucher und behält nach Tagesende nur die Zahl", async () => {
     const { besuchZaehlen, besucheAbschliessen } = await import("../src/besuche.ts");

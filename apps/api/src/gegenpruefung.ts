@@ -1,7 +1,10 @@
-// Gegenprüfung für Projekte mit proprietärer Engine (Unity, Unreal; E-31). Die Prüfstraße hat keine
-// Lizenz dafür, also prüfen die Runner der Mitstreiter: zuerst der einreichende Runner selbst, dann
-// der Runner eines anderen Menschen mit derselben Engine (Basis-Commit + Patch, Tests ohne Netz, ohne
-// Modell und ohne Tokens). Lead und Agenten haben damit keine Arbeit.
+// Gegenprüfung durch die Runner der Mitstreiter (E-31): zuerst der einreichende Runner selbst, dann der Runner eines
+// anderen Menschen (Basis-Commit + Patch, Tests ohne Netz, ohne Modell und ohne Tokens). Lead und Agenten haben damit
+// keine Arbeit, und die Prüfkapazität wächst mit dem Schwarm statt an der Prüfstraße zu hängen.
+//   - Proprietäre Engine (Unity, Unreal): Die Prüfstraße hat keine Lizenz; nur Runner mit derselben Engine prüfen.
+//   - Alle anderen Projekte (Runner ab 0.11): Zwei grüne Läufe (eigener + Gegenprüfung) ersetzen die Prüfstraße.
+//     Rot in der Gegenprüfung, kein eigener grüner Lauf oder niemand da: Die Prüfstraße prüft wie bisher und
+//     entscheidet. Eine Gegenprüfung allein lehnt also nie ab; was durchkommt, testet der Merge-Zug noch einmal.
 import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, projektPerSlug, type Wer } from "./aufgaben.ts";
@@ -13,6 +16,30 @@ export const proprietaer = (engine: string) => /unity|unreal/i.test(engine ?? ""
 export const GEGENPRUEFUNG_MINUTEN = 90;
 /** Findet sich so lange kein zweiter Runner, zählt der eigene Lauf allein (auf der Projektseite als „selbst geprüft“). */
 export const OHNE_GEGENPRUEFUNG_STUNDEN = 24;
+/** Projekte ohne proprietäre Engine: Reservierung kürzer (keine Engine-Bibliothek zu laden); bricht ein Runner ab, übernimmt bald die Prüfstraße. */
+export const GEGENPRUEFUNG_MINUTEN_ALLGEMEIN = 45;
+/** Projekte ohne proprietäre Engine: so lange wartet eine Einreichung auf einen Gegenprüfer, danach prüft die Prüfstraße. */
+export const GEGENPRUEFUNG_WARTEN_MINUTEN = 15;
+/** Ein Runner gilt als Gegenprüfer da, wenn er so kurz vorher danach gefragt hat (Runner fragen zu Beginn jeder Runde). */
+export const GEGENPRUEFER_AKTIV_MINUTEN = 30;
+
+/**
+ * Einreichung in einem Projekt ohne proprietäre Engine: Der eigene Testlauf des Runners wird festgehalten (Quelle
+ * „selbst“). Die Aufgabe bleibt „eingereicht“: Gegenprüfung oder Prüfstraße entscheiden (siehe pipeline/pending).
+ */
+export async function eigenenLaufFesthalten(tx: Tx, einreichungId: number, eigenesErgebnis: "ok" | "fehler" | undefined, bericht: string, wer: Wer) {
+  if (!eigenesErgebnis) return;
+  await tx.query("insert into pruefungen(einreichung_id, quelle, ergebnis, bericht, signatur) values ($1,'selbst',$2,$3,$4)",
+    [einreichungId, eigenesErgebnis, bericht, akteur(wer)]);
+}
+
+/** SQL-Bedingung (Einreichung e, Agent des Einreichers ag): Wartet die Einreichung gerade auf eine Gegenprüfung statt auf die Prüfstraße? */
+export const WARTET_AUF_GEGENPRUEFUNG = `(
+  exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'selbst' and x.ergebnis = 'ok')
+  and not exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'gegenpruefung' and x.ergebnis = 'fehler')
+  and (exists (select 1 from gegenpruefungen g where g.einreichung_id = e.id and g.beendet is null and g.laeuft_ab > now())
+       or (e.eingereicht > now() - interval '${GEGENPRUEFUNG_WARTEN_MINUTEN} minutes'
+           and exists (select 1 from agenten x where x.mensch_id <> ag.mensch_id and x.gegenpruefer_gesehen > now() - interval '${GEGENPRUEFER_AKTIV_MINUTEN} minutes'))))`;
 
 const akteur = (w: Wer) => `agent:${w.agentId}`;
 
@@ -43,13 +70,15 @@ export async function nachEinreichen(tx: Tx, a: any, einreichungId: number, eige
 }
 
 /**
- * Nächste Gegenprüfung für einen Runner: eine Einreichung im Zustand „pruefung“ eines Engine-Projekts,
- * deren Engine der Runner hat, von einem anderen Menschen, die er nicht schon geprüft hat und die gerade
- * niemand prüft. null, wenn nichts ansteht.
+ * Nächste Gegenprüfung für einen Runner: eine Einreichung eines anderen Menschen, die er nicht schon geprüft hat und
+ * die gerade niemand prüft. Engine-Projekte: im Zustand „pruefung“, nur mit derselben Engine. Andere Projekte (nur
+ * Runner ab 0.11, `alle`): „eingereicht“, mit grünem eigenem Lauf, noch ohne Prüfstraße und ohne rote Gegenprüfung.
+ * null, wenn nichts ansteht.
  */
-export async function naechsteGegenpruefung(db: Db, wer: Wer, projektSlug: string, engines: string[]) {
+export async function naechsteGegenpruefung(db: Db, wer: Wer, projektSlug: string, engines: string[], alle = false) {
   const p = await projektPerSlug(db, projektSlug);
-  if (!proprietaer(p.engine)) return null;
+  if (alle) await db.query("update agenten set gegenpruefer_gesehen = now() where id = $1", [wer.agentId]);
+  if (!proprietaer(p.engine)) return alle ? allgemeineGegenpruefung(db, wer, p) : null;
   const engine = String(p.engine).toLowerCase();
   if (!engines.some((e) => engine.includes(e.toLowerCase()))) return null;
   return transaktion(db, async (tx) => {
@@ -75,6 +104,32 @@ export async function naechsteGegenpruefung(db: Db, wer: Wer, projektSlug: strin
   });
 }
 
+async function allgemeineGegenpruefung(db: Db, wer: Wer, p: any) {
+  return transaktion(db, async (tx) => {
+    const m = (await tx.query("select gesperrt from menschen where id = $1", [wer.menschId])).rows[0];
+    if (m?.gesperrt) throw new Abgelehnt("account blocked");
+    const e = (await tx.query(
+      `select e.id, e.patch, e.aufgabe_id, a.basis_commit, a.titel from einreichungen e
+       join aufgaben a on a.id = e.aufgabe_id join agenten ag on ag.id = e.agent_id
+       where a.projekt_id = $1 and a.zustand = 'eingereicht' and not exists (select 1 from projekte where id = $1 and gesperrt)
+         and e.id = (select max(id) from einreichungen where aufgabe_id = a.id)
+         and ag.mensch_id <> $2
+         and exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'selbst' and x.ergebnis = 'ok')
+         and not exists (select 1 from pruefungen x where x.einreichung_id = e.id and (x.quelle = 'projekt' or (x.quelle = 'gegenpruefung' and x.ergebnis = 'fehler')))
+         and not exists (select 1 from gegenpruefungen g where g.einreichung_id = e.id and g.beendet is null and g.laeuft_ab > now())
+         and not exists (select 1 from gegenpruefungen g join agenten x on x.id = g.agent_id where g.einreichung_id = e.id and x.mensch_id = $2)
+       order by e.id limit 1 for update of a skip locked`,
+      [p.id, wer.menschId])).rows[0];
+    if (!e) return null;
+    const g = (await tx.query(
+      "insert into gegenpruefungen(einreichung_id, agent_id, laeuft_ab) values ($1,$2, now() + make_interval(mins => $3)) returning id, laeuft_ab",
+      [e.id, wer.agentId, GEGENPRUEFUNG_MINUTEN_ALLGEMEIN])).rows[0];
+    await protokollieren(tx, { projekt_id: Number(p.id), akteur: akteur(wer), art: "gegenpruefung_reserviert", bezug: `aufgabe:${e.aufgabe_id}`, daten: { einreichung: Number(e.id), gegenpruefung: Number(g.id) } });
+    return { gegenpruefung_id: Number(g.id), aufgabe_id: Number(e.aufgabe_id), einreichung_id: Number(e.id), titel: e.titel,
+      basis_commit: e.basis_commit, patch: e.patch, engine: p.engine, laeuft_ab: g.laeuft_ab };
+  });
+}
+
 /** Ergebnis einer Gegenprüfung. „nicht_moeglich“ (z. B. falsche Engine-Version) gibt sie nur frei. */
 export async function gegenpruefungMelden(db: Db, wer: Wer, id: number, ergebnis: "ok" | "fehler" | "nicht_moeglich", bericht: string) {
   return transaktion(db, async (tx) => {
@@ -87,6 +142,20 @@ export async function gegenpruefungMelden(db: Db, wer: Wer, id: number, ergebnis
     const a = await aufgabeSperren(tx, e.aufgabe_id);
     if (ergebnis === "nicht_moeglich") {
       await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: akteur(wer), art: "gegenpruefung_zurueckgegeben", bezug: `aufgabe:${a.id}`, daten: { einreichung: Number(e.id), grund: bericht.slice(0, 300) } });
+      return { ergebnis };
+    }
+    const p = (await tx.query("select engine from projekte where id = $1", [a.projekt_id])).rows[0];
+    if (!proprietaer(p.engine)) {
+      // Projekt ohne proprietäre Engine: Grün mit grünem eigenem Lauf ersetzt die Prüfstraße; Rot entscheidet die Prüfstraße.
+      if (a.zustand !== "eingereicht") throw new Abgelehnt("the submission is no longer waiting for a check");
+      await tx.query("insert into pruefungen(einreichung_id, quelle, ergebnis, bericht, signatur) values ($1,'gegenpruefung',$2,$3,$4)",
+        [e.id, ergebnis, bericht, akteur(wer)]);
+      if (ergebnis === "fehler") {
+        await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: akteur(wer), art: "gegenpruefung_rot", bezug: `aufgabe:${a.id}`, daten: { einreichung: Number(e.id), entscheidet: "test_pipeline" } });
+        return { ergebnis, entscheidet: "test_pipeline" };
+      }
+      await wechseln(tx, a, "pruefung", akteur(wer), "pruefung_gestartet", { einreichung: Number(e.id), quelle: "gegenpruefung" });
+      await wechseln(tx, a, "geprueft_ok", akteur(wer), "pruefung_beendet", { einreichung: Number(e.id), ergebnis, quelle: "gegenpruefung" });
       return { ergebnis };
     }
     if (a.zustand !== "pruefung") throw new Abgelehnt("the submission is no longer waiting for a check");

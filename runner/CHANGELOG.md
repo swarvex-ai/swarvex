@@ -5,8 +5,12 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.10.1 (unreleased)
+## 0.11.0 (unreleased)
 
+- Cross-checks in every project, not only Unity and Unreal: at the start of a round the runner re-runs the tests of
+  another person's submission (base commit + patch, no network, no model, no tokens). Your green run together with
+  the submitter's own green run replaces the test pipeline, so checking grows with the swarm; a red cross-check never
+  rejects on its own, the test pipeline then decides.
 - A submission the platform rejects (for example more than 500 changed lines or 20 files) is now handed back at once,
   with the reason in `swarvex history`. Before, the runner counted it as submitted and the task stayed reserved until
   its reservation ran out.

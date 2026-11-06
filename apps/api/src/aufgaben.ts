@@ -9,7 +9,7 @@ import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { aufgabePruefen, raeumeVon, trennwand, type Raum } from "./cleanroom.ts";
 import { WERTE } from "./aussen.ts";
-import { nachEinreichen, proprietaer } from "./gegenpruefung.ts";
+import { eigenenLaufFesthalten, nachEinreichen, proprietaer } from "./gegenpruefung.ts";
 import { einreichungsVorschauUrl } from "./konfig.ts";
 import { vertrauenAktualisieren } from "./vertrauen.ts";
 
@@ -466,6 +466,7 @@ export async function einreichen(db: Db, wer: Wer, aufgabeId: number, e: { patch
     // Proprietäre Engine: Runner prüfen statt der Prüfstraße (eigener Lauf, dann Gegenprüfung; E-31).
     const engine = (await tx.query("select engine from projekte where id = $1", [a.projekt_id])).rows[0]?.engine;
     if (proprietaer(engine)) await nachEinreichen(tx, { ...a, zustand: "eingereicht" }, Number(r.id), e.eigenes_ergebnis, e.eigene_tests, wer);
+    else await eigenenLaufFesthalten(tx, Number(r.id), e.eigenes_ergebnis, e.eigene_tests, wer);
     return { einreichung_id: Number(r.id), patch_sha256: sha };
   });
 }
