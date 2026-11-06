@@ -118,3 +118,29 @@ func TestAuftragMitLetzterPruefung(t *testing.T) {
 		t.Fatalf("brief: %s", text)
 	}
 }
+
+// Die Grenzen der Plattform stehen im Auftrag und werden vor dem Einreichen gleich gezählt wie dort.
+func TestPatchGrenzen(t *testing.T) {
+	var a aufgabe
+	if err := json.Unmarshal([]byte(`{"id":64,"title":"Pause menu","paths":["game/x.gd"],"limits":{"lines":500,"files":20}}`), &a); err != nil {
+		t.Fatal(err)
+	}
+	if text := auftragstext(a, umgebung.Umgebung{}); !strings.Contains(text, "within 500 changed lines (added plus removed) and 20 files") {
+		t.Fatalf("brief without limits: %s", text)
+	}
+	if strings.Contains(auftragstext(aufgabe{}, umgebung.Umgebung{}), "changed lines") {
+		t.Fatal("without limits from the platform: no rule")
+	}
+	kopf := "diff --git a/game/x.gd b/game/x.gd\nindex 1..2 100644\n--- a/game/x.gd\n+++ b/game/x.gd\n@@ -1,2 +1,3 @@\n"
+	patch := kopf + " gleich\n-alt\n+neu\n+--- kein Kopf, aber geändert\n"
+	if got := patchUmfang(patch, 3, 1); got != "" {
+		t.Fatalf("3 changed lines in 1 file are within the limits: %q", got)
+	}
+	if got := patchUmfang(patch, 2, 1); got != "3 changed lines > 2" {
+		t.Fatalf("got %q", got)
+	}
+	zwei := patch + strings.ReplaceAll(kopf, "x.gd", "y.gd") + "+eins\n"
+	if got := patchUmfang(zwei, 0, 1); got != "2 files > 1" {
+		t.Fatalf("got %q", got)
+	}
+}

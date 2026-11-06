@@ -5,6 +5,13 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.10.1 (unreleased)
+
+- A submission the platform rejects (for example more than 500 changed lines or 20 files) is now handed back at once,
+  with the reason in `swarvex history`. Before, the runner counted it as submitted and the task stayed reserved until
+  its reservation ran out.
+- The runner checks these limits itself before submitting, and the agent learns them in its brief.
+
 ## 0.10.0 (6 Nov 2026)
 
 - Media briefs: your agents' media tools (Meshy, ElevenLabs, Suno, Runway, Leonardo, Kling, Higgsfield, Midjourney)

@@ -367,6 +367,9 @@ func arbeitenBefehl(args []string) {
 	if fehler := patchVorpruefen(patch, a.Pfade, u); len(fehler) > 0 {
 		abbrechen("patch violates the task: " + strings.Join(fehler, "; "))
 	}
+	if zuGross := patchUmfang(patch, a.Grenzen.Zeilen, a.Grenzen.Dateien); zuGross != "" {
+		abbrechen("patch too large: " + zuGross + " (the lead may split the task)")
+	}
 
 	// 5b. Eigener Testlauf (ohne Agent, ohne Netz). Bei Unity/Unreal ist das die erste Prüfung.
 	m.werkzeug("report_progress", map[string]any{"task_id": id, "note": "running the project's tests"}, nil)
@@ -390,6 +393,14 @@ func arbeitenBefehl(args []string) {
 	}
 	var ergebnis map[string]any
 	pruefen(m.werkzeug("submit_result", einreichung, &ergebnis))
+	// Die Plattform weist ab, ohne die Reservierung zu beenden: sofort zurückgeben, statt die Aufgabe bis zum Ablauf zu blockieren
+	if abgewiesen, ok := ergebnis["rejected"].([]any); ok && len(abgewiesen) > 0 {
+		gruende := make([]string, len(abgewiesen))
+		for i, g := range abgewiesen {
+			gruende[i] = fmt.Sprint(g)
+		}
+		abbrechen("the platform rejected the submission: " + strings.Join(gruende, "; "))
+	}
 	fmt.Println("Submitted:", ergebnis)
 	verlaufMerken(verlaufsDatei(), verlaufEintragAus(id, a, "submitted", "", verbrauch))
 	// Arbeitsbaum (mit LFS-Kopien bis über 1 GB) aufräumen; Protokolle (agent.log, proxy.log) bleiben.
@@ -568,6 +579,36 @@ func patchVorpruefen(patch string, erlaubt []string, u umgebung.Umgebung) []stri
 	return fehler
 }
 
+// patchUmfang: dieselbe Zählung wie die Plattform (apps/api/src/aufgaben.ts, patchPruefen): geänderte Zeilen sind
+// Zeilen mit + oder - am Anfang außer den Kopfzeilen „+++ “/„--- “, Dateien die Pfade der diff-Köpfe.
+// Leer: innerhalb der Grenzen (oder die Plattform nannte keine).
+func patchUmfang(patch string, maxZeilen, maxDateien int) string {
+	zeilen, dateien := 0, map[string]bool{}
+	for _, z := range strings.Split(patch, "\n") {
+		if strings.HasPrefix(z, "diff --git a/") {
+			if teile := strings.SplitN(strings.TrimPrefix(z, "diff --git a/"), " b/", 2); len(teile) == 2 {
+				dateien[teile[1]] = true
+			}
+			continue
+		}
+		if z == "" || (z[0] != '+' && z[0] != '-') {
+			continue
+		}
+		if len(z) >= 4 && strings.ContainsRune("+-", rune(z[1])) && strings.ContainsRune("+-", rune(z[2])) && z[3] == ' ' {
+			continue
+		}
+		zeilen++
+	}
+	var zuViel []string
+	if maxZeilen > 0 && zeilen > maxZeilen {
+		zuViel = append(zuViel, fmt.Sprintf("%d changed lines > %d", zeilen, maxZeilen))
+	}
+	if maxDateien > 0 && len(dateien) > maxDateien {
+		zuViel = append(zuViel, fmt.Sprintf("%d files > %d", len(dateien), maxDateien))
+	}
+	return strings.Join(zuViel, ", ")
+}
+
 // passt unterstützt die Glob-Formen der Plattform: exakt, *, und ** am Ende.
 func passt(muster, pfad string) bool {
 	if strings.HasSuffix(muster, "/**") {
@@ -738,6 +779,9 @@ func auftragstext(a aufgabe, u umgebung.Umgebung) string {
 	}
 	b.WriteString("\nRULES:\n- Change or create ONLY these paths (full paths; all task paths are relative to /work, not to your start folder): " + strings.Join(volle, ", ") + "\n")
 	b.WriteString("- Do not create or change any other files (no notes, logs or helper scripts in the project either).\n")
+	if a.Grenzen.Zeilen > 0 && a.Grenzen.Dateien > 0 {
+		fmt.Fprintf(&b, "- Keep the change within %d changed lines (added plus removed) and %d files; the platform rejects larger patches. Do the core of the task compactly rather than everything at length.\n", a.Grenzen.Zeilen, a.Grenzen.Dateien)
+	}
 	if u.Testen != "" {
 		fmt.Fprintf(&b, "- The project's tests run with:\n%s\n  Run them and fix failures until they pass.\n", einruecken(u.Testen))
 	} else {
