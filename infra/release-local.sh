@@ -79,10 +79,12 @@ sed -e "s#@PLATFORM@#$PLATFORM#g" -e "s#@VERSION@#$VERSION#g" -e "s#@PUBKEY@#$NE
   "$REPO/runner/install.sh.in" > "$BUILD/install.sh"
 sed -e "s#@PLATFORM@#$PLATFORM#g" "$REPO/runner/install.ps1.in" > "$BUILD/install.ps1"
 sh -n "$BUILD/install.sh"
+# `swarvex update` shows what's new from this file: the version released now carries today's date, not "(unreleased)"
+sed "s/^## $VERSION (unreleased)\$/## $VERSION ($(LC_ALL=C date '+%-d %b %Y'))/" "$REPO/runner/CHANGELOG.md" > "$BUILD/CHANGELOG.md"
 
 echo "== Uploading to $TARGET"
 ssh "$TARGET" "mkdir -p $DOWNLOADS/$VERSION"
 scp -q "$BUILD/$VERSION/"* "$TARGET:$DOWNLOADS/$VERSION/"
-scp -q "$BUILD/install.sh" "$BUILD/install.ps1" "$REPO/runner/CHANGELOG.md" "$TARGET:$DOWNLOADS/"
+scp -q "$BUILD/install.sh" "$BUILD/install.ps1" "$BUILD/CHANGELOG.md" "$TARGET:$DOWNLOADS/"
 ssh "$TARGET" "chmod -R a+rX $DOWNLOADS"
 echo "== Release v$VERSION ready: $PLATFORM/install.sh (signed with $(echo "$NEU" | cut -c1-30)…)"
