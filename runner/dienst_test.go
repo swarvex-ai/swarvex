@@ -20,6 +20,18 @@ func TestDienstEinheit(t *testing.T) {
 	}
 }
 
+func TestDienstHinweis(t *testing.T) {
+	for zustand, soll := range map[string]string{
+		"active": "", "activating": "", "reloading": "",
+		"inactive": "swarvex start", "failed": "swarvex logs",
+	} {
+		h := dienstHinweis(zustand)
+		if (soll == "") != (h == "") || !strings.Contains(h, soll) {
+			t.Errorf("%s: %q, erwartet mit %q", zustand, h, soll)
+		}
+	}
+}
+
 func TestAbsolutePfade(t *testing.T) {
 	wd, _ := os.Getwd()
 	r := absolutePfade([]string{"--project", "x", "--model-key-file", "key.txt", "--model-key-file=/abs/k"})

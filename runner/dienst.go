@@ -249,11 +249,27 @@ func statusBefehl() {
 		return
 	}
 	zustand, _ := systemctl("is-active", dienstName)
-	fmt.Println("Service:", zustand)
+	if h := dienstHinweis(zustand); h != "" {
+		fmt.Printf("Service: %s (%s)\n", zustand, h)
+	} else {
+		fmt.Println("Service:", zustand)
+	}
 	if aus, err := exec.Command("journalctl", "--user", "-u", "swarvex", "-n", "5", "--no-pager", "-o", "cat").Output(); err == nil && len(aus) > 0 {
 		fmt.Println("Latest messages:")
 		fmt.Print(string(aus))
 	}
+}
+
+// dienstHinweis: was bei einem gestoppten Dienst zu tun ist; leer, solange er läuft oder gerade (neu) startet.
+// Ein gestoppter Dienst bleibt gestoppt, auch über Updates hinweg: wer ihn angehalten hat, soll ihn selbst starten.
+func dienstHinweis(zustand string) string {
+	switch zustand {
+	case "inactive":
+		return "stopped; start it with: swarvex start"
+	case "failed":
+		return "stopped after an error; why: swarvex logs, then: swarvex start"
+	}
+	return ""
 }
 
 // uninstallBefehl entfernt alles, was der Runner angelegt hat, und meldet das Gerät bei der Plattform ab.

@@ -268,11 +268,15 @@ func autoUpdate() {
 
 // dienstNeuStarten: Ohne laufende Aufgabe startet der Dienst gleich neu. Mit Aufgabe läuft sie zu Ende; danach
 // lädt sich der Dauerbetrieb selbst neu (neues Programm oder geänderte Dienst-Einheit, siehe dauerbetrieb).
+// Einen gestoppten Dienst startet ein Update nicht, es sagt nur, wie er weiterläuft.
 func dienstNeuStarten(sofort bool, was string) {
 	if _, err := os.Stat(dienstDatei()); err != nil {
 		return
 	}
 	if zustand, _ := systemctl("is-active", dienstName); zustand != "active" {
+		if h := dienstHinweis(zustand); h != "" {
+			fmt.Printf("The service is not running (%s); it runs %s from its next start.\n", h, was)
+		}
 		return
 	}
 	if aufgabeLaeuft() && !sofort {
