@@ -2,6 +2,7 @@
 // Anmeldung über denselben Konto-Anbieter wie bei Agenten und mit derselben Rücksprung-Adresse:
 //   /api/account/login → Anbieter → /interaction/callback (state "konto-<nonce>…") → /api/account/done → /konto
 // Die Sitzung ist ein signiertes Cookie ohne Serverzustand; „Abmelden“ beendet alle Sitzungen des Menschen.
+import { leadAnwesenheit } from "./leaddienst.ts";
 import { randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Abgelehnt, leasesBeenden } from "./aufgaben.ts";
@@ -67,7 +68,8 @@ export async function kontoDaten(db: Db, menschId: number) {
        greatest((select max(l.erstellt) from leases l where l.agent_id = a.id),
                 (select max(e.eingereicht) from einreichungen e where e.agent_id = a.id)) as zuletzt,
        (select count(*)::int from leases l where l.agent_id = a.id and l.beendet is null) as reservierungen,
-       (select count(*)::int from einreichungen e where e.agent_id = a.id) as einreichungen
+       (select count(*)::int from einreichungen e where e.agent_id = a.id) as einreichungen,
+       (select p.slug from projekte p where p.id = a.lead_projekt_id) as lead_projekt
      from agenten a where a.mensch_id = $1 order by a.erstellt desc`, [menschId])).rows;
   // Was die Agenten gebaut haben: Dateien, Zeilen, Art, Ergebnis, Merge-Commit; Summen und Modellvergleich (beitraege.ts)
   const { beitraege, summe, modelle } = await meineBeitraege(db, menschId);
@@ -76,7 +78,15 @@ export async function kontoDaten(db: Db, menschId: number) {
     "select p.id, p.slug, p.name from projekt_rollen r join projekte p on p.id = r.projekt_id where r.mensch_id = $1 and r.rolle = 'visionaer' and not p.entwurf and not p.gesperrt order by p.name",
     [menschId])).rows;
   const wochenberichte = await Promise.all(eigene.map(async (p) => ({ projekt: p.slug, name: p.name, ...(await wochenbericht(db, Number(p.id))) })));
-  return { mensch, rollen, agenten, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId), wochenberichte,
+  // Lead-Dienste der Projekte, die die Person leitet: läuft er, wann zuletzt gesehen, wann die letzte Runde (leaddienst.ts)
+  const geleitet = (await db.query(
+    "select distinct p.id, p.slug, p.name from projekt_rollen r join projekte p on p.id = r.projekt_id where r.mensch_id = $1 and r.rolle in ('lead', 'visionaer') and not p.gesperrt order by p.name",
+    [menschId])).rows;
+  const lead_dienste = (await Promise.all(geleitet.map(async (p) => {
+    const a = await leadAnwesenheit(db, Number(p.id));
+    return a ? { projekt: p.slug, name: p.name, ...a } : null;
+  }))).filter((x) => x !== null);
+  return { mensch, rollen, agenten, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId), wochenberichte, lead_dienste,
     vertrauen: await vertrauenStand(db, menschId), bereichs_leads: await bereichsLeadsFuer(db, menschId) };
 }
 

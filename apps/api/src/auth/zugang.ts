@@ -7,7 +7,8 @@ import { protokollieren } from "../ereignisse.ts";
 import { konfig, RESSOURCE } from "../konfig.ts";
 import { oeffentlich } from "./schluessel.ts";
 
-export type Zugang = { menschId: number; agentId: number; runner: boolean; clientId: string; token: string; scopes: string[]; ablauf: number };
+// leadProjekt: an ein Projekt gebundene Anmeldung eines Lead-Dienstes (leaddienst.ts), sonst null.
+export type Zugang = { menschId: number; agentId: number; runner: boolean; clientId: string; token: string; scopes: string[]; ablauf: number; leadProjekt: number | null };
 
 export class NichtAngemeldet extends Error {}
 
@@ -30,9 +31,10 @@ export function zugangPruefer(db: Db, anbieter: Provider, signaturJwk: Record<st
     if (!m || m.gesperrt) throw new NichtAngemeldet("account unknown or blocked");
     const { id: agentId, runner } = await agentZuordnen(db, anbieter, menschId, clientId);
     // Auf der Konto-Seite abgemeldet: Tokens von vorher gelten nicht mehr, auch wenn sie noch nicht abgelaufen sind
-    const abgemeldet: Date | null = (await db.query("select abgemeldet from agenten where id = $1", [agentId])).rows[0]?.abgemeldet ?? null;
+    const a = (await db.query("select abgemeldet, lead_projekt_id from agenten where id = $1", [agentId])).rows[0];
+    const abgemeldet: Date | null = a?.abgemeldet ?? null;
     if (abgemeldet && Number(claims.iat) * 1000 <= abgemeldet.getTime()) throw new NichtAngemeldet("agent was signed out; please sign in again");
-    return { menschId, agentId, runner, clientId, token, scopes, ablauf: Number(claims.exp) };
+    return { menschId, agentId, runner, clientId, token, scopes, ablauf: Number(claims.exp), leadProjekt: a?.lead_projekt_id == null ? null : Number(a.lead_projekt_id) };
   };
 }
 

@@ -1352,11 +1352,11 @@ describe("Zuteilung nach nachgewiesener Stufe", () => {
 });
 
 describe("MCP: Aufgaben gebündelt anlegen, Kontextpaket", () => {
-  const werkzeuge = async (wer: { menschId: number; agentId: number }) => {
+  const werkzeuge = async (wer: { menschId: number; agentId: number; runner?: boolean; leadProjekt?: number | null }) => {
     const { mcpServerFuer } = await import("../src/mcp.ts");
     const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
     const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
-    const server = await mcpServerFuer(db, { ...wer, runner: false, clientId: "test", token: "t", scopes: ["mcp"], ablauf: Date.now() + 60_000 });
+    const server = await mcpServerFuer(db, { runner: false, leadProjekt: null, ...wer, clientId: "test", token: "t", scopes: ["mcp"], ablauf: Date.now() + 60_000 });
     const [a, b] = InMemoryTransport.createLinkedPair();
     const client = new Client({ name: "test", version: "1" });
     await Promise.all([server.connect(a), client.connect(b)]);
@@ -1705,5 +1705,104 @@ describe("Bereichs-Leads automatisch (E-35)", () => {
     expect(await b.aufraeumen(db)).toBeGreaterThanOrEqual(1);
     expect((await db.query("select beendet from officers where mensch_id = $1", [still.menschId])).rows[0].beendet).not.toBeNull();
     expect((await db.query("select vertrauensstufe from menschen where id = $1", [still.menschId])).rows[0].vertrauensstufe).toBe(2);
+  });
+});
+
+describe("Lead-Dienst (E-38): gebundene Anmeldung, nur ein Projekt, keine Freigaben, Anwesenheit", () => {
+  const ld = () => import("../src/leaddienst.ts");
+  const sitzung = async (wer: { menschId: number; agentId: number }, runner: boolean, leadProjekt: number | null) => {
+    const { mcpServerFuer } = await import("../src/mcp.ts");
+    const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+    const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+    const server = await mcpServerFuer(db, { ...wer, runner, leadProjekt, clientId: "test", token: "t", scopes: ["mcp"], ablauf: Date.now() + 60_000 });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test", version: "1" });
+    await Promise.all([server.connect(a), client.connect(b)]);
+    return {
+      namen: async () => (await client.listTools()).tools.map((t) => t.name),
+      rufen: async (name: string, args: Record<string, unknown>) => {
+        const r: any = await client.callTool({ name, arguments: args });
+        return { fehler: r.isError === true, text: r.content[0].text as string };
+      },
+    };
+  };
+  let projekt = 0, anderes = 0;
+  const dienst = { menschId: 0, agentId: 0 };
+  beforeAll(async () => {
+    projekt = Number((await db.query("select id from projekte where slug = 'test'")).rows[0].id);
+    anderes = Number((await db.query(
+      `insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,repo_git,lead_modell,ziel)
+       values ('lead-anderes','Anderes','V','k','godot-4.7','MIT','CC BY 4.0','http://y','git@example.org:y.git','m','z') returning id`)).rows[0].id);
+    await db.query("insert into projekt_rollen values ($1,$2,'lead')", [anderes, lead.menschId]);
+    dienst.menschId = lead.menschId;
+    dienst.agentId = Number((await db.query("insert into agenten(mensch_id, client_id, name, runner) values ($1,'lead-dienst','swarvex project lead',true) returning id", [lead.menschId])).rows[0].id);
+  });
+
+  it("bindet nur Runner-Anmeldungen von Lead oder Visionär, und jede an genau ein Projekt", async () => {
+    const { leadDienstBinden } = await ld();
+    await expect(leadDienstBinden(db, { ...lead, runner: false }, "test")).rejects.toThrow(/only the swarvex runner/);
+    await expect(leadDienstBinden(db, { ...mit, runner: true }, "test")).rejects.toThrow(/only the project's lead or visionary/);
+    expect(await leadDienstBinden(db, { ...dienst, runner: true }, "test")).toEqual({ projekt: "test", gebunden: true });
+    expect(await leadDienstBinden(db, { ...dienst, runner: true }, "test")).toEqual({ projekt: "test", gebunden: true }); // gleiches Projekt: unverändert
+    await expect(leadDienstBinden(db, { ...dienst, runner: true }, "lead-anderes")).rejects.toThrow(/another project/);
+    const ereignis = (await db.query("select art from ereignisse where bezug = $1", [`agent:${dienst.agentId}`])).rows.map((r) => r.art);
+    expect(ereignis.filter((a) => a === "lead_dienst_verbunden")).toHaveLength(1);
+  });
+
+  it("die gebundene Sitzung sieht nur Lead-Werkzeuge und nur ihr Projekt", async () => {
+    const s = await sitzung(dienst, true, projekt);
+    const namen = await s.namen();
+    expect(namen).toContain("pending_submissions");
+    expect(namen).toContain("report_lead_cycle");
+    for (const nie of ["reserve_task", "submit_result", "next_check", "peer_reviews_open", "submit_peer_review", "appoint_area_lead", "bind_lead_service", "set_media_pledges"]) expect(namen).not.toContain(nie);
+    expect((await s.rufen("metrics", { project: "test" })).fehler).toBe(false);
+    const fremdProjekt = await s.rufen("metrics", { project: "lead-anderes" });
+    expect(fremdProjekt.fehler).toBe(true);
+    expect(fremdProjekt.text).toMatch(/only on project test/);
+    const andereAufgabe = await k.aufgabeAnlegen(db, lead, "lead-anderes", { ...neueAufgabe("Fremd"), meilenstein: "X", neuer_meilenstein: true });
+    expect((await s.rufen("task_details", { task_id: Number(andereAufgabe.id) })).text).toMatch(/only on project test/);
+    // Eine ungebundene Runner-Anmeldung des Leads bietet das Binden an, eine gebundene nicht mehr
+    expect(await (await sitzung(lead, true, null)).namen()).toContain("bind_lead_service");
+  });
+
+  it("entscheidet keine Freigaben: die bleiben beim Menschen", async () => {
+    await db.query("insert into projekt_rollen values ($1,$2,'visionaer') on conflict do nothing", [projekt, lead.menschId]);
+    const n = Number((await db.query(
+      "insert into nachrichten(projekt_id, von_mensch, von_agent, an, art, betreff, inhalt, aufgaben, zustand) values ($1,$2,$3,'visionaer','freigabe','Release','x','{}','offen') returning id",
+      [projekt, lead.menschId, dienst.agentId])).rows[0].id);
+    const s = await sitzung(dienst, true, projekt);
+    const r = await s.rufen("answer_message", { message_id: n, decision: "approve" });
+    expect(r.fehler).toBe(true);
+    expect(r.text).toMatch(/decided by the visionary/);
+    expect((await db.query("select zustand from nachrichten where id = $1", [n])).rows[0].zustand).toBe("offen");
+  });
+
+  it("Anwesenheit: Runden zählen, nach einer Stunde Stille genau eine Nachricht an den Visionär", async () => {
+    const { leadAnwesenheit, leadAlarme } = await ld();
+    const s = await sitzung(dienst, true, projekt);
+    expect((await s.rufen("report_lead_cycle", { project: "test", seconds: 240, tokens: 52000, reason: "reviews", outcome: "ok" })).fehler).toBe(false);
+    const a = await leadAnwesenheit(db, projekt);
+    expect(a?.aktiv).toBe(true);
+    expect(a?.letzte_runde).not.toBeNull();
+    expect((await db.query("select count(*)::int as n from lead_runden where projekt_id = $1", [projekt])).rows[0].n).toBe(1);
+    expect(await leadAnwesenheit(db, anderes)).toBeNull(); // dort kein Dienst eingerichtet
+    await db.query("update projekte set lead_gesehen = now() - interval '2 hours' where id = $1", [projekt]);
+    expect((await leadAnwesenheit(db, projekt))?.aktiv).toBe(false);
+    expect(await leadAlarme(db)).toBe(1);
+    expect(await leadAlarme(db)).toBe(0); // ein Ausfall, eine Nachricht
+    const nachricht = (await db.query("select an, betreff from nachrichten where projekt_id = $1 and von_mensch is null order by id desc limit 1", [projekt])).rows[0];
+    expect(nachricht).toEqual({ an: "visionaer", betreff: "Lead service not reachable" });
+    // Er war nach dem Alarm wieder da (Lebenszeichen nach dem Alarm) und schweigt erneut eine Stunde: neuer Ausfall, neue Nachricht
+    await db.query("update projekte set lead_alarm = now() - interval '3 hours', lead_gesehen = now() - interval '90 minutes' where id = $1", [projekt]);
+    expect(await leadAlarme(db)).toBe(1);
+  });
+
+  it("Git-Zugang ohne GitHub App: kein Token, sondern der Hinweis auf eine eigene Token-Datei", async () => {
+    const { leadGitZugang } = await ld();
+    const g = await leadGitZugang(db, lead.menschId, projekt);
+    expect(g.token).toBeNull();
+    expect(g.repo_git).toMatch(/\.git$/);
+    expect(g.hinweis).toMatch(/--git-token-file/);
+    expect(g.autor.name).toBe("nevs");
   });
 });

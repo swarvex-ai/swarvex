@@ -6,6 +6,7 @@
 //   /tasks/<id>/lfs/<oid>                 ein Git-LFS-Objekt (nur Lease-Inhaber)
 //   /donations/<id>/file                  hochgeladene Credit-Spende (nur Lead, Visionär, Bereichs-Leads)
 //   /donations/<id>/upload (PUT)          Ergebnis eines Medien-Auftrags vom Runner (Zusage über den Runner)
+//   /lead-service/git (POST)              Git-Zugang für das Repository eines Lead-Dienstes (an ein Projekt gebundene Anmeldung)
 //   /api/projects[/<slug>[/metrics]]      öffentliche Projektdaten (Website, Rangliste)
 //   /api/account/…, /api/reports[/challenge], /api/log/…  Mein Konto, Meldeformular (mit Captcha), veröffentlichte Kopf-Hashes
 //   /pipeline/…                           Prüfstraße und Merge-Bot (HMAC-signiert)
@@ -22,6 +23,7 @@ import { ohneGegenpruefungFreigeben } from "./gegenpruefung.ts";
 import { lfsObjektSenden, snapshotSenden } from "./snapshot.ts";
 import { aufraeumen as spendenAufraeumen, dateiSenden as spendeSenden, hochladen as spendeHochladen } from "./spenden.ts";
 import { pruefstrasseBehandeln } from "./pruefstrasse.ts";
+import { leadAlarme, leadGitZugang } from "./leaddienst.ts";
 import { abzeichen, kennzahlen, kurzlinkZiel, projektDetail, projektListe, schwarmLive } from "./kennzahlen.ts";
 import { englisch } from "./auth/interaktion.ts";
 import { nachAussen } from "./aussen.ts";
@@ -76,6 +78,9 @@ await boss.createQueue("besuche-abschliessen");
 await boss.schedule("besuche-abschliessen", "7 * * * *");
 await boss.work("besuche-abschliessen", async () => { await besucheAbschliessen(db); });
 // Kopf-Hash täglich signieren (03:17 UTC); der externe Anker holt ihn danach ab.
+await boss.createQueue("lead-anwesenheit");
+await boss.schedule("lead-anwesenheit", "*/5 * * * *");
+await boss.work("lead-anwesenheit", async () => { const n = await leadAlarme(db); if (n) console.log(`lead services not reachable: ${n} visionaries told`); });
 await boss.createQueue("kopf-veroeffentlichen");
 // Dateien entschiedener Credit-Spenden nach 30 Tagen löschen
 await boss.createQueue("spenden-aufraeumen");
@@ -200,6 +205,10 @@ const server = createServer(async (req, res) => {
       let z;
       try { z = await zugang(req.headers.authorization); }
       catch (e) { if (e instanceof NichtAngemeldet) return json(res, 401, { error: "invalid_token" }); throw e; }
+      if (z.leadProjekt !== null) {
+        const a = (await db.query("select projekt_id from spendenauftraege where id = $1", [Number(spende[1])])).rows[0];
+        if (!a || Number(a.projekt_id) !== z.leadProjekt) return json(res, 403, { error: "the lead service works only on its own project" });
+      }
       try { return await spendeSenden(db, z.menschId, Number(spende[1]), res); }
       catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
     }
@@ -210,9 +219,20 @@ const server = createServer(async (req, res) => {
       let z;
       try { z = await zugang(req.headers.authorization); }
       catch (e) { if (e instanceof NichtAngemeldet) return json(res, 401, { error: "invalid_token" }); throw e; }
-      if (z.runner !== true) return json(res, 403, { error: "only the swarvex runner uploads here" });
+      if (z.runner !== true || z.leadProjekt !== null) return json(res, 403, { error: "only the swarvex runner uploads here" });
       if (gebremst("mcp", `agent:${z.agentId}`)) return;
       try { return json(res, 200, nachAussen(await spendeHochladen(db, z.menschId, Number(runnerUpload[1]), req, url.searchParams.get("name") ?? "", z.agentId))); }
+      catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
+    }
+
+    // Lead-Dienst: Git-Zugang nur für das Repository seines Projekts (kurzlebiges Token der GitHub App)
+    if (url.pathname === "/lead-service/git" && req.method === "POST") {
+      let z;
+      try { z = await zugang(req.headers.authorization); }
+      catch (e) { if (e instanceof NichtAngemeldet) return json(res, 401, { error: "invalid_token" }); throw e; }
+      if (z.leadProjekt === null) return json(res, 403, { error: "only a lead service bound to a project (swarvex project lead setup) gets git access here" });
+      if (gebremst("mcp", `agent:${z.agentId}`)) return;
+      try { return json(res, 200, nachAussen(await leadGitZugang(db, z.menschId, z.leadProjekt))); }
       catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
     }
 

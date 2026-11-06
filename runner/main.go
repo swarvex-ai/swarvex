@@ -13,6 +13,7 @@
 //	swarvex budget [--task N] [--daily N] [--media N]  Token-Grenzen und Medien-Aufträge je Tag anzeigen oder ändern
 //	swarvex help [befehl]                         alle Befehle bzw. die Optionen eines Befehls (auch -h, --help, -?, ?)
 //	swarvex uninstall                             alles entfernen, Gerät abmelden
+//	swarvex project lead <befehl> <projekt>      Lead eines Projekts als Dienst in einer eigenen Sandbox (lead.go)
 //	swarvex proxy                                 Schlüssel-Proxy (läuft im Proxy-Container)
 package main
 
@@ -35,6 +36,8 @@ func main() {
 			ausgangStarten() // Ausgangs-Proxy fürs Einrichten (gleiches Image, eigener Modus)
 		} else if len(os.Args) > 2 && os.Args[2] == "tool" {
 			brueckeStarten() // Werkzeug-Brücke im Werkzeug-Container (bruecke.go)
+		} else if len(os.Args) > 2 && os.Args[2] == "lead" {
+			leadProxyStarten() // Proxy des Lead-Containers (leadproxy.go)
 		} else {
 			proxyStarten()
 		}
@@ -56,6 +59,8 @@ func main() {
 		stopBefehl()
 	case "status":
 		statusBefehl()
+	case "project":
+		projektBefehl(os.Args[2:])
 	case "update":
 		updateBefehl(os.Args[2:])
 	case "version", "--version", "-v":

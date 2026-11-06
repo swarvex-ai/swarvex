@@ -26,6 +26,12 @@
 
   const datum = (x: string | null) => (x ? new Intl.DateTimeFormat(t.sprache, { dateStyle: "long", timeZone: "Europe/Berlin" }).format(new Date(x)) : "–");
   const zeit = (x: string) => new Intl.DateTimeFormat(t.sprache, { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(x));
+  // Lead-Dienst (swarvex project lead): „vor 4 Minuten“, „vor 3 Stunden“
+  const vor = (x: string) => {
+    const rtf = new Intl.RelativeTimeFormat(t.sprache, { numeric: "auto" });
+    const m = Math.max(0, Math.round((Date.now() - new Date(x).getTime()) / 60_000));
+    return m < 60 ? rtf.format(-m, "minute") : m < 48 * 60 ? rtf.format(-Math.round(m / 60), "hour") : rtf.format(-Math.round(m / 1440), "day");
+  };
 
   // Aufgaben-Filter: offen / in Arbeit (reserviert bis Prüfung) / fertig (angenommen, übernommen)
   const gruppe = (z: string) => (z === "open" ? "offen" : ["accepted", "merged"].includes(z) ? "fertig" : "arbeit");
@@ -114,6 +120,10 @@
         <dt>{d.engine}</dt><dd>{p.engine}</dd>
         <dt>{d.lizenz}</dt><dd>{p.license}</dd>
         <dt>{d.leadModell}</dt><dd>{p.lead_model}</dd>
+        {#if p.lead_service}
+          <dt>{d.leadDienst}</dt>
+          <dd class:still={!p.lead_service.active}>{p.lead_service.active ? d.leadAktiv(p.lead_service.last_cycle ? vor(p.lead_service.last_cycle) : null) : d.leadStill(p.lead_service.seen ? vor(p.lead_service.seen) : "–")}</dd>
+        {/if}
         {#if p.upstream}
           <dt>{tx().starten.anlegen.weiter}</dt>
           <dd><a href={p.upstream.repo} rel="nofollow noopener">{p.upstream.repo.replace(/^https:\/\//, "")}</a> · {tx().starten.upstream.zustaende[p.upstream.status]?.[0] ?? p.upstream.status}</dd>
@@ -298,6 +308,7 @@
   .pfad { padding-top: 32px; font-size: .9rem; }
   .pfad a { color: var(--stahl); }
   .kopf { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; margin: 12px 0 28px; }
+  .steckbrief dd.still { color: var(--bernstein); }
   .vorschau-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
   .kopf h1 { font-size: clamp(2.1rem, 4.5vw, 3.2rem); margin-bottom: 10px; }
   .aktionen { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }

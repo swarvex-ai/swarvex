@@ -27,6 +27,7 @@ import { bereichsLeadsFuer } from "./bereichsleads.ts";
 import { gegenpruefungMelden, naechsteGegenpruefung } from "./gegenpruefung.ts";
 import type { Zugang } from "./auth/zugang.ts";
 import { anRein, nachrichtBeantworten, nachrichtSenden, offeneFuerMich, posteingang } from "./nachrichten.ts";
+import { gebundenPruefen, leadDienstBinden, leadGesehen, LEAD_DIENST_WERKZEUGE, rundeMelden } from "./leaddienst.ts";
 import { auftraegeFuerLead, auftragAnlegen, DATEITYPEN, DIENSTE, MEDIEN_JE_TAG_MAX, runnerAuftragAbbrechen, runnerAuftragBeginnen, runnerAuftraege, runnerZusagenSetzen, spendeBewerten, zusagenFuerLead } from "./spenden.ts";
 
 // Ohne Rückgabewert: „ok“ (JSON.stringify(undefined) wäre kein Text, und der MCP-Client verwürfe die ganze Antwort)
@@ -60,6 +61,28 @@ const usage = z.record(z.string(), z.number()).default({}).describe("Usage so fa
 export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
   const s = new McpServer({ name: "swarvex", version: "0.1.0" });
   const wer = { menschId: z0.menschId, agentId: z0.agentId, runner: z0.runner };
+  // Lead-Dienst (leaddienst.ts): eine an ein Projekt gebundene Anmeldung sieht nur die Lead-Werkzeuge, nur für dieses Projekt.
+  const gebunden = z0.leadProjekt;
+  if (gebunden !== null) {
+    const registrieren = s.registerTool.bind(s) as (...a: unknown[]) => unknown;
+    (s as unknown as { registerTool: unknown }).registerTool = (name: string, def: unknown, handler: (a: Record<string, unknown>, extra: unknown) => unknown) => {
+      if (!LEAD_DIENST_WERKZEUGE.has(name)) return undefined;
+      return registrieren(name, def, async (a: Record<string, unknown>, extra: unknown) => {
+        const nein = await gebundenPruefen(db, gebunden, name, a ?? {});
+        return nein ? { ...text(`Rejected: ${nein}`), isError: true } : handler(a, extra);
+      });
+    };
+    s.registerTool("report_lead_cycle", {
+      description: "(swarvex runner, lead service) Records one finished cycle of the lead service: duration, tokens, why it ran and how it ended. The runner calls this, not the lead agent.",
+      inputSchema: { project: z.string(), seconds: z.number().int().min(0).max(86400), tokens: z.number().int().min(0).default(0),
+        reason: z.string().min(1).max(200), outcome: z.string().min(1).max(200) },
+    }, sicher(async ({ seconds, tokens, reason, outcome }) => rundeMelden(db, wer, gebunden, { sekunden: seconds, tokens, anlass: reason, ergebnis: outcome })));
+  } else if (z0.runner && await istLeadIrgendwo(db, wer.menschId)) {
+    s.registerTool("bind_lead_service", {
+      description: "(swarvex runner) Binds this sign-in to the lead service of one project whose lead or visionary you are (swarvex project lead setup). From then on it sees only that project's lead tools, decides no approvals and gets git access only for that repository. Final for this sign-in; to undo, sign the device out under My account.",
+      inputSchema: { project: z.string() },
+    }, sicher(async ({ project }) => leadDienstBinden(db, wer, project)));
+  }
 
   s.registerTool("project_context", {
     description: "Vision, goal, engine, licenses, lead model and your roles in a project.",
@@ -381,6 +404,7 @@ export async function mcpBehandeln(db: Db, zugang: Zugang, req: IncomingMessage,
     await db.query("update agenten set programm = left($2, 60), programm_version = left($3, 40), programm_seit = now() where id = $1",
       [zugang.agentId, info.name, typeof info.version === "string" ? info.version : ""]).catch(() => {});
   }
+  if (zugang.leadProjekt !== null) await leadGesehen(db, zugang.leadProjekt);
   const server = await mcpServerFuer(db, zugang);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   res.on("close", () => { transport.close(); server.close(); });

@@ -5,8 +5,10 @@ package main
 // lokale und reservierte Adressen ab (Heimnetz, Router, NAS, der eigene Rechner) und verbindet auf genau die geprüfte
 // Adresse, damit eine zweite DNS-Antwort nichts umleiten kann. Läuft im Image swarvex-proxy: `swarvex proxy egress`.
 //
-//	SWARVEX_EGRESS_MODE   public (Standard): nur öffentliche Adressen; lan: auch private (nicht Loopback)
-//	SWARVEX_EGRESS_ALLOW  Ausnahmen trotz „public“, durch Komma getrennt: IP, CIDR oder Hostname (z. B. ein Paketspiegel)
+//	SWARVEX_EGRESS_MODE   public (Standard): nur öffentliche Adressen; lan: auch private (nicht Loopback);
+//	                      only: nur die Hosts aus SWARVEX_EGRESS_ALLOW (Lead-Dienst: der Git-Host des Projekts, lead.go)
+//	SWARVEX_EGRESS_ALLOW  Ausnahmen trotz „public“, durch Komma getrennt: IP, CIDR oder Hostname (z. B. ein Paketspiegel);
+//	                      bei „only“ die erlaubten Hosts: genau genannte auch im eigenen Netz, *.domain nur öffentlich
 
 import (
 	"context"
@@ -51,6 +53,8 @@ func oeffentlicheAdresse(ip net.IP) bool {
 
 type ausgangRegeln struct {
 	lan      bool
+	nur      bool     // only: ausschließlich die genannten Hosts
+	muster   []string // bei only: Endungen aus *.domain (".domain"), nur öffentliche Adressen
 	ausnahme []*net.IPNet
 	hosts    map[string]bool
 }
@@ -61,13 +65,19 @@ func ausgangRegelnLesen(modus, erlaubt string) (ausgangRegeln, error) {
 	case "", "public":
 	case "lan":
 		r.lan = true
+	case "only":
+		r.nur = true
 	default:
-		return r, fmt.Errorf("SWARVEX_EGRESS_MODE: public or lan, not %q", modus)
+		return r, fmt.Errorf("SWARVEX_EGRESS_MODE: public, lan or only, not %q", modus)
 	}
 	for _, e := range strings.Split(erlaubt, ",") {
 		e = strings.TrimSpace(e)
 		switch {
 		case e == "":
+		case r.nur && strings.HasPrefix(e, "*.") && len(e) > 2:
+			r.muster = append(r.muster, strings.ToLower(e[1:]))
+		case r.nur && (strings.Contains(e, "/") || net.ParseIP(e) != nil):
+			return r, fmt.Errorf("SWARVEX_EGRESS_ALLOW with only: host names, not %q", e)
 		case strings.Contains(e, "/"):
 			_, n, err := net.ParseCIDR(e)
 			if err != nil {
@@ -88,6 +98,18 @@ func ausgangRegelnLesen(modus, erlaubt string) (ausgangRegeln, error) {
 func (r ausgangRegeln) erlaubt(host string, ip net.IP) bool {
 	if ip.IsLoopback() || ip.IsUnspecified() {
 		return false // nie: das wäre der Proxy selbst
+	}
+	if r.nur {
+		h := strings.ToLower(host)
+		if r.hosts[h] {
+			return !ip.IsMulticast() // genau genannt (der Git-Host), auch im eigenen Netz
+		}
+		for _, m := range r.muster {
+			if strings.HasSuffix(h, m) {
+				return oeffentlicheAdresse(ip)
+			}
+		}
+		return false
 	}
 	if oeffentlicheAdresse(ip) || r.hosts[strings.ToLower(host)] {
 		return true
@@ -126,6 +148,10 @@ func (a *ausgang) ziel(ctx context.Context, hostport string) (string, error) {
 			}
 			return net.JoinHostPort(ip.IP.String(), port), nil
 		}
+	}
+	if a.regeln.nur {
+		ereignis("egress_blocked", map[string]any{"host": host, "reason": "not an allowed host"})
+		return "", fmt.Errorf("blocked: %s is not an allowed host here", host)
 	}
 	ereignis("egress_blocked", map[string]any{"host": host, "reason": "private, local or reserved address"})
 	return "", fmt.Errorf("blocked: %s resolves only to private, local or reserved addresses", host)

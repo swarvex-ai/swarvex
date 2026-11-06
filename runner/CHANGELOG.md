@@ -5,6 +5,18 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.12.0 (unreleased)
+
+- Lead service for visionaries: `swarvex project lead setup <project>` runs your project's lead as a background service
+  in its own sandbox instead of a session with all your rights on your machine. Tests, the editor and the game run
+  inside it (with a virtual display for screenshots), never on your computer. It reaches only the model, swarvex and the
+  project's git host; keys and tokens stay outside in its proxy, and git gets a token for this one repository.
+- The lead service signs in as its own device, bound to the project: it sees only that project's lead tools and cannot
+  decide approvals, those stay with you. The runner waits for work outside the sandbox (no tokens) and starts a cycle of
+  the agent only when there is something to do; the project page shows whether the lead is active.
+- `swarvex project lead status|logs|attach|exec|stop|start|remove <project>`: attach talks to the lead in its sandbox,
+  exec runs a command there (for example `godot --version`).
+
 ## 0.11.1 (6 Nov 2026)
 
 - A stopped service now says so: `swarvex status` shows `Service: inactive (stopped; start it with: swarvex start)`,

@@ -30,6 +30,9 @@ var befehlsGruppen = []struct {
 		{"history", "history", "last tasks: submitted or handed back, reason, tokens"},
 		{"budget", "budget [--task N] [--daily N]", "show or change the token limits (0 = no limit)"},
 	}},
+	{"Lead a project (visionaries)", []befehlInfo{
+		{"project", "project lead setup <project>", "run your project's lead as a service in its own sandbox (also: status, logs, attach, stop, start, remove)"},
+	}},
 	{"Maintain", []befehlInfo{
 		{"update", "update [--check|--rollback]", "install the newest version; settings stay (--check: what's new, --rollback: back)"},
 		{"version", "version", "show the installed version"},

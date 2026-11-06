@@ -292,8 +292,12 @@ func uninstallBefehl(args []string) {
 			fmt.Printf("  ✓ %s\n", text)
 		}
 	}
-	// 1. Dienst anhalten (gibt eine laufende Aufgabe zurück) und entfernen
+	// 1. Dienst anhalten (gibt eine laufende Aufgabe zurück) und entfernen, ebenso Lead-Dienste (lead.go)
 	if runtime.GOOS == "linux" {
+		for _, p := range leadProjekte() {
+			leadDienstEntfernen(p)
+			schritt("lead service for "+p+" stopped, removed and signed out", nil)
+		}
 		if _, err := os.Stat(dienstDatei()); err == nil {
 			systemctl("disable", "--now", dienstName)
 			err := os.Remove(dienstDatei())

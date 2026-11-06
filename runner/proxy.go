@@ -54,6 +54,15 @@ var proxyOhneKopf = map[string]bool{"authorization": true, "x-api-key": true, "h
 	"proxy-authorization": true, "cookie": true}
 
 func proxyStarten() {
+	k := proxyKonfigLesen()
+	var verbraucht atomic.Int64
+	log.Printf("proxy: listening on %s, %s API, model %q, budget %d tokens", k.listen, k.api, k.modell, k.budget)
+	http.HandleFunc("/", proxyHandler(k, &verbraucht))
+	log.Fatal(http.ListenAndServe(k.listen, nil))
+}
+
+// proxyKonfigLesen: Einstellungen des Schlüssel-Proxys aus der Umgebung (auch für den Lead-Proxy, leadproxy.go).
+func proxyKonfigLesen() proxyKonfig {
 	k := proxyKonfig{
 		upstream:    strings.TrimRight(os.Getenv("SWARVEX_UPSTREAM"), "/"),
 		upstreamKey: os.Getenv("SWARVEX_UPSTREAM_KEY"),
@@ -77,10 +86,7 @@ func proxyStarten() {
 	}
 	// Den echten Schlüssel nicht in der Umgebung stehen lassen (z. B. für Kindprozesse).
 	os.Unsetenv("SWARVEX_UPSTREAM_KEY")
-	var verbraucht atomic.Int64
-	log.Printf("proxy: listening on %s, %s API, model %q, budget %d tokens", k.listen, k.api, k.modell, k.budget)
-	http.HandleFunc("/", proxyHandler(k, &verbraucht))
-	log.Fatal(http.ListenAndServe(k.listen, nil))
+	return k
 }
 
 func proxyHandler(k proxyKonfig, verbraucht *atomic.Int64) http.HandlerFunc {

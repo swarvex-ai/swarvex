@@ -25,6 +25,25 @@ type zugangsdaten struct {
 	CAPfad       string `json:"ca_path,omitempty"`
 	ClientID     string `json:"client_id"`
 	RefreshToken string `json:"refresh_token"`
+	datei        string // leer = access.json; ein Lead-Dienst hat seine eigene Anmeldung (lead.go)
+}
+
+// pfad: die Datei dieser Anmeldung.
+func (z *zugangsdaten) pfad() string {
+	if z.datei != "" {
+		return z.datei
+	}
+	return filepath.Join(konfigOrdner(), "access.json")
+}
+
+// zugangLadenAus: eine weitere Anmeldung aus ihrer eigenen Datei (z. B. die eines Lead-Dienstes).
+func zugangLadenAus(datei string) (*zugangsdaten, error) {
+	roh, err := os.ReadFile(datei)
+	if err != nil {
+		return nil, err
+	}
+	z := zugangsdaten{datei: datei}
+	return &z, json.Unmarshal(roh, &z)
 }
 
 // zugangAlt: Format vor der Umstellung auf Englisch (zugang.json); wird beim ersten Laden übernommen.
@@ -82,7 +101,7 @@ func zugangSpeichern(z *zugangsdaten) error {
 	}
 	roh, _ := json.MarshalIndent(z, "", "  ")
 	// Erst ganz schreiben, dann umbenennen: Wer gleichzeitig liest, sieht nie eine halbe Datei.
-	ziel := filepath.Join(konfigOrdner(), "access.json")
+	ziel := z.pfad()
 	if err := os.WriteFile(ziel+".neu", roh, 0o600); err != nil {
 		return err
 	}
@@ -92,11 +111,11 @@ func zugangSpeichern(z *zugangsdaten) error {
 // zugangSperren: Es erneuert immer nur ein Prozess zugleich (Dienst, laufende Aufgabe, swarvex status, Gegenprüfung).
 // Die Plattform tauscht das Refresh-Token bei jeder Erneuerung aus und widerruft die ganze Anmeldung, sobald ein
 // schon verbrauchtes noch einmal kommt (Schutz gegen gestohlene Tokens).
-func zugangSperren() func() {
+func zugangSperren(z *zugangsdaten) func() {
 	if os.MkdirAll(konfigOrdner(), 0o700) != nil {
 		return func() {}
 	}
-	f, err := os.OpenFile(filepath.Join(konfigOrdner(), "access.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	f, err := os.OpenFile(strings.TrimSuffix(z.pfad(), ".json")+".lock", os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return func() {}
 	}
@@ -163,12 +182,20 @@ func loginBefehl(args []string) {
 		}
 		fmt.Println("   the saved sign-in no longer works (expired or revoked); signing in again")
 	}
-	c := httpClient(*ca)
+	host, _ := os.Hostname()
+	z, err := geraetAnmelden(basis, *ca, fmt.Sprintf("swarvex runner (%s)", host), "")
+	pruefen(err)
+	fmt.Println("Signed in. Access saved in", z.pfad())
+}
+
+// geraetAnmelden: als nativer Client registrieren, Gerätecode zeigen, auf die Bestätigung im Browser warten und die
+// Anmeldung in datei speichern ("" = access.json). Der Name erscheint auf der Bestätigungsseite und unter Mein Konto.
+func geraetAnmelden(basis, ca, name, datei string) (*zugangsdaten, error) {
+	c := httpClient(ca)
 
 	// 1. Als nativer Client registrieren (einmal pro Gerät).
-	host, _ := os.Hostname()
 	reg := map[string]any{
-		"client_name":                fmt.Sprintf("swarvex runner (%s)", host),
+		"client_name":                name,
 		"application_type":           "native",
 		"redirect_uris":              []string{},
 		"response_types":             []string{},
@@ -177,7 +204,9 @@ func loginBefehl(args []string) {
 	}
 	roh, _ := json.Marshal(reg)
 	r, err := c.Post(basis+"/reg", "application/json", strings.NewReader(string(roh)))
-	pruefen(err)
+	if err != nil {
+		return nil, err
+	}
 	var client struct {
 		ClientID string `json:"client_id"`
 		Fehler   string `json:"error_description"`
@@ -185,7 +214,7 @@ func loginBefehl(args []string) {
 	json.NewDecoder(r.Body).Decode(&client)
 	r.Body.Close()
 	if client.ClientID == "" {
-		fehlerAus("registration failed: " + client.Fehler)
+		return nil, fmt.Errorf("registration failed: %s", client.Fehler)
 	}
 
 	// 2. Gerätecode anfordern und dem Menschen zeigen.
@@ -199,7 +228,9 @@ func loginBefehl(args []string) {
 	_, err = formPost(c, basis+"/device/auth", url.Values{
 		"client_id": {client.ClientID}, "scope": {"openid offline_access mcp"}, "resource": {basis + "/mcp"},
 	}, &geraet)
-	pruefen(err)
+	if err != nil {
+		return nil, err
+	}
 	fmt.Printf("\nOpen in your browser:\n\n    %s\n\nand confirm the code  %s\n\n", geraet.VerificationURI, geraet.UserCode)
 	browserOeffnen(geraet.VerificationURI)
 
@@ -216,7 +247,9 @@ func loginBefehl(args []string) {
 			"grant_type": {"urn:ietf:params:oauth:grant-type:device_code"}, "device_code": {geraet.DeviceCode},
 			"client_id": {client.ClientID}, "resource": {basis + "/mcp"},
 		}, &tok)
-		pruefen(err)
+		if err != nil {
+			return nil, err
+		}
 		switch tok.Error {
 		case "authorization_pending":
 			continue
@@ -225,24 +258,27 @@ func loginBefehl(args []string) {
 			continue
 		case "":
 			if tok.RefreshToken == "" {
-				fehlerAus("no refresh token received")
+				return nil, fmt.Errorf("no refresh token received")
 			}
-			pruefen(zugangSpeichern(&zugangsdaten{Plattform: basis, CAPfad: *ca, ClientID: client.ClientID, RefreshToken: tok.RefreshToken}))
-			fmt.Println("Signed in. Access saved in", filepath.Join(konfigOrdner(), "access.json"))
-			return
+			z := &zugangsdaten{Plattform: basis, CAPfad: ca, ClientID: client.ClientID, RefreshToken: tok.RefreshToken, datei: datei}
+			return z, zugangSpeichern(z)
 		default:
-			fehlerAus("sign-in cancelled: " + tok.Error)
+			return nil, fmt.Errorf("sign-in cancelled: %s", tok.Error)
 		}
 	}
-	fehlerAus("device code expired")
+	return nil, fmt.Errorf("device code expired")
 }
 
 // zugriffstoken holt mit dem Refresh-Token ein frisches Access-Token (und speichert das rotierte Refresh-Token).
 func zugriffstoken(z *zugangsdaten) (string, error) {
-	frei := zugangSperren()
+	frei := zugangSperren(z)
 	defer frei()
 	// Hat ein anderer Prozess inzwischen erneuert, gilt dessen Token: das eigene im Speicher ist dann schon verbraucht.
-	if aktuell, err := zugangLaden(); err == nil && aktuell.Plattform == z.Plattform && aktuell.ClientID == z.ClientID && aktuell.RefreshToken != "" {
+	laden := zugangLaden
+	if z.datei != "" {
+		laden = func() (*zugangsdaten, error) { return zugangLadenAus(z.datei) }
+	}
+	if aktuell, err := laden(); err == nil && aktuell.Plattform == z.Plattform && aktuell.ClientID == z.ClientID && aktuell.RefreshToken != "" {
 		z.RefreshToken = aktuell.RefreshToken
 	}
 	var tok struct {

@@ -6,7 +6,8 @@
   import { pfad, sprache, tx, type Hinweis } from "$lib/texte";
 
   type Agent = { id: number; name: string; client_id: string; created: string; signed_out: string | null; signed_in: boolean;
-                 last: string | null; reservations: number; submissions: number };
+                 last: string | null; reservations: number; submissions: number; lead_project?: string | null };
+  type LeadDienst = { project: string; name: string; active: boolean; seen: string | null; last_cycle: string | null };
   type Datei = { path: string; added: number; removed: number; kind: string; lfs: boolean; binary: boolean; preview: boolean };
   type Beitrag = { submission: number; task: number; title: string; project: string; project_name: string; agent: string;
                    submitted: string; state: string; tokens: number; check: string | null; verdict: string | null; reason: string | null;
@@ -17,7 +18,7 @@
   type Modell = { agent_program: string; model: string; submissions: number; accepted: number; acceptance_percent: number; tokens_per_accepted: number | null };
   type Konto = { person: { login: string; provider: string; created: string; trust_level: number; public_profile?: boolean };
                  roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean }[]; agents: Agent[]; contributions: Beitrag[];
-                 total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[]; weekly_reports?: Woche[];
+                 total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[]; weekly_reports?: Woche[]; lead_services?: LeadDienst[];
                  trust?: { level: number; next: { level: number; missing: string[] } | null };
                  area_lead_appointments?: { invitations: Bereich[]; approvals: Bereich[]; automatic_appointment: { project: string; project_name: string; automatic: boolean }[] } };
   type Bereich = { id: number; project: string; project_name: string; area: string; paths: string[]; capabilities: string[]; reasons: string[]; created: string; login?: string; trust_level?: number };
@@ -287,6 +288,22 @@
       </section>
     {/if}
 
+    {#if konto.lead_services?.length}
+      <section aria-labelledby="t-leaddienst">
+        <h2 id="t-leaddienst">{t.leadDienst.h2}</h2>
+        <p class="leise einleitung">{t.leadDienst.text}</p>
+        <ul class="leaddienste">
+          {#each konto.lead_services as l (l.project)}
+            <li class:still={!l.active}>
+              <a href={pfad(s, `${projektPfad}/${l.project}`)}>{l.name}</a>
+              <span>{l.active ? t.leadDienst.aktiv(l.last_cycle ? zeit(l.last_cycle) : null) : t.leadDienst.still(zeit(l.seen))}</span>
+              {#if !l.active}<p class="leise klein">{t.leadDienst.hilfe} <code>swarvex project lead status {l.project}</code></p>{/if}
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
     {#if konto.approvals?.length}
       <section aria-labelledby="t-freigaben">
         <h2 id="t-freigaben">{t.freigabe.h2}</h2>
@@ -437,6 +454,7 @@
                 <span class="status {status(a)}"><i aria-hidden="true"></i>{t.status[status(a)]}</span>
               </div>
               <p class="client" title={a.client_id}>{a.client_id}</p>
+              {#if a.lead_project}<p class="leise klein">{t.leadDienst.fuer(a.lead_project)}</p>{/if}
               <dl>
                 <div><dt>{t.agent.seit}</dt><dd>{datum(a.created)}</dd></div>
                 <div><dt>{t.agent.zuletzt}</dt><dd>{zeit(a.last)}</dd></div>
@@ -657,4 +675,9 @@
   .auftrag .inhalt { white-space: pre-wrap; margin: 0; }
   .hochladen { position: relative; width: fit-content; cursor: pointer; }
   .hochladen input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .leaddienste { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .leaddienste li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--linie); border-radius: var(--radius-klein); }
+  .leaddienste li.still { border-color: var(--bernstein); }
+  .leaddienste li.still span { color: var(--bernstein); }
+  .leaddienste p { flex-basis: 100%; margin: 0; }
 </style>
