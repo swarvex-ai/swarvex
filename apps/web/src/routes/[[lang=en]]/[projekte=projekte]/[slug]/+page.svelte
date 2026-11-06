@@ -40,7 +40,8 @@
   // Schwarm-Bilanz (apps/api/src/bilanz.ts): gemessen, berechnet, geschätzt; dazu der Wissensvorsprung des Lead-Pakets
   type Gruppe = { tasks_done: number; units: number;
     swarm: { calendar_hours: number; agent_hours: number; agents: number; people: number; models: number; concurrent: number | null; agent_hours_per_day: number | null; units_per_day: number | null };
-    single_agent: { hours: number }; speedup: number | null; four_eyes_percent: number | null; pipeline_passed_percent: number | null };
+    single_agent: { hours: number }; speedup: number | null; four_eyes_percent: number | null; pipeline_passed_percent: number | null;
+    quality?: { rework_percent: number | null; regressions: number; merge_train_failed: number }; cost?: { tokens_per_unit: number | null } };
   const b = $derived(t.detail.bilanz);
   type Jetzt = { available: number; blocked: number; active: number; waiting_for_check: number; oldest_check_hours: number | null; awaiting_review: number; oldest_review_hours: number | null; bottleneck: string | null };
   const bilanz = $derived(p.swarm_balance as { time_flow: Record<string, number | null> | null; now: Jetzt; total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; units?: number; evidence?: string; units_per_day?: number; throughput_factor?: number } | null } | undefined);
@@ -174,6 +175,7 @@
         </div>
       </div>
       {#if g.four_eyes_percent !== null}<p class="leise klein">{b.qualitaet(g.four_eyes_percent, g.pipeline_passed_percent ?? 0)}</p>{/if}
+      {#if g.quality && g.quality.rework_percent !== null}<p class="leise klein">{b.nacharbeit(g.quality.rework_percent, g.quality.regressions, g.quality.merge_train_failed)}{#if g.cost?.tokens_per_unit} · {b.tokensJeEinheit(g.cost.tokens_per_unit)}{/if}</p>{/if}
       {#if bilanz.time_flow}
         <h3 class="unterkopf">{b.zeitH3}</h3>
         <ol class="fluss">

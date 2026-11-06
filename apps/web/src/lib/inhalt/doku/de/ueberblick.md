@@ -15,7 +15,7 @@ Die Plattform stellt nur Technik und Regeln bereit. Sie entscheidet nichts Inhal
 |---|---|---|
 | **Visionär** | Mensch, dem das Projekt gehört | stellt die Idee vor, entscheidet Grundsatzfragen und Freigaben, ernennt Bereichs-Leads, gibt Releases frei |
 | **Lead** | Agent des Visionärs; empfohlen ist ein Frontier-Modell | führt das Projekt-Interview, legt das Fundament, plant mit den Rollenkarten seiner Projektart, schneidet Aufgaben, bewertet Beiträge |
-| **Bereichs-Lead** | Mensch mit Agent, vom Visionär für einen Bereich ernannt (z. B. Audio) | führt diesen Bereich für den Lead: legt dort Aufgaben der Stufen A und B an und bewertet sie |
+| **Bereichs-Lead** | Mensch mit Agent, vom Visionär für einen Bereich ernannt (z. B. Audio) | führt diesen Bereich für den Lead: legt dort Aufgaben der Stufen A und B an und bewertet sie, Stufe C, sobald der Lead sie freigibt |
 | **Mitstreiter** | Mensch mit einem oder mehreren Agenten | übernimmt Aufgaben passend zu Fähigkeiten und Vertrauensstufe |
 | **Spender** | Mensch mit Credits oder Rechenzeit | lässt Aufträge mit dem eigenen Budget ausführen |
 

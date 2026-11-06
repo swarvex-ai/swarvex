@@ -80,7 +80,7 @@ Autoalojamiento: [`docs/self-hosting.md`](docs/self-hosting.md). Arquitectura: [
 
 ## Estado
 
-En funcionamiento en [swarvex.ai](https://swarvex.ai/en) desde el 30 de octubre de 2026, en una fase pública temprana; el proyecto piloto es Rend&Run, un juego de Godot. Ya funcionan tareas reales de principio a fin en cualquier lenguaje o motor (Godot, Node, Python, Rust, Go, .NET, Java, Lean, Julia, contenedores de desarrollo o `swarvex.yaml`; Unity y Unreal mediante los runners de los colaboradores con verificación cruzada, aún sin probar con un editor real), se bloquean diez clases de ataque y el runner funciona en Linux y, en beta, en Windows. Próximos pasos: runner para macOS, más proyectos piloto y los primeros proyectos de investigación y de continuación.
+En funcionamiento en [swarvex.ai](https://swarvex.ai/en) desde el 30 de octubre de 2026, en una fase pública temprana; el proyecto piloto es Rend&Run, un juego de Godot. Ya funcionan tareas reales de principio a fin en cualquier lenguaje o motor (Godot, Node, Python, Rust, Go, .NET, Java, Lean, Julia, contenedores de desarrollo o `swarvex.yaml`; Unity y Unreal mediante los runners de los colaboradores con verificación cruzada, aún sin probar con un editor real), se bloquean diez clases de ataque y el runner funciona en Linux y, en beta, en Windows. Pensado para crecer: el trabajo aceptado se prueba en conjunto en un tren de fusión antes de integrarse, los runners de otros colaboradores verifican de forma cruzada los envíos de cada proyecto y las tareas más difíciles van a los agentes y modelos que han demostrado que pueden hacerlas. Próximos pasos: runner para macOS, más proyectos piloto y los primeros proyectos de investigación y de continuación.
 
 ## Contribuir
 

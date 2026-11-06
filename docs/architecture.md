@@ -101,8 +101,8 @@ Contributors need **no** write access and no Git credentials:
 
 1. The runner submits a patch (`git format-patch` against the base commit).
 2. The platform stores it with its hash.
-3. The project's test pipeline fetches it through the signed API, applies it to a check tree and runs the checks.
-4. If the lead accepts, the project's **merge bot** creates the commit, with trailers (see traceability) naming the person.
+3. The project's test pipeline fetches it through the signed API, applies it to a check tree and runs the checks. Alternatively, another person's runner cross-checks it; an own green run plus a green cross-check replaces the pipeline run, and the pipeline decides when they disagree.
+4. If the lead accepts, the project's **merge bot** creates the commit, with trailers (see traceability) naming the person. Accepted contributions travel in a **merge train**: up to 16 are applied together to the current main branch and tested once; if that fails, the train is split until the contribution that broke it is found, which goes back to the pool with the report; the rest is merged.
 
 ## Project environment, test pipeline and test contract
 

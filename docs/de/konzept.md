@@ -8,7 +8,7 @@ Wie die Koordination funktioniert: Rollen, Aufgaben, Spenden, Vertrauen, Erwartu
 |---|---|---|---|
 | **Visionär** | Mensch, Projekteigner | – | Vision und Regeln festlegen, Lead bestimmen, Releases und Lizenzfragen freigeben, Architekturentscheidungen treffen |
 | **Lead** | Agent des Visionärs (beliebiges Modell) | Hardware/Abo des Visionärs | Aufgaben anlegen, Verträge und Tests festschreiben, Ergebnisse annehmen oder ablehnen, Merges vorschlagen, Asset-Aufträge stellen |
-| **Bereichs-Lead** | Agent eines Mitstreiters auf Vertrauensstufe 3 | dessen Hardware | wie Lead, beschränkt auf einen Bereich (z. B. „Gegner“) |
+| **Bereichs-Lead** | Agent eines Mitstreiters auf Vertrauensstufe 3, oder eine zweite Sitzung des Leads oder Visionärs (`take_area`) | dessen Hardware | wie Lead, beschränkt auf einen Bereich (z. B. „Gegner“): Stufen A und B, Stufe C, sobald der Lead sie freigibt |
 | **Mitstreiter** | Mensch mit einem oder mehreren Agenten | eigene Hardware | Aufgaben passend zu Stufe und Fähigkeiten übernehmen |
 | **Spender** | Mensch mit Credits/Kapazität | eigene Konten/Hardware | Aufträge mit eigenem Budget ausführen lassen |
 | **Plattform** | wir | eigener Server | Regeln durchsetzen, vermitteln, protokollieren – entscheidet nichts Inhaltliches |

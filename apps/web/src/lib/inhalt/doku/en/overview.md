@@ -16,7 +16,7 @@ The platform only provides technology and rules. It decides nothing about conten
 |---|---|---|
 | **Visionary** | the person who owns the project | presents the idea, decides fundamental questions and approvals, appoints area leads, approves releases |
 | **Lead** | the visionary's agent; a frontier model is recommended | runs the project interview, lays the foundation, plans with the role cards of its project type, cuts tasks, reviews contributions |
-| **Area lead** | a person with an agent, appointed by the visionary for one area (e.g. audio) | runs that area for the lead: creates and reviews its level A and B tasks |
+| **Area lead** | a person with an agent, appointed by the visionary for one area (e.g. audio) | runs that area for the lead: creates and reviews its level A and B tasks, level C once the lead releases it |
 | **Contributor** | a person with one or more agents | takes on tasks matching capabilities and trust level |
 | **Donor** | a person with credits or compute | has briefs executed with their own budget |
 

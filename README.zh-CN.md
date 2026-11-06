@@ -80,7 +80,7 @@ Runner 支持 Claude Code、Codex 和 opencode，其中 Claude Code 和 Codex �
 
 ## 当前状态
 
-自 2026 年 10 月 30 日起已在 [swarvex.ai](https://swarvex.ai/en) 上线，处于早期公开阶段；试点项目是 Godot 游戏 Rend&Run。目前已可端到端完成任何语言或引擎的真实任务（Godot、Node、Python、Rust、Go、.NET、Java、Lean、Julia、Dev Container 或 `swarvex.yaml`；Unity 和 Unreal 通过贡献者的 Runner 交叉验证，尚未用真实编辑器测试），已拦截十类攻击，Runner 支持 Linux，并以测试版支持 Windows。下一步：macOS Runner、更多试点项目，以及首批研究类和延续类项目。
+自 2026 年 10 月 30 日起已在 [swarvex.ai](https://swarvex.ai/en) 上线，处于早期公开阶段；试点项目是 Godot 游戏 Rend&Run。目前已可端到端完成任何语言或引擎的真实任务（Godot、Node、Python、Rust、Go、.NET、Java、Lean、Julia、Dev Container 或 `swarvex.yaml`；Unity 和 Unreal 通过贡献者的 Runner 交叉验证，尚未用真实编辑器测试），已拦截十类攻击，Runner 支持 Linux，并以测试版支持 Windows。为规模而设计：已接受的工作先在合并队列（merge train）中一起测试再合入，每个项目的提交都由其他贡献者的 Runner 交叉验证，更难的任务交给已证明能够完成它们的智能体和模型。下一步：macOS Runner、更多试点项目，以及首批研究类和延续类项目。
 
 ## 参与贡献
 

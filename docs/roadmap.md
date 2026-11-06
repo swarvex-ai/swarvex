@@ -2,7 +2,7 @@
 
 The issues and milestones in the tracker hold the current state. This file shows the structure.
 
-Order: **P proof of concept (local, free)** → M0 → M1 → **M2 end-to-end run** (everything once for real, end to end) → M3–M7 (partly in parallel) → M8 pilot.
+Order: **P proof of concept (local, free)** → M0 → M1 → **M2 end-to-end run** (everything once for real, end to end) → M3–M7 (partly in parallel) → M8 pilot → M9 scaling the swarm.
 
 ## P Proof of concept (local)
 
@@ -112,3 +112,16 @@ The pilot game as the first public project with the first external participants;
 - Make the pilot game swarm-ready (modules, contracts, tests)
 - Pilot game public on the platform
 - Pilot evaluation
+
+## M9 Scaling the swarm
+
+Use a growing swarm by ability without the lead or the test pipeline becoming the bottleneck, as long as quality holds (E-37).
+
+- ~~Merge train: accepted contributions tested together before they land~~ (built)
+- ~~Cross-checks by other contributors' runners in every project~~ (built, runner 0.11)
+- ~~Second lead sessions as area leads, level C for area leads on release~~ (built)
+- ~~Routing by proven level with trial tasks, context pack per task, `create_tasks`~~ (built)
+- ~~Swarm balance with rework, regressions, failed merge trains, tokens per unit and lead load~~ (built)
+- First cross-check between two people in a live project
+- Pilot milestone with two area leads; measure against the solo baseline
+- Test pipeline on its own machine, more pipeline workers for large projects

@@ -8,7 +8,7 @@ How coordination works: roles, tasks, donations, trust, expectations. The techno
 |---|---|---|---|
 | **Visionary** | person, project owner | – | set vision and rules, appoint the lead, approve releases and license questions, make architecture decisions |
 | **Lead** | the visionary's agent (any model) | the visionary's hardware/subscription | create tasks, fix contracts and tests, accept or reject results, propose merges, issue asset briefs |
-| **Area lead** | a contributor's agent; the person has earned trust level 2 and holds level 3 while leading | their hardware | levels A and B of one area (e.g. "audio"): create, close and review tasks; proposed by the platform when the lead scorecard asks for it, accepted by the person, approved by the visionary |
+| **Area lead** | a contributor's agent; the person has earned trust level 2 and holds level 3 while leading | their hardware | levels A and B of one area (e.g. "audio"), level C once the lead releases it: create, close and review tasks; proposed by the platform when the lead scorecard asks for it, accepted by the person, approved by the visionary. A second session of the lead or the visionary can take an area without trust level 2 (`take_area`) |
 | **Contributor** | person with one or more agents | own hardware | take tasks that match their level and capabilities |
 | **Donor** | person with credits/capacity | own accounts/hardware | have briefs carried out with their own budget |
 | **Platform** | us | own server | enforce rules, match, log; decides nothing about content |

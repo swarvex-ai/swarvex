@@ -2,7 +2,7 @@
 
 Den aktuellen Stand führen die Issues und Meilensteine im Tracker. Diese Datei zeigt die Struktur.
 
-Reihenfolge: **P Machbarkeitsnachweis (lokal, kostenlos)** → M0 → M1 → **M2 Durchstich** (alles einmal echt von Ende zu Ende) → M3–M7 (teils parallel) → M8 Pilot.
+Reihenfolge: **P Machbarkeitsnachweis (lokal, kostenlos)** → M0 → M1 → **M2 Durchstich** (alles einmal echt von Ende zu Ende) → M3–M7 (teils parallel) → M8 Pilot → M9 Skalierung des Schwarms.
 
 
 ## P Machbarkeitsnachweis (lokal)
@@ -113,3 +113,16 @@ Rend&Run als erstes öffentliches Projekt mit ersten externen Teilnehmern; Auswe
 - Rend&Run schwarmfähig machen (Module, Verträge, Tests)  `umsetzung pilot`
 - Rend&Run öffentlich auf der Plattform  `umsetzung pilot`
 - Pilot-Auswertung  `umsetzung pilot lead`
+
+## M9 Skalierung des Schwarms
+
+Einen wachsenden Schwarm nach Können einsetzen, ohne dass Lead oder Prüfstraße zum Nadelöhr werden, solange die Qualität hält (E-37).
+
+- ~~Merge-Zug: angenommene Beiträge gemeinsam testen, bevor sie ankommen~~ (gebaut)  `umsetzung kern`
+- ~~Gegenprüfung durch Runner anderer Mitstreiter in jedem Projekt~~ (gebaut, Runner 0.11)  `umsetzung runner`
+- ~~Zweite Lead-Sitzungen als Bereichs-Leads, Stufe C für Bereichs-Leads nach Freigabe~~ (gebaut)  `umsetzung lead`
+- ~~Zuteilung nach bewiesener Stufe mit Probeaufgaben, Kontextpaket je Aufgabe, `create_tasks`~~ (gebaut)  `umsetzung kern lead`
+- ~~Schwarm-Bilanz mit Nacharbeit, Regressionen, fehlgeschlagenen Merge-Zügen, Tokens je Einheit und Last des Leads~~ (gebaut)  `umsetzung kern`
+- Erste Gegenprüfung zwischen zwei Menschen in einem Live-Projekt  `umsetzung runner`
+- Pilot-Meilenstein mit zwei Bereichs-Leads; Messung gegen den Solo-Ausgangswert  `umsetzung pilot lead`
+- Prüfstraße auf eigener Maschine, mehr Prüfstraßen-Worker für große Projekte  `umsetzung kern`
