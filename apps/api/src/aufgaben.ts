@@ -110,6 +110,8 @@ export async function projektPerSlug(db: Db | Tx, slug: string) {
 
 export type NeueAufgabe = {
   titel: string; beschreibung: string; stufe: "A" | "B" | "C" | "D"; faehigkeiten: string[]; pfade: string[];
+  /** Kontextpaket: Dateien, die der Agent zuerst lesen soll (relativ zum Repo, auch Globs). */
+  kontext?: string[];
   akzeptanz: string[]; basis_commit?: string; lease_minuten?: number; min_vertrauen?: number; meilenstein?: string;
   /** Unbekannter Meilenstein-Titel wird nur mit neuer_meilenstein angelegt, sonst abgelehnt (Tippfehler wie "1" statt "M1"). */
   neuer_meilenstein?: boolean;
@@ -133,6 +135,9 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
     const rolle = officer?.bereich ?? a.rolle ?? null;
     const fehler = aufgabePruefen(p.verfahren, a.raum, a.pfade);
     if (fehler.length) throw new Abgelehnt(fehler.join("; "));
+    const kontext = (a.kontext ?? []).map((x) => x.trim()).filter(Boolean);
+    if (kontext.length > 20 || kontext.some((x) => x.length > 200 || x.includes("..") || x.startsWith("/") || /[\x00-\x1f]/.test(x)))
+      throw new Abgelehnt("context: at most 20 paths relative to the repository (files or globs), without .. and not starting with /");
     let meilensteinId: number | null = null;
     if (a.meilenstein) {
       const m = await tx.query("select id from meilensteine where projekt_id = $1 and titel = $2", [p.id, a.meilenstein]);
@@ -158,9 +163,9 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
       if (fehlt.length) throw new Abgelehnt(`depends_on: no open or finished task ${fehlt.map((x) => `#${x}`).join(", ")} in this project`);
     }
     const r = await tx.query(
-      `insert into aufgaben(projekt_id, meilenstein_id, titel, beschreibung, stufe, faehigkeiten, pfade, akzeptanz, basis_commit, lease_minuten, min_vertrauen, raum, rolle, abhaengig_von, abhaengig_eins_von)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) returning *`,
-      [p.id, meilensteinId, a.titel, a.beschreibung, a.stufe, a.faehigkeiten, a.pfade, a.akzeptanz, a.basis_commit ?? null, a.lease_minuten ?? 60, a.min_vertrauen ?? 0, a.raum ?? null, rolle, vorgaenger, JSON.stringify(gruppen)],
+      `insert into aufgaben(projekt_id, meilenstein_id, titel, beschreibung, stufe, faehigkeiten, pfade, akzeptanz, basis_commit, lease_minuten, min_vertrauen, raum, rolle, abhaengig_von, abhaengig_eins_von, kontext)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning *`,
+      [p.id, meilensteinId, a.titel, a.beschreibung, a.stufe, a.faehigkeiten, a.pfade, a.akzeptanz, a.basis_commit ?? null, a.lease_minuten ?? 60, a.min_vertrauen ?? 0, a.raum ?? null, rolle, vorgaenger, JSON.stringify(gruppen), kontext],
     );
     const aufgabe = r.rows[0];
     // Die erste Aufgabe macht aus dem Entwurf ein öffentlich gelistetes Projekt

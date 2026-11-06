@@ -35,6 +35,7 @@ type aufgabe struct {
 	Stufe        string   `json:"level"`
 	Pfade        []string `json:"paths"`
 	Akzeptanz    []string `json:"acceptance"`
+	Kontext      []string `json:"context"` // Kontextpaket des Leads: zuerst lesen
 	BasisCommit  string   `json:"base_commit"`
 	Projekt      string   `json:"project"`
 	Engine       string   `json:"engine"`
@@ -757,8 +758,16 @@ func auftragstext(a aufgabe, u umgebung.Umgebung) string {
 		// Der Snapshot hat kein .git; ohne diese Zeile nahmen Agenten einen Commit aus den Projektdokumenten.
 		fmt.Fprintf(&b, "The files are the project at commit %s (the base commit of this task; there is no .git folder).\n", a.BasisCommit)
 	}
-	b.WriteString("Read AGENTS.md first (if present) and follow the project's rules.\n\n")
-	fmt.Fprintf(&b, "TASK: %s\n\n%s\n\n", a.Titel, a.Beschreibung)
+	b.WriteString("Read AGENTS.md first (if present) and follow the project's rules.\n")
+	if len(a.Kontext) > 0 {
+		// Vom Lead gewählt: die Schnittstellen, der Code, den die Aufgabe erweitert, die Tests, die grün bleiben müssen
+		lesen := make([]string, len(a.Kontext))
+		for i, p := range a.Kontext {
+			lesen[i] = "/work/" + strings.TrimPrefix(p, "/")
+		}
+		b.WriteString("Then read these files the lead picked for this task, before you change anything: " + strings.Join(lesen, ", ") + "\n")
+	}
+	fmt.Fprintf(&b, "\nTASK: %s\n\n%s\n\n", a.Titel, a.Beschreibung)
 	b.WriteString("ACCEPTANCE CRITERIA:\n")
 	for _, k := range a.Akzeptanz {
 		fmt.Fprintf(&b, "- %s\n", k)

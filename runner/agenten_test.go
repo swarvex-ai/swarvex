@@ -131,6 +131,16 @@ func TestPatchGrenzen(t *testing.T) {
 	if strings.Contains(auftragstext(aufgabe{}, umgebung.Umgebung{}), "changed lines") {
 		t.Fatal("without limits from the platform: no rule")
 	}
+	// Kontextpaket des Leads: volle Pfade, vor der Aufgabe
+	var k aufgabe
+	json.Unmarshal([]byte(`{"title":"Pause menu","context":["game/modules/ui/menu_screen.gd","game/tests/*_test.gd"]}`), &k)
+	text := auftragstext(k, umgebung.Umgebung{})
+	if i, j := strings.Index(text, "/work/game/modules/ui/menu_screen.gd, /work/game/tests/*_test.gd"), strings.Index(text, "TASK:"); i < 0 || i > j {
+		t.Fatalf("context pack missing or after the task: %s", text)
+	}
+	if strings.Contains(auftragstext(aufgabe{}, umgebung.Umgebung{}), "the lead picked") {
+		t.Fatal("without context: no line")
+	}
 	kopf := "diff --git a/game/x.gd b/game/x.gd\nindex 1..2 100644\n--- a/game/x.gd\n+++ b/game/x.gd\n@@ -1,2 +1,3 @@\n"
 	patch := kopf + " gleich\n-alt\n+neu\n+--- kein Kopf, aber geändert\n"
 	if got := patchUmfang(patch, 3, 1); got != "" {

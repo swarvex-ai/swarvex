@@ -166,10 +166,8 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
   }
 
   if (await istLeadIrgendwo(db, wer.menschId) || (await k.officersVon(db, wer.menschId)).length) {
-    s.registerTool("create_task", {
-      description: "(Lead, area lead) Creates a task: level A–D, capabilities, allowed paths (globs), acceptance criteria, base commit, optional milestone (an existing title; a new one only with new_milestone) and role from the role catalog. Area leads: levels A and B inside their area only, the role is their area. Required in clean-room projects: room (analysis and review only write under specification/, build never does).",
-      inputSchema: {
-        project: z.string(), title: z.string(), description: z.string(), level: z.enum(["A", "B", "C", "D"]),
+    const aufgabeFelder = {
+        title: z.string(), description: z.string(), level: z.enum(["A", "B", "C", "D"]),
         capabilities: z.array(z.string()), paths: z.array(z.string()), acceptance: z.array(z.string()),
         base_commit: z.string().optional(), lease_minutes: z.number().int().min(5).max(24 * 60).optional(),
         min_trust: z.number().int().min(0).max(3).optional(), milestone: z.string().optional(),
@@ -179,14 +177,42 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
         depends_on: z.array(z.number().int()).max(20).optional().describe("Task numbers of this project that must be accepted first. The task is created now and offered automatically as soon as all of them are accepted: cut follow-up work in advance instead of waiting"),
         depends_on_any: z.array(z.array(z.number().int()).min(2).max(10)).max(10).optional().describe("Groups of task numbers of which at least one must be accepted, e.g. a variant pair [[45, 46]]; combined with depends_on"),
         variants: z.number().int().min(2).max(4).optional().describe("For questions of taste (sounds, styles, texts): creates this many linked variants that different agents work on in parallel. When one is accepted, the variants nobody has started yet close themselves. Follow-up tasks: depends_on_any with the returned numbers"),
+        context: z.array(z.string()).max(20).optional().describe("Context pack: files the agent should read first (the interfaces it uses, the code it extends, the tests that must stay green), relative to the repository; globs allowed. The runner puts them at the top of the brief. Name them from level B on: it saves tokens and makes smaller models useful"),
+    };
+    const aufgabeSchema = z.object(aufgabeFelder);
+    type AufgabeRein = z.infer<typeof aufgabeSchema>;
+    const neuAus = (a: AufgabeRein, abhaengig_von = a.depends_on): k.NeueAufgabe => ({
+      titel: a.title, beschreibung: a.description, stufe: a.level, faehigkeiten: a.capabilities, pfade: a.paths, akzeptanz: a.acceptance,
+      basis_commit: a.base_commit, lease_minuten: a.lease_minutes, min_vertrauen: a.min_trust, meilenstein: a.milestone, neuer_meilenstein: a.new_milestone,
+      raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role, abhaengig_von, abhaengig_eins_von: a.depends_on_any, kontext: a.context,
+    });
+    s.registerTool("create_task", {
+      description: "(Lead, area lead) Creates a task: level A–D, capabilities, allowed paths (globs), acceptance criteria, context pack, base commit, optional milestone (an existing title; a new one only with new_milestone) and role from the role catalog. Area leads: levels A and B inside their area only, the role is their area. Required in clean-room projects: room (analysis and review only write under specification/, build never does).",
+      inputSchema: { project: z.string(), ...aufgabeFelder },
+    }, sicher(async ({ project, ...a }) =>
+      a.variants ? k.variantenAnlegen(db, wer, project, neuAus(a), a.variants) : k.aufgabeAnlegen(db, wer, project, neuAus(a))));
+
+    s.registerTool("create_tasks", {
+      description: "(Lead, area lead) Creates several tasks of one project in one call, same fields as create_task each. after: indices (0-based) of earlier tasks in this call that must be accepted first; they are added to depends_on, so a cut into code and tests or a chain of steps goes in at once. Stops at the first task that is refused and returns what was created.",
+      inputSchema: {
+        project: z.string(),
+        tasks: z.array(z.object({ ...aufgabeFelder, after: z.array(z.number().int().min(0)).max(20).optional() })).min(1).max(25),
       },
-    }, sicher(async (a) => {
-      const neu: k.NeueAufgabe = {
-        titel: a.title, beschreibung: a.description, stufe: a.level, faehigkeiten: a.capabilities, pfade: a.paths, akzeptanz: a.acceptance,
-        basis_commit: a.base_commit, lease_minuten: a.lease_minutes, min_vertrauen: a.min_trust, meilenstein: a.milestone, neuer_meilenstein: a.new_milestone,
-        raum: a.room ? RAUM_REIN[a.room] : undefined, rolle: a.role, abhaengig_von: a.depends_on, abhaengig_eins_von: a.depends_on_any,
-      };
-      return a.variants ? k.variantenAnlegen(db, wer, a.project, neu, a.variants) : k.aufgabeAnlegen(db, wer, a.project, neu);
+    }, sicher(async ({ project, tasks }) => {
+      const angelegt: { index: number; aufgaben: number[] }[] = [];
+      for (const [i, { after, ...a }] of tasks.entries()) {
+        if ((after ?? []).some((j) => j >= i)) return { angelegt, abgewiesen: { index: i, grund: "after: only indices of earlier tasks in this call" } };
+        const vorher = (after ?? []).flatMap((j) => angelegt[j].aufgaben);
+        try {
+          const r: any = a.variants ? await k.variantenAnlegen(db, wer, project, neuAus(a, [...(a.depends_on ?? []), ...vorher]), a.variants)
+            : await k.aufgabeAnlegen(db, wer, project, neuAus(a, [...(a.depends_on ?? []), ...vorher]));
+          angelegt.push({ index: i, aufgaben: r.varianten ?? [Number(r.id)] });
+        } catch (e) {
+          if (e instanceof k.Abgelehnt) return { angelegt, abgewiesen: { index: i, grund: e.message } };
+          throw e;
+        }
+      }
+      return { angelegt };
     }));
 
     s.registerTool("close_task", {

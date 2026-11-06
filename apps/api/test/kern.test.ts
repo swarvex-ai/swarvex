@@ -1250,6 +1250,44 @@ new file mode 100644
   });
 });
 
+describe("MCP: Aufgaben gebündelt anlegen, Kontextpaket", () => {
+  const werkzeuge = async (wer: { menschId: number; agentId: number }) => {
+    const { mcpServerFuer } = await import("../src/mcp.ts");
+    const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+    const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+    const server = await mcpServerFuer(db, { ...wer, runner: false, clientId: "test", token: "t", scopes: ["mcp"], ablauf: Date.now() + 60_000 });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test", version: "1" });
+    await Promise.all([server.connect(a), client.connect(b)]);
+    return async (name: string, args: Record<string, unknown>) => {
+      const r: any = await client.callTool({ name, arguments: args });
+      return JSON.parse(r.content[0].text);
+    };
+  };
+  const feld = { capabilities: ["code.gdscript"], paths: ["game/modules/vfx/**"], acceptance: ["tests green"] };
+  it("legt Code und Tests in einem Aufruf an, after wird zu depends_on; das Kontextpaket kommt im Auftrag an", async () => {
+    const rufen = await werkzeuge(lead);
+    const r = await rufen("create_tasks", { project: "test", tasks: [
+      { title: "Pausenmenü: Code", description: "Screen und Anbindung", level: "B", ...feld, context: ["game/modules/ui/menu_screen.gd", "game/tests/menu_test.gd"] },
+      { title: "Pausenmenü: Tests", description: "neue Prüfungen", level: "B", ...feld, after: [0] },
+    ] });
+    expect(r.created).toHaveLength(2);
+    const [code, tests] = r.created.map((x: { tasks: number[] }) => x.tasks[0]);
+    const d: any = await k.details(db, mit, tests);
+    expect(d.abhaengig_von.map(Number)).toEqual([code]);
+    expect((await k.details(db, mit, code) as any).kontext).toEqual(["game/modules/ui/menu_screen.gd", "game/tests/menu_test.gd"]);
+    // Abgewiesen: Index nach vorn, Kontext mit .., und was davor lag, bleibt angelegt
+    const f = await rufen("create_tasks", { project: "test", tasks: [
+      { title: "Gut", description: "d", level: "A", ...feld },
+      { title: "Schlechter Kontext", description: "d", level: "A", ...feld, context: ["../geheim"] },
+    ] });
+    expect(f.created).toHaveLength(1);
+    expect(f.rejected).toMatchObject({ index: 1, reason: expect.stringMatching(/context/) });
+    expect((await rufen("create_tasks", { project: "test", tasks: [{ title: "X", description: "d", level: "A", ...feld, after: [0] }] })).rejected.index).toBe(0);
+    for (const id of [code, tests, f.created[0].tasks[0]]) await k.schliessen(db, lead, id, "Test");
+  });
+});
+
 describe("Gegenprüfung für alle Projekte (Runner ab 0.11)", () => {
   const zustand = async (id: number) => (await db.query("select zustand from aufgaben where id = $1", [id])).rows[0].zustand;
   const mitPruefstrasse = async (lauf: (senden: (m: string, p: string, k?: unknown) => Promise<any>) => Promise<void>) => {

@@ -15,6 +15,8 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   with the reason in `swarvex history`. Before, the runner counted it as submitted and the task stayed reserved until
   its reservation ran out.
 - The runner checks these limits itself before submitting, and the agent learns them in its brief.
+- Context pack: files the lead names for a task (interfaces, the code it extends, tests that must stay green) come at
+  the top of the agent's brief, so it reads them first instead of searching.
 
 ## 0.10.0 (6 Nov 2026)
 

@@ -37,7 +37,8 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 
 | Werkzeug | Zweck |
 |---|---|
-| `create_task` | Stufe, Fähigkeiten, Pfade, Akzeptanz, Basis-Commit, Lease, Mindest-Vertrauen, Meilenstein (neue nur mit `new_milestone`), Rolle (z. B. `audio`), `depends_on` (automatisch frei, sobald diese Aufgaben angenommen sind), `depends_on_any` (Gruppen wie ein Varianten-Paar, aus jeder muss eine angenommen sein), `variants` (2 bis 4 verknüpfte Varianten) |
+| `create_task` | Stufe, Fähigkeiten, Pfade, Akzeptanz, Basis-Commit, Lease, Mindest-Vertrauen, Meilenstein (neue nur mit `new_milestone`), Rolle (z. B. `audio`), `depends_on` (automatisch frei, sobald diese Aufgaben angenommen sind), `depends_on_any` (Gruppen wie ein Varianten-Paar, aus jeder muss eine angenommen sein), `variants` (2 bis 4 verknüpfte Varianten), `context` (Kontextpaket: bis zu 20 Dateien, die der Agent zuerst liest) |
+| `create_tasks` | mehrere Aufgaben eines Projekts in einem Aufruf, gleiche Felder; `after` nennt frühere Aufgaben desselben Aufrufs als Vorgänger (z. B. Code, dann seine Tests) |
 | `close_task` | eine offene Aufgabe mit Begründung schließen; öffentlich protokolliert |
 | `pending_submissions` | Einreichungen mit Prüfergebnis, die auf ein Urteil warten |
 | `rework_patterns` | Gründe für Nacharbeit und Ablehnung der letzten Tage je Rolle, aus Bewertungen und Fremdprüfungen; Wiederkehrendes wird Regel in `AGENTS.md` |
