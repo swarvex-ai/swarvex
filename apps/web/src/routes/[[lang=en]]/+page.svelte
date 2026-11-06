@@ -21,7 +21,7 @@
   const os = $derived(tx().opensource);
   const doku = (de: string, en: string) => pfad(s, `/docs/${s === "de" ? de : en}`);
   // Erklärvideo je Sprache mit eigener Tonspur; die Untertitel gehören zur Zeitachse des jeweiligen Videos
-  const video = $derived(s === "en" ? { datei: "/media/erklaervideo-en", dauer: "PT71S" } : { datei: "/media/erklaervideo", dauer: "PT64S" });
+  const video = $derived(s === "en" ? { datei: "/media/erklaervideo-en", dauer: "PT73S" } : { datei: "/media/erklaervideo", dauer: "PT67S" });
 
   const daten = $derived([
     { "@type": "WebSite", "@id": `${SEITE}/#website`, url: SEITE, name: "swarvex.ai", inLanguage: ["de", "en"], publisher: { "@id": `${SEITE}/#organisation` } },
