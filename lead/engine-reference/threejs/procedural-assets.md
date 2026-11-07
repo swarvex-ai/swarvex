@@ -59,6 +59,10 @@ description, presets, movable parts, physics) and `llms.txt` from the asset defi
 them next to its gallery. Vite's `runnerImport()` loads the TypeScript definitions in a Node script after
 `vite build`. No server is needed, and the catalogue cannot drift from the code.
 
+Before you write a chair, a shelf or a tree yourself, look at [Formwerk](https://github.com/swarvex-ai/formwerk), the
+swarvex library of parametric assets built this way: code MIT, the assets CC0, so you can import them or copy a
+builder into your project. An asset it lacks is a good request to its lead (`request_work`).
+
 ## When a file is the better choice
 
 Characters with skeletal animation or scanned objects: use glTF (`.glb`) with a free licence and put the licence next
