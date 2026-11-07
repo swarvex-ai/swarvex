@@ -418,7 +418,7 @@ func firstNonEmpty(w ...string) string {
 func vorlagen() map[string]func(string) Umgebung {
 	return map[string]func(string) Umgebung{
 		"godot": func(w string) Umgebung { return godot(w, "") }, "node": node, "python": python, "rust": rust,
-		"go": golang, "dotnet": dotnet, "java-maven": maven, "java-gradle": gradle, "default": standard,
+		"go": golang, "dotnet": dotnet, "java-maven": maven, "java-gradle": gradle, "default": standard, "threejs": threejs,
 		"lean": lean, "julia": julia,
 		"unity": func(w string) Umgebung {
 			ordner, _ := unityProjekt(w)
@@ -468,6 +468,8 @@ func erkennen(w string) Umgebung {
 		return lean(w)
 	case gibt(w, "Project.toml") && gibt(w, "src/*.jl", "test/runtests.jl"):
 		return julia(w)
+	case gibt(w, "package.json") && nutzt(w, "three"):
+		return threejs(w)
 	case gibt(w, "package.json"):
 		return node(w)
 	case gibt(w, "pyproject.toml", "requirements.txt", "setup.py"):
@@ -615,6 +617,36 @@ var leanToolchain = regexp.MustCompile(`^[\w./:-]+$`)
 
 // lean: Lean 4 mit Lake; die Toolchain kommt aus lean-toolchain (elan). Mathlib-Caches lädt die Einrichtung (mit Netz),
 // gebaut und geprüft wird ohne Netz. Ein Beweis mit sorry oder admit ist kein Beweis: die Prüfung wird rot.
+// nutzt: package.json nennt das Paket als Abhängigkeit (dependencies oder devDependencies).
+func nutzt(w, paket string) bool {
+	var p struct {
+		Deps    map[string]string `json:"dependencies"`
+		DevDeps map[string]string `json:"devDependencies"`
+	}
+	roh, err := os.ReadFile(filepath.Join(w, "package.json"))
+	if err != nil || json.Unmarshal(roh, &p) != nil {
+		return false
+	}
+	_, a := p.Deps[paket]
+	_, b := p.DevDeps[paket]
+	return a || b
+}
+
+// threejs (lead/engine-reference/threejs, Vorlage lead/templates/threejs): Node mit Chromium für Szenen-Tests im
+// Headless-Browser (WebGL 2 über SwiftShader, ohne GPU und ohne Netz); die Vorschau ist der Vite-Build in dist/.
+func threejs(w string) Umgebung {
+	u := node(w)
+	u.Vorlage, u.Image = "threejs", ""
+	u.Basis = "FROM docker.io/library/node:24-trixie-slim\n" +
+		"RUN apt-get update && apt-get install -y --no-install-recommends chromium fonts-dejavu-core ca-certificates && rm -rf /var/lib/apt/lists/*\n" +
+		"ENV CHROME_PATH=/usr/bin/chromium"
+	u.Hinweis = "three.js project (Node 24, Vite): headless Chromium is installed (CHROME_PATH) for the scene tests in tests/scene; src/core runs without three.js. Engine traps: lead/engine-reference/threejs."
+	if u.Bauen != "" {
+		u.Vorschau, u.VorschauIn = "npm run build", "dist"
+	}
+	return u
+}
+
 func lean(w string) Umgebung {
 	toolchain := "leanprover/lean4:stable"
 	if roh, err := os.ReadFile(filepath.Join(w, "lean-toolchain")); err == nil {

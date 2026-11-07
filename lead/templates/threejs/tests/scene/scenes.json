@@ -1,0 +1,6 @@
+{
+  "viewport": { "width": 320, "height": 180 },
+  "scenes": [
+    { "name": "start", "query": "seed=1", "steps": 120, "maxDrawCalls": 40, "maxTriangles": 20000, "maxDiffPercent": 2 }
+  ]
+}

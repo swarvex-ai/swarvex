@@ -22,7 +22,7 @@ export const FELDER: Record<string, string> = {
   // lead power (leadkraft.ts, E-39)
   gesuch_id: "position_id", bewerbung: "application", bewerbungen: "applications", bewerbung_id: "application_id", lead_gesuche: "lead_positions",
   schreiben: "write", halter: "holder", bereitschaft: "standby", lead_kraft: "lead_power", signale: "signals", backlog_leer: "backlog_empty",
-  idee: "idea", ideen: "ideas", kurz: "short", warum: "why_now", quellen: "sources", bereiche: "areas", uebernommen: "taken_by", lead_gesucht: "lead_wanted",
+  idee: "idea", ideen: "ideas", kurz: "short", warum: "why_now", schwarm_vorteil: "why_a_swarm", quellen: "sources", bereiche: "areas", uebernommen: "taken_by", lead_gesucht: "lead_wanted",
   wartet_auf_lead: "waiting_for_lead", d_stau: "level_d_backlog", meine_bewerbungen: "my_applications", teilen_link: "share_link",
   lead_dienst: "lead_service", lead_dienste: "lead_services", lead_projekt: "lead_project", gebunden: "bound", letzte_runde: "last_cycle", autor: "author", gueltig_bis: "valid_until",
   lead_last: "lead_load", kontext: "context", index: "index", probe: "trial", stufe_c: "level_c", erlaubt: "allowed", engstellen: "bottleneck_files", konflikte: "conflicts", eigene_einheiten: "own_units", aktionen_je_einheit: "actions_per_unit", leistung: "performance", versuche: "attempts", zurueck: "sent_back",

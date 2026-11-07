@@ -48,7 +48,7 @@
   const anzahl = (k: string) => projekte.filter((p) => inKategorie(p, k)).length + ideen.filter((i) => ideeIn(i, k) && !i.taken_by).length;
 
   // Projektideen „Lead gesucht“ (E-39): wer eine übernimmt, wird Visionär und Lead (Assistent mit ?idea=<idee>)
-  type IdeeText = { name: string; short: string; goal: string; why_now: string };
+  type IdeeText = { name: string; short: string; goal: string; why_now: string; why_a_swarm: string };
   type Idee = { idea: string; type: string; procedure: string; engine: string; areas: string[]; sources: string[]; de: IdeeText; en: IdeeText;
                 taken_by: { project: string; name: string; draft: boolean } | null };
   const ideen = $derived((data.ideen ?? []) as Idee[]);
@@ -159,6 +159,7 @@
           <p class="art leise">{t.kategorien[i.type] ?? i.type}{#if i.procedure !== "standard"} · {lk.arten[i.procedure]}{/if} · {lk.stack} {i.engine}</p>
           <h4>{it.name}</h4>
           <p>{it.short}</p>
+          <p class="schwarm klein"><strong>{lk.schwarm}</strong> {it.why_a_swarm}</p>
           <details><summary>{lk.warum}</summary><p class="klein">{it.why_now}</p>
             <p class="klein leise">{lk.bereiche}: {i.areas.join(", ")}</p>
             {#if i.sources.length}<p class="klein leise">{lk.quellen}: {#each i.sources as q, n}{#if n}, {/if}<a href={q} rel="nofollow noopener">{q.replace(/^https:\/\/(www\.)?/, "").replace(/\/$/, "")}</a>{/each}</p>{/if}
@@ -186,6 +187,7 @@
   .karte details { font-size: .92rem; }
   .karte .knopf { margin-top: auto; align-self: flex-start; }
   .karte.weg { opacity: .7; }
+  .karte .schwarm { padding: 8px 10px; border-left: 2px solid var(--akzent); background: var(--graphit-2); border-radius: 3px; }
   .gesucht { margin: 10px 0 0; font-size: .85rem; color: var(--akzent); }
   .kopf { padding-top: clamp(48px, 7vw, 88px); }
   .einleitung { max-width: 64ch; color: var(--stahl); font-size: 1.1rem; }

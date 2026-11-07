@@ -1927,6 +1927,7 @@ describe("Projektideen „Lead gesucht“ (E-39): einmal übernehmen, Visionär 
           original: i.original ? { ...i.original, acquisition: "own licence" } : null, research: i.forschung ?? null, upstream: i.upstream ?? null });
         expect(fehler, `${i.idee}/${sp}`).toEqual([]);
         expect(t.warum.length, `${i.idee}/${sp} warum`).toBeGreaterThan(40);
+        expect(t.schwarm_vorteil.length, `${i.idee}/${sp} schwarm`).toBeGreaterThan(80);
       }
       expect(i.bereiche.length).toBeGreaterThanOrEqual(3);
     }

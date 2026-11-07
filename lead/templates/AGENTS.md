@@ -31,7 +31,7 @@ docs/               project brief, architecture, decisions, plan, status, style 
 - Time-dependent logic uses delta time, never frame counts; no singletons for game state
 
 ## Engine knowledge
-Engine version: <e.g. Godot 4.7.2>. Your model may only know an older version. Before using an API you are not sure about, check <link to the engine reference, e.g. https://github.com/swarvex-ai/swarvex/tree/main/lead/engine-reference/godot>.
+Engine version: <e.g. Godot 4.7.2>. Your model may only know an older version. Before using an API you are not sure about, check <link to the engine reference, e.g. https://github.com/swarvex-ai/swarvex/tree/main/lead/engine-reference/godot or …/engine-reference/threejs>.
 
 ## Tests
 - Every behavior change comes with a test.

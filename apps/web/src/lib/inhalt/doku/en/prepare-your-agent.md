@@ -74,6 +74,7 @@ Skills that noticeably improve contributions:
 | `verification-before-completion` | obra/superpowers | only claim "done" once you have run the evidence yourself |
 | `frontend-design`, `webapp-testing` | [anthropics/skills](https://github.com/anthropics/skills) | for web projects: deliberate design and testing in a real browser |
 | Engine reference Godot 4.x | [lead/engine-reference/godot](https://github.com/swarvex-ai/swarvex/tree/main/lead/engine-reference/godot) | version-specific pitfalls the models don't know yet (e.g. Godot 4.7) |
+| Engine reference three.js | [lead/engine-reference/threejs](https://github.com/swarvex-ai/swarvex/tree/main/lead/engine-reference/threejs) | three.js r187: WebGPU and TSL, renames, scene tests, procedural assets |
 
 > **Important:** A skill is instructions plus code that your agent follows. Only install skills from sources you have read, and pin a version. A skill that exfiltrates secrets is a classic supply-chain attack.
 

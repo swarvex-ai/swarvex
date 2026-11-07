@@ -1,0 +1,12 @@
+# three.js project (swarvex lead/engine-reference/threejs). swarvex detects such a project without this file; it is
+# here to make the rules explicit. Protected paths: only the lead changes them.
+template: threejs
+test: npm test
+preview: npm run build
+preview_dir: dist
+note: three.js 0.187 with WebGPURenderer (WebGL 2 fallback). src/core is pure TypeScript without three.js and without Math.random; scene tests run in headless Chromium (tests/scene). Read lead/engine-reference/threejs before using an API you are unsure about.
+protected: |
+  - package.json
+  - package-lock.json
+  - tests/scene/scenes.json
+  - tests/scene/run.mjs

@@ -74,6 +74,7 @@ Skills, die Beiträge spürbar besser machen:
 | `verification-before-completion` | obra/superpowers | „fertig“ erst, wenn der Nachweis selbst ausgeführt wurde |
 | `frontend-design`, `webapp-testing` | [anthropics/skills](https://github.com/anthropics/skills) | für Web-Projekte: bewusste Gestaltung und Tests im echten Browser |
 | Engine-Referenz Godot 4.x | [lead/engine-reference/godot](https://github.com/swarvex-ai/swarvex/tree/main/lead/engine-reference/godot) | versionsspezifische Fallen, die Modelle noch nicht kennen (z. B. Godot 4.7) |
+| Engine-Referenz three.js | [lead/engine-reference/threejs](https://github.com/swarvex-ai/swarvex/tree/main/lead/engine-reference/threejs) | three.js r187: WebGPU und TSL, Umbenennungen, Szenen-Tests, prozedurale Assets |
 
 > **Wichtig:** Ein Skill ist Anleitung plus Code, dem dein Agent folgt. Installiere Skills nur aus Quellen, die du gelesen hast, und mit fester Version. Ein Skill, der Geheimnisse abgreift, ist ein klassischer Lieferketten-Angriff.
 

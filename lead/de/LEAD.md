@@ -215,7 +215,7 @@ Ein Schwarm braucht Gleise, sonst baut jeder in eine andere Richtung. **Ohne die
 4. **Verträge:** Für jede Schnittstelle gibt es Signaturen, Doku und **Vertragstests**. Die Tests beschreiben das Verhalten so, dass eine Implementierung gegen sie entwickelt werden kann.
 5. **Umgebung und Prüfvertrag (`swarvex.yaml`):** Meist erkennt swarvex die Projektart selbst (Godot, Node, Python, Rust, Go, .NET, Java, Lean, Julia oder ein vorhandener Dev Container). In `swarvex.yaml` legst du nur fest, was abweicht: eigenes Image, Einrichten, Bauen, Testen (Build, Import, Tests, Linter, Messungen) und projekteigene geschützte Pfade. Prüfe mit `swarvex env`, dass alles ohne Netz grün läuft. Die Prüfung muss **deterministisch** sein, denn instabile Tests zerstören das Vertrauen.
 6. **`AGENTS.md`:** Code-Stil, Namenskonventionen, Ordnerstruktur, Testpflicht, verbotene Muster, Commit- und Patch-Format.
-7. **Projekt-Skills (`.agents/skills/`):** Arbeitsweisen und Wissen, die jeder Agent haben soll, egal wer mit welchem Agenten beiträgt: wie eine swarvex-Aufgabe erledigt wird, erst der Test, erst die Ursache, Nachweis vor „fertig“ (Startpaket in `../templates/skills/`), dazu projektspezifische wie Engine-Fallen (Godot 4.7: `engine-reference/godot/`), Asset-Pipeline oder Testwerkzeuge. Erwähne sie in `AGENTS.md`. Mitstreiter bringen verschiedene Agenten und Modelle mit; die Skills im Repo sind das Einzige, was alle lesen. `.agents/` ist geschützt, nur du änderst es. Halte jeden Skill kurz und mit einem Zweck, und teste ihn, bevor du dich darauf verlässt: eine Aufgabe mit und eine ohne den Skill, dann vergleichen (Idee aus superpowers „writing-skills“).
+7. **Projekt-Skills (`.agents/skills/`):** Arbeitsweisen und Wissen, die jeder Agent haben soll, egal wer mit welchem Agenten beiträgt: wie eine swarvex-Aufgabe erledigt wird, erst der Test, erst die Ursache, Nachweis vor „fertig“ (Startpaket in `../templates/skills/`), dazu projektspezifische wie Engine-Fallen (Godot 4.7: `engine-reference/godot/`; three.js r187: `engine-reference/threejs/`), Asset-Pipeline oder Testwerkzeuge. Erwähne sie in `AGENTS.md`. Mitstreiter bringen verschiedene Agenten und Modelle mit; die Skills im Repo sind das Einzige, was alle lesen. `.agents/` ist geschützt, nur du änderst es. Halte jeden Skill kurz und mit einem Zweck, und teste ihn, bevor du dich darauf verlässt: eine Aufgabe mit und eine ohne den Skill, dann vergleichen (Idee aus superpowers „writing-skills“).
 8. **Styleguide:** Design-Säulen, Palette, Formensprache, Typografie, Ton. Dazu Asset-Spezifikationen: Formate, Maßstab, Polygon- und Texturgrenzen, Benennung, Lizenz.
 9. **Glossar:** ein Begriff pro Sache. Agenten übernehmen Begriffe wörtlich.
 10. **Definition of Done** für das Projekt (siehe 6.6).
@@ -579,7 +579,7 @@ Du koordinierst ein Team aus Fremden. Dafür brauchst du, was ein Studio oder Pr
 - **Asset-Pipeline:** Benennung, Import-Einstellungen, Maßstab und Beleuchtungsszene für Screenshots sind früh festgelegt.
 - **Playtests** als Aufgaben: festes Szenario, Fragen, strukturierter Bericht (`vorlagen/playtest-bericht.md`).
 - **Styleguide** für Aussehen und Klang, bevor Asset-Aufgaben rausgehen (`vorlagen/styleguide.md`).
-- **Engine-Wissen:** Modelle kennen oft nur ältere Engine-Versionen. Verlinke die Engine-Referenz in `AGENTS.md` (`lead/engine-reference/godot/` für Godot 4.7) und nenne Fallen daraus in den Aufgaben.
+- **Engine-Wissen:** Modelle kennen oft nur ältere Engine-Versionen. Verlinke die Engine-Referenz in `AGENTS.md` (`lead/engine-reference/godot/` für Godot 4.7, `…/threejs/` für three.js, mit Startvorlage) und nenne Fallen daraus in den Aufgaben.
 
 ### Tool / CLI / Bibliothek
 - **Schnittstelle zuerst:** Befehle, Optionen, Ein- und Ausgabeformate, Fehlermeldungen und Exit-Codes sind dokumentiert, bevor gebaut wird.
@@ -726,4 +726,5 @@ Ein Forschungsprojekt erzeugt Wissen, das andere nachprüfen können: einen form
 | `vorlagen/design-qualitaet.md` | Websites und App-Bildschirme: PRODUCT.md und DESIGN.md, Vorgehen, zu meidende Standards, Untergrenze, Usability, Prüfdurchgänge, Prüfungen in der Pipeline |
 | `vorlagen/kreativ-werkzeuge.md` | empfohlene lokale Kreativ-Werkzeuge (ArtCraft Crafting Apps) für Materialien, Texturen, Icons, UI-Animation, Trailer und Wertetabellen, alle über MCP steuerbar |
 | `../engine-reference/godot/` | Änderungen in Godot 4.7, die Modelle oft nicht kennen (Englisch) |
+| `../engine-reference/threejs/` | three.js r187: Änderungen, Schwarm-Aufbau, Tests, prozedurale Assets (Englisch) |
 | `vorlagen/swarvex.yaml` | Beispiel `swarvex.yaml`: Umgebung, Tests und geschützte Pfade |

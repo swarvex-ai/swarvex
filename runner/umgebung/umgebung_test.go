@@ -29,6 +29,7 @@ func TestErkennung(t *testing.T) {
 		{map[string]string{"game/project.godot": `config/features=PackedStringArray("4.7", "Forward Plus")`}, "godot-4.7", true},
 		{map[string]string{"package.json": `{"scripts":{"test":"vitest run"}}`, "package-lock.json": "{}"}, "node", true},
 		{map[string]string{"package.json": `{"scripts":{"test":"echo \"Error: no test specified\" && exit 1"}}`}, "node", false},
+		{map[string]string{"package.json": `{"scripts":{"test":"vitest run","build":"vite build"},"dependencies":{"three":"0.187.0"}}`}, "threejs", true},
 		{map[string]string{"pyproject.toml": "[project]\nname='x'"}, "python", true},
 		{map[string]string{"Cargo.toml": "[package]"}, "rust", true},
 		{map[string]string{"go.mod": "module x"}, "go", true},
@@ -222,5 +223,28 @@ func TestGeschuetztRelativZuDir(t *testing.T) {
 	}
 	if _, err := Ermitteln(projekt(t, map[string]string{"go.mod": "module x", "swarvex.yaml": "dir: app\nprotected: |\n  - ../../etc/passwd\n"})); err == nil {
 		t.Error("Pfad außerhalb des Repos muss ein Fehler sein")
+	}
+}
+
+// three.js (lead/templates/threejs): Chromium für Szenen-Tests, Vorschau aus dem Vite-Build, auch über swarvex.yaml
+func TestThreejs(t *testing.T) {
+	paket := `{"scripts":{"test":"vitest run","build":"vite build"},"devDependencies":{"three":"0.187.0"}}`
+	u, err := Ermitteln(projekt(t, map[string]string{"package.json": paket, "package-lock.json": "{}"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Vorlage != "threejs" || !strings.Contains(u.Basis, "chromium") || !strings.Contains(u.Basis, "CHROME_PATH") || u.Image != "" {
+		t.Errorf("three.js: Vorlage %q, Basis %q, Image %q", u.Vorlage, u.Basis, u.Image)
+	}
+	if u.Vorschau != "npm run build" || u.VorschauIn != "dist" || u.Einrichten != "npm ci --no-audit --no-fund" {
+		t.Errorf("three.js: Vorschau %q in %q, Einrichten %q", u.Vorschau, u.VorschauIn, u.Einrichten)
+	}
+	vorlage, err := os.ReadFile("../../lead/templates/threejs/swarvex.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err = Ermitteln(projekt(t, map[string]string{"package.json": paket, "swarvex.yaml": string(vorlage)}))
+	if err != nil || u.Vorlage != "threejs" || u.Testen != "npm test" || u.VorschauIn != "dist" || len(u.Geschuetzt) != 4 {
+		t.Errorf("Vorlage lead/templates/threejs/swarvex.yaml: %v %q %q %q %v", err, u.Vorlage, u.Testen, u.VorschauIn, u.Geschuetzt)
 	}
 }

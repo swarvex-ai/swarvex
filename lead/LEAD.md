@@ -215,7 +215,7 @@ A swarm needs rails, otherwise everyone builds in a different direction. **No fo
 4. **Contracts:** every interface has signatures, documentation and **contract tests**. The tests describe the behavior well enough that an implementation can be built against them.
 5. **Environment and test contract (`swarvex.yaml`):** Usually swarvex detects the project type itself (Godot, Node, Python, Rust, Go, .NET, Java, Lean, Julia or an existing dev container). In `swarvex.yaml` you only set what differs: your own image, setup, build, test (build, import, tests, linters, measurements) and project-specific protected paths. Check with `swarvex env` that everything passes without network. The test run must be **deterministic**, because flaky tests destroy trust.
 6. **`AGENTS.md`:** code style, naming conventions, folder structure, testing obligations, forbidden patterns, commit and patch format.
-7. **Project skills (`.agents/skills/`):** working habits and knowledge every agent should have, whoever contributes and with whichever agent: how a swarvex task is done, test first, root cause first, verify before done (starters in `templates/skills/`), plus project-specific ones such as engine traps (Godot 4.7: `engine-reference/godot/`), the asset pipeline or the test tools. Mention them in `AGENTS.md`. Contributors bring different agents and models; the skills in the repo are the one thing all of them read. `.agents/` is protected, so only you change it. Keep each skill short with one purpose, and test it before relying on it: run one task with and one without the skill and compare (idea from superpowers "writing-skills").
+7. **Project skills (`.agents/skills/`):** working habits and knowledge every agent should have, whoever contributes and with whichever agent: how a swarvex task is done, test first, root cause first, verify before done (starters in `templates/skills/`), plus project-specific ones such as engine traps (`engine-reference/godot/`, `engine-reference/threejs/`), the asset pipeline or the test tools. Mention them in `AGENTS.md`. Contributors bring different agents and models; the skills in the repo are the one thing all of them read. `.agents/` is protected, so only you change it. Keep each skill short with one purpose, and test it before relying on it: run one task with and one without the skill and compare (idea from superpowers "writing-skills").
 8. **Style guide:** design pillars, palette, shape language, typography, tone. Plus asset specifications: formats, scale, polygon and texture limits, naming, license.
 9. **Glossary:** one term per thing. Agents adopt terms literally.
 10. **Definition of done** for the project (see 6.6).
@@ -578,7 +578,7 @@ You coordinate a team of strangers, so you need what a studio or product team kn
 - **Asset pipeline:** naming, import settings, scale and the lighting scene for screenshots are defined early.
 - **Playtests** as tasks: fixed scenario, questions, structured report (`templates/playtest-report.md`).
 - **Style guide** for look and sound before asset tasks go out (`templates/style-guide.md`).
-- **Engine knowledge:** models often only know older engine versions. Link the engine reference in `AGENTS.md` (`lead/engine-reference/godot/` for Godot 4.7) and name traps from it in tasks.
+- **Engine knowledge:** models often only know older engine versions. Link the engine reference in `AGENTS.md` (`lead/engine-reference/godot/` for Godot 4.7, `…/threejs/` for three.js, with its starter) and name traps from it in tasks.
 
 ### Tool / CLI / library
 - **Interface first:** commands, options, input and output formats, error messages and exit codes are documented before building.
@@ -725,4 +725,5 @@ A research project produces knowledge others can check: a formal proof, a reprod
 | `templates/design-quality.md` | websites and app screens: PRODUCT.md and DESIGN.md, design process, defaults to avoid, quality floor, usability, review passes, pipeline checks |
 | `templates/creative-tools.md` | recommended local creative tools (ArtCraft Crafting Apps) for materials, textures, icons, UI animation, trailers and value tables, all drivable over MCP |
 | `engine-reference/godot/` | Godot 4.7 changes that models often don't know |
+| `engine-reference/threejs/` | three.js r187 and its starter |
 | `templates/swarvex.yaml` | example test contract |

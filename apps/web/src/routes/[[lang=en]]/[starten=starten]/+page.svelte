@@ -374,6 +374,9 @@
     {:else if id === "los" && ergebnis}
       <h2>{t.los.h2(ergebnis.name)}</h2>
       <p class="teilen">{tx().leadKraft.teilenText}<br /><TeilenLink slug={ergebnis.slug} name={ergebnis.name} /></p>
+      {#if d.engine.trim() === "threejs"}
+        <p class="klein">{tx().leadKraft.starter}</p><Einzeiler befehl="curl -fsSL https://swarvex.ai/lead/starter/threejs.sh | sh" />
+      {/if}
       <p>{t.los.text}</p>
       <ol class="befehle">
         <li><span>{t.los.ordner}</span><Einzeiler befehl={ordner} /></li>

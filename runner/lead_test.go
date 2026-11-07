@@ -131,6 +131,13 @@ func TestPlattformWeiter(t *testing.T) {
 		t.Errorf("forwarded with the real token: %d %q", c, gesehen)
 	}
 	os.WriteFile(datei, []byte("neues-token"), 0o644) // der Runner hat erneuert
+	// Öffentliche Lead-Inhalte (Startvorlage, Pakete) darf der Lead holen, sonst nichts von der Website
+	for pfad, soll := range map[string]int{"/lead/starter/threejs.sh": http.StatusOK, "/lead/game.md": http.StatusOK, "/lead/roles/game/tech.md": http.StatusOK,
+		"/lead/../api/account": http.StatusForbidden, "/lead/starter/x.exe": http.StatusForbidden, "/konto": http.StatusForbidden} {
+		if c := rufe("GET", pfad, "Bearer "+tok); c != soll {
+			t.Errorf("GET %s: %d, want %d", pfad, c, soll)
+		}
+	}
 	if c := rufe("GET", "/donations/7/file", "Bearer "+tok); c != http.StatusOK || gesehen != "GET /donations/7/file Bearer neues-token" {
 		t.Errorf("donation file with the renewed token: %d %q", c, gesehen)
 	}

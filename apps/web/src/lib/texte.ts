@@ -152,7 +152,8 @@ const de = {
   leadKraft: {
     // Projektideen „Lead gesucht“ (Projektliste) und Teilen-Link (/join/<projekt>)
     ideenH2: "Lead gesucht: Projekte, die auf dich warten",
-    ideenText: "Diese Vorhaben schlägt swarvex vor. Sie passen zum Schwarm: prüfbar, gut zu zerlegen, mit Bereichen für mehrere Leads. Wer eines übernimmt, wird sein Visionär und Lead, mit eigenem Agenten und eigenem Modell, und bekommt den Link zum Teilen.",
+    ideenText: "Diese Vorhaben schlägt swarvex vor. Jedes ist so gewählt, dass ein Schwarm es spürbar schneller und besser baut als ein einzelner Agent: viel parallele, maschinell prüfbare Arbeit, mit Bereichen für mehrere Leads. Wer eines übernimmt, wird sein Visionär und Lead, mit eigenem Agenten und eigenem Modell, und bekommt den Link zum Teilen.",
+    schwarm: "Warum ein Schwarm:", starter: "Startvorlage für three.js (in deinem Lead-Ordner):",
     bock: "Bock auf Lead?", uebernehmen: "Projekt übernehmen", uebernommen: (p: string) => `übernommen: ${p}`, inArbeit: "wird gerade angelegt",
     warum: "Warum jetzt", bereiche: "Bereiche", quellen: "Quellen", alleIdeen: "Alle Ideen", stack: "Stack",
     gesuchtH2: "Projekte suchen Bereichs-Leads", gesuchtText: "Diese Projekte laufen schon und suchen Lead-Kraft für einzelne Bereiche. Bewirb dich mit deinem Konto.",
@@ -541,7 +542,7 @@ Eigene Commits pushst du selbst. Frag mich nur bei dem, was mir gehört: Vision,
       neinListe: ["Dass jeder Beitrag gut ist. Dafür gibt es Prüfstraße, Lead und offene Kennzahlen.", "Welches Modell beim Mitstreiter wirklich lief. Geprüft wird das Ergebnis, nicht die Behauptung.",
                   "Dass ein Projekt fertig wird. Den Fortschritt zeigen wir ehrlich, auch wenn er sinkt."] },
     fragen: { h2: "Häufige Fragen", liste: [
-      ["Welche Sprachen und Engines gehen?", "Jede. swarvex erkennt Godot, Node.js, Python, Rust, Go, .NET, Java, Lean und Julia selbst und richtet die Umgebung ein, ohne dass du etwas tun musst. Hat dein Projekt einen Dev Container oder eine eigene swarvex.yaml, gilt die. So gehen auch Unity, Unreal oder eigene Werkzeuge. Mit swarvex env prüfst du dein Repo vorher mit einem Befehl."],
+      ["Welche Sprachen und Engines gehen?", "Jede. swarvex erkennt Godot, three.js, Node.js, Python, Rust, Go, .NET, Java, Lean und Julia selbst und richtet die Umgebung ein, ohne dass du etwas tun musst. Hat dein Projekt einen Dev Container oder eine eigene swarvex.yaml, gilt die. So gehen auch Unity, Unreal oder eigene Werkzeuge. Mit swarvex env prüfst du dein Repo vorher mit einem Befehl."],
       ["Kann ich auf swarvex auch forschen?", "Ja. Forschungsprojekte erarbeiten formale Beweise in Lean 4 mit Mathlib, reproduzieren veröffentlichte Ergebnisse oder pflegen wissenschaftliche Software. Ein Beweis mit sorry fällt in der Prüfstraße durch, und Toleranzen stehen fest, bevor jemand misst. Versuche mit Menschen oder Tieren gehören nicht dazu."],
       ["Was passiert mit eingestellter Software?", "Ist sie Open Source, führt der Schwarm sie als Fork weiter, mit Historie, Lizenz und Autoren, nachdem die Maintainer gefragt wurden. Ist sie geschlossen, baut er ihr Verhalten im Clean Room neu, mit eigenem Namen und eigener Grafik und ohne Kopierschutz zu umgehen."],
       ["Kann ich auch ein privates Projekt anlegen?", "Nein. Auf swarvex gibt es nur offene Projekte: Code unter einer OSI-Lizenz, Assets unter einer freien Lizenz, auch nicht gegen Geld. Open Source ist für uns der einzige Weg, wie wir künftig mit Software umgehen."],
@@ -698,7 +699,8 @@ const en: typeof de = {
   },
   leadKraft: {
     ideenH2: "Lead wanted: projects waiting for you",
-    ideenText: "swarvex suggests these projects. They suit a swarm: testable, easy to split, with areas for several leads. Whoever takes one becomes its visionary and lead, with their own agent and their own model, and gets the link to share.",
+    ideenText: "swarvex suggests these projects. Each one is chosen so that a swarm builds it noticeably faster and better than a single agent: lots of parallel, machine-checkable work, with areas for several leads. Whoever takes one becomes its visionary and lead, with their own agent and their own model, and gets the link to share.",
+    schwarm: "Why a swarm:", starter: "three.js starter (in your lead folder):",
     bock: "Up for leading?", uebernehmen: "Take over this project", uebernommen: (p: string) => `taken over: ${p}`, inArbeit: "being set up",
     warum: "Why now", bereiche: "Areas", quellen: "Sources", alleIdeen: "All ideas", stack: "Stack",
     gesuchtH2: "Projects looking for area leads", gesuchtText: "These projects are running and look for lead power in single areas. Apply with your account.",
@@ -1086,7 +1088,7 @@ You push your own commits yourself. Ask me only about what is mine: vision, scop
       neinListe: ["That every contribution is good. That is what the test pipeline, the lead and public metrics are for.", "Which model really ran on a contributor's machine. We check the result, not the claim.",
                   "That a project gets finished. We show progress honestly, even when it goes down."] },
     fragen: { h2: "Frequently asked questions", liste: [
-      ["Which languages and engines work?", "Any. swarvex recognises Godot, Node.js, Python, Rust, Go, .NET, Java, Lean and Julia on its own and sets up the environment without you doing anything. If your project has a dev container or its own swarvex.yaml, that is used, so Unity, Unreal or custom toolchains work too. Run swarvex env to check your repository with one command first."],
+      ["Which languages and engines work?", "Any. swarvex recognises Godot, three.js, Node.js, Python, Rust, Go, .NET, Java, Lean and Julia on its own and sets up the environment without you doing anything. If your project has a dev container or its own swarvex.yaml, that is used, so Unity, Unreal or custom toolchains work too. Run swarvex env to check your repository with one command first."],
       ["Can I do research on swarvex?", "Yes. Research projects produce formal proofs in Lean 4 with Mathlib, reproduce published results or maintain scientific software. A proof containing sorry fails the test pipeline, and tolerances are fixed before anyone measures. Experiments with people or animals are not part of it."],
       ["What happens to discontinued software?", "If it is open source, the swarm continues it as a fork, with history, licence and authors, after asking the maintainers. If it is closed, it rebuilds its behaviour in a clean room, with its own name and graphics and without circumventing copy protection."],
       ["Can I create a private project?", "No. swarvex only hosts open projects: code under an OSI licence, assets under a free licence, not even for money. For us, open source is the only way forward for software."],

@@ -1,7 +1,7 @@
 // Lead-Pakete je Projektart (Website-Assistent „Projekt starten“): LEAD.md plus das Wissen genau dieser Projektart
 // (Interview-Baum, Grundpaket, Rollen), beim Bauen aus lead/ zusammengesetzt. Eine Quelle: lead/ im Repo.
 import { readFileSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 
 const LEAD = join(resolve(process.cwd(), "../.."), "lead");
 const lies = (pfad: string) => readFileSync(join(LEAD, pfad), "utf8");
@@ -169,4 +169,39 @@ export function paketStatistik(name: string) {
   const bausteine = [abschnitt(grund, "## All projects"), abschnitt(grund, GRUNDPAKET[art])].join("\n").split("\n").filter((z) => /^\| [A-Z]+-\d+ \|/.test(z)).length;
   const ordner = ordnerFuer(art, verfahren);
   return { kb: Math.round(Buffer.byteLength(paket(name)) / 1024), rollenkarten: ordner.reduce((n, o) => n + karten(o).length, 0), bausteine, werkzeugkasten: cleanroom };
+}
+
+/** Startvorlagen je Stack (lead/templates/<name>/), etwa three.js. */
+export const STARTER = ["threejs"];
+
+function dateienIn(ordner: string): string[] {
+  return readdirSync(ordner, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? dateienIn(join(ordner, e.name)) : [join(ordner, e.name)]).sort();
+}
+
+/** Shell-Skript, das die Startvorlage in den aktuellen Ordner schreibt; vorhandene Dateien bleiben unverändert. */
+export function starterSkript(name: string): string {
+  if (!STARTER.includes(name)) throw new Error(`unknown starter ${name}`);
+  const wurzel = join(LEAD, "templates", name);
+  const ENDE = "SWARVEX_STARTER_DATEI";
+  const teile = dateienIn(wurzel).map((datei) => {
+    const pfad = relative(wurzel, datei);
+    const inhalt = readFileSync(datei, "utf8");
+    if (inhalt.includes(ENDE) || !/^[\w./-]+$/.test(pfad)) throw new Error(`starter ${name}: cannot embed ${pfad}`);
+    return `schreibe '${pfad}' <<'${ENDE}'\n${inhalt.endsWith("\n") ? inhalt : inhalt + "\n"}${ENDE}`;
+  });
+  return `#!/bin/sh
+# swarvex starter "${name}" (lead/templates/${name} in github.com/swarvex-ai/swarvex): writes the project skeleton into
+# the current folder and never overwrites a file. Then: npm install, npm test (writes the first baseline image),
+# look at it, commit everything including package-lock.json and tests/scene/baseline.
+set -eu
+schreibe() {
+  if [ -e "$1" ]; then echo "kept (exists): $1"; cat >/dev/null; return; fi
+  mkdir -p "$(dirname "$1")"
+  cat > "$1"
+  echo "written: $1"
+}
+${teile.join("\n")}
+echo "Done. Next: npm install && npm test"
+`;
 }
