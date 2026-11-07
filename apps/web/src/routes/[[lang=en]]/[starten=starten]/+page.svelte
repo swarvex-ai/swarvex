@@ -7,6 +7,7 @@
   import Seo from "$lib/components/Seo.svelte";
   import Einzeiler from "$lib/components/Einzeiler.svelte";
   import RepoVerbinden from "$lib/components/RepoVerbinden.svelte";
+  import TeilenLink from "$lib/components/TeilenLink.svelte";
   import { pfad, sprache, tx } from "$lib/texte";
 
   const s = $derived(sprache());
@@ -18,7 +19,7 @@
   const VORBILDER = ["windows", "linux_macos", "android", "web", "game", "firmware", "format_protocol"];
   const MODELL: Record<string, string> = { claude: "Claude Opus 5.5", codex: "", andere: "" };
   const STACKS: Record<string, string[]> = {
-    game: ["godot-4", "unity-6", "bevy", "phaser", "love2d"], app: ["sveltekit", "react", "flutter", "tauri", "react-native"],
+    game: ["godot-4", "threejs", "unity-6", "bevy", "phaser", "love2d"], app: ["sveltekit", "react", "threejs", "flutter", "tauri", "react-native"],
     website: ["sveltekit", "astro", "hugo", "eleventy"], service: ["node", "go", "python-fastapi", "rust-axum", "dotnet"],
     tool: ["rust", "go", "python", "node"], library: ["rust", "typescript", "python", "go", "c"], plugin: ["godot-plugin", "vscode-extension", "blender-addon", "obsidian-plugin"],
     research: ["lean4-mathlib", "julia", "python", "r", "rust"],
@@ -43,12 +44,14 @@
                  research: { kind: string; source: string; success: string };
                  upstream: { repo: string; license: string; status: string; contact: string };
                  name: string; slug: string; slugFrei: boolean; vision_short: string; vision_md: string; engine: string;
-                 license_code: string; license_assets: string; goal: string; repo_url: string };
+                 license_code: string; license_assets: string; goal: string; repo_url: string; idee: string };
   let d = $state<Daten>({ agent: "claude", modell: MODELL.claude, type: "", cleanroom: false, weg: "",
     original: { name: "", version: "", acquisition: "", target: "", depth: "observe", goal: "", legal_basis: "", inspect: "", models: "", providers: "" },
     research: { kind: "", source: "", success: "" },
     upstream: { repo: "", license: "", status: "", contact: "" },
-    name: "", slug: "", slugFrei: false, vision_short: "", vision_md: "", engine: "open", license_code: "", license_assets: "", goal: "", repo_url: "" });
+    name: "", slug: "", slugFrei: false, vision_short: "", vision_md: "", engine: "open", license_code: "", license_assets: "", goal: "", repo_url: "", idee: "" });
+  // Übernommene Projektidee „Lead gesucht“ (Projektliste, apps/api/src/ideen.ts): Name für den Hinweis oben
+  let ideeName = $state("");
   let schritt = $state(0);
   let angemeldet = $state<boolean | null>(null);
   let arbeitet = $state(false);
@@ -62,6 +65,29 @@
       if (alt?.d) { d = { ...d, ...alt.d, original: { ...d.original, ...alt.d.original }, research: { ...d.research, ...alt.d.research }, upstream: { ...d.upstream, ...alt.d.upstream } }; schritt = alt.schritt ?? 0; ergebnis = alt.ergebnis ?? null; }
     } catch { /* ohne Speicher beginnt der Assistent von vorn */ }
     try { const r = await fetch("/api/account", { cache: "no-store" }); r.body?.cancel(); angemeldet = r.ok; } catch { angemeldet = false; }
+    // ?idea=<idee>: den Assistenten mit der Idee vorbelegen (alles bleibt änderbar); Wer anlegt, wird Visionär und Lead
+    const gewaehlt = new URL(location.href).searchParams.get("idea");
+    if (gewaehlt) {
+      try {
+        const liste = (await (await fetch("/api/ideas")).json()).ideas as { idea: string; type: string; procedure: string; engine: string; license_code: string; license_assets: string;
+          original?: { name: string; target: string; depth: "observe" | "inspect" }; upstream?: { repo: string; license: string; status: string };
+          research?: { kind: string; source: string; success: string }; de: Record<string, string>; en: Record<string, string>; taken_by: unknown }[];
+        const i = liste.find((x) => x.idea === gewaehlt);
+        if (i && !i.taken_by && d.idee !== i.idea) {
+          const it = i[sprache()];
+          const weg = i.procedure === "clean_room" ? "nachbau" : i.procedure === "continuation" ? "weiter" : "neu";
+          d = { ...d, idee: i.idea, weg, cleanroom: weg === "nachbau", type: i.type, name: it.name, slug: i.idea, slugFrei: true, vision_short: it.short, vision_md: it.vision,
+            goal: it.goal, engine: i.engine, license_code: i.license_code, license_assets: i.license_assets,
+            original: i.original ? { ...d.original, ...i.original, acquisition: "" } : d.original,
+            upstream: i.upstream ? { ...d.upstream, ...i.upstream, contact: "" } : d.upstream,
+            research: i.research ? { ...i.research } : d.research };
+          schritt = 0; ergebnis = null;
+        }
+        if (i) ideeName = i[sprache()].name;
+      } catch { /* ohne Katalog startet der Assistent leer */ }
+    } else if (d.idee) {
+      d = { ...d, idee: "" };
+    }
   });
   $effect(() => {
     const stand = JSON.stringify({ d, schritt, ergebnis });
@@ -124,7 +150,8 @@
         .filter(([k, v]) => v && (d.original.depth === "inspect" || !["inspect", "legal_basis", "models", "providers"].includes(k))
           && (k !== "providers" || d.original.models === "providers"))) : null,
       research: forschung ? { kind: d.research.kind, source: d.research.source.trim(), success: d.research.success.trim() } : null,
-      upstream: fortfuehren ? { repo: d.upstream.repo.trim().replace(/\/$/, ""), status: d.upstream.status, contact: d.upstream.contact.trim() } : null };
+      upstream: fortfuehren ? { repo: d.upstream.repo.trim().replace(/\/$/, ""), status: d.upstream.status, contact: d.upstream.contact.trim() } : null,
+      idea: d.idee || null };
     try {
       const r = await fetch("/api/account/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       const j = await r.json().catch(() => ({}));
@@ -137,7 +164,7 @@
       zu("los");
     } catch { fehler = t.anlegen.fehler; } finally { arbeitet = false; }
   }
-  function neuesProjekt() { ergebnis = null; schritt = 0; d = { ...d, name: "", slug: "", slugFrei: false, vision_short: "", vision_md: "", goal: "", repo_url: "" }; }
+  function neuesProjekt() { ergebnis = null; schritt = 0; d = { ...d, name: "", slug: "", slugFrei: false, vision_short: "", vision_md: "", goal: "", repo_url: "", idee: "" }; }
 
   const anmeldeLink = $derived(`/api/account/login?lang=${s}&next=${s === "en" ? "start" : "starten"}`);
   const BASIS = "https://swarvex.ai";
@@ -157,6 +184,10 @@
     <h1>{t.h1}</h1>
     <p class="lead">{t.einleitung}</p>
   </header>
+
+  {#if d.idee && !ergebnis}
+    <p class="idee">{t.idee.banner(ideeName || d.name)} <button type="button" class="verweis" onclick={() => { history.replaceState(null, "", location.pathname); neuesProjekt(); }}>{t.idee.ohne}</button></p>
+  {/if}
 
   <ol class="leiste" aria-label={t.h1}>
     {#each folge as x, i}
@@ -342,6 +373,7 @@
 
     {:else if id === "los" && ergebnis}
       <h2>{t.los.h2(ergebnis.name)}</h2>
+      <p class="teilen">{tx().leadKraft.teilenText}<br /><TeilenLink slug={ergebnis.slug} name={ergebnis.name} /></p>
       <p>{t.los.text}</p>
       <ol class="befehle">
         <li><span>{t.los.ordner}</span><Einzeiler befehl={ordner} /></li>
@@ -384,6 +416,9 @@
 </section>
 
 <style>
+  .idee { padding: 12px 16px; border-left: 3px solid var(--akzent); background: var(--graphit-2); border-radius: 4px; }
+  .verweis { background: none; border: 0; padding: 0; color: var(--akzent); text-decoration: underline; cursor: pointer; font: inherit; }
+  .teilen { display: grid; gap: 8px; }
   .seite { padding-top: clamp(48px, 7vw, 88px); display: grid; gap: 32px; max-width: 880px; }
   .seite > * { min-width: 0; }
   h1 { font-size: clamp(2.2rem, 4.5vw, 3.4rem); margin: 0 0 16px; }

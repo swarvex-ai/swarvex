@@ -1741,9 +1741,9 @@ describe("Lead-Dienst (E-38): gebundene Anmeldung, nur ein Projekt, keine Freiga
   it("bindet nur Runner-Anmeldungen von Lead oder Visionär, und jede an genau ein Projekt", async () => {
     const { leadDienstBinden } = await ld();
     await expect(leadDienstBinden(db, { ...lead, runner: false }, "test")).rejects.toThrow(/only the swarvex runner/);
-    await expect(leadDienstBinden(db, { ...mit, runner: true }, "test")).rejects.toThrow(/only the project's lead or visionary/);
-    expect(await leadDienstBinden(db, { ...dienst, runner: true }, "test")).toEqual({ projekt: "test", gebunden: true });
-    expect(await leadDienstBinden(db, { ...dienst, runner: true }, "test")).toEqual({ projekt: "test", gebunden: true }); // gleiches Projekt: unverändert
+    await expect(leadDienstBinden(db, { ...mit, runner: true }, "test")).rejects.toThrow(/only the project's lead, visionary or one of its area leads/);
+    expect(await leadDienstBinden(db, { ...dienst, runner: true }, "test")).toEqual({ projekt: "test", gebunden: true, rolle: "lead" });
+    expect(await leadDienstBinden(db, { ...dienst, runner: true }, "test")).toEqual({ projekt: "test", gebunden: true, rolle: "lead" }); // gleiches Projekt: unverändert
     await expect(leadDienstBinden(db, { ...dienst, runner: true }, "lead-anderes")).rejects.toThrow(/another project/);
     const ereignis = (await db.query("select art from ereignisse where bezug = $1", [`agent:${dienst.agentId}`])).rows.map((r) => r.art);
     expect(ereignis.filter((a) => a === "lead_dienst_verbunden")).toHaveLength(1);
@@ -1778,7 +1778,8 @@ describe("Lead-Dienst (E-38): gebundene Anmeldung, nur ein Projekt, keine Freiga
   });
 
   it("Anwesenheit: Runden zählen, nach einer Stunde Stille genau eine Nachricht an den Visionär", async () => {
-    const { leadAnwesenheit, leadAlarme } = await ld();
+    const { leadAnwesenheit, leadAlarme, leadGesehen } = await ld();
+    expect(await leadGesehen(db, projekt, dienst.agentId)).toEqual({ halter: true, bereich: null }); // jeder Aufruf (mcpBehandeln)
     const s = await sitzung(dienst, true, projekt);
     expect((await s.rufen("report_lead_cycle", { project: "test", seconds: 240, tokens: 52000, reason: "reviews", outcome: "ok" })).fehler).toBe(false);
     const a = await leadAnwesenheit(db, projekt);
@@ -1804,5 +1805,146 @@ describe("Lead-Dienst (E-38): gebundene Anmeldung, nur ein Projekt, keine Freiga
     expect(g.repo_git).toMatch(/\.git$/);
     expect(g.hinweis).toMatch(/--git-token-file/);
     expect(g.autor.name).toBe("nevs");
+  });
+});
+
+describe("Lead-Kraft (E-39): Haupt-Reservierung, Bereichs-Leads, Lead-Gesuche, Hinweis", () => {
+  let kp = 0;
+  const erster = { menschId: 0, agentId: 0 }, zweiter = { menschId: 0, agentId: 0 }, bereichsDienst = { menschId: 0, agentId: 0 };
+  const bewerberin = { menschId: 0, agentId: 0 }, andere = { menschId: 0, agentId: 0 };
+  const runner = async (m: number, c: string) => Number((await db.query("insert into agenten(mensch_id, client_id, name, runner) values ($1,$2,$2,true) returning id", [m, c])).rows[0].id);
+  const mensch = async (login: string) => Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea',$1,$1) returning id", [login])).rows[0].id);
+  const nie = async () => {};
+  beforeAll(async () => {
+    kp = Number((await db.query(
+      `insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,repo_git,lead_modell,ziel)
+       values ('kraft','Kraft','V','k','godot-4.7','MIT','CC BY 4.0','http://k','git@example.org:k.git','m','z') returning id`)).rows[0].id);
+    await db.query("insert into projekt_rollen values ($1,$2,'lead'), ($1,$2,'visionaer')", [kp, lead.menschId]);
+    for (const [d, c] of [[erster, "dienst-1"], [zweiter, "dienst-2"], [bereichsDienst, "dienst-3"]] as const) { d.menschId = lead.menschId; d.agentId = await runner(lead.menschId, c); }
+    bewerberin.menschId = await mensch("kimi-fan"); bewerberin.agentId = await runner(bewerberin.menschId, "kimi-runner");
+    andere.menschId = await mensch("qwen-fan"); andere.agentId = await runner(andere.menschId, "qwen-runner");
+  });
+
+  it("genau ein Lead-Dienst hält die Hauptschleife; ein zweiter wartet in Bereitschaft und übernimmt nach 15 Minuten Stille", async () => {
+    const { leadDienstBinden, leadGesehen, bereitschaft } = await import("../src/leaddienst.ts");
+    for (const d of [erster, zweiter, bereichsDienst]) await leadDienstBinden(db, { ...d, runner: true }, "kraft");
+    expect(await leadGesehen(db, kp, erster.agentId)).toEqual({ halter: true, bereich: null });
+    expect((await leadGesehen(db, kp, zweiter.agentId)).halter).toBe(false);
+    expect(await bereitschaft(db, kp, zweiter.agentId, 0, nie)).toMatchObject({ bereitschaft: true, halter: "dienst-1", weiter: true });
+    expect(await bereitschaft(db, kp, erster.agentId, 0, nie)).toBeNull(); // der Halter arbeitet normal
+    // Über MCP: wait_for_work der gebundenen Sitzung meldet die Bereitschaft statt Arbeit
+    const { mcpServerFuer } = await import("../src/mcp.ts");
+    const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+    const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+    const server = await mcpServerFuer(db, { ...zweiter, runner: true, leadProjekt: kp, clientId: "test", token: "t", scopes: ["mcp"], ablauf: Date.now() + 60_000 });
+    const [ta, tb] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test", version: "1" });
+    await Promise.all([server.connect(ta), client.connect(tb)]);
+    const w: any = await client.callTool({ name: "wait_for_work", arguments: { project: "kraft", max_seconds: 0 } });
+    expect(JSON.parse(w.content[0].text)).toMatchObject({ standby: true, holder: "dienst-1", continue: true });
+    // Eine Bereichs-Sitzung hält ihren Bereich, nicht die Hauptschleife, und wartet nie in Bereitschaft
+    await k.bereichUebernehmen(db, bereichsDienst, "kraft", "ui", ["game/ui/**"], ["code.gdscript"]);
+    expect(await leadGesehen(db, kp, bereichsDienst.agentId)).toEqual({ halter: false, bereich: "ui" });
+    expect(await bereitschaft(db, kp, bereichsDienst.agentId, 0, nie)).toBeNull();
+    // Der Halter schweigt 15 Minuten: der zweite übernimmt (protokolliert), der erste steht danach bereit
+    await db.query("update projekte set lead_gesehen = now() - interval '16 minutes' where id = $1", [kp]);
+    expect(await bereitschaft(db, kp, zweiter.agentId, 0, nie)).toBeNull();
+    expect(Number((await db.query("select lead_halter from projekte where id = $1", [kp])).rows[0].lead_halter)).toBe(zweiter.agentId);
+    expect((await leadGesehen(db, kp, erster.agentId)).halter).toBe(false);
+    const e = (await db.query("select daten from ereignisse where art = 'lead_dienst_uebernommen' and projekt_id = $1", [kp])).rows;
+    expect(e.map((x) => x.daten)).toEqual([{ von: `agent:${erster.agentId}` }]);
+    // Abgemeldet heißt frei: der erste übernimmt sofort wieder
+    await db.query("update agenten set abgemeldet = now() where id = $1", [zweiter.agentId]);
+    expect((await leadGesehen(db, kp, erster.agentId)).halter).toBe(true);
+  });
+
+  it("ein Bereichs-Lead bindet seinen Dienst an das Projekt, holt das Repository aber nur lesend", async () => {
+    const { leadDienstBinden, leadGitZugang, leadGesehen } = await import("../src/leaddienst.ts");
+    await expect(leadDienstBinden(db, { ...andere, runner: true }, "kraft")).rejects.toThrow(/lead, visionary or one of its area leads/);
+    await k.officerErnennen(db, "betrieb", "kraft", "qwen-fan", "netz", ["game/net/**"], ["code.gdscript"]);
+    expect(await leadDienstBinden(db, { ...andere, runner: true }, "kraft")).toMatchObject({ gebunden: true, rolle: "bereichs_lead", bereich: "netz" });
+    expect(await leadGesehen(db, kp, andere.agentId)).toEqual({ halter: false, bereich: "netz" });
+    expect((await leadGitZugang(db, andere.menschId, kp)).schreiben).toBe(false);
+    expect((await leadGitZugang(db, lead.menschId, kp)).schreiben).toBe(true);
+    await k.officerBeenden(db, "betrieb", "kraft", "netz", "Test vorbei");
+  });
+
+  it("Lead-Gesuch: jeder bewirbt sich mit eigenem Konto, der Visionär ernennt auch ohne Vertrauensstufe 2", async () => {
+    const lk = await import("../src/leadkraft.ts");
+    const bl = await import("../src/bereichsleads.ts");
+    const gesuch = { bereich: "kampf", pfade: ["game/combat/**"], faehigkeiten: ["code.gdscript", "test.*"], text: "Kampfsystem: Hitboxen, Zustandsautomat, Balance" };
+    await expect(lk.gesuchOeffnen(db, mit, "kraft", gesuch)).rejects.toThrow(/only the project's lead or visionary/);
+    const g = await lk.gesuchOeffnen(db, lead, "kraft", gesuch);
+    expect(g.link).toMatch(/\/join\/kraft$/);
+    expect((await lk.offeneGesuche(db, kp)).map((x) => x.bereich)).toEqual(["kampf"]);
+    await expect(lk.bewerben(db, lead.menschId, g.gesuch_id, { text: "Ich leite dieses Projekt doch schon selbst.", modelle: "" })).rejects.toThrow(/already lead this project/);
+    await expect(lk.bewerben(db, bewerberin.menschId, g.gesuch_id, { text: "kurz", modelle: "" })).rejects.toThrow(/20 to 2000/);
+    const b1 = await lk.bewerben(db, bewerberin.menschId, g.gesuch_id, { text: "Ich führe Kampfsysteme mit Kimi über opencode, Tests zuerst.", modelle: "Kimi über opencode" });
+    await expect(lk.bewerben(db, bewerberin.menschId, g.gesuch_id, { text: "Noch einmal dieselbe Bewerbung hier.", modelle: "" })).rejects.toThrow(/already applied/);
+    const b2 = await lk.bewerben(db, andere.menschId, g.gesuch_id, { text: "Ich bringe Qwen mit und kenne Godot-Kampfsysteme gut.", modelle: "Qwen" });
+    // Der Visionär sieht beide unter Mein Konto, als Bewerbung markiert, und bekam je eine Nachricht
+    const f = (await bl.bereichsLeadsFuer(db, lead.menschId)).freigaben.filter((x) => x.projekt === "kraft");
+    expect(f.map((x) => [x.login, x.bewerbung])).toEqual([["kimi-fan", true], ["qwen-fan", true]]);
+    expect((await db.query("select count(*)::int as n from nachrichten where projekt_id = $1 and betreff like 'Application as area lead%'", [kp])).rows[0].n).toBe(2);
+    // Angenommen: ernannt ohne Stufe 2, das Gesuch ist zu, die andere Bewerbung verfällt
+    expect(await bl.vorschlagEntscheiden(db, lead.menschId, b1.bewerbung_id, true)).toEqual({ state: "appointed" });
+    expect((await k.officersVon(db, bewerberin.menschId, kp)).map((o) => o.bereich)).toEqual(["kampf"]);
+    expect(await lk.offeneGesuche(db, kp)).toEqual([]);
+    expect((await db.query("select zustand from bereichs_vorschlaege where id = $1", [b2.bewerbung_id])).rows[0].zustand).toBe("abgelaufen");
+    expect((await lk.meineBewerbungen(db, bewerberin.menschId)).map((x) => x.status)).toEqual(["appointed"]);
+    // Ein besetzter Bereich bekommt kein neues Gesuch
+    await expect(lk.gesuchOeffnen(db, lead, "kraft", gesuch)).rejects.toThrow(/already has an area lead \(kimi-fan\)/);
+  });
+
+  it("Lead-Kraft-Hinweis: erst nach drei Tagen anhaltender Signale, höchstens einmal in sieben Tagen", async () => {
+    const lk = await import("../src/leadkraft.ts");
+    await db.query(
+      "insert into lead_runden(projekt_id, agent_id, beginn, sekunden, anlass, ergebnis) values ($1,$2,now(),3600,'reviews','time limit reached'), ($1,$2,now(),3600,'reviews','time limit reached')",
+      [kp, erster.agentId]);
+    expect((await lk.leadKraftSignale(db, kp)).d_stau).toBe(true);
+    expect(await lk.leadKraftPruefen(db)).toBe(0); // erst ein Tag
+    await db.query("insert into lead_kraft_tage values ($1, current_date - 1, false, false, true), ($1, current_date - 2, false, false, true)", [kp]);
+    expect(await lk.anhaltendeSignale(db, kp)).toEqual(["d_stau"]);
+    expect(await lk.leadKraftPruefen(db)).toBe(1);
+    const n = (await db.query("select an, zustand, inhalt from nachrichten where projekt_id = $1 and betreff = 'More lead power would help' order by id", [kp])).rows;
+    expect(n.map((x) => [x.an, x.zustand])).toEqual([["lead", "offen"], ["visionaer", "erledigt"]]);
+    expect(n[0].inhalt).toMatch(/\/join\/kraft/);
+    expect(n[0].inhalt).toMatch(/--area/);
+    expect(await lk.leadKraftPruefen(db)).toBe(0); // höchstens einmal in sieben Tagen
+  });
+});
+
+describe("Projektideen „Lead gesucht“ (E-39): einmal übernehmen, Visionär werden", () => {
+  it("jede Idee ist vollständig, gültig und in beiden Sprachen da", async () => {
+    const { IDEEN } = await import("../src/ideen.ts");
+    const { projektPruefen } = await import("../src/projekte.ts");
+    expect(new Set(IDEEN.map((i) => i.idee)).size).toBe(IDEEN.length);
+    for (const i of IDEEN) {
+      for (const sp of ["de", "en"] as const) {
+        const t = i[sp];
+        const fehler = projektPruefen({ slug: i.idee, name: t.name, vision_md: t.vision, vision_short: t.kurz, engine: i.engine, license_code: i.lizenz_code,
+          license_assets: i.lizenz_assets, lead_model: "Claude Code · Claude Opus 5.5", goal: t.ziel, type: i.art, procedure: i.verfahren, language: sp, idea: i.idee,
+          original: i.original ? { ...i.original, acquisition: "own licence" } : null, research: i.forschung ?? null, upstream: i.upstream ?? null });
+        expect(fehler, `${i.idee}/${sp}`).toEqual([]);
+        expect(t.warum.length, `${i.idee}/${sp} warum`).toBeGreaterThan(40);
+      }
+      expect(i.bereiche.length).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("wer eine Idee übernimmt, wird Visionär; ein zweites Mal geht nicht, ein liegen gelassener Entwurf gibt sie frei", async () => {
+    const { ideenListe, ideenFreigeben, ideePer } = await import("../src/ideen.ts");
+    const { projektAnlegen } = await import("../src/projekte.ts");
+    const i = ideePer("deckwerk")!;
+    const neu = (slug: string) => ({ slug, name: i.de.name, vision_md: i.de.vision, vision_short: i.de.kurz, engine: i.engine, license_code: i.lizenz_code,
+      license_assets: i.lizenz_assets, lead_model: "Codex · Kimi", goal: i.de.ziel, type: i.art, language: "de", idea: i.idee });
+    await projektAnlegen(db, neu("deckwerk"), fremd.menschId);
+    expect((await k.rollenVon(db, fremd.menschId, Number((await db.query("select id from projekte where slug = 'deckwerk'")).rows[0].id)))).toContain("visionaer");
+    expect((await ideenListe(db)).find((x) => x.idee === "deckwerk")?.uebernommen).toMatchObject({ projekt: "deckwerk", entwurf: true });
+    await expect(projektAnlegen(db, neu("deckwerk-zwei"), mit.menschId)).rejects.toThrow(/already been taken over \(deckwerk\)/);
+    await expect(projektAnlegen(db, { ...neu("gibt-es-nicht"), idea: "gibt-es-nicht" }, mit.menschId)).rejects.toThrow(/unknown project idea/);
+    await db.query("update projekte set erstellt = now() - interval '15 days' where slug = 'deckwerk'");
+    expect(await ideenFreigeben(db)).toBe(1);
+    expect((await ideenListe(db)).find((x) => x.idee === "deckwerk")?.uebernommen).toBeNull();
   });
 });

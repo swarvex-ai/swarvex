@@ -58,9 +58,27 @@ type leadKonfig struct {
 	RepoGit       string `json:"repo_git"`
 	AutorName     string `json:"author_name"`
 	AutorEmail    string `json:"author_email"`
+	// Mehrere Lead-Dienste je Projekt (E-39): Name des Dienstes auf diesem Rechner (<projekt>.<bereich>; leer: das
+	// Projekt), sein Bereich (take_area) und ob er einem Bereichs-Lead gehört (liest das Repository nur, pusht nicht).
+	Name         string   `json:"name,omitempty"`
+	Bereich      string   `json:"area,omitempty"`
+	Pfade        []string `json:"paths,omitempty"`
+	Faehigkeiten []string `json:"capabilities,omitempty"`
+	BereichsLead bool     `json:"area_lead,omitempty"`
+}
+
+// dienst: Name dieses Lead-Dienstes auf dem Rechner (Ordner, Anmeldung, systemd-Einheit, Container).
+func (l *leadKonfig) dienst() string {
+	if l.Name != "" {
+		return l.Name
+	}
+	return l.Projekt
 }
 
 var leadSlug = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
+
+// leadName: ein Lead-Dienst auf diesem Rechner, das Projekt oder <projekt>.<bereich> (setup --area)
+var leadName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}(\.[a-z][a-z0-9-]{1,30})?$`)
 
 func leadOrdner(p string) string      { return filepath.Join(datenOrdner(), "lead", p) }
 func leadUnter(p, teil string) string { return filepath.Join(leadOrdner(p), teil) }
@@ -96,8 +114,8 @@ func projektBefehl(args []string) {
 		fehlerAus("which project? swarvex project lead " + befehl + " <project>")
 	}
 	p := args[1]
-	if !leadSlug.MatchString(p) {
-		fehlerAus("not a project slug: " + p)
+	if !leadName.MatchString(p) || (befehl == "setup" && !leadSlug.MatchString(p)) {
+		fehlerAus("not a project slug: " + p + " (a lead service for an area is named <project>.<area>; set it up with --area)")
 	}
 	rest := args[2:]
 	switch befehl {
@@ -139,7 +157,7 @@ func leadKonfigLaden(p string) (*leadKonfig, error) {
 
 func (l *leadKonfig) speichern() error {
 	roh, _ := json.MarshalIndent(l, "", "  ")
-	return os.WriteFile(leadUnter(l.Projekt, "config.json"), roh, 0o600)
+	return os.WriteFile(leadUnter(l.dienst(), "config.json"), roh, 0o600)
 }
 
 func (l *leadKonfig) dauer(wert string, standard time.Duration) time.Duration {
@@ -288,7 +306,29 @@ func leadEinrichten(p string, args []string) {
 	ruhe := fs.Duration("idle-cycle", leadRuheStandard, "run a cycle after this long without work (plan and status)")
 	rundeMax := fs.Duration("cycle-time-limit", leadRundeMaxStandard, "maximum duration of one cycle")
 	ohneDienst := fs.Bool("no-service", false, "only prepare; do not set up the background service")
+	bereich := fs.String("area", "", "a second lead service for one area of the project (e.g. combat), next to the main one; ideally with another agent or model")
+	pfade := fs.String("paths", "", "with --area: the area's paths, comma-separated globs (e.g. game/combat/**,game/tests/combat/**)")
+	faehigkeiten := fs.String("capabilities", "code.*,test.*", "with --area: the area's capabilities, comma-separated")
 	fs.Parse(args)
+	n := p // Name des Dienstes auf diesem Rechner
+	liste := func(x string) []string {
+		var r []string
+		for _, t := range strings.Split(x, ",") {
+			if t = strings.TrimSpace(t); t != "" {
+				r = append(r, t)
+			}
+		}
+		return r
+	}
+	if *bereich != "" {
+		if !regexp.MustCompile(`^[a-z][a-z0-9-]{1,30}$`).MatchString(*bereich) {
+			fehlerAus("--area: lowercase letters, digits and dashes, e.g. combat or ui")
+		}
+		if len(liste(*pfade)) == 0 {
+			fehlerAus("--area needs --paths: the area's globs inside the repository, e.g. game/combat/**")
+		}
+		n = p + "." + *bereich
+	}
 	if *modell == "" {
 		fehlerAus("--model is required (the runner has no saved model yet)")
 	}
@@ -304,16 +344,16 @@ func leadEinrichten(p string, args []string) {
 	info, err := leadProjektLesen(basis, ca, p)
 	pruefen(err)
 	fmt.Printf("== Lead service for %s (%s) on %s\n", info.Name, p, basis)
-	pruefen(os.MkdirAll(leadOrdner(p), 0o700))
+	pruefen(os.MkdirAll(leadOrdner(n), 0o700))
 	for _, teil := range []string{"work", "home", "cache", "log"} {
-		pruefen(os.MkdirAll(leadUnter(p, teil), 0o700))
+		pruefen(os.MkdirAll(leadUnter(n, teil), 0o700))
 	}
 	for _, teil := range []string{"run", "proxy"} { // für den Container lesbar (nur lesend eingebunden), der Ordner darüber bleibt 0700
-		pruefen(os.MkdirAll(leadUnter(p, teil), 0o755))
+		pruefen(os.MkdirAll(leadUnter(n, teil), 0o755))
 	}
 
 	// 1. Eigene Anmeldung, an das Projekt gebunden
-	z, err := zugangLadenAus(leadZugangDatei(p))
+	z, err := zugangLadenAus(leadZugangDatei(n))
 	if err == nil && z.Plattform == basis {
 		if _, err := zugriffstoken(z); err != nil {
 			z = nil
@@ -324,16 +364,36 @@ func leadEinrichten(p string, args []string) {
 	if z == nil {
 		host, _ := os.Hostname()
 		fmt.Println("== Sign-in for the lead service (its own device, bound to this project)")
-		z, err = geraetAnmelden(basis, ca, fmt.Sprintf("swarvex project lead: %s (%s)", p, host), leadZugangDatei(p))
+		z, err = geraetAnmelden(basis, ca, fmt.Sprintf("swarvex project lead: %s (%s)", n, host), leadZugangDatei(n))
 		pruefen(err)
 	}
 	an := &leadAnmeldung{z: z}
 	m, tok, err := leadMcp(an)
 	pruefen(err)
-	if err := m.werkzeug("bind_lead_service", map[string]any{"project": p}, nil); err != nil {
+	var bindung struct {
+		Rolle        string   `json:"role"`
+		Bereich      string   `json:"area"`
+		Pfade        []string `json:"paths"`
+		Faehigkeiten []string `json:"capabilities"`
+	}
+	if err := m.werkzeug("bind_lead_service", map[string]any{"project": p}, &bindung); err != nil {
 		fehlerAus("binding the sign-in to " + p + ": " + err.Error())
 	}
+	bereichsLead := bindung.Rolle == "area_lead"
+	if bereichsLead && *bereich != "" {
+		fehlerAus("you are an area lead of " + p + ": your service runs your area " + bindung.Bereich + " by itself; leave out --area")
+	}
+	if *bereich != "" {
+		if err := m.werkzeug("take_area", map[string]any{"project": p, "area": *bereich, "paths": liste(*pfade), "capabilities": liste(*faehigkeiten)}, nil); err != nil {
+			fehlerAus("taking the area " + *bereich + ": " + err.Error())
+		}
+	}
 	fmt.Println("   signed in and bound to", p, "(only its lead tools; approvals stay with you)")
+	if bereichsLead {
+		fmt.Printf("   as area lead of %q: reviews and cuts tasks in your area; the repository is read-only for it\n", bindung.Bereich)
+	} else if *bereich != "" {
+		fmt.Printf("   runs the area %q; the main lead service keeps the rest\n", *bereich)
+	}
 
 	// 2. Git-Zugang
 	g, err := leadGitHolen(&leadKonfig{Plattform: basis, CAPfad: ca}, tok)
@@ -346,9 +406,15 @@ func leadEinrichten(p string, args []string) {
 		pruefen(err)
 		*gitToken = abs
 	}
-	l := &leadKonfig{Projekt: p, Plattform: basis, CAPfad: ca, Agent: agent.Name, Modell: *modell, ModellURL: *modellURL, KeyDatei: *keyDatei,
+	l := &leadKonfig{Projekt: p, BereichsLead: bereichsLead, Plattform: basis, CAPfad: ca, Agent: agent.Name, Modell: *modell, ModellURL: *modellURL, KeyDatei: *keyDatei,
 		GitTokenDatei: *gitToken, GitNutzer: *gitNutzer, Tagesbudget: *tages, Ruhe: ruhe.String(), RundeMax: rundeMax.String(),
 		Paket: leadPaket(info), RepoGit: g.RepoGit, AutorName: g.Autor.Name, AutorEmail: g.Autor.Email}
+	switch {
+	case bereichsLead:
+		l.Bereich, l.Pfade, l.Faehigkeiten = bindung.Bereich, bindung.Pfade, bindung.Faehigkeiten
+	case *bereich != "":
+		l.Name, l.Bereich, l.Pfade, l.Faehigkeiten = n, *bereich, liste(*pfade), liste(*faehigkeiten)
+	}
 	if _, err := gitHosts(l.RepoGit); err != nil {
 		fehlerAus(err.Error())
 	}
@@ -362,7 +428,7 @@ func leadEinrichten(p string, args []string) {
 	// 3. Klon, Umgebung, Image
 	ctx := context.Background()
 	pruefen(leadTokensSchreiben(l, an))
-	if _, err := os.Stat(filepath.Join(leadUnter(p, "work"), ".git")); err != nil {
+	if _, err := os.Stat(filepath.Join(leadUnter(n, "work"), ".git")); err != nil {
 		fmt.Println("== Cloning", l.RepoGit, "inside the sandbox")
 		if aus, err := leadGitAusfuehren(ctx, l, "git clone --quiet \"$SWARVEX_REPO\" /work"); err != nil {
 			fehlerAus("cloning: " + letzteZeilen(aus, 15))
@@ -375,22 +441,24 @@ func leadEinrichten(p string, args []string) {
 	fmt.Println("   project environment, agent, git and a virtual display ready")
 
 	if *ohneDienst {
-		fmt.Printf("\nReady. One cycle now: swarvex project lead cycle %s · as a service: swarvex project lead setup %s\n", p, p)
+		fmt.Printf("\nReady. One cycle now: swarvex project lead cycle %s · as a service: swarvex project lead setup %s (same options, without --no-service)\n", n, p)
 		return
 	}
 	// 4. Dienst
 	programm, err := os.Executable()
 	pruefen(err)
-	pruefen(os.MkdirAll(filepath.Dir(leadDienstDatei(p)), 0o755))
-	pruefen(os.WriteFile(leadDienstDatei(p), []byte(leadDienstEinheit(programm, p)), 0o644))
-	for _, a := range [][]string{{"daemon-reload"}, {"enable", leadDienstName(p)}, {"restart", leadDienstName(p)}} {
+	pruefen(os.MkdirAll(filepath.Dir(leadDienstDatei(n)), 0o755))
+	pruefen(os.WriteFile(leadDienstDatei(n), []byte(leadDienstEinheit(programm, n)), 0o644))
+	for _, a := range [][]string{{"daemon-reload"}, {"enable", leadDienstName(n)}, {"restart", leadDienstName(n)}} {
 		if aus, err := systemctl(a...); err != nil {
 			fehlerAus("systemctl --user " + strings.Join(a, " ") + ": " + aus)
 		}
 	}
-	fmt.Printf("\n✓ The lead of %s runs as a service in its sandbox.\n", p)
-	fmt.Printf("  State: swarvex project lead status %s · Log: swarvex project lead logs %s · Talk to it: swarvex project lead attach %s\n", p, p, p)
-	fmt.Println("  Stop the old lead session on this machine: from now on the service is the lead.")
+	fmt.Printf("\n✓ The lead service %s runs as a service in its sandbox.\n", n)
+	fmt.Printf("  State: swarvex project lead status %s · Log: swarvex project lead logs %s · Talk to it: swarvex project lead attach %s\n", n, n, n)
+	if n == p && !bereichsLead {
+		fmt.Println("  Stop the old lead session on this machine: from now on the service is the lead.")
+	}
 	if aus, _ := exec.Command("loginctl", "show-user", os.Getenv("USER"), "-p", "Linger", "--value").Output(); strings.TrimSpace(string(aus)) != "yes" && !istWSL() {
 		fmt.Println("  Note: the service only runs while you are logged in. To keep it working without a login, run once: loginctl enable-linger")
 	}
@@ -468,7 +536,7 @@ func leadGitImageBereit(ctx context.Context) error {
 // leadVorbereiten: Umgebung des Projekts im Klon ermitteln, Lead-Image bauen (einmal je Umgebung und Agent-Version)
 // und die Abhängigkeiten einrichten, wenn sich der Stand seit dem letzten Mal geändert hat.
 func leadVorbereiten(ctx context.Context, l *leadKonfig) (umgebung.Umgebung, string, error) {
-	baum := leadUnter(l.Projekt, "work")
+	baum := leadUnter(l.dienst(), "work")
 	u, err := umgebungErmitteln(baum)
 	if err != nil {
 		return u, "", fmt.Errorf("project environment: %v", err)
@@ -495,11 +563,11 @@ func leadVorbereiten(ctx context.Context, l *leadKonfig) (umgebung.Umgebung, str
 	}
 	// Abhängigkeiten (mit Netz über den Ausgangs-Proxy, ohne Agent, ohne Schlüssel), nur wenn sich der Stand geändert hat
 	stand := gitStand(baum)
-	if alt, _ := os.ReadFile(leadUnter(l.Projekt, "setup-head")); stand == "" || strings.TrimSpace(string(alt)) != stand {
-		if err := einrichten(ctx, u, env, baum, leadUnter(l.Projekt, "cache"), leadUnter(l.Projekt, filepath.Join("log", "setup.log"))); err != nil {
+	if alt, _ := os.ReadFile(leadUnter(l.dienst(), "setup-head")); stand == "" || strings.TrimSpace(string(alt)) != stand {
+		if err := einrichten(ctx, u, env, baum, leadUnter(l.dienst(), "cache"), leadUnter(l.dienst(), filepath.Join("log", "setup.log"))); err != nil {
 			fmt.Println("   setting up dependencies failed (the lead can still work; details in log/setup.log):", letzteZeilen(err.Error(), 3))
 		} else if stand != "" {
-			os.WriteFile(leadUnter(l.Projekt, "setup-head"), []byte(stand+"\n"), 0o600)
+			os.WriteFile(leadUnter(l.dienst(), "setup-head"), []byte(stand+"\n"), 0o600)
 		}
 	}
 	return u, image, nil
@@ -548,7 +616,7 @@ func leadGitUmgebung(l *leadKonfig, proxy string) []string {
 
 // leadContainerArgs: gemeinsame, abgeschottete Einstellungen des Lead-Containers (Git, Runde, Gespräch).
 func leadContainerArgs(l *leadKonfig, name, netz string, hosts []string, sekunden int) []string {
-	p := l.Projekt
+	p := l.dienst()
 	args := []string{"run", "--rm", "--name", name, "--timeout", fmt.Sprint(sekunden),
 		"--cap-drop=ALL", "--security-opt", "no-new-privileges", "--read-only",
 		"--tmpfs", "/tmp:rw,exec,size=4g,mode=1777", "--shm-size", "512m",
@@ -577,7 +645,7 @@ func leadProxyBetrieb(ctx context.Context, l *leadKonfig, name, netz string, zug
 	exec.CommandContext(ctx, "podman", "rm", "-f", name).Run()
 	args := []string{"run", "-d", "--name", name, "--network", netz, "--network", "podman", "--timeout", "86400",
 		"--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges", "--memory", "256m", "--pids-limit", "128",
-		"-v", leadUnter(l.Projekt, "proxy") + ":/run/lead:ro,Z",
+		"-v", leadUnter(l.dienst(), "proxy") + ":/run/lead:ro,Z",
 		"-e", "SWARVEX_UPSTREAM=" + zugang.URL, "-e", "SWARVEX_API=" + agent.API, "-e", "SWARVEX_MODEL=" + l.Modell, "-e", "SWARVEX_TASK_TOKEN=" + tok,
 		"-e", fmt.Sprintf("SWARVEX_BUDGET_TOKENS=%d", budget), "-e", "SWARVEX_PLATFORM=" + l.Plattform, "-e", "SWARVEX_GIT_HOSTS=" + hostsGit}
 	if zugang.Key != "" {
@@ -605,7 +673,7 @@ func leadGitAusfuehren(ctx context.Context, l *leadKonfig, befehl string) (strin
 	if err != nil {
 		return "", err
 	}
-	proxy := "swarvex-leadproxy-" + l.Projekt
+	proxy := "swarvex-leadproxy-" + l.dienst()
 	zugang, err := zugangLesen(agenten[l.Agent], l.KeyDatei, l.ModellURL, time.Hour)
 	if err != nil {
 		return "", err
@@ -615,7 +683,7 @@ func leadGitAusfuehren(ctx context.Context, l *leadKonfig, befehl string) (strin
 	if err != nil {
 		return "", err
 	}
-	name := "swarvex-leadgit-" + l.Projekt
+	name := "swarvex-leadgit-" + l.dienst()
 	exec.Command("podman", "rm", "-f", name).Run()
 	args := append(leadContainerArgs(l, name, netz, hosts, 1800), leadGitUmgebung(l, proxy)...)
 	args = append(args, "-e", "SWARVEX_REPO="+l.RepoGit, leadGitImage, "sh", "-ec", befehl)
@@ -650,7 +718,7 @@ func leadTokensSchreiben(l *leadKonfig, a *leadAnmeldung) error {
 	if err != nil {
 		return err
 	}
-	if err := atomarSchreiben(leadUnter(l.Projekt, filepath.Join("proxy", "access-token")), tok); err != nil {
+	if err := atomarSchreiben(leadUnter(l.dienst(), filepath.Join("proxy", "access-token")), tok); err != nil {
 		return err
 	}
 	git := ""
@@ -670,7 +738,7 @@ func leadTokensSchreiben(l *leadKonfig, a *leadAnmeldung) error {
 		}
 		git = *g.Token
 	}
-	return atomarSchreiben(leadUnter(l.Projekt, filepath.Join("run", "git-token")), git)
+	return atomarSchreiben(leadUnter(l.dienst(), filepath.Join("run", "git-token")), git)
 }
 
 // leadTokensFrischHalten: solange gearbeitet wird, alle 5 Minuten frische Zugänge (das Git-Token der GitHub App
@@ -706,6 +774,9 @@ type leadAnlass struct {
 	Nachrichten int
 	Nachschub   bool
 	Frei, Aktiv int
+	// Bereitschaft: ein anderer Lead-Dienst des Projekts hält die Hauptschleife (E-39); dieser startet keine Runde
+	Bereitschaft bool
+	Halter       string
 }
 
 func (a leadAnlass) arbeit() bool { return len(a.Reviews) > 0 || a.Nachrichten > 0 }
@@ -742,9 +813,11 @@ func leadWarten(m *mcpClient, p string, sekunden int) (leadAnlass, error) {
 			Frei  int `json:"free"`
 			Aktiv int `json:"active"`
 		} `json:"supply"`
+		Bereitschaft bool   `json:"standby"`
+		Halter       string `json:"holder"`
 	}
 	err := m.werkzeug("wait_for_work", map[string]any{"project": p, "max_seconds": sekunden, "wake_on": []string{"reviews", "messages", "backlog"}}, &w)
-	a := leadAnlass{Nachrichten: w.Nachrichten, Nachschub: w.Nachschub, Frei: w.Angebot.Frei, Aktiv: w.Angebot.Aktiv}
+	a := leadAnlass{Nachrichten: w.Nachrichten, Nachschub: w.Nachschub, Frei: w.Angebot.Frei, Aktiv: w.Angebot.Aktiv, Bereitschaft: w.Bereitschaft, Halter: w.Halter}
 	for _, r := range w.Reviews {
 		a.Reviews = append(a.Reviews, r.ID)
 	}
@@ -756,6 +829,8 @@ func leadWarten(m *mcpClient, p string, sekunden int) (leadAnlass, error) {
 func leadEntscheiden(a leadAnlass, letzteSignatur string, letzteRunde time.Time, ruhe time.Duration, jetzt time.Time) (bool, string) {
 	seit := jetzt.Sub(letzteRunde)
 	switch {
+	case a.Bereitschaft:
+		return false, ""
 	case letzteRunde.IsZero():
 		if a.arbeit() || a.Nachschub {
 			return true, a.text()
@@ -786,6 +861,29 @@ Why this cycle runs now: %[2]s.
 - Keep docs/status.md current as the handbook says: the next cycle starts from it. End the cycle when the queue is worked through.
 `
 
+// leadBereichZeile: für Status und Protokoll, z. B. " (area combat)"
+func leadBereichZeile(l *leadKonfig) string {
+	switch {
+	case l.BereichsLead:
+		return fmt.Sprintf(" (area lead of %q in %s, reads the repository only)", l.Bereich, l.Projekt)
+	case l.Bereich != "":
+		return fmt.Sprintf(" (area %q of %s)", l.Bereich, l.Projekt)
+	}
+	return ""
+}
+
+// leadBereichText: Zusatz zum Auftrag für einen Dienst mit Bereich (E-39).
+func leadBereichText(l *leadKonfig) string {
+	if l.Bereich == "" {
+		return ""
+	}
+	pfade := strings.Join(l.Pfade, ", ")
+	if l.BereichsLead {
+		return fmt.Sprintf("- You are the area lead for %q (paths %s), not the project's lead: create, review and close tasks only inside your area (levels A and B, C when the lead released it); level D and everything outside belongs to the lead. The handbook's area-lead rules apply (lead/AREA_LEAD.md). This clone is read-only for you: never push; your own code goes through tasks like everyone else's.\n", l.Bereich, pfade)
+	}
+	return fmt.Sprintf("- This lead service runs the area %q (paths %s) of the project: pending_submissions and wait_for_work show you only that area. The main lead service handles everything else; coordinate with it through send_message (to: lead) instead of working outside your area.\n", l.Bereich, pfade)
+}
+
 // leadRunde: eine Runde des Agenten im Lead-Container. Liefert Verbrauch und Ausgang.
 func leadRunde(ctx context.Context, l *leadKonfig, a *leadAnmeldung, anlass string, budget int64) (int64, string, error) {
 	tokens, ergebnis, _, err := leadImContainer(ctx, l, a, anlass, budget, "")
@@ -794,7 +892,7 @@ func leadRunde(ctx context.Context, l *leadKonfig, a *leadAnmeldung, anlass stri
 
 // leadImContainer: eine Runde des Agenten, oder statt seiner ein Befehl (swarvex project lead exec). Liefert auch die Ausgabe.
 func leadImContainer(ctx context.Context, l *leadKonfig, a *leadAnmeldung, anlass string, budget int64, statt string) (int64, string, string, error) {
-	p := l.Projekt
+	p := l.dienst()
 	agent := agenten[l.Agent]
 	if err := leadTokensSchreiben(l, a); err != nil {
 		return 0, "", "", err
@@ -820,7 +918,7 @@ func leadImContainer(ctx context.Context, l *leadKonfig, a *leadAnmeldung, anlas
 	if err := os.WriteFile(leadUnter(p, filepath.Join("run", "LEAD.md")), []byte(paket), 0o644); err != nil {
 		return 0, "", "", err
 	}
-	if err := os.WriteFile(leadUnter(p, filepath.Join("run", "cycle.md")), []byte(fmt.Sprintf(leadAuftragVorlage, p, anlass, hinweis)), 0o644); err != nil {
+	if err := os.WriteFile(leadUnter(p, filepath.Join("run", "cycle.md")), []byte(fmt.Sprintf(leadAuftragVorlage, l.Projekt, anlass, hinweis)+leadBereichText(l)), 0o644); err != nil {
 		return 0, "", "", err
 	}
 	netz, err := internesNetz(ctx)
@@ -886,7 +984,7 @@ func leadAgent(l *leadKonfig, agent agentArt, proxy, tok string, zugang modellZu
 	case "claude":
 		mcp, _ := json.Marshal(map[string]any{"mcpServers": map[string]any{"swarvex": map[string]any{
 			"type": "http", "url": proxyURL + "/mcp", "headers": map[string]string{"Authorization": "Bearer " + tok}}}})
-		if err := os.WriteFile(leadUnter(l.Projekt, filepath.Join("run", "mcp.json")), mcp, 0o644); err != nil {
+		if err := os.WriteFile(leadUnter(l.dienst(), filepath.Join("run", "mcp.json")), mcp, 0o644); err != nil {
 			return nil, "", err
 		}
 		for _, v := range []string{"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -905,13 +1003,13 @@ func leadAgent(l *leadKonfig, agent agentArt, proxy, tok string, zugang modellZu
 	case "codex":
 		// Codex liest ~/.codex/AGENTS.md als eigene Anleitung: dorthin das Lead-Paket (das AGENTS.md im Repo bleibt die
 		// Regel für Mitstreiter). Anbieter und MCP-Server per -c, das Token der Werkzeuge aus SWARVEX_TOKEN.
-		codexOrdner := leadUnter(l.Projekt, filepath.Join("home", ".codex"))
+		codexOrdner := leadUnter(l.dienst(), filepath.Join("home", ".codex"))
 		if err := os.MkdirAll(codexOrdner, 0o700); err != nil {
 			return nil, "", err
 		}
 		anbieter := fmt.Sprintf("{name=%s, base_url=%s, env_key=\"SWARVEX_TOKEN\", wire_api=\"responses\"}", tomlText("swarvex proxy"), tomlText(proxyURL+"/v1"))
 		if zugang.chatgpt() {
-			pfad := leadUnter(l.Projekt, filepath.Join("run", "codex-auth.json"))
+			pfad := leadUnter(l.dienst(), filepath.Join("run", "codex-auth.json"))
 			if err := os.WriteFile(pfad, codexSandboxAnmeldung(tok, zugang.Plan), 0o644); err != nil {
 				return nil, "", err
 			}
@@ -938,7 +1036,7 @@ func leadAgent(l *leadKonfig, agent agentArt, proxy, tok string, zugang modellZu
 			"mcp": map[string]any{"swarvex": map[string]any{"type": "remote", "url": proxyURL + "/mcp", "headers": map[string]string{"Authorization": "Bearer {env:SWARVEX_TOKEN}"}}},
 		}
 		roh, _ := json.MarshalIndent(konfig, "", "  ")
-		if err := os.WriteFile(leadUnter(l.Projekt, filepath.Join("run", "opencode.json")), roh, 0o644); err != nil {
+		if err := os.WriteFile(leadUnter(l.dienst(), filepath.Join("run", "opencode.json")), roh, 0o644); err != nil {
 			return nil, "", err
 		}
 		args = append(args, "-e", "OPENCODE_CONFIG=/run/swarvex/opencode.json", "-e", "OPENCODE_DISABLE_AUTOUPDATE=1", "-e", "OPENCODE_DISABLE_MODELS_FETCH=1")
@@ -960,12 +1058,12 @@ func leadPaketHolen(l *leadKonfig) (string, error) {
 		if r.StatusCode == http.StatusOK {
 			roh, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 			if err == nil && len(roh) > 1000 {
-				os.WriteFile(leadUnter(l.Projekt, "LEAD.cache.md"), roh, 0o600)
+				os.WriteFile(leadUnter(l.dienst(), "LEAD.cache.md"), roh, 0o600)
 				return string(roh), nil
 			}
 		}
 	}
-	if roh, err := os.ReadFile(leadUnter(l.Projekt, "LEAD.cache.md")); err == nil {
+	if roh, err := os.ReadFile(leadUnter(l.dienst(), "LEAD.cache.md")); err == nil {
 		return string(roh), nil
 	}
 	return "", fmt.Errorf("could not load the lead handbook %s/lead/%s.md", l.Plattform, l.Paket)
@@ -1037,14 +1135,14 @@ func leadSperre(p string, warten bool) (func(), bool) {
 
 // rundeAusfuehren: Sperre, Budget, Runde, Meldung an die Plattform, eigenes Protokoll.
 func rundeAusfuehren(ctx context.Context, l *leadKonfig, a *leadAnmeldung, anlass string) (string, error) {
-	frei, ok := leadSperre(l.Projekt, false)
+	frei, ok := leadSperre(l.dienst(), false)
 	if !ok {
 		return "skipped", nil // jemand spricht gerade mit dem Lead (attach)
 	}
 	defer frei()
 	budget := int64(0)
 	if l.Tagesbudget > 0 {
-		rest := l.Tagesbudget - verbrauchAmTag(leadVerbrauchDatei(l.Projekt), time.Now())
+		rest := l.Tagesbudget - verbrauchAmTag(leadVerbrauchDatei(l.dienst()), time.Now())
 		if rest <= 0 {
 			return "daily budget used up", nil
 		}
@@ -1057,8 +1155,8 @@ func rundeAusfuehren(ctx context.Context, l *leadKonfig, a *leadAnmeldung, anlas
 		ergebnis = "error: " + err.Error()
 	}
 	sekunden := int(time.Since(start).Seconds())
-	verbrauchMerken(leadVerbrauchDatei(l.Projekt), 0, tokens, time.Now())
-	leadRundeMerken(l.Projekt, leadRundeEintrag{Zeit: start, Sekunden: sekunden, Tokens: tokens, Anlass: anlass, Ergebnis: ergebnis})
+	verbrauchMerken(leadVerbrauchDatei(l.dienst()), 0, tokens, time.Now())
+	leadRundeMerken(l.dienst(), leadRundeEintrag{Zeit: start, Sekunden: sekunden, Tokens: tokens, Anlass: anlass, Ergebnis: ergebnis})
 	fmt.Printf("Cycle done after %s: %s, %d tokens\n", (time.Duration(sekunden) * time.Second).String(), ergebnis, tokens)
 	// Mit frischem Token melden: Die Runde kann länger gedauert haben, als das alte gilt
 	if m, _, e := leadMcp(a); e == nil {
@@ -1091,7 +1189,7 @@ func leadBetrieb(p string) {
 	defer stopp()
 	programmBeimStart, _ := os.Stat(os.Args[0])
 	ruhe := l.dauer(l.Ruhe, leadRuheStandard)
-	fmt.Printf("Lead service for %s: %s with %s, waits for work on %s\n", p, l.Agent, l.Modell, l.Plattform)
+	fmt.Printf("Lead service %s: %s with %s, waits for work on %s%s\n", p, l.Agent, l.Modell, l.Plattform, leadBereichZeile(l))
 	var m *mcpClient
 	var tokenZeit time.Time
 	var letzteRunde time.Time
@@ -1100,6 +1198,7 @@ func leadBetrieb(p string) {
 		letzteRunde = r[0].Zeit.Add(time.Duration(r[0].Sekunden) * time.Second)
 	}
 	fehlerPause := time.Minute
+	bereichGenommen, bereitschaft := false, false
 	for ctx.Err() == nil {
 		// Nach `swarvex update` zwischen zwei Runden mit der neuen Version weiter (gleiche PID, der Dienst merkt nichts)
 		if neueVersionInstalliert(os.Args[0], programmBeimStart) {
@@ -1121,7 +1220,23 @@ func leadBetrieb(p string) {
 			}
 			m, tokenZeit, fehlerPause = neu, time.Now(), time.Minute
 		}
-		a, err := leadWarten(m, p, 300)
+		if l.Bereich != "" && !l.BereichsLead && !bereichGenommen {
+			// Ein zweiter Lead-Dienst des Leads übernimmt seinen Bereich (wieder), etwa nach einem Neustart
+			if err := m.werkzeug("take_area", map[string]any{"project": l.Projekt, "area": l.Bereich, "paths": l.Pfade, "capabilities": l.Faehigkeiten}, nil); err != nil {
+				fmt.Println("take_area:", err)
+			} else {
+				bereichGenommen = true
+			}
+		}
+		a, err := leadWarten(m, l.Projekt, 300)
+		if a.Bereitschaft != bereitschaft {
+			bereitschaft = a.Bereitschaft
+			if bereitschaft {
+				fmt.Printf("Standby: the lead service %q holds the main loop of %s. This one takes over when that one is silent for 15 minutes.\n", a.Halter, l.Projekt)
+			} else {
+				fmt.Println("This lead service now holds the main loop.")
+			}
+		}
 		if err != nil {
 			fmt.Println("wait_for_work:", err)
 			m = nil
@@ -1145,7 +1260,7 @@ func leadBetrieb(p string) {
 			n := mitternacht(time.Now())
 			fmt.Printf("Daily budget used up. Next cycle after %s (the service stays reachable).\n", zeitpunkt(n))
 			for time.Now().Before(n) && ctx.Err() == nil {
-				if _, err := leadWarten(m, p, 300); err != nil {
+				if _, err := leadWarten(m, l.Projekt, 300); err != nil {
 					m = nil
 					break
 				}
@@ -1267,7 +1382,7 @@ func leadBefehlAusfuehren(p string, args []string) {
 func leadStatus(p string) {
 	l, err := leadKonfigLaden(p)
 	pruefen(err)
-	fmt.Printf("Lead service for %s\n", p)
+	fmt.Printf("Lead service %s%s\n", p, leadBereichZeile(l))
 	fmt.Printf("Agent: %s with %s · repository %s\n", l.Agent, l.Modell, l.RepoGit)
 	zustand := "not set up as a service"
 	if _, err := os.Stat(leadDienstDatei(p)); err == nil {

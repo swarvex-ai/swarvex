@@ -3,6 +3,7 @@
 //   /api/account/login → Anbieter → /interaction/callback (state "konto-<nonce>…") → /api/account/done → /konto
 // Die Sitzung ist ein signiertes Cookie ohne Serverzustand; „Abmelden“ beendet alle Sitzungen des Menschen.
 import { leadAnwesenheit } from "./leaddienst.ts";
+import { anhaltendeSignale, bewerben, gesuchOeffnen, gesuchSchliessen, meineBewerbungen, offeneGesuche, teilenLink } from "./leadkraft.ts";
 import { randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Abgelehnt, leasesBeenden } from "./aufgaben.ts";
@@ -86,7 +87,11 @@ export async function kontoDaten(db: Db, menschId: number) {
     const a = await leadAnwesenheit(db, Number(p.id));
     return a ? { projekt: p.slug, name: p.name, ...a } : null;
   }))).filter((x) => x !== null);
+  // Lead-Kraft (leadkraft.ts): Teilen-Link, offene Lead-Gesuche und anhaltende Signale je geleitetem Projekt
+  const lead_kraft = await Promise.all(geleitet.map(async (p) => ({ projekt: p.slug, name: p.name, teilen_link: teilenLink(p.slug),
+    lead_gesuche: await offeneGesuche(db, Number(p.id)), signale: await anhaltendeSignale(db, Number(p.id)) })));
   return { mensch, rollen, agenten, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId), wochenberichte, lead_dienste,
+    lead_kraft, meine_bewerbungen: await meineBewerbungen(db, menschId),
     vertrauen: await vertrauenStand(db, menschId), bereichs_leads: await bereichsLeadsFuer(db, menschId) };
 }
 
@@ -120,7 +125,9 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
   const ZIELE: Record<string, string> = { starten: "/starten", start: "/en/start" };
   // Rücksprung nach der Anmeldung: feste Ziele oder eine Projektseite (projekt-<slug>, z. B. vom Feedback zur Vorschau)
   const zielPfad = (next: string, en: boolean) =>
-    ZIELE[next] ?? (/^projekt-[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(next) ? `${en ? "/en/projects" : "/projekte"}/${next.slice(8)}` : undefined);
+    ZIELE[next] ?? (/^projekt-[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(next) ? `${en ? "/en/projects" : "/projekte"}/${next.slice(8)}`
+      // Teilen-Link eines Projekts (leadkraft.ts): nach der Anmeldung zurück zur Beitrittsseite
+      : /^join-[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(next) ? `${en ? "/en/join" : "/join"}/${next.slice(5)}` : undefined);
   // Zustandsändernde Aufrufe nur von der eigenen Website (zusätzlich zu SameSite=Lax)
   const eigeneHerkunft = (req: IncomingMessage) => req.headers.origin === new URL(konfig.basis).origin;
 
@@ -246,6 +253,28 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
         }
         if (typeof e.enabled !== "boolean") return json(res, 400, { error: "enabled: true or false" });
         return json(res, 200, nachAussen(await automatikSetzen(db, menschId, automatik![1], e.enabled)));
+      } catch (err) {
+        if (err instanceof Abgelehnt) return json(res, 409, { error: err.message });
+        throw err;
+      }
+    }
+
+    // Lead-Kraft (leadkraft.ts): auf ein Lead-Gesuch bewerben; als Lead oder Visionär ein Gesuch öffnen oder schließen
+    const bewerbung = /^\/api\/account\/lead-positions\/(\d+)\/apply$/.exec(pfad);
+    const gesuche = /^\/api\/account\/projects\/([a-z0-9-]+)\/lead-positions(?:\/([a-z][a-z0-9-]{1,30})\/close)?$/.exec(pfad);
+    if ((bewerbung || gesuche) && req.method === "POST") {
+      if (!eigeneHerkunft(req)) return json(res, 403, { error: "foreign_origin" });
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
+      let e: { text?: unknown; models?: unknown; area?: unknown; paths?: unknown; capabilities?: unknown; room?: unknown } = {};
+      try { e = JSON.parse(await textLesen(req, 16_000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
+      const liste = (x: unknown) => (Array.isArray(x) ? x : typeof x === "string" ? x.split(/[,\n]/) : []).map((y) => String(y).trim()).filter(Boolean);
+      const wer = { menschId, agentId: 0 };
+      try {
+        if (bewerbung) return json(res, 201, nachAussen(await bewerben(db, menschId, Number(bewerbung[1]), { text: String(e.text ?? ""), modelle: String(e.models ?? "") })));
+        if (gesuche![2]) return json(res, 200, nachAussen(await gesuchSchliessen(db, wer, gesuche![1], gesuche![2])));
+        const raum = ({ analysis: "analyse", review: "pruefung", build: "bau" } as Record<string, string>)[String(e.room ?? "")];
+        return json(res, 201, nachAussen(await gesuchOeffnen(db, wer, gesuche![1],
+          { bereich: String(e.area ?? ""), pfade: liste(e.paths), faehigkeiten: liste(e.capabilities), raum, text: String(e.text ?? "") })));
       } catch (err) {
         if (err instanceof Abgelehnt) return json(res, 409, { error: err.message });
         throw err;

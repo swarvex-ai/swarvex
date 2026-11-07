@@ -5,6 +5,7 @@
   import Zaehler from "$lib/components/Zaehler.svelte";
   import VorschauFeedback from "$lib/components/VorschauFeedback.svelte";
   import Einzeiler from "$lib/components/Einzeiler.svelte";
+  import TeilenLink from "$lib/components/TeilenLink.svelte";
   import { SEITE } from "$lib/seo";
   import { pfad, sprache, tx } from "$lib/texte";
   import { projektText } from "$lib/projekttext";
@@ -87,6 +88,8 @@
       {:else if p.preview}
         <span class="leise klein">{p.preview.status === "failed" ? d.vorschauNochNicht : d.vorschauWird}</span>
       {/if}
+      <TeilenLink slug={p.project} name={p.name} klein />
+      {#if p.lead_positions?.length}<a class="knopf gesucht" href={pfad(s, `/join/${p.project}`)}>{tx().leadKraft.bock} · {tx().leadKraft.gesucht(p.lead_positions.length)}</a>{/if}
       <a class="melden leise" href={`${pfad(s, tx().melden.pfad)}?project=${encodeURIComponent(p.project)}`}>{d.melden}</a>
     </div>
   </header>

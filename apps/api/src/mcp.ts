@@ -27,7 +27,8 @@ import { bereichsLeadsFuer } from "./bereichsleads.ts";
 import { gegenpruefungMelden, naechsteGegenpruefung } from "./gegenpruefung.ts";
 import type { Zugang } from "./auth/zugang.ts";
 import { anRein, nachrichtBeantworten, nachrichtSenden, offeneFuerMich, posteingang } from "./nachrichten.ts";
-import { gebundenPruefen, leadDienstBinden, leadGesehen, LEAD_DIENST_WERKZEUGE, rundeMelden } from "./leaddienst.ts";
+import { bereitschaft, gebundenPruefen, leadDienstBinden, leadGesehen, LEAD_DIENST_WERKZEUGE, rundeMelden } from "./leaddienst.ts";
+import { gesuchOeffnen, gesuchSchliessen } from "./leadkraft.ts";
 import { auftraegeFuerLead, auftragAnlegen, DATEITYPEN, DIENSTE, MEDIEN_JE_TAG_MAX, runnerAuftragAbbrechen, runnerAuftragBeginnen, runnerAuftraege, runnerZusagenSetzen, spendeBewerten, zusagenFuerLead } from "./spenden.ts";
 
 // Ohne Rückgabewert: „ok“ (JSON.stringify(undefined) wäre kein Text, und der MCP-Client verwürfe die ganze Antwort)
@@ -69,7 +70,13 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       if (!LEAD_DIENST_WERKZEUGE.has(name)) return undefined;
       return registrieren(name, def, async (a: Record<string, unknown>, extra: unknown) => {
         const nein = await gebundenPruefen(db, gebunden, name, a ?? {});
-        return nein ? { ...text(`Rejected: ${nein}`), isError: true } : handler(a, extra);
+        if (nein) return { ...text(`Rejected: ${nein}`), isError: true };
+        // Mehrere Lead-Dienste je Projekt (E-39): ohne Hauptschleife und ohne Bereich wartet dieser in Bereitschaft
+        if (name === "wait_for_work") {
+          const b = await bereitschaft(db, gebunden, wer.agentId, Number(a?.max_seconds ?? 300));
+          if (b) return text(b);
+        }
+        return handler(a, extra);
       });
     };
     s.registerTool("report_lead_cycle", {
@@ -77,9 +84,9 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       inputSchema: { project: z.string(), seconds: z.number().int().min(0).max(86400), tokens: z.number().int().min(0).default(0),
         reason: z.string().min(1).max(200), outcome: z.string().min(1).max(200) },
     }, sicher(async ({ seconds, tokens, reason, outcome }) => rundeMelden(db, wer, gebunden, { sekunden: seconds, tokens, anlass: reason, ergebnis: outcome })));
-  } else if (z0.runner && await istLeadIrgendwo(db, wer.menschId)) {
+  } else if (z0.runner && (await istLeadIrgendwo(db, wer.menschId) || (await k.officersVon(db, wer.menschId)).length)) {
     s.registerTool("bind_lead_service", {
-      description: "(swarvex runner) Binds this sign-in to the lead service of one project whose lead or visionary you are (swarvex project lead setup). From then on it sees only that project's lead tools, decides no approvals and gets git access only for that repository. Final for this sign-in; to undo, sign the device out under My account.",
+      description: "(swarvex runner) Binds this sign-in to the lead service of one project whose lead, visionary or area lead you are (swarvex project lead setup). From then on it sees only that project's lead tools, decides no approvals and gets git access only for that repository (an area lead's service reads it only). Final for this sign-in; to undo, sign the device out under My account.",
       inputSchema: { project: z.string() },
     }, sicher(async ({ project }) => leadDienstBinden(db, wer, project)));
   }
@@ -363,6 +370,21 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       description: "(Lead, visionary) This session gives its area back to the main session.",
       inputSchema: { project: z.string() },
     }, sicher(async ({ project }) => k.bereichAbgeben(db, wer, project)));
+    s.registerTool("open_lead_position", {
+      description: "(Lead, visionary) Looks for an area lead when the project needs more lead power: anyone may apply with their own account and their own model, also without trust level 2; the visionary decides under My account. The position shows on the project page and behind the project's share link (returned). Replaces an open position of the same area.",
+      inputSchema: {
+        project: z.string(), area: z.string().describe("Area name, e.g. netcode, ui, combat"),
+        paths: z.array(z.string()).min(1).describe("Globs of the area, e.g. [\"game/net/**\", \"game/tests/net/**\"]"),
+        capabilities: z.array(z.string()).min(1).describe("Capabilities of the area; a family with .*, e.g. [\"code.gdscript\", \"test.*\"]"),
+        room: z.enum(["analysis", "review", "build"]).optional().describe("Clean-room projects only: the area lead's room"),
+        text: z.string().min(20).max(2000).describe("What the area needs and what its lead decides, for applicants"),
+      },
+    }, sicher(async ({ project, area, paths, capabilities, room, text: t }) =>
+      gesuchOeffnen(db, wer, project, { bereich: area, pfade: paths, faehigkeiten: capabilities, raum: room ? RAUM_REIN[room] : undefined, text: t })));
+    s.registerTool("close_lead_position", {
+      description: "(Lead, visionary) Closes the open lead position of an area; pending applications for it lapse.",
+      inputSchema: { project: z.string(), area: z.string() },
+    }, sicher(async ({ project, area }) => gesuchSchliessen(db, wer, project, area)));
     s.registerTool("release_level_c", {
       description: "(Lead, visionary) Lets the area lead of an area also create and review level C tasks inside the area (allowed: true), or takes that back (false). Logged publicly. Level D and architecture stay with the lead.",
       inputSchema: { project: z.string(), area: z.string(), allowed: z.boolean() },
@@ -404,7 +426,7 @@ export async function mcpBehandeln(db: Db, zugang: Zugang, req: IncomingMessage,
     await db.query("update agenten set programm = left($2, 60), programm_version = left($3, 40), programm_seit = now() where id = $1",
       [zugang.agentId, info.name, typeof info.version === "string" ? info.version : ""]).catch(() => {});
   }
-  if (zugang.leadProjekt !== null) await leadGesehen(db, zugang.leadProjekt);
+  if (zugang.leadProjekt !== null) await leadGesehen(db, zugang.leadProjekt, zugang.agentId);
   const server = await mcpServerFuer(db, zugang);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   res.on("close", () => { transport.close(); server.close(); });

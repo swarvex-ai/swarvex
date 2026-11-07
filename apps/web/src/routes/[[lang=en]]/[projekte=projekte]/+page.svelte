@@ -45,7 +45,17 @@
   const projektPfad = (slug: string) => pfad(s, `${t.pfad}/${slug}`);
   const starten = $derived(pfad(s, tx().starten.pfad));
   const anschliessen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
-  const anzahl = (k: string) => projekte.filter((p) => inKategorie(p, k)).length;
+  const anzahl = (k: string) => projekte.filter((p) => inKategorie(p, k)).length + ideen.filter((i) => ideeIn(i, k) && !i.taken_by).length;
+
+  // Projektideen „Lead gesucht“ (E-39): wer eine übernimmt, wird Visionär und Lead (Assistent mit ?idea=<idee>)
+  type IdeeText = { name: string; short: string; goal: string; why_now: string };
+  type Idee = { idea: string; type: string; procedure: string; engine: string; areas: string[]; sources: string[]; de: IdeeText; en: IdeeText;
+                taken_by: { project: string; name: string; draft: boolean } | null };
+  const ideen = $derived((data.ideen ?? []) as Idee[]);
+  const ideeIn = (i: Idee, k: string) => (k === "clean_room" || k === "continuation" ? i.procedure === k : i.type === k);
+  const ideenGefiltert = $derived(ideen.filter((i) => !kategorie || ideeIn(i, kategorie)).sort((a, b) => Number(!!a.taken_by) - Number(!!b.taken_by)));
+  const lk = $derived(tx().leadKraft);
+  const gesucht = $derived(projekte.filter((p) => (p.lead_wanted ?? 0) > 0));
 </script>
 
 <Seo titel={t.seoTitel} beschreibung={t.beschreibung} pfad={pfad(s, t.pfad)} alternativen={{ de: "/projekte", en: "/en/projects" }} feed="/api/feed/tasks.atom" />
@@ -56,6 +66,7 @@
   <div class="aktionen">
     <a class="knopf visionaer" href={starten}>{t.starten}</a>
     <a class="knopf primaer" href={anschliessen}>{t.anschliessen}</a>
+    {#if ideen.some((i) => !i.taken_by) || gesucht.length}<a class="knopf" href="#lead-gesucht">{lk.bock}</a>{/if}
   </div>
 </section>
 
@@ -110,6 +121,7 @@
               {#if p.wants?.length}
                 <p class="sucht"><span class="leise">{t.sucht}</span>{#each p.wants as f}<code>{f}</code>{/each}</p>
               {/if}
+              {#if (p.lead_wanted ?? 0) > 0}<p class="gesucht">{lk.gesucht(p.lead_wanted ?? 0)}</p>{/if}
             </div>
             <dl class="zahlen">
               <div class:an={p.agents_active > 0}><dt>{t.jetzt}</dt><dd><Zaehler wert={p.agents_active} /></dd></div>
@@ -125,7 +137,56 @@
   {/if}
 </section>
 
+{#if ideenGefiltert.length || gesucht.length}
+  <section class="huelle ideen" id="lead-gesucht" aria-labelledby="t-ideen">
+    <h2 id="t-ideen">{lk.ideenH2}</h2>
+    <p class="einleitung">{lk.ideenText}</p>
+    {#if gesucht.length}
+      <h3>{lk.gesuchtH2}</h3>
+      <p class="leise">{lk.gesuchtText}</p>
+      <ul class="karten">
+        {#each gesucht as p (p.project)}
+          <li class="karte"><h4>{p.name}</h4><p>{projektText(p, s).vision_short}</p>
+            <p class="gesucht">{lk.gesucht(p.lead_wanted ?? 0)}</p>
+            <a class="knopf primaer" href={pfad(s, `/join/${p.project}`)}>{lk.bock}</a></li>
+        {/each}
+      </ul>
+    {/if}
+    <ul class="karten">
+      {#each ideenGefiltert as i (i.idea)}
+        {@const it = i[s]}
+        <li class="karte" class:weg={!!i.taken_by}>
+          <p class="art leise">{t.kategorien[i.type] ?? i.type}{#if i.procedure !== "standard"} · {lk.arten[i.procedure]}{/if} · {lk.stack} {i.engine}</p>
+          <h4>{it.name}</h4>
+          <p>{it.short}</p>
+          <details><summary>{lk.warum}</summary><p class="klein">{it.why_now}</p>
+            <p class="klein leise">{lk.bereiche}: {i.areas.join(", ")}</p>
+            {#if i.sources.length}<p class="klein leise">{lk.quellen}: {#each i.sources as q, n}{#if n}, {/if}<a href={q} rel="nofollow noopener">{q.replace(/^https:\/\/(www\.)?/, "").replace(/\/$/, "")}</a>{/each}</p>{/if}
+          </details>
+          {#if i.taken_by}
+            {#if i.taken_by.draft}<p class="leise klein">{lk.inArbeit}</p>
+            {:else}<a class="knopf" href={projektPfad(i.taken_by.project)}>{lk.uebernommen(i.taken_by.name)}</a>{/if}
+          {:else}
+            <a class="knopf visionaer" href={`${starten}?idea=${i.idea}`}>{lk.bock}</a>
+          {/if}
+        </li>
+      {/each}
+    </ul>
+  </section>
+{/if}
+
 <style>
+  .ideen { padding-top: 56px; padding-bottom: 32px; }
+  .ideen h3 { margin-top: 28px; }
+  .karten { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+  .karte { display: flex; flex-direction: column; gap: 8px; padding: 18px 20px; border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); }
+  .karte h4 { margin: 0; font-size: 1.15rem; }
+  .karte p { margin: 0; }
+  .karte .art { font-size: .8rem; }
+  .karte details { font-size: .92rem; }
+  .karte .knopf { margin-top: auto; align-self: flex-start; }
+  .karte.weg { opacity: .7; }
+  .gesucht { margin: 10px 0 0; font-size: .85rem; color: var(--akzent); }
   .kopf { padding-top: clamp(48px, 7vw, 88px); }
   .einleitung { max-width: 64ch; color: var(--stahl); font-size: 1.1rem; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

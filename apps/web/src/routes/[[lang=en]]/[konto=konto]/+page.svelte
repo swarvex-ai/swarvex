@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import Seo from "$lib/components/Seo.svelte";
   import RepoVerbinden from "$lib/components/RepoVerbinden.svelte";
+  import TeilenLink from "$lib/components/TeilenLink.svelte";
   import { pfad, sprache, tx, type Hinweis } from "$lib/texte";
 
   type Agent = { id: number; name: string; client_id: string; created: string; signed_out: string | null; signed_in: boolean;
@@ -19,9 +20,15 @@
   type Konto = { person: { login: string; provider: string; created: string; trust_level: number; public_profile?: boolean };
                  roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean }[]; agents: Agent[]; contributions: Beitrag[];
                  total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[]; weekly_reports?: Woche[]; lead_services?: LeadDienst[];
+                 lead_power?: { project: string; name: string; share_link: string; lead_positions: Gesuch[]; signals: string[] }[];
+                 my_applications?: { id: number; project: string; project_name: string; area: string; created: string; status: string }[];
                  trust?: { level: number; next: { level: number; missing: string[] } | null };
                  area_lead_appointments?: { invitations: Bereich[]; approvals: Bereich[]; automatic_appointment: { project: string; project_name: string; automatic: boolean }[] } };
-  type Bereich = { id: number; project: string; project_name: string; area: string; paths: string[]; capabilities: string[]; reasons: string[]; created: string; login?: string; trust_level?: number };
+  type Bereich = { id: number; project: string; project_name: string; area: string; paths: string[]; capabilities: string[];
+                   reasons: (string | { application: string; models: string })[]; created: string; login?: string; trust_level?: number; application?: boolean };
+  type Gesuch = { id: number; area: string; paths: string[]; capabilities: string[]; text: string; created: string; applications: number };
+  const gruendeText = (r: Bereich["reasons"]) => r.filter((x): x is string => typeof x === "string").join("; ");
+  const bewerbungVon = (r: Bereich["reasons"]) => r.find((x): x is { application: string; models: string } => typeof x === "object" && x !== null);
   type Woche = { project: string; name: string; week: Record<string, number>; previous_week: { accepted: number; units: number };
                  now: { available: number; blocked: number; active: number; awaiting_review: number }; hints: Hinweis[] };
   type Auftrag = { brief_id: number; title: string; instructions: string; target_path: string; file_types: string[]; max_mb: number; credits: number;
@@ -133,6 +140,24 @@
   }
 
   // Bereichs-Leads (api/src/bereichsleads.ts): Einladung beantworten, Vorschlag freigeben, Automatik je Projekt
+  // Lead-Kraft (apps/api/src/leadkraft.ts): Gesuch öffnen oder schließen; die API sagt, was nicht passt
+  let gesuche = $state<Record<string, { bereich: string; pfade: string; faehigkeiten: string; text: string }>>({});
+  $effect.pre(() => { for (const k of konto?.lead_power ?? []) if (!gesuche[k.project]) gesuche[k.project] = { bereich: "", pfade: "", faehigkeiten: "", text: "" }; });
+  async function kraftAktion(adresse: string, body: Record<string, unknown>, meldung: string) {
+    arbeitet = true;
+    hinweis = "";
+    try {
+      const r = await fetch(adresse, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const a = await r.json().catch(() => ({}));
+      hinweis = r.ok ? meldung : (a.error ?? t.aktionFehler);
+      if (r.ok) await laden();
+    } catch {
+      hinweis = t.aktionFehler;
+    } finally {
+      arbeitet = false;
+    }
+  }
+
   async function bereichAktion(adresse: string, body: Record<string, unknown>, meldung: string) {
     arbeitet = true;
     hinweis = "";
@@ -243,7 +268,10 @@
             <li class="freigabe">
               <h3>{b.area} · <a href={pfad(s, `${projektPfad}/${b.project}`)}>{b.project_name}</a></h3>
               <p class="leise klein">{t.bereichsLead.pfade}: <code>{b.paths.join(", ")}</code> · {t.bereichsLead.faehigkeiten}: <code>{b.capabilities.join(", ")}</code></p>
-              {#if b.reasons.length}<p class="klein">{t.bereichsLead.gruende}: {b.reasons.join("; ")}</p>{/if}
+              {#if bewerbungVon(b.reasons)}
+                <p class="klein"><strong>{t.kraft.bewerbung}:</strong> {bewerbungVon(b.reasons)?.application}</p>
+                {#if bewerbungVon(b.reasons)?.models}<p class="klein leise">{t.kraft.bringt}: {bewerbungVon(b.reasons)?.models}</p>{/if}
+              {:else if gruendeText(b.reasons)}<p class="klein">{t.bereichsLead.gruende}: {gruendeText(b.reasons)}</p>{/if}
               <div class="aktion">
                 <button class="knopf primaer" disabled={arbeitet} onclick={() => bereichAktion(`/api/account/area-lead-invitations/${b.id}`, { answer: "accept" }, t.bereichsLead.zugesagt(b.area))}>{t.bereichsLead.zusagen}</button>
                 <button class="knopf" disabled={arbeitet} onclick={() => bereichAktion(`/api/account/area-lead-invitations/${b.id}`, { answer: "decline" }, t.bereichsLead.abgesagt(b.area))}>{t.bereichsLead.absagen}</button>
@@ -263,7 +291,10 @@
             <li class="freigabe">
               <h3>{b.login} → {b.area} · <a href={pfad(s, `${projektPfad}/${b.project}`)}>{b.project_name}</a></h3>
               <p class="leise klein">{t.vertrauen} {b.trust_level} · {t.bereichsLead.pfade}: <code>{b.paths.join(", ")}</code> · {t.bereichsLead.faehigkeiten}: <code>{b.capabilities.join(", ")}</code></p>
-              {#if b.reasons.length}<p class="klein">{t.bereichsLead.gruende}: {b.reasons.join("; ")}</p>{/if}
+              {#if bewerbungVon(b.reasons)}
+                <p class="klein"><strong>{t.kraft.bewerbung}:</strong> {bewerbungVon(b.reasons)?.application}</p>
+                {#if bewerbungVon(b.reasons)?.models}<p class="klein leise">{t.kraft.bringt}: {bewerbungVon(b.reasons)?.models}</p>{/if}
+              {:else if gruendeText(b.reasons)}<p class="klein">{t.bereichsLead.gruende}: {gruendeText(b.reasons)}</p>{/if}
               <div class="aktion">
                 <button class="knopf primaer" disabled={arbeitet} onclick={() => bereichAktion(`/api/account/area-lead-proposals/${b.id}`, { decision: "approve" }, t.bereichsLead.ernannt(b.login ?? "", b.area))}>{t.bereichsLead.ernennen}</button>
                 <button class="knopf" disabled={arbeitet} onclick={() => bereichAktion(`/api/account/area-lead-proposals/${b.id}`, { decision: "decline" }, t.bereichsLead.verworfen(b.area))}>{t.bereichsLead.nichtErnennen}</button>
@@ -283,6 +314,55 @@
             <li><label><input type="checkbox" checked={p.automatic} disabled={arbeitet}
               onchange={(e) => bereichAktion(`/api/account/projects/${p.project}/area-leads-automatic`, { enabled: (e.currentTarget as HTMLInputElement).checked }, "")} />
               {p.project_name}: {t.bereichsLead.automatik}</label></li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
+    {#if konto.lead_power?.length}
+      <section aria-labelledby="t-kraft">
+        <h2 id="t-kraft">{t.kraft.h2}</h2>
+        <p class="leise einleitung">{t.kraft.text}</p>
+        <ul class="kraft">
+          {#each konto.lead_power as k (k.project)}
+            <li>
+              <h3><a href={pfad(s, `${projektPfad}/${k.project}`)}>{k.name}</a></h3>
+              <TeilenLink slug={k.project} name={k.name} />
+              {#if k.signals.length}
+                <div class="signal"><p><strong>{t.kraft.signal}</strong></p><ul>{#each k.signals as x}<li>{t.kraft.signale[x] ?? x}</li>{/each}</ul>
+                  <p class="klein">{t.kraft.selbst} <code>swarvex project lead setup {k.project} --area &lt;name&gt; --paths &lt;globs&gt; --agent &lt;…&gt;</code></p></div>
+              {/if}
+              {#if k.lead_positions.length}
+                <p class="klein"><strong>{t.kraft.offen}</strong></p>
+                <ul class="gesuche">
+                  {#each k.lead_positions as g (g.id)}
+                    <li><span>{g.area} · {tx().leadKraft.bewerbungen(g.applications)}</span>
+                      <button class="knopf" disabled={arbeitet} onclick={() => kraftAktion(`/api/account/projects/${k.project}/lead-positions/${g.area}/close`, {}, t.kraft.geschlossen(g.area))}>{t.kraft.schliessen}</button></li>
+                  {/each}
+                </ul>
+              {/if}
+              {#if gesuche[k.project]}<details>
+                <summary>{t.kraft.neu}</summary>
+                <form class="gesuch" onsubmit={(e) => { e.preventDefault(); const f = gesuche[k.project]; kraftAktion(`/api/account/projects/${k.project}/lead-positions`, { area: f.bereich, paths: f.pfade, capabilities: f.faehigkeiten, text: f.text }, t.kraft.geoeffnet(f.bereich)); }}>
+                  <label>{t.kraft.bereich}<input required placeholder={t.kraft.bereichHilfe} bind:value={gesuche[k.project].bereich} /></label>
+                  <label>{t.kraft.pfade}<input required placeholder={t.kraft.pfadeHilfe} bind:value={gesuche[k.project].pfade} /></label>
+                  <label>{t.kraft.faehigkeiten}<input required placeholder={t.kraft.faehigkeitenHilfe} bind:value={gesuche[k.project].faehigkeiten} /></label>
+                  <label>{t.kraft.gesuchText}<textarea required minlength="20" maxlength="2000" rows="3" bind:value={gesuche[k.project].text}></textarea></label>
+                  <button class="knopf primaer" disabled={arbeitet}>{t.kraft.oeffnen}</button>
+                </form>
+              </details>{/if}
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
+    {#if konto.my_applications?.length}
+      <section aria-labelledby="t-bewerbungen">
+        <h2 id="t-bewerbungen">{t.bewerbungen.h2}</h2>
+        <ul class="leaddienste">
+          {#each konto.my_applications as b (b.id)}
+            <li><a href={pfad(s, `${projektPfad}/${b.project}`)}>{b.project_name}</a> <span>{b.area} · {t.bewerbungen.zustaende[b.status] ?? b.status}</span></li>
           {/each}
         </ul>
       </section>
@@ -676,6 +756,17 @@
   .hochladen { position: relative; width: fit-content; cursor: pointer; }
   .hochladen input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .leaddienste { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .kraft { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
+  .kraft > li { display: grid; gap: 10px; padding: 16px 18px; border: 1px solid var(--linie); border-radius: var(--radius-klein); }
+  .kraft h3 { margin: 0; }
+  .kraft .signal { padding: 10px 14px; border-left: 3px solid var(--bernstein); background: var(--graphit-2); }
+  .kraft .signal p, .kraft .signal ul { margin: 4px 0; }
+  .kraft .gesuche { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+  .kraft .gesuche li { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .kraft form.gesuch { display: grid; gap: 10px; margin-top: 10px; }
+  .kraft form.gesuch label { display: grid; gap: 4px; font-size: .9rem; }
+  .kraft form.gesuch input, .kraft form.gesuch textarea { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--linie-hell); background: var(--graphit-2); color: var(--text); font: 400 .95rem var(--schrift); }
+  .kraft code { overflow-wrap: anywhere; }
   .leaddienste li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--linie); border-radius: var(--radius-klein); }
   .leaddienste li.still { border-color: var(--bernstein); }
   .leaddienste li.still span { color: var(--bernstein); }

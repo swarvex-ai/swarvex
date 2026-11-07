@@ -16,6 +16,12 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   the agent only when there is something to do; the project page shows whether the lead is active.
 - `swarvex project lead status|logs|attach|exec|stop|start|remove <project>`: attach talks to the lead in its sandbox,
   exec runs a command there (for example `godot --version`).
+- More lead power per project: a second lead service for one area runs next to the main one, ideally with another
+  agent or model (`swarvex project lead setup <project> --area combat --paths 'game/combat/**'`; it is then named
+  `<project>.combat`). Area leads run their own lead service for their area the same way, with read-only access to
+  the repository. Only one lead service per project holds the main loop; another one waits on standby and takes over
+  when the first is silent for 15 minutes.
+- `swarvex setup --project <project>`: the quick setup works on that project (the command on a project's join link).
 
 ## 0.11.1 (6 Nov 2026)
 

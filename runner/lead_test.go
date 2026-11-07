@@ -226,3 +226,31 @@ func TestLeadAnmeldungEigeneDatei(t *testing.T) {
 		t.Fatal("the runner's lock waited for the lead's")
 	}
 }
+
+// Mehrere Lead-Dienste je Projekt (E-39): Bereitschaft startet keine Runde, Dienste mit Bereich heißen <projekt>.<bereich>
+func TestLeadKraft(t *testing.T) {
+	jetzt := time.Date(2026, 11, 7, 2, 0, 0, 0, time.UTC)
+	bereit := leadAnlass{Reviews: []int64{3}, Bereitschaft: true, Halter: "swarvex project lead: kraft (box)"}
+	for _, letzte := range []time.Time{{}, jetzt.Add(-7 * time.Hour)} {
+		if ok, _ := leadEntscheiden(bereit, "", letzte, 6*time.Hour, jetzt); ok {
+			t.Errorf("standby: never a cycle (last %v)", letzte)
+		}
+	}
+	for name, ok := range map[string]bool{"rend-and-run": true, "rend-and-run.combat": true, "rend-and-run.Combat": false, "a.b.c": false, "rend-and-run.": false} {
+		if leadName.MatchString(name) != ok {
+			t.Errorf("leadName(%q) = %v, want %v", name, !ok, ok)
+		}
+	}
+	l := &leadKonfig{Projekt: "kraft"}
+	if l.dienst() != "kraft" || leadBereichText(l) != "" {
+		t.Error("main service: named like the project, no area text")
+	}
+	l = &leadKonfig{Projekt: "kraft", Name: "kraft.combat", Bereich: "combat", Pfade: []string{"game/combat/**"}}
+	if l.dienst() != "kraft.combat" || !strings.Contains(leadBereichText(l), "only that area") {
+		t.Errorf("area service: %q %q", l.dienst(), leadBereichText(l))
+	}
+	l.BereichsLead = true
+	if !strings.Contains(leadBereichText(l), "never push") {
+		t.Errorf("area lead's service: read-only, %q", leadBereichText(l))
+	}
+}

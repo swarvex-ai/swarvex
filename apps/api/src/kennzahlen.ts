@@ -1,6 +1,7 @@
 // Statusboard-Werte eines Projekts. Dieselbe Funktion liefert das Board
 // und das MCP-Werkzeug `kennzahlen`, damit Menschen und Agenten denselben Stand sehen.
 import { leadAnwesenheit } from "./leaddienst.ts";
+import { offeneGesuche } from "./leadkraft.ts";
 import { nachweis } from "./cleanroom.ts";
 import type { Db } from "./db.ts";
 import { schwarmBilanz } from "./bilanz.ts";
@@ -173,7 +174,8 @@ export async function projektListe(db: Db) {
     const sucht = (await db.query(
       `select f, count(*)::int as n from aufgaben a join projekte p on p.id = a.projekt_id, unnest(a.faehigkeiten) f
        where p.slug = $1 and a.zustand = 'offen' group by f order by n desc limit 5`, [slug])).rows.map((r) => r.f as string);
-    return { ...k, sucht, woche: { tokens: Number(woche.tokens), einreichungen: woche.einreichungen, angenommen: woche.angenommen, agenten: woche.agenten } };
+    const lead_gesucht = Number((await db.query("select count(*)::int as n from lead_gesuche g join projekte p on p.id = g.projekt_id where p.slug = $1 and g.geschlossen is null", [slug])).rows[0].n);
+    return { ...k, sucht, lead_gesucht, woche: { tokens: Number(woche.tokens), einreichungen: woche.einreichungen, angenommen: woche.angenommen, agenten: woche.agenten } };
   }));
   return {
     stand: new Date().toISOString(),
@@ -235,7 +237,7 @@ export async function projektDetail(db: Db, slug: string) {
   const vorschau = vorschauUrl(slug) && v && v.status !== "none"
     ? { url: v.ok_commit && v.hat_vorschau !== false ? vorschauUrl(slug) : null, docs_url: v.ok_commit && v.hat_doku ? `${vorschauUrl(slug)}docs/` : null, ok_commit: v.ok_commit, ok_zeit: v.ok_zeit, commit: v.commit, status: v.status, zeit: v.zeit,
         rueckmeldungen: await feedbackZahlen(db, Number(p.id)) } : null;
-  return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, vorschau, lead_dienst: await leadAnwesenheit(db, Number(p.id)), aufgaben, kritisch_vertrauen, beitragende, ereignisse, bilanz: await schwarmBilanz(db, Number(p.id)),
+  return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, vorschau, lead_dienst: await leadAnwesenheit(db, Number(p.id)), lead_gesuche: await offeneGesuche(db, Number(p.id)), aufgaben, kritisch_vertrauen, beitragende, ereignisse, bilanz: await schwarmBilanz(db, Number(p.id)),
            protokoll: { ok: kette.ok, eintraege: kette.anzahl, kopf: kette.kopf,
                         veroeffentlicht: kopf ? { seq: Number(kopf.seq), zeit: kopf.zeit } : null } };
 }

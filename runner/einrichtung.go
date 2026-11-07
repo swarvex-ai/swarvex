@@ -645,9 +645,16 @@ func modellArgs(w modellWahl, projekt string) []string {
 	return args
 }
 
+// setupProjekt: `swarvex setup --project <slug>` (Teilen-Link eines Projekts): der Schnellstart arbeitet dort statt überall.
+var setupProjekt string
+
 func empfehlung(w modellWahl, abo bool, plan aboPlan, agenten []mcpAgent) empfohlen {
-	e := empfohlen{moeglich: true, args: modellArgs(w, "auto"), dienstArgs: []string{"--auto-update"}}
-	e.zeilen = []string{"model: " + w.Modell, "project: any, wherever most is open",
+	projekt, projektZeile := "auto", "project: any, wherever most is open"
+	if setupProjekt != "" {
+		projekt, projektZeile = setupProjekt, "project: "+setupProjekt
+	}
+	e := empfohlen{moeglich: true, args: modellArgs(w, projekt), dienstArgs: []string{"--auto-update"}}
+	e.zeilen = []string{"model: " + w.Modell, projektZeile,
 		"runs in the background (also after a restart) and installs signed updates itself"}
 	switch {
 	case abo && plan.Firma:

@@ -1,5 +1,6 @@
 // Projekte anlegen: von der Website (Assistent „Projekt starten“) und von der Betriebs-Kommandozeile, mit denselben Regeln.
 // swarvex hat nur offene Projekte (E-27): Code unter einer OSI-Lizenz, Assets unter einer freien Lizenz.
+import { ideePer } from "./ideen.ts";
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt } from "./aufgaben.ts";
@@ -31,6 +32,8 @@ export type NeuesProjekt = {
   original?: { name?: string; version?: string; acquisition?: string; target?: string; depth?: string; inspect?: string; legal_basis?: string; models?: string; providers?: string; goal?: string } | null;
   research?: { kind?: string; source?: string; success?: string } | null;
   upstream?: { repo?: string; status?: string; contact?: string } | null;
+  /** Übernommene Projektidee „Lead gesucht“ (ideen.ts) */
+  idea?: string | null;
 };
 
 /** Prüft ein neues Projekt; liefert die Fehler (leer = in Ordnung). */
@@ -50,6 +53,7 @@ export function projektPruefen(p: NeuesProjekt): string[] {
   if (!p.lead_model?.trim() || p.lead_model.length > 120) f.push("lead_model: which agent and model leads the project");
   if (!p.goal?.trim() || p.goal.length > 200) f.push("goal: the first goal in one sentence");
   if (p.language && !SPRACHEN.includes(p.language)) f.push(`language: the language of vision and goal, ${SPRACHEN.join(" or ")}`);
+  if (p.idea && !ideePer(p.idea)) f.push(`idea: unknown project idea ${p.idea}`);
   const verfahren = p.procedure ?? "standard";
   if (!["standard", "clean_room", "continuation"].includes(verfahren)) f.push("procedure: standard, clean_room or continuation");
   if (verfahren === "clean_room") {
@@ -112,13 +116,17 @@ export async function projektAnlegen(db: Db, p: NeuesProjekt, von: number | "bet
       if (heute >= 1) throw new Abgelehnt("one new project per day");
     }
     if ((await tx.query("select 1 from projekte where slug = $1", [p.slug])).rowCount) throw new Abgelehnt(`the address ${p.slug} is taken`);
+    if (p.idea) {
+      const weg = (await tx.query("select slug from projekte where idee = $1", [p.idea])).rows[0];
+      if (weg) throw new Abgelehnt(`this project idea has already been taken over (${weg.slug})`);
+    }
     const verfahren = p.procedure ?? "standard";
     const id = Number((await tx.query(
-      `insert into projekte(slug, name, vision_md, vision_kurz, engine, lizenz_code, lizenz_assets, repo_url, lead_modell, ziel, verfahren, vorbild, projektart, forschung, upstream, entwurf, angelegt_von, sprache)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) returning id`,
+      `insert into projekte(slug, name, vision_md, vision_kurz, engine, lizenz_code, lizenz_assets, repo_url, lead_modell, ziel, verfahren, vorbild, projektart, forschung, upstream, entwurf, angelegt_von, sprache, idee)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) returning id`,
       [p.slug, p.name.trim(), p.vision_md?.trim() || p.vision_short.trim(), p.vision_short.trim(), p.engine.trim(), p.license_code, p.license_assets, p.repo_url ?? null,
        p.lead_model.trim(), p.goal.trim(), verfahren, verfahren === "clean_room" ? vorbildNormal(p.original) : null, p.type ? PROJEKTARTEN[p.type] : null,
-       p.type === "research" ? forschungNormal(p.research) : null, verfahren === "continuation" ? upstreamNormal(p.upstream) : null, von !== "betrieb", von === "betrieb" ? null : von, p.language ?? "en"])).rows[0].id);
+       p.type === "research" ? forschungNormal(p.research) : null, verfahren === "continuation" ? upstreamNormal(p.upstream) : null, von !== "betrieb", von === "betrieb" ? null : von, p.language ?? "en", p.idea || null])).rows[0].id);
     if (von !== "betrieb") {
       await tx.query("insert into projekt_rollen(projekt_id, mensch_id, rolle) values ($1,$2,'visionaer'), ($1,$2,'lead')", [id, von]);
     }

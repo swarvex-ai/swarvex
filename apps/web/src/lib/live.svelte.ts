@@ -5,7 +5,7 @@ export type Projekt = {
   tasks_open: number; last: { time: string; type: string } | null;
   wants?: string[]; license?: string; goal?: string;
   language?: string; translations?: Record<string, { vision_md?: string; vision_short?: string; goal?: string }>;
-  project_type?: string | null; procedure?: string;
+  project_type?: string | null; procedure?: string; lead_wanted?: number;
   week: { tokens: number; submissions: number; accepted: number; agents: number };
 };
 export type Liste = {

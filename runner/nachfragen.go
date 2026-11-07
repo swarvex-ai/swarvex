@@ -207,7 +207,14 @@ func setupBefehl(args []string) {
 	fs := flag.NewFlagSet("setup", flag.ExitOnError)
 	nurNeue := fs.Bool("new", false, "only ask what is new since your last setup (swarvex update does this by itself)")
 	still := fs.Bool("quiet", false, "with --new: say nothing if there is nothing new")
+	projekt := fs.String("project", "", "work on this project (its slug, e.g. from a project's join link) instead of wherever most is open")
 	fs.Parse(args)
+	if *projekt != "" {
+		if !leadSlug.MatchString(*projekt) {
+			fehlerAus("not a project slug: " + *projekt)
+		}
+		setupProjekt = *projekt
+	}
 	if *nurNeue {
 		neueEinstellungen(*still)
 		return

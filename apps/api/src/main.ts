@@ -24,6 +24,8 @@ import { lfsObjektSenden, snapshotSenden } from "./snapshot.ts";
 import { aufraeumen as spendenAufraeumen, dateiSenden as spendeSenden, hochladen as spendeHochladen } from "./spenden.ts";
 import { pruefstrasseBehandeln } from "./pruefstrasse.ts";
 import { leadAlarme, leadGitZugang } from "./leaddienst.ts";
+import { leadKraftPruefen } from "./leadkraft.ts";
+import { ideenFreigeben, ideenListe } from "./ideen.ts";
 import { abzeichen, kennzahlen, kurzlinkZiel, projektDetail, projektListe, schwarmLive } from "./kennzahlen.ts";
 import { englisch } from "./auth/interaktion.ts";
 import { nachAussen } from "./aussen.ts";
@@ -81,6 +83,14 @@ await boss.work("besuche-abschliessen", async () => { await besucheAbschliessen(
 await boss.createQueue("lead-anwesenheit");
 await boss.schedule("lead-anwesenheit", "*/5 * * * *");
 await boss.work("lead-anwesenheit", async () => { const n = await leadAlarme(db); if (n) console.log(`lead services not reachable: ${n} visionaries told`); });
+// Lead-Kraft (E-39): Tagesstand der Signale; halten sie an, schlägt die Plattform Lead und Visionär mehr Lead vor
+await boss.createQueue("lead-kraft");
+await boss.schedule("lead-kraft", "53 5 * * *");
+await boss.work("lead-kraft", async () => {
+  const n = await leadKraftPruefen(db);
+  const frei = await ideenFreigeben(db);
+  if (n || frei) console.log(`lead power: ${n} project(s) told, ${frei} project idea(s) released from stale drafts`);
+});
 await boss.createQueue("kopf-veroeffentlichen");
 // Dateien entschiedener Credit-Spenden nach 30 Tagen löschen
 await boss.createQueue("spenden-aufraeumen");
@@ -317,6 +327,10 @@ const server = createServer(async (req, res) => {
     // Live-Ansicht der Startseite: letzte öffentliche Ereignisse, ohne Namen
     if (req.method === "GET" && url.pathname === "/api/activity") {
       return json(res, 200, nachAussen(await schwarmLive(db)), { "cache-control": "public, max-age=10", "access-control-allow-origin": "*" });
+    }
+    // Projektideen „Lead gesucht“ (ideen.ts): Katalog mit Stand, wer welche Idee übernommen hat
+    if (req.method === "GET" && url.pathname === "/api/ideas") {
+      return json(res, 200, nachAussen({ ideen: await ideenListe(db) }), { "cache-control": "public, max-age=30", "access-control-allow-origin": "*" });
     }
     if (req.method === "GET" && url.pathname === "/api/projects") {
       return json(res, 200, nachAussen(await projektListe(db)), { "cache-control": "public, max-age=10", "access-control-allow-origin": "*" });

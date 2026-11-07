@@ -5,6 +5,7 @@
 // oder die Ernennung geschieht sofort, wenn er das für sein Projekt eingeschaltet hat. Ohne Aktivität endet eine
 // Amtszeit nach 21 Tagen von selbst. Jeder Schritt steht im öffentlichen Protokoll.
 import { Abgelehnt, officerBeenden, officerErnennen } from "./aufgaben.ts";
+import { gesuchBeenden } from "./leadkraft.ts";
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { leadBilanz } from "./kennzahlen.ts";
@@ -56,7 +57,7 @@ export async function vorschlaegeErzeugen(db: Db) {
       const angelegt = await transaktion(db, async (tx) => {
         const r = await tx.query(
           `insert into bereichs_vorschlaege(projekt_id, bereich, mensch_id, pfade, faehigkeiten, gruende) values ($1,$2,$3,$4,$5,$6)
-           on conflict (projekt_id, bereich) where zustand in ('offen', 'zugesagt') do nothing returning id`,
+           on conflict (projekt_id, bereich) where zustand in ('offen', 'zugesagt') and gesuch_id is null do nothing returning id`,
           [p.id, rolle, k.mensch_id, b.pfade, b.faehigkeiten, JSON.stringify(gruende)]);
         if (!r.rowCount) return false;
         await protokollieren(tx, { projekt_id: p.id, akteur: "system", art: "bereichs_lead_vorgeschlagen", bezug: `mensch:${k.mensch_id}`,
@@ -69,12 +70,15 @@ export async function vorschlaegeErzeugen(db: Db) {
   return neu;
 }
 
-async function ernennen(db: Db, v: { id: number; projekt_id: number; bereich: string; mensch_id: number; pfade: string[]; faehigkeiten: string[] }, akteur: string) {
+async function ernennen(db: Db, v: { id: number; projekt_id: number; bereich: string; mensch_id: number; pfade: string[]; faehigkeiten: string[]; gesuch_id?: number | null }, akteur: string) {
   const m = (await db.query("select login, konto_provider, vertrauensstufe from menschen where id = $1", [v.mensch_id])).rows[0];
-  if (Number(m.vertrauensstufe) < BEREICHS_LEAD.mindestStufe) throw new Abgelehnt(`${m.login} is no longer at trust level ${BEREICHS_LEAD.mindestStufe}`);
+  // Bewerbung auf ein Lead-Gesuch (leadkraft.ts): Der Visionär wählt die Person selbst aus, ohne Vertrauensstufe 2
+  const gesuch = v.gesuch_id ? (await db.query("select raum from lead_gesuche where id = $1", [v.gesuch_id])).rows[0] : null;
+  if (!gesuch && Number(m.vertrauensstufe) < BEREICHS_LEAD.mindestStufe) throw new Abgelehnt(`${m.login} is no longer at trust level ${BEREICHS_LEAD.mindestStufe}`);
   const slug = (await db.query("select slug from projekte where id = $1", [v.projekt_id])).rows[0].slug;
-  await officerErnennen(db, "betrieb", slug, `${m.konto_provider}:${m.login}`, v.bereich, v.pfade, v.faehigkeiten, undefined, akteur);
+  await officerErnennen(db, "betrieb", slug, `${m.konto_provider}:${m.login}`, v.bereich, v.pfade, v.faehigkeiten, gesuch?.raum ?? undefined, akteur);
   await db.query("update bereichs_vorschlaege set zustand = 'ernannt', entschieden = now() where id = $1", [v.id]);
+  if (v.gesuch_id) await gesuchBeenden(db, Number(v.gesuch_id));
 }
 
 /** Die eingeladene Person sagt zu oder ab (Mein Konto). Bei „automatisch“ im Projekt ist sie damit ernannt. */
@@ -133,7 +137,7 @@ export async function bereichsLeadsFuer(db: Db, menschId: number) {
     `select v.id::int, p.slug as projekt, p.name as projekt_name, v.bereich, v.pfade, v.faehigkeiten, v.gruende, v.erstellt
      from bereichs_vorschlaege v join projekte p on p.id = v.projekt_id where v.mensch_id = $1 and v.zustand = 'offen' order by v.erstellt`, [menschId])).rows;
   const freigaben = (await db.query(
-    `select v.id::int, p.slug as projekt, p.name as projekt_name, v.bereich, v.pfade, v.faehigkeiten, v.gruende, v.erstellt, m.login, m.vertrauensstufe
+    `select v.id::int, p.slug as projekt, p.name as projekt_name, v.bereich, v.pfade, v.faehigkeiten, v.gruende, v.erstellt, m.login, m.vertrauensstufe, v.gesuch_id is not null as bewerbung
      from bereichs_vorschlaege v join projekte p on p.id = v.projekt_id join menschen m on m.id = v.mensch_id
      where v.zustand = 'zugesagt' and exists (select 1 from projekt_rollen r where r.projekt_id = v.projekt_id and r.mensch_id = $1 and r.rolle = 'visionaer')
      order by v.erstellt`, [menschId])).rows;

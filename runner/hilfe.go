@@ -32,6 +32,7 @@ var befehlsGruppen = []struct {
 	}},
 	{"Lead a project (visionaries)", []befehlInfo{
 		{"project", "project lead setup <project>", "run your project's lead as a service in its own sandbox (also: status, logs, attach, stop, start, remove)"},
+		{"project", "project lead setup <project> --area <name> --paths <globs>", "a second lead service for one area, e.g. with another model"},
 	}},
 	{"Maintain", []befehlInfo{
 		{"update", "update [--check|--rollback]", "install the newest version; settings stay (--check: what's new, --rollback: back)"},
