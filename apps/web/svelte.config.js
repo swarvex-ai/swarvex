@@ -10,6 +10,9 @@ const appSkripte = [...readFileSync(new URL("./src/app.html", import.meta.url), 
 export default {
   kit: {
     adapter: adapter(),
+    // Neue Version nach einem Deploy erkennen: offene Tabs laden beim nächsten Klick neu (+layout.svelte), statt mit
+    // altem Code weiterzunavigieren und neue Inhalte nicht zu zeigen
+    version: { pollInterval: 300_000 },
     // Content-Security-Policy: nur eigene Quellen. SvelteKit setzt für seine Skripte Nonces (gerendert) bzw. Hashes
     // (vorgerendert); die Skripte aus app.html kommen über appSkripte dazu.
     csp: {

@@ -1,10 +1,13 @@
 <script lang="ts">
   import "../app.css";
   import Logo from "$lib/components/Logo.svelte";
-  import { page } from "$app/state";
+  import { page, updated } from "$app/state";
   import RepoLink from "$lib/components/RepoLink.svelte";
   import { pfad, sprache, tx } from "$lib/texte";
-  import { afterNavigate } from "$app/navigation";
+  import { afterNavigate, beforeNavigate } from "$app/navigation";
+
+  // Nach einem Deploy: ganz neu laden, sonst zeigt ein alter Tab neue Seiten mit altem Code
+  beforeNavigate(({ willUnload, to }) => { if (updated.current && !willUnload && to?.url) location.href = to.url.href; });
 
   // Besucherstatistik ohne Cookies: nur die Seite und beim ersten Aufruf die Herkunft (Datenschutzerklärung, Abschnitt 2)
   let ersterAufruf = true;

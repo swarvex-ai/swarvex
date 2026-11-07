@@ -72,7 +72,7 @@
 
 <section class="huelle">
   <div class="kategorien chips" role="group" aria-label={t.kategorie}>
-    <button type="button" class="chip" aria-pressed={kategorie === null} onclick={() => (kategorie = null)}>{t.alle} <span class="zahl">{projekte.length}</span></button>
+    <button type="button" class="chip" aria-pressed={kategorie === null} onclick={() => (kategorie = null)}>{t.alle} <span class="zahl">{projekte.length + ideen.filter((i) => !i.taken_by).length}</span></button>
     {#each KATEGORIEN as k}
       <button type="button" class="chip" class:leer={anzahl(k) === 0} aria-pressed={kategorie === k} onclick={() => (kategorie = k)}>{t.kategorien[k]} <span class="zahl">{anzahl(k)}</span></button>
     {/each}
