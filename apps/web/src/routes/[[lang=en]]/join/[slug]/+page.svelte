@@ -115,8 +115,8 @@
   .zahlen .an dd { color: var(--akzent); }
   .aktionen { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   section { margin-top: 40px; }
-  .schritte { padding-left: 1.2em; display: grid; gap: 14px; }
-  .schritte li span { display: block; margin-bottom: 6px; }
+  .schritte { margin: 0; padding-left: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .schritte li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
   .gesuche { list-style: none; padding: 0; display: grid; gap: 16px; }
   .gesuche li { padding: 18px 20px; border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); }
   .gesuche h3 { margin: 0 0 8px; }
