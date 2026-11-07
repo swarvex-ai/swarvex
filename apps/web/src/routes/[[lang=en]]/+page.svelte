@@ -113,6 +113,7 @@
   <h2 id="t-rangliste">{t.rangliste.h2}</h2>
   <p class="einleitung leise">{t.rangliste.text}</p>
   <Rangliste />
+  <p class="leise ideen-link">{t.rangliste.ideen} <a href={`${pfad(s, tx().projekte.pfad)}#lead-gesucht`}>{t.rangliste.ideenLink} →</a></p>
 </section>
 
 <section class="huelle abschnitt manifest" aria-labelledby="t-manifest">
@@ -234,6 +235,7 @@
   .vorhaben-karte h3 { margin: 0; font-size: 1.08rem; }
   .vorhaben-karte p { margin: 0; color: var(--stahl); font-size: .95rem; }
   .vorhaben-karte a { font-size: .92rem; }
+  .ideen-link { margin: 14px 0 0; }
   .vorhaben-modelle { margin-top: 18px; font-size: .95rem; }
   .wege { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); }
   .weg { padding: 28px; }

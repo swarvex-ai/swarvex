@@ -52,6 +52,7 @@
     name: "", slug: "", slugFrei: false, vision_short: "", vision_md: "", engine: "open", license_code: "", license_assets: "", goal: "", repo_url: "", idee: "" });
   // Übernommene Projektidee „Lead gesucht“ (Projektliste, apps/api/src/ideen.ts): Name für den Hinweis oben
   let ideeName = $state("");
+  let ideeStart = $state("");
   let schritt = $state(0);
   let angemeldet = $state<boolean | null>(null);
   let arbeitet = $state(false);
@@ -71,7 +72,7 @@
       try {
         const liste = (await (await fetch("/api/ideas")).json()).ideas as { idea: string; type: string; procedure: string; engine: string; license_code: string; license_assets: string;
           original?: { name: string; target: string; depth: "observe" | "inspect" }; upstream?: { repo: string; license: string; status: string };
-          research?: { kind: string; source: string; success: string }; de: Record<string, string>; en: Record<string, string>; taken_by: unknown }[];
+          research?: { kind: string; source: string; success: string }; start?: { repo: string }; de: Record<string, string>; en: Record<string, string>; taken_by: unknown }[];
         const i = liste.find((x) => x.idea === gewaehlt);
         if (i && !i.taken_by && d.idee !== i.idea) {
           const it = i[sprache()];
@@ -83,7 +84,7 @@
             research: i.research ? { ...i.research } : d.research };
           schritt = 0; ergebnis = null;
         }
-        if (i) ideeName = i[sprache()].name;
+        if (i) { ideeName = i[sprache()].name; ideeStart = i.start?.repo ?? ""; }
       } catch { /* ohne Katalog startet der Assistent leer */ }
     } else if (d.idee) {
       d = { ...d, idee: "" };
@@ -183,10 +184,12 @@
   <header>
     <h1>{t.h1}</h1>
     <p class="lead">{t.einleitung}</p>
+    {#if !d.idee && !ergebnis}<p class="leise">{t.idee.katalog} <a href={`${pfad(s, tx().projekte.pfad)}#lead-gesucht`}>{t.idee.katalogLink} →</a></p>{/if}
   </header>
 
   {#if d.idee && !ergebnis}
-    <p class="idee">{t.idee.banner(ideeName || d.name)} <button type="button" class="verweis" onclick={() => { history.replaceState(null, "", location.pathname); neuesProjekt(); }}>{t.idee.ohne}</button></p>
+    <p class="idee">{t.idee.banner(ideeName || d.name)} <button type="button" class="verweis" onclick={() => { history.replaceState(null, "", location.pathname); ideeStart = ""; neuesProjekt(); }}>{t.idee.ohne}</button></p>
+    {#if ideeStart}<p class="idee">{t.idee.start} <a href={ideeStart} rel="noopener">{ideeStart.replace(/^https:\/\//, "")}</a></p>{/if}
   {/if}
 
   <ol class="leiste" aria-label={t.h1}>

@@ -1930,6 +1930,11 @@ describe("Projektideen „Lead gesucht“ (E-39): einmal übernehmen, Visionär 
         expect(t.schwarm_vorteil.length, `${i.idee}/${sp} schwarm`).toBeGreaterThan(80);
       }
       expect(i.bereiche.length).toBeGreaterThanOrEqual(3);
+      // Startpunkt: ein öffentliches Repo zum Forken und in beiden Sprachen, was darin schon steht
+      if (i.start) {
+        expect(i.start.repo, `${i.idee} start`).toMatch(/^https:\/\/(github\.com|codeberg\.org|gitlab\.com)\/[\w.-]+\/[\w.-]+$/);
+        for (const sp of ["de", "en"] as const) expect(i.start[sp].length, `${i.idee}/${sp} start`).toBeGreaterThan(40);
+      }
     }
   });
 

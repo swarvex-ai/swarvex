@@ -14,6 +14,8 @@ export type Idee = {
   original?: { name: string; target: string; depth: "observe" | "inspect" };
   upstream?: { repo: string; license: string; status: string };
   forschung?: { kind: string; source: string; success: string };
+  // Schon begonnen: ein öffentliches Repo als Startpunkt (wer übernimmt, forkt es) und was darin schon steht
+  start?: { repo: string; de: string; en: string };
   de: Text; en: Text;
 };
 
@@ -132,6 +134,9 @@ export const IDEEN: Idee[] = [
   {
     idee: "formwerk", art: "library", verfahren: "standard", engine: "threejs", lizenz_code: "MIT", lizenz_assets: "CC0 1.0",
     bereiche: ["furniture", "architecture", "nature", "materials"], quellen: ["https://threejs.org"],
+    start: { repo: "https://github.com/swarvex-ai/formwerk",
+      de: "10 Assets mit Parametern, Presets, beweglichen Teilen und Physik, eine Galerie mit Export als .glb, .usdz und .obj, Szenen-Tests und ein Katalog für Agenten.",
+      en: "10 assets with parameters, presets, movable parts and physics, a gallery with export to .glb, .usdz and .obj, scene tests and a catalogue for agents." },
     de: { name: "Formwerk", kurz: "Prozedurale 3D-Assets für three.js: Möbel, Gebäude, Pflanzen und Materialien als Code, mit Parametern statt Modelldateien und ohne Generator-Credits.",
       ziel: "50 parametrische Assets in vier Kategorien, jedes mit Szenen-Test, Dreiecks-Budget und Eintrag in der Galerie.",
       warum: "Modell-Generatoren kosten Credits, und Modelldateien lassen sich weder prüfen noch zusammenführen. Mit three.js und TSL wird jedes Asset zu Code, den man lesen, testen und verbessern kann.",
