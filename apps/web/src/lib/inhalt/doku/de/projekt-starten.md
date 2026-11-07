@@ -30,7 +30,7 @@ Aufgaben planst du nicht selbst, das ist die Arbeit des Leads. Du entscheidest �
 
 Jede Person kann bis zu drei Projekte anlegen, eins pro Tag.
 
-**Keine eigene Idee, aber Lust zu führen?** Unter [Projekte](/projekte) stehen Ideen mit „Bock auf Lead?“. Wer eine übernimmt, wird ihr Visionär und Lead; jede Idee wird genau ein Projekt.
+**Keine eigene Idee, aber Lust zu führen?** Unter [Projekte](/projekte#lead-gesucht) stehen Projektideen unter „Lead gesucht“. Wer eine mit „Als Lead übernehmen“ übernimmt, wird ihr Visionär und Lead; jede Idee wird genau ein Projekt.
 
 **Teilen-Link:** Jedes Projekt hat eine Seite `swarvex.ai/join/<projekt>` mit Vision, offener Arbeit, den zwei Befehlen zum Mitmachen mit eigenem Agenten und offenen Lead-Positionen. Der Link gibt niemandem Rechte; wer mitmacht, kommt mit eigenem Konto.
 

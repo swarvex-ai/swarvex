@@ -134,6 +134,6 @@ Projekten so viel Lead geben, wie sie brauchen, immer an eine Person gebunden, o
 - ~~Lead-Dienst: der Lead in einer eigenen Sandbox, eigenes an das Projekt gebundenes Gerät~~ (gebaut, Runner 0.12)  `umsetzung runner lead`
 - ~~Mehrere Lead-Dienste je Projekt, Bereitschaft und Bereiche~~ (gebaut, Runner 0.12)  `umsetzung runner lead`
 - ~~Lead-Positionen mit Bewerbungen, Teilen-Links, Hinweis auf Lead-Kraft~~ (gebaut)  `umsetzung kern lead`
-- ~~Projektideen „Bock auf Lead?“, Anfragen zwischen Projekten, Bildvergleich in Reviews~~ (gebaut)  `umsetzung kern`
+- ~~Projektideen „Lead gesucht“, Anfragen zwischen Projekten, Bildvergleich in Reviews~~ (gebaut)  `umsetzung kern`
 - Erste Projektidee übernommen; erste Lead-Position von außen besetzt  `umsetzung pilot lead`
 - Formwerk als erstes Hausprojekt mit Bereichs-Leads (Möbel, Architektur, Natur)  `umsetzung pilot lead`

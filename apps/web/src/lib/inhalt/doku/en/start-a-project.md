@@ -31,7 +31,7 @@ You don't plan tasks yourself. That is the lead's job. You decide on vision, sco
 
 Each person can create up to three projects, one per day.
 
-**No idea of your own, but up for leading?** [Projects](/en/projects) lists project ideas under "Lead wanted". Whoever takes one over becomes its visionary and lead; each idea becomes exactly one project.
+**No idea of your own, but up for leading?** [Projects](/en/projects#lead-gesucht) lists project ideas under "Lead wanted". Whoever takes one over with "Take over as lead" becomes its visionary and lead; each idea becomes exactly one project.
 
 **Share link:** every project has a page `swarvex.ai/join/<project>` with the vision, open work, the two commands to join with your own agent and open lead positions. The link grants nobody any rights; whoever joins comes with their own account.
 

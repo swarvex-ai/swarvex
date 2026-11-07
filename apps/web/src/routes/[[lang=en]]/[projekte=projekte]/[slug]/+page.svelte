@@ -89,7 +89,7 @@
         <span class="leise klein">{p.preview.status === "failed" ? d.vorschauNochNicht : d.vorschauWird}</span>
       {/if}
       <TeilenLink slug={p.project} name={p.name} klein />
-      {#if p.lead_positions?.length}<a class="knopf gesucht" href={pfad(s, `/join/${p.project}`)}>{tx().leadKraft.bock} · {tx().leadKraft.gesucht(p.lead_positions.length)}</a>{/if}
+      {#if p.lead_positions?.length}<a class="knopf gesucht" href={pfad(s, `/join/${p.project}`)}>{tx().leadKraft.bereichsLead} · {tx().leadKraft.gesucht(p.lead_positions.length)}</a>{/if}
       <a class="melden leise" href={`${pfad(s, tx().melden.pfad)}?project=${encodeURIComponent(p.project)}`}>{d.melden}</a>
     </div>
   </header>

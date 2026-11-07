@@ -17,6 +17,16 @@
   const gesuche = $derived((p.lead_positions ?? []) as Gesuch[]);
   const anleitung = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
 
+  // Selbst führen: offene Projektideen, gleicher Stack zuerst; andere Projekte, die Bereichs-Leads suchen
+  type Idee = { idea: string; type: string; engine: string; de: { name: string; short: string }; en: { name: string; short: string }; taken_by: unknown };
+  const ideen = $derived(((data.ideen ?? []) as Idee[]).filter((i) => !i.taken_by)
+    .sort((a, b) => Number(b.engine === p.engine) - Number(a.engine === p.engine)).slice(0, 3));
+  const anzahlIdeen = $derived(((data.ideen ?? []) as Idee[]).filter((i) => !i.taken_by).length);
+  const andere = $derived(((data.liste ?? []) as { project: string; name: string; lead_wanted?: number }[])
+    .filter((x) => x.project !== p.project && (x.lead_wanted ?? 0) > 0));
+  const starten = $derived(pfad(s, tx().starten.pfad));
+  const alleIdeen = $derived(`${pfad(s, tx().projekte.pfad)}#lead-gesucht`);
+
   let angemeldet = $state<boolean | null>(null);
   onMount(async () => {
     try { const r = await fetch("/api/account", { cache: "no-store" }); r.body?.cancel(); angemeldet = r.ok; } catch { angemeldet = false; }
@@ -99,9 +109,28 @@
         {/each}
       </ul>
     {:else}
-      <p class="leise">{t.keinGesuch}</p>
+      <p class="leise">{t.keinGesuch(p.name)}</p>
     {/if}
   </section>
+
+  {#if ideen.length || andere.length}
+    <section aria-labelledby="t-selbst">
+      <h2 id="t-selbst">{t.selbstH2}</h2>
+      {#if ideen.length}
+        <p>{t.selbstText}</p>
+        <ul class="ideen">
+          {#each ideen as i (i.idea)}
+            <li><h3>{i[s].name} <span class="leise klein">· {t.stack} {i.engine}</span></h3><p>{i[s].short}</p>
+              <a class="knopf visionaer" href={`${starten}?idea=${i.idea}`}>{t.alsLead}</a></li>
+          {/each}
+        </ul>
+      {/if}
+      {#if andere.length}
+        <p class="klein">{t.andereGesucht} {#each andere as x, n (x.project)}{#if n}, {/if}<a href={pfad(s, `/join/${x.project}`)}>{x.name}</a>{/each}</p>
+      {/if}
+      <p class="klein"><a href={alleIdeen}>{anzahlIdeen ? `${t.alleIdeen} (${anzahlIdeen})` : t.alleIdeen} →</a></p>
+    </section>
+  {/if}
 </article>
 
 <style>
@@ -118,6 +147,11 @@
   .schritte { margin: 0; padding-left: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .schritte li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
   .gesuche { list-style: none; padding: 0; display: grid; gap: 16px; }
+  .ideen { list-style: none; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+  .ideen li { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); }
+  .ideen h3 { margin: 0; font-size: 1.05rem; }
+  .ideen p { margin: 0; color: var(--stahl); font-size: .95rem; }
+  .ideen .knopf { margin-top: auto; align-self: flex-start; }
   .gesuche li { padding: 18px 20px; border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); }
   .gesuche h3 { margin: 0 0 8px; }
   form { display: grid; gap: 12px; margin-top: 12px; }

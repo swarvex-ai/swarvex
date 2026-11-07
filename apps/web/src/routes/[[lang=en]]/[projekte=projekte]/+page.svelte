@@ -66,7 +66,7 @@
   <div class="aktionen">
     <a class="knopf visionaer" href={starten}>{t.starten}</a>
     <a class="knopf primaer" href={anschliessen}>{t.anschliessen}</a>
-    {#if ideen.some((i) => !i.taken_by) || gesucht.length}<a class="knopf" href="#lead-gesucht">{lk.bock}</a>{/if}
+    {#if ideen.some((i) => !i.taken_by) || gesucht.length}<a class="knopf" href="#lead-gesucht">{lk.leadWerden}</a>{/if}
   </div>
 </section>
 
@@ -148,7 +148,7 @@
         {#each gesucht as p (p.project)}
           <li class="karte"><h4>{p.name}</h4><p>{projektText(p, s).vision_short}</p>
             <p class="gesucht">{lk.gesucht(p.lead_wanted ?? 0)}</p>
-            <a class="knopf primaer" href={pfad(s, `/join/${p.project}`)}>{lk.bock}</a></li>
+            <a class="knopf primaer" href={pfad(s, `/join/${p.project}`)}>{lk.bereichsLead}</a></li>
         {/each}
       </ul>
     {/if}
@@ -169,7 +169,7 @@
             {#if i.taken_by.draft}<p class="leise klein">{lk.inArbeit}</p>
             {:else}<a class="knopf" href={projektPfad(i.taken_by.project)}>{lk.uebernommen(i.taken_by.name)}</a>{/if}
           {:else}
-            <a class="knopf visionaer" href={`${starten}?idea=${i.idea}`}>{lk.bock}</a>
+            <a class="knopf visionaer" href={`${starten}?idea=${i.idea}`}>{lk.alsLead}</a>
           {/if}
         </li>
       {/each}

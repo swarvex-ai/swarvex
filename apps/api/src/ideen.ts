@@ -1,5 +1,5 @@
 // Projektideen „Lead gesucht“ (E-39, Entscheidung neVs 2026-11-07): swarvex schlägt Vorhaben vor, die zum Schwarm passen
-// (prüfbar, gut zu zerlegen, mit Bereichen für Bereichs-Leads). Wer eine Idee übernimmt („Bock auf Lead?“), legt das
+// (prüfbar, gut zu zerlegen, mit Bereichen für Bereichs-Leads). Wer eine Idee übernimmt („Als Lead übernehmen“), legt das
 // Projekt über den Assistenten an, wird sein Visionär und Lead und bekommt den Teilen-Link. Der Entwurf hier ist nur der
 // Anfang: Vision, Ziel, Stack und Lizenzen ändert die Person beim Anlegen und danach. Jede Idee wird einmal übernommen
 // (projekte.idee); ein Entwurf, der 14 Tage nicht veröffentlicht wird, gibt sie wieder frei.
