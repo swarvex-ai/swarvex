@@ -18,9 +18,10 @@
   const anleitung = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
 
   // Selbst führen: offene Projektideen, gleicher Stack zuerst; andere Projekte, die Bereichs-Leads suchen
+  const stack = (e?: string) => (e ?? "").split("-")[0];
   type Idee = { idea: string; type: string; engine: string; de: { name: string; short: string }; en: { name: string; short: string }; taken_by: unknown };
   const ideen = $derived(((data.ideen ?? []) as Idee[]).filter((i) => !i.taken_by)
-    .sort((a, b) => Number(b.engine === p.engine) - Number(a.engine === p.engine)).slice(0, 3));
+    .sort((a, b) => Number(stack(b.engine) === stack(p.engine)) - Number(stack(a.engine) === stack(p.engine))).slice(0, 3));
   const anzahlIdeen = $derived(((data.ideen ?? []) as Idee[]).filter((i) => !i.taken_by).length);
   const andere = $derived(((data.liste ?? []) as { project: string; name: string; lead_wanted?: number }[])
     .filter((x) => x.project !== p.project && (x.lead_wanted ?? 0) > 0));
@@ -120,7 +121,7 @@
         <p>{t.selbstText}</p>
         <ul class="ideen">
           {#each ideen as i (i.idea)}
-            <li><h3>{i[s].name} <span class="leise klein">· {t.stack} {i.engine}</span></h3><p>{i[s].short}</p>
+            <li><p class="art leise">{t.stack} {i.engine}</p><h3>{i[s].name}</h3><p>{i[s].short}</p>
               <a class="knopf visionaer" href={`${starten}?idea=${i.idea}`}>{t.alsLead}</a></li>
           {/each}
         </ul>
@@ -151,6 +152,7 @@
   .ideen li { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); }
   .ideen h3 { margin: 0; font-size: 1.05rem; }
   .ideen p { margin: 0; color: var(--stahl); font-size: .95rem; }
+  .ideen .art { font-size: .8rem; color: var(--leise); }
   .ideen .knopf { margin-top: auto; align-self: flex-start; }
   .gesuche li { padding: 18px 20px; border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); }
   .gesuche h3 { margin: 0 0 8px; }
