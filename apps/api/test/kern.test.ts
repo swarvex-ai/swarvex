@@ -1941,17 +1941,17 @@ describe("Projektideen „Lead gesucht“ (E-39): einmal übernehmen, Visionär 
   it("wer eine Idee übernimmt, wird Visionär; ein zweites Mal geht nicht, ein liegen gelassener Entwurf gibt sie frei", async () => {
     const { ideenListe, ideenFreigeben, ideePer } = await import("../src/ideen.ts");
     const { projektAnlegen } = await import("../src/projekte.ts");
-    const i = ideePer("deckwerk")!;
+    const i = ideePer("cardwright")!;
     const neu = (slug: string) => ({ slug, name: i.de.name, vision_md: i.de.vision, vision_short: i.de.kurz, engine: i.engine, license_code: i.lizenz_code,
       license_assets: i.lizenz_assets, lead_model: "Codex · Kimi", goal: i.de.ziel, type: i.art, language: "de", idea: i.idee });
-    await projektAnlegen(db, neu("deckwerk"), fremd.menschId);
-    expect((await k.rollenVon(db, fremd.menschId, Number((await db.query("select id from projekte where slug = 'deckwerk'")).rows[0].id)))).toContain("visionaer");
-    expect((await ideenListe(db)).find((x) => x.idee === "deckwerk")?.uebernommen).toMatchObject({ projekt: "deckwerk", entwurf: true });
-    await expect(projektAnlegen(db, neu("deckwerk-zwei"), mit.menschId)).rejects.toThrow(/already been taken over \(deckwerk\)/);
+    await projektAnlegen(db, neu("cardwright"), fremd.menschId);
+    expect((await k.rollenVon(db, fremd.menschId, Number((await db.query("select id from projekte where slug = 'cardwright'")).rows[0].id)))).toContain("visionaer");
+    expect((await ideenListe(db)).find((x) => x.idee === "cardwright")?.uebernommen).toMatchObject({ projekt: "cardwright", entwurf: true });
+    await expect(projektAnlegen(db, neu("cardwright-zwei"), mit.menschId)).rejects.toThrow(/already been taken over \(cardwright\)/);
     await expect(projektAnlegen(db, { ...neu("gibt-es-nicht"), idea: "gibt-es-nicht" }, mit.menschId)).rejects.toThrow(/unknown project idea/);
-    await db.query("update projekte set erstellt = now() - interval '15 days' where slug = 'deckwerk'");
+    await db.query("update projekte set erstellt = now() - interval '15 days' where slug = 'cardwright'");
     expect(await ideenFreigeben(db)).toBe(1);
-    expect((await ideenListe(db)).find((x) => x.idee === "deckwerk")?.uebernommen).toBeNull();
+    expect((await ideenListe(db)).find((x) => x.idee === "cardwright")?.uebernommen).toBeNull();
   });
 });
 

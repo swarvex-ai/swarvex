@@ -1,6 +1,6 @@
-// Projektübergreifende Aufgaben (Bedarf, E-39): Projekte auf swarvex bauen aufeinander auf. Grundriss meldet bei
+// Projektübergreifende Aufgaben (Bedarf, E-39): Projekte auf swarvex bauen aufeinander auf. Raumwerk meldet bei
 // Formwerk „brauche einen Ohrensessel“; der Lead von Formwerk nimmt an und verknüpft die Aufgabe, die das liefert. Die
-// wartende Aufgabe in Grundriss ist so lange blockiert (abhaengig_von über Projektgrenzen) und wird frei, sobald die
+// wartende Aufgabe in Raumwerk ist so lange blockiert (abhaengig_von über Projektgrenzen) und wird frei, sobald die
 // Formwerk-Aufgabe angenommen ist. Bedarf ist öffentlich sichtbar (Titel und Zustand): Er zeigt, wer wen braucht.
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
