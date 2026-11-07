@@ -11,7 +11,7 @@ many names changed. Code from memory then compiles but renders black, warns in t
 | `breaking-changes.md` | what changed from r150 to r187 that code from memory gets wrong |
 | `swarm-architecture.md` | the project layout that lets many agents work in parallel (core, content, render, scene tests) |
 | `testing.md` | core tests in Node, scene tests in headless Chromium, budgets and baseline images |
-| `procedural-assets.md` | geometry, TSL materials, textures and sound in code instead of model files or generator credits |
+| `procedural-assets.md` | geometry, TSL materials, textures, pixel sprites, sound and music in code instead of asset files or generator credits |
 
 ## Start
 

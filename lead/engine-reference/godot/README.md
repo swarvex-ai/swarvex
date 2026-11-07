@@ -10,6 +10,7 @@ Most models were trained on Godot up to about 4.3. Versions 4.5, 4.6 and 4.7 cam
 | `deprecated-apis.md` | old names and patterns, and what to use instead |
 | `current-best-practices.md` | new language features, physics, rendering, UI, command line |
 | `modules/*.md` | quick references: animation, audio, input, navigation, networking, physics, rendering, UI |
+| `procedural-assets.md` | sound, music, pixel sprites and meshes in code instead of files or generator credits; the shared model catalogue |
 
 The most frequent traps in 4.7:
 
@@ -22,4 +23,4 @@ Version state: Godot 4.7.2, checked against the official migration guides on 202
 
 ## Source
 
-Taken from [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) (`docs/engine-reference/godot/`, commit `05ad7c8`), MIT license, Copyright (c) 2026 Donchitos. Changes for swarvex: this README instead of `VERSION.md`; in `current-best-practices.md` the reference to that project's own parse-check script is replaced by the project test command. License text in `lead/SOURCES.md`.
+Taken from [Claude Code Game Studios](https://github.com/Donchitos/Claude-Code-Game-Studios) (`docs/engine-reference/godot/`, commit `05ad7c8`), MIT license, Copyright (c) 2026 Donchitos. Changes for swarvex: this README instead of `VERSION.md`; in `current-best-practices.md` the reference to that project's own parse-check script is replaced by the project test command; `procedural-assets.md` is swarvex's own. License text in `lead/SOURCES.md`.
