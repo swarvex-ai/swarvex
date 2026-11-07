@@ -377,6 +377,15 @@
       {#if d.engine.trim() === "threejs"}
         <p class="klein">{tx().leadKraft.starter}</p><Einzeiler befehl="curl -fsSL https://swarvex.ai/lead/starter/threejs.sh | sh" />
       {/if}
+      <h3>{t.los.dienstH3}</h3>
+      <p>{t.los.dienstText}</p>
+      <ol class="befehle">
+        <li><span>{t.los.runner}</span><Einzeiler /></li>
+        <li><span>{t.los.dienstSetup}</span><Einzeiler befehl={`swarvex project lead setup ${ergebnis.slug}`} /></li>
+        <li><span>{t.los.dienstAttach}</span><Einzeiler befehl={`swarvex project lead attach ${ergebnis.slug}`} /></li>
+      </ol>
+      <p class="klein"><a href={doku("lead-dienst", "lead-service")}>{t.los.dienstMehr}</a></p>
+      <h3>{t.los.sitzungH3}</h3>
       <p>{t.los.text}</p>
       <ol class="befehle">
         <li><span>{t.los.ordner}</span><Einzeiler befehl={ordner} /></li>

@@ -2,7 +2,7 @@
 
 Den aktuellen Stand führen die Issues und Meilensteine im Tracker. Diese Datei zeigt die Struktur.
 
-Reihenfolge: **P Machbarkeitsnachweis (lokal, kostenlos)** → M0 → M1 → **M2 Durchstich** (alles einmal echt von Ende zu Ende) → M3–M7 (teils parallel) → M8 Pilot → M9 Skalierung des Schwarms.
+Reihenfolge: **P Machbarkeitsnachweis (lokal, kostenlos)** → M0 → M1 → **M2 Durchstich** (alles einmal echt von Ende zu Ende) → M3–M7 (teils parallel) → M8 Pilot → M9 Skalierung des Schwarms → M10 Lead-Kraft.
 
 
 ## P Machbarkeitsnachweis (lokal)
@@ -126,3 +126,14 @@ Einen wachsenden Schwarm nach Können einsetzen, ohne dass Lead oder Prüfstraß
 - Erste Gegenprüfung zwischen zwei Menschen in einem Live-Projekt  `umsetzung runner`
 - Pilot-Meilenstein mit zwei Bereichs-Leads; Messung gegen den Solo-Ausgangswert  `umsetzung pilot lead`
 - Prüfstraße auf eigener Maschine, mehr Prüfstraßen-Worker für große Projekte  `umsetzung kern`
+
+## M10 Lead-Kraft
+
+Projekten so viel Lead geben, wie sie brauchen, immer an eine Person gebunden, ohne dass der Lead fremden Code mit den Rechten des Visionärs ausführt (E-38, E-39).
+
+- ~~Lead-Dienst: der Lead in einer eigenen Sandbox, eigenes an das Projekt gebundenes Gerät~~ (gebaut, Runner 0.12)  `umsetzung runner lead`
+- ~~Mehrere Lead-Dienste je Projekt, Bereitschaft und Bereiche~~ (gebaut, Runner 0.12)  `umsetzung runner lead`
+- ~~Lead-Positionen mit Bewerbungen, Teilen-Links, Hinweis auf Lead-Kraft~~ (gebaut)  `umsetzung kern lead`
+- ~~Projektideen „Bock auf Lead?“, Anfragen zwischen Projekten, Bildvergleich in Reviews~~ (gebaut)  `umsetzung kern`
+- Erste Projektidee übernommen; erste Lead-Position von außen besetzt  `umsetzung pilot lead`
+- Formwerk als erstes Hausprojekt mit Bereichs-Leads (Möbel, Architektur, Natur)  `umsetzung pilot lead`

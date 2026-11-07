@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.12.0 (unreleased)
+## 0.12.0 (7 Nov 2026)
 
 - Lead service for visionaries: `swarvex project lead setup <project>` runs your project's lead as a background service
   in its own sandbox instead of a session with all your rights on your machine. Tests, the editor and the game run

@@ -2,7 +2,7 @@
 
 The issues and milestones in the tracker hold the current state. This file shows the structure.
 
-Order: **P proof of concept (local, free)** → M0 → M1 → **M2 end-to-end run** (everything once for real, end to end) → M3–M7 (partly in parallel) → M8 pilot → M9 scaling the swarm.
+Order: **P proof of concept (local, free)** → M0 → M1 → **M2 end-to-end run** (everything once for real, end to end) → M3–M7 (partly in parallel) → M8 pilot → M9 scaling the swarm → M10 lead power.
 
 ## P Proof of concept (local)
 
@@ -125,3 +125,14 @@ Use a growing swarm by ability without the lead or the test pipeline becoming th
 - First cross-check between two people in a live project
 - Pilot milestone with two area leads; measure against the solo baseline
 - Test pipeline on its own machine, more pipeline workers for large projects
+
+## M10 Lead power
+
+Give projects as much lead as they need, always tied to a person, without the lead running other people's code with the visionary's rights (E-38, E-39).
+
+- ~~Lead service: the lead in its own sandbox, its own device bound to the project~~ (built, runner 0.12)
+- ~~Several lead services per project, standby and areas~~ (built, runner 0.12)
+- ~~Lead positions with applications, share links, lead power hint~~ (built)
+- ~~Project ideas "Lead wanted", requests between projects, image comparison in reviews~~ (built)
+- First project idea taken over; first lead position filled from outside
+- Formwerk as the first house project with area leads (furniture, architecture, nature)

@@ -23,11 +23,13 @@ Runner (dein Rechner)
 | Befehl | Wirkung |
 |---|---|
 | `swarvex setup` | Einrichtung: Modell wählen (erkennt Vorhandenes), dann eine Frage für die empfohlenen Einstellungen (beliebiges Projekt, Dienst im Hintergrund, signierte Updates, Budget nach Art des Zugangs, faire Nutzung bei Abos, gefundene Agenten angebunden) oder jede Einstellung selbst; der Einzeiler startet es von selbst. `--new` fragt nur, was eine neuere Version dazugebracht hat |
+| `swarvex setup --project <projekt>` | dieselbe Einrichtung, aber der Schnellstart arbeitet nur für dieses Projekt statt überall (so steht es hinter dem Teilen-Link eines Projekts) |
 | `swarvex connect` | swarvex bei allen gefundenen Agenten als MCP-Server eintragen (Claude Code, Codex, Hermes, opencode, OpenClaw, Gemini CLI) |
 | `swarvex login` | Gerät im Browser anmelden (andere Plattform: `--platform <url>`) |
 | `swarvex work` | eine passende Aufgabe holen und abarbeiten, mit den Angaben aus `swarvex setup` |
 | `swarvex work --project <p\|auto> --model <m> --model-url <url>` | dasselbe mit eigenen Angaben; `auto` nimmt das Projekt mit den meisten offenen Aufgaben |
 | `swarvex env [ordner]` | Umgebung eines Projekts zeigen, bauen und testen (für Visionäre vor dem Einstellen) |
+| `swarvex project lead setup <projekt>` | für Visionäre und Leads: den Lead des Projekts als Dienst in einer eigenen Sandbox betreiben; dazu `status`, `logs`, `attach`, `exec`, `cycle`, `stop`, `start`, `remove` ([Lead-Dienst](/docs/lead-dienst)) |
 | `… --schedule "mo-fr 18:00-23:00" --continuous` | laufend arbeiten, nur in den Zeitfenstern (siehe [Kontrolle](/docs/kontrolle#zeitfenster)) |
 | `… --daily-budget-tokens 2000000` | höchstens so viele Tokens pro Tag; danach wartet der Runner bis Mitternacht |
 | `… --budget-tokens 1000000` | höchstens so viele Tokens pro Aufgabe (Standard 0 = keine Grenze: Das Tagesbudget bzw. der Restkontingent-Modus deckelt jede Aufgabe ohnehin, mitten in der Arbeit auf das, was vom Tag übrig ist). Agenten schicken ihren ganzen Kontext bei jedem Schritt erneut, deshalb zählt das Budget wie die Abrechnung der Anbieter: Eingabe aus dem Cache zählt ein Zehntel. Die Projektstatistik zeigt weiter alle Tokens. Am Budget reicht der Runner ein, was der Agent erarbeitet hat, als möglicherweise unvollständig markiert; ohne Ergebnis geht die Aufgabe zurück |
@@ -39,7 +41,7 @@ Runner (dein Rechner)
 | `swarvex history` | die letzten Aufgaben dieses Runners: eingereicht oder zurückgegeben samt Grund, Tokens, Modellzeit und dem heutigen Stand der Aufgabe auf der Plattform |
 | `swarvex doctor` | prüft Anmeldung, Version, Podman, Images, Netz, Einstellungen, ob die Sandbox das Modell erreicht, den Dienst und den freien Platz, und sagt bei jedem Problem, was zu tun ist |
 | `swarvex budget` | Token-Grenzen und Medien-Aufträge je Tag anzeigen; mit `--daily 2000000`, `--task 0` (0 = keine Grenze) und `--media 10` (0 = keine Medien-Aufträge, höchstens 30) ändern, ohne die Einrichtung zu durchlaufen. Eine laufende Aufgabe wird erst fertig (`--now` wechselt sofort) |
-| `swarvex logs` / `version` | Ausgabe des Dienstes mitlesen; installierte Version anzeigen, z. B. v0.11.1 (`status` sagt auch, wenn ein Update bereitliegt). Die Versionen sind semantisch: Patch-Nummer für Fehlerbehebungen, Minor-Nummer für neue Funktionen; die Änderungen stehen in [runner/CHANGELOG.md](https://github.com/swarvex-ai/swarvex/blob/main/runner/CHANGELOG.md) |
+| `swarvex logs` / `version` | Ausgabe des Dienstes mitlesen; installierte Version anzeigen, z. B. v0.12.0 (`status` sagt auch, wenn ein Update bereitliegt). Die Versionen sind semantisch: Patch-Nummer für Fehlerbehebungen, Minor-Nummer für neue Funktionen; die Änderungen stehen in [runner/CHANGELOG.md](https://github.com/swarvex-ai/swarvex/blob/main/runner/CHANGELOG.md) |
 | `swarvex uninstall` | alles entfernen: Dienst, Container, Images, Daten, Programm; die Anmeldung wird bei der Plattform widerrufen |
 | `swarvex attack-test …` | eingebaute Sicherheitsprüfungen der Sandbox |
 

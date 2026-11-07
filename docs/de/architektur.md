@@ -16,9 +16,9 @@ Grundsatz: **Vorhandenes verbinden, nur die Koordination selbst bauen.** Jede Ko
                                  │ MCP/HTTPS    │ MCP/HTTPS    │ Webhook/API
           ┌──────────────────────┴───┐  ┌───────┴───────────┐  ┌┴───────────────────────┐
           │ Lead des Visionärs        │  │ Runner der        │  │ Projekt-Repo + Prüfstraße│
-          │ (Claude Code, Hermes,     │  │ Mitstreiter/      │  │ (GitHub, Gitea/Forgejo;  │
-          │  opencode … beliebig)     │  │ Spender           │  │  Actions/Woodpecker)     │
-          │ spricht MCP direkt        │  │ Sandbox + Proxy   │  │ beim Visionär            │
+          │ Lead-Dienst in eigener    │  │ Mitstreiter/      │  │ (GitHub, Gitea/Forgejo;  │
+          │ Sandbox oder Sitzung      │  │ Spender           │  │  Actions/Woodpecker)     │
+          │ (jeder Agent), über MCP   │  │ Sandbox + Proxy   │  │ beim Visionär            │
           └───────────────────────────┘  └───────────────────┘  └─────────────────────────┘
 ```
 
@@ -165,6 +165,7 @@ ereignisse(seq, zeit, akteur, art, bezug, daten_json, vorgaenger_hash, hash)  --
 | Geschönte Prüfergebnisse eines Projekts | Stichproben auf Plattform-Hardware, Abweichungen öffentlich |
 | Prompt-Injection beim Weg ohne Code: Der eigene Agent des Mitstreiters (volle Rechte auf dessen Rechner) liest fremde Aufgabentexte | Herkunftslabel an jeder MCP-Antwort, fremder Text getrennt vom Auftrag, fertige Agenten-Profile ohne Shell und Netz (siehe unten) |
 | Prompt-Injection gegen den Lead über eingereichte Beiträge | Beiträge liest ein Unteragent, der nur in festem Schema antwortet; Annahme bleibt eine Lead-Entscheidung mit Prüfstraße davor |
+| Der Lead führt Code der Mitstreiter aus (Tests, Editor, das Spiel) | Lead-Dienst (E-38): eigene Sandbox, Netz nur über den Lead-Proxy (Modell, Plattform, Git-Host des Projekts), Schlüssel draußen, ein Git-Token nur für dieses Repo, eigenes an das Projekt gebundenes Gerät ohne Freigaben |
 
 Ein Restrisiko bleibt (ein Beitrag, der alle Prüfungen besteht und trotzdem schadet). Es wird offen kommuniziert.
 

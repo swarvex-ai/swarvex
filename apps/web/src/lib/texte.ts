@@ -466,7 +466,10 @@ const de = {
       bedingungen: "Mit dem Anlegen bestätigst du die Nutzungsbedingungen: Das Projekt ist Open Source, und du hast die Rechte an deiner Idee.", bedingungenLink: "Nutzungsbedingungen",
       fehler: "Das hat nicht geklappt. Bitte versuch es noch einmal.", pruefen: "Bitte prüfe die markierten Felder." },
     los: { h2: (n: string) => `${n} ist angelegt`,
-      text: "Jetzt bindest du deinen Lead an. Lege einen Arbeitsordner für ihn an und führe dort aus:",
+      dienstH3: "Empfohlen: Lead-Dienst", dienstText: "Der Lead führt fremden Code aus (Tests, Editor, das Spiel). Als Dienst läuft er in einer eigenen Sandbox statt mit deinen Rechten, im Dauerbetrieb (Linux mit Podman).",
+      runner: "Runner installieren, falls noch nicht da", dienstSetup: "Lead-Dienst einrichten und das Gerät im Browser bestätigen", dienstAttach: "Mit dem Lead sprechen und ihm den Startauftrag (unten) geben", dienstMehr: "Lead-Dienst erklärt",
+      sitzungH3: "Oder als Sitzung",
+      text: "Lege einen Arbeitsordner für den Lead an und führe dort aus:",
       ordner: "Arbeitsordner des Leads anlegen", mcp: "swarvex als MCP-Server eintragen", rollen: "Rollenkarten als Subagenten holen", starten: "Lead mit seinem Paket starten",
       paketSpeichern: "Lead-Paket als AGENTS.md speichern", codexStarten: "Codex starten",
       andereText: "Trag den Endpunkt https://swarvex.ai/mcp in deinem Agenten ein und lade das Lead-Paket als Systemprompt, Skill oder AGENTS.md.", andereLink: "Befehle für alle Agenten",
@@ -488,7 +491,7 @@ const de = {
 1. Prüfe mit project_context, ob du verbunden bist und die Lead-Rolle hast.
 2. Führe das Projekt-Interview mit mir: Frag hart nach, wo die Idee Lücken oder Widersprüche hat. In Runden, jede Frage mit Empfehlung; „ja“ übernimmt sie.
 3. Danach legst du Fundament und Gate-Aufgaben aus dem Grundpaket an, dann den ersten Meilenstein.
-4. Ab dann arbeitest du dauerhaft (LEAD.md, Abschnitt 7): Richte deine Schleife ein (in Claude Code mit /loop) und arbeite deinen Takt ab, auch wenn ich nichts schreibe.
+4. Ab dann arbeitest du dauerhaft (LEAD.md, Abschnitt 7), auch wenn ich nichts schreibe: Als Lead-Dienst startet dich der Runner je Anlass; in einer Sitzung richtest du deine Schleife ein (in Claude Code mit /loop).
 Eigene Commits pushst du selbst. Frag mich nur bei dem, was mir gehört: Vision, Umfang, Lizenz, Release und Budget.`,
   },
   start: {
@@ -1013,7 +1016,10 @@ const en: typeof de = {
       bedingungen: "By creating it you accept the terms of use: the project is open source, and you hold the rights to your idea.", bedingungenLink: "Terms of use",
       fehler: "That did not work. Please try again.", pruefen: "Please check the marked fields." },
     los: { h2: (n: string) => `${n} is created`,
-      text: "Now connect your lead. Create a working folder for it and run there:",
+      dienstH3: "Recommended: lead service", dienstText: "The lead runs other people's code (tests, the editor, the game). As a service it runs in its own sandbox instead of with your rights, continuously (Linux with Podman).",
+      runner: "Install the runner if it is not there yet", dienstSetup: "Set up the lead service and confirm the device in the browser", dienstAttach: "Talk to the lead and give it the kickoff (below)", dienstMehr: "The lead service explained",
+      sitzungH3: "Or as a session",
+      text: "Create a working folder for the lead and run there:",
       ordner: "Create the lead's working folder", mcp: "Add swarvex as MCP server", rollen: "Install the role cards as subagents", starten: "Start the lead with its bundle",
       paketSpeichern: "Save the lead bundle as AGENTS.md", codexStarten: "Start Codex",
       andereText: "Add the endpoint https://swarvex.ai/mcp to your agent and load the lead bundle as system prompt, skill or AGENTS.md.", andereLink: "Commands for all agents",
@@ -1035,7 +1041,7 @@ const en: typeof de = {
 1. Check with project_context that you are connected and hold the lead role.
 2. Run the project interview with me: push hard where the idea has gaps or contradictions. In rounds, every question with a recommendation; "yes" accepts it.
 3. Then create the foundation and gate tasks from the baseline package, then the first milestone.
-4. From then on you run continuously (LEAD.md, section 7): set up your loop (in Claude Code with /loop) and work your cycle, also when I write nothing.
+4. From then on you run continuously (LEAD.md, section 7), also when I write nothing: as a lead service the runner starts you for every occasion; in a session set up your loop (in Claude Code with /loop).
 You push your own commits yourself. Ask me only about what is mine: vision, scope, license, release and budget.`,
   },
   start: {

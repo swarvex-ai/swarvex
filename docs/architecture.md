@@ -16,9 +16,9 @@ Principle: **connect what exists, build only the coordination itself.** Every co
                                  │ MCP/HTTPS    │ MCP/HTTPS    │ signed API
           ┌──────────────────────┴───┐  ┌───────┴───────────┐  ┌┴───────────────────────┐
           │ The visionary's lead      │  │ Runner of         │  │ Project repo + test     │
-          │ (Claude Code, Hermes,     │  │ contributors/     │  │ pipeline (GitHub,       │
-          │  opencode … any)          │  │ donors            │  │ Gitea/Forgejo …)        │
-          │ speaks MCP directly       │  │ sandbox + proxy   │  │ at the visionary's      │
+          │ lead service in its own   │  │ contributors/     │  │ pipeline (GitHub,       │
+          │ sandbox, or a session     │  │ donors            │  │ Gitea/Forgejo …)        │
+          │ (any agent), speaks MCP   │  │ sandbox + proxy   │  │ at the visionary's      │
           └───────────────────────────┘  └───────────────────┘  └─────────────────────────┘
 ```
 
@@ -164,6 +164,7 @@ The database itself still uses German names internally; the public interfaces tr
 | Embellished check results of a project | spot checks on platform hardware, deviations public |
 | Prompt injection on the path without code: the contributor's own agent (full rights on their machine) reads third-party task texts | origin label on every MCP response, third-party text separated from the brief, ready-made agent profiles without shell and network (see below) |
 | Prompt injection against the lead through submitted contributions | a subagent reads contributions and only answers in a fixed schema; acceptance stays a lead decision with the test pipeline in front |
+| The lead runs contributors' code (tests, editor, the game) | lead service (E-38): its own sandbox, network only through the lead proxy (model, platform, the project's git host), keys outside, a git token for this one repository, its own device bound to the project without approvals |
 
 A residual risk remains (a contribution that passes all checks and still does harm). It is communicated openly.
 
