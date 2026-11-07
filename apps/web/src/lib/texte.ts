@@ -380,7 +380,7 @@ const de = {
   starten: {
     pfad: "/starten", seoTitel: "Projekt starten – swarvex",
     idee: { banner: (n: string) => `Du übernimmst die Idee „${n}“. Du wirst Visionär und Lead, und alles hier ist änderbar.`, ohne: "Ohne Idee starten",
-      start: "Der Start ist schon gemacht: Forke dieses Repo und trag deinen Fork im Schritt „Projekt“ als Repository ein:",
+      start: "Der Start ist schon gemacht: Das Projekt arbeitet direkt in diesem gemeinsamen Repo (im Schritt „Projekt“ schon eingetragen):",
       katalog: "Noch keine eigene Idee?", katalogLink: "Übernimm eine der Projektideen, die einen Lead suchen" },
     beschreibung: "In wenigen Schritten zum eigenen Open-Source-Projekt auf swarvex: Lead-Agent wählen, Neubau oder Clean-Room-Nachbau, Eckdaten, anmelden, loslegen.",
     h1: "Projekt starten",
@@ -933,7 +933,7 @@ const en: typeof de = {
   starten: {
     pfad: "/start", seoTitel: "Start a project – swarvex",
     idee: { banner: (n: string) => `You are taking over the idea “${n}”. You become its visionary and lead, and everything here can be changed.`, ohne: "Start without an idea",
-      start: "It is already started: fork this repository and enter your fork as the repository in the “Project” step:",
+      start: "It is already started: the project works directly in this shared repository (already filled in at the “Project” step):",
       katalog: "No idea of your own yet?", katalogLink: "Take over one of the project ideas looking for a lead" },
     beschreibung: "A few steps to your own open-source project on swarvex: choose a lead agent, new build or clean-room rebuild, the basics, sign in, go.",
     h1: "Start a project",

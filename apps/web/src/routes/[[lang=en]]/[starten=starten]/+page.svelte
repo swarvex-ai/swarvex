@@ -78,7 +78,7 @@
           const it = i[sprache()];
           const weg = i.procedure === "clean_room" ? "nachbau" : i.procedure === "continuation" ? "weiter" : "neu";
           d = { ...d, idee: i.idea, weg, cleanroom: weg === "nachbau", type: i.type, name: it.name, slug: i.idea, slugFrei: true, vision_short: it.short, vision_md: it.vision,
-            goal: it.goal, engine: i.engine, license_code: i.license_code, license_assets: i.license_assets,
+            goal: it.goal, engine: i.engine, license_code: i.license_code, license_assets: i.license_assets, repo_url: i.start?.repo ?? d.repo_url,
             original: i.original ? { ...d.original, ...i.original, acquisition: "" } : d.original,
             upstream: i.upstream ? { ...d.upstream, ...i.upstream, contact: "" } : d.upstream,
             research: i.research ? { ...i.research } : d.research };
