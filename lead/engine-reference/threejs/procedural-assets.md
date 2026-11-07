@@ -24,6 +24,41 @@ to WGSL for WebGPU and to GLSL for WebGL 2, so the same material works in both.
 Canvas or `DataTexture` generated at start for patterns; Web Audio oscillators and noise for effects. Keep generation
 deterministic (seeded `rng`), so the scene tests see the same image.
 
+## Export: baking TSL patterns into a texture (r187)
+
+A .glb, .usdz or .obj cannot carry TSL nodes. To keep wood grain or stone in an export, bake them:
+
+1. `unwrapUVs(root, { attribute: "uv", resolution: 1024, padding: 4 })` (`three/addons/utils/unwrapUVs.js`, new in
+   r187) gives every patterned mesh a unique UV atlas. It works in world space; call it on a copy.
+2. Draw each mesh into a `RenderTarget` (`FloatType`) with a `MeshBasicNodeMaterial` whose `colorNode` is the original
+   one and whose `vertexNode = vec4(uv().mul(2).sub(1), 0, 1)`: every face lands at its place in the atlas, coloured
+   by its position in the asset. Set `frustumCulled = false` on these meshes, or parts far from the origin (a tree
+   crown) are culled and stay black.
+3. `readRenderTargetPixelsAsync()`, fill the empty pixels around the charts (a few rounds of neighbour averaging),
+   convert linear to sRGB, put it on a canvas, `CanvasTexture` with `colorSpace = SRGBColorSpace`, and
+   `texture.userData.mimeType = "image/jpeg"` for a small .glb.
+
+Traps: WebGL reads pixels bottom-up, WebGPU top-down. Bake on a short-lived `WebGPURenderer({ forceWebGL: true })`
+so there is one path, the one your scene test checks. Test the bake by rendering the baked copy and comparing it with
+the live render, and once more after `GLTFExporter` and `GLTFLoader`; use a strict pixelmatch threshold (0.02), at
+0.15 a mirrored wood texture still passes.
+
+## Assets for games: movable parts and physics
+
+- Movable parts (lids, doors, drawers) as named child objects with their origin at the hinge: the glTF keeps the
+  name and the pivot, so Godot and Blender can animate them without fixing pivots by hand.
+- `GLTFExporter` writes `userData` as glTF extras: put the asset's values, movable parts and physics hints there
+  (body static or dynamic, collider box, convex hull or cylinder, estimated mass).
+- Convex hull points for Rapier: `new ConvexHull().setFromObject(o)` (`three/addons/math/ConvexHull.js`), then the
+  head points of every face edge. For stairs the hull is a ramp, which is what characters should walk on.
+
+## Libraries of assets: a catalogue for agents
+
+A project that offers assets to others generates `catalog.json` (every parameter with range and a one-sentence
+description, presets, movable parts, physics) and `llms.txt` from the asset definitions at build time and serves
+them next to its gallery. Vite's `runnerImport()` loads the TypeScript definitions in a Node script after
+`vite build`. No server is needed, and the catalogue cannot drift from the code.
+
 ## When a file is the better choice
 
 Characters with skeletal animation or scanned objects: use glTF (`.glb`) with a free licence and put the licence next
