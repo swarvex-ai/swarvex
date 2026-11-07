@@ -26,6 +26,8 @@ import { pruefstrasseBehandeln } from "./pruefstrasse.ts";
 import { leadAlarme, leadGitZugang } from "./leaddienst.ts";
 import { leadKraftPruefen } from "./leadkraft.ts";
 import { ideenFreigeben, ideenListe } from "./ideen.ts";
+import { bedarfAktualisieren } from "./bedarf.ts";
+import { bilderAufraeumen } from "./bilder.ts";
 import { abzeichen, kennzahlen, kurzlinkZiel, projektDetail, projektListe, schwarmLive } from "./kennzahlen.ts";
 import { englisch } from "./auth/interaktion.ts";
 import { nachAussen } from "./aussen.ts";
@@ -82,13 +84,20 @@ await boss.work("besuche-abschliessen", async () => { await besucheAbschliessen(
 // Kopf-Hash täglich signieren (03:17 UTC); der externe Anker holt ihn danach ab.
 await boss.createQueue("lead-anwesenheit");
 await boss.schedule("lead-anwesenheit", "*/5 * * * *");
-await boss.work("lead-anwesenheit", async () => { const n = await leadAlarme(db); if (n) console.log(`lead services not reachable: ${n} visionaries told`); });
+await boss.work("lead-anwesenheit", async () => {
+  const n = await leadAlarme(db);
+  if (n) console.log(`lead services not reachable: ${n} visionaries told`);
+  // Bedarf zwischen Projekten: fertige Lieferungen erledigt, geschlossene Aufgaben geben den Bedarf wieder frei
+  const b = await bedarfAktualisieren(db);
+  if (b.erledigt || b.wieder_offen) console.log(`requests between projects: ${b.erledigt} done, ${b.wieder_offen} open again`);
+});
 // Lead-Kraft (E-39): Tagesstand der Signale; halten sie an, schlägt die Plattform Lead und Visionär mehr Lead vor
 await boss.createQueue("lead-kraft");
 await boss.schedule("lead-kraft", "53 5 * * *");
 await boss.work("lead-kraft", async () => {
   const n = await leadKraftPruefen(db);
   const frei = await ideenFreigeben(db);
+  await bilderAufraeumen(db);
   if (n || frei) console.log(`lead power: ${n} project(s) told, ${frei} project idea(s) released from stale drafts`);
 });
 await boss.createQueue("kopf-veroeffentlichen");

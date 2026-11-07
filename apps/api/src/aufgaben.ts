@@ -1,6 +1,7 @@
 // Koordinations-Kern: Aufgaben-Zustandsmaschine, Leases, Einreichungen, Bewertungen.
 // Jede Zustandsänderung läuft in einer Transaktion und schreibt ihr Ereignis in dieselbe
 // Transaktion – entweder beides oder nichts (docs/concept.md §3).
+import { bilderListe } from "./bilder.ts";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
@@ -823,6 +824,11 @@ export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: strin
        and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id`, [p.id]);   // nur die neueste je Aufgabe
   // Vorschau dieser Einreichung zum Ausprobieren vor der Bewertung (pipeline/vorschau.go)
   const zeilen = r.rows.map(({ vorschau_status, ...z }) => ({ ...z, ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: einreichungsVorschauUrl(Number(z.einreichung_id)) } : {}) }));
+  // Szenenbilder für den Bildvergleich (bilder.ts): welche Szenen sich ändern; ansehen mit submission_images
+  for (const z of zeilen) {
+    const b = await bilderListe(db, Number(z.einreichung_id));
+    if (b.length) Object.assign(z, { bilder: b.map((x) => x.name) });
+  }
   if (officers) return zeilen.filter((a) => officers.some((o) => imBereich(o, a)));
   if (meine) return zeilen.filter((a) => inSitzung(meine, a));
   return zeilen.filter((a) => !sitzungen.some((x) => x.agent_id !== wer.agentId && inSitzung(x, a)));

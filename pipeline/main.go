@@ -251,7 +251,21 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 		b.WriteString("No automated tests configured (swarvex.yaml: test). The lead reviews the contribution by hand.\n")
 		return true, b.String(), false
 	}
-	if testen(&b, func() (string, error) { return imContainer(image, baum, cache, u, u.Testen, false, 1800) }) {
+	gruen := testen(&b, func() (string, error) { return imContainer(image, baum, cache, u, u.Testen, false, 1800) })
+	// Bildvergleich im Review: geänderte Szenenbilder dieses Laufs an die Plattform (vor einer Gegenprobe ohne Beitrag)
+	if bilder, err := szenenBilder(baum, u.Ordner, u.Bilder, u.Referenzen, e.BasisCommit); err != nil {
+		fmt.Fprintf(&b, "scene images: %v\n", err)
+	} else {
+		for _, bild := range bilder {
+			if err := signiert("POST", fmt.Sprintf("/pipeline/%d/images", e.EinreichungID), bild.daten(), nil); err != nil {
+				fmt.Fprintf(&b, "scene image %s: %v\n", bild.Name, err)
+			}
+		}
+		if len(bilder) > 0 {
+			fmt.Fprintf(&b, "Scene images that change: %d (submission_images shows them)\n", len(bilder))
+		}
+	}
+	if gruen {
 		return true, b.String(), false
 	}
 	basisRot = gegenprobe(&b, func() (string, bool, error) {

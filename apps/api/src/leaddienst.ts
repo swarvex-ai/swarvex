@@ -23,6 +23,7 @@ export const LEAD_DIENST_WERKZEUGE = new Set([
   "report_regression", "review_submission", "send_message", "inbox", "answer_message",
   "donation_pledges", "create_donation_brief", "donation_briefs", "review_donation", "preview_feedback", "mark_feedback", "set_translation",
   "take_area", "leave_area", "release_level_c", "report_lead_cycle", "open_lead_position", "close_lead_position",
+  "request_work", "work_requests", "answer_work_request", "submission_images",
 ]);
 
 /** Nach so langer Stille gilt der Lead-Dienst als nicht erreichbar (Projektseite, Nachricht an den Visionär). */
@@ -69,6 +70,7 @@ export async function gebundenPruefen(db: Db, projektId: number, werkzeug: strin
     ["message_id", "select projekt_id from nachrichten where id = $1"],
     ["brief_id", "select projekt_id from spendenauftraege where id = $1"],
     ["feedback_id", "select projekt_id from vorschau_feedback where id = $1"],
+    ["request_id", "select an_projekt as projekt_id from bedarf where id = $1"],
   ];
   for (const [feld, sql] of nachschlagen) {
     if (a[feld] === undefined) continue;

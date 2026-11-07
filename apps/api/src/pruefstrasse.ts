@@ -2,6 +2,7 @@
 // Jede Anfrage ist mit HMAC-SHA256 signiert (Zeitstempel + Einmalnummer + Methode + Pfad + Körper) und nur
 // fünf Minuten gültig; jede Einmalnummer gilt nur einmal. Unsignierte, veränderte oder wiederholte Meldungen
 // werden abgewiesen (Angriff S8).
+import { bilderSpeichern } from "./bilder.ts";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Db } from "./db.ts";
@@ -166,6 +167,12 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
           await tx.query("update projekte set vorschau = $2 where id = $1", [p.id, neu]);
           if (status !== "none") await protokollieren(tx, { projekt_id: Number(p.id), akteur: "system", art: "vorschau_gebaut", bezug: `projekt:${p.id}`, daten: { commit, status } });
         });
+        return json(res, 200, { ok: true });
+      }
+      // Szenenbilder einer Einreichung für den Bildvergleich im Review (bilder.ts)
+      const bild = /^\/pipeline\/(\d+)\/images$/.exec(url.pathname);
+      if (req.method === "POST" && bild) {
+        await bilderSpeichern(db, Number(bild[1]), String(daten.name ?? ""), daten);
         return json(res, 200, { ok: true });
       }
       const m = /^\/pipeline\/(\d+)\/(start|result|merged|conflict|train-red)$/.exec(url.pathname);

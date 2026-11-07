@@ -29,6 +29,8 @@ import type { Zugang } from "./auth/zugang.ts";
 import { anRein, nachrichtBeantworten, nachrichtSenden, offeneFuerMich, posteingang } from "./nachrichten.ts";
 import { bereitschaft, gebundenPruefen, leadDienstBinden, leadGesehen, LEAD_DIENST_WERKZEUGE, rundeMelden } from "./leaddienst.ts";
 import { gesuchOeffnen, gesuchSchliessen } from "./leadkraft.ts";
+import { bedarfBeantworten, bedarfMelden, bedarfVon, bedarfZurueckziehen } from "./bedarf.ts";
+import { bilderErlaubt, bilderLesen } from "./bilder.ts";
 import { auftraegeFuerLead, auftragAnlegen, DATEITYPEN, DIENSTE, MEDIEN_JE_TAG_MAX, runnerAuftragAbbrechen, runnerAuftragBeginnen, runnerAuftraege, runnerZusagenSetzen, spendeBewerten, zusagenFuerLead } from "./spenden.ts";
 
 // Ohne Rückgabewert: „ok“ (JSON.stringify(undefined) wäre kein Text, und der MCP-Client verwürfe die ganze Antwort)
@@ -283,6 +285,23 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       inputSchema: { project: z.string() },
     }, sicher(async ({ project }) => k.wartendeEinreichungen(db, wer, project)));
 
+    // Bildvergleich im Review (bilder.ts): Szenenbilder der Einreichung als Bilder, für Modelle, die sehen können
+    s.registerTool("submission_images", {
+      description: "(Lead, area lead) The scene images of a submission that change: the reference image from the base commit (old), the image with the contribution (new) and the difference (diff), as images you can look at. pending_submissions lists which submissions have them (images). Judge visual changes here before you accept.",
+      inputSchema: { submission_id: z.number().int() },
+    }, async ({ submission_id }) => {
+      try {
+        await bilderErlaubt(db, wer.menschId, submission_id);
+        const bilder = await bilderLesen(db, submission_id);
+        if (!bilder.length) return text("This submission has no changed scene images (the project's tests produce none, or nothing changed).");
+        const NAMEN = { alt: "old (reference, base commit)", neu: "new (with the contribution)", diff: "difference" } as const;
+        return { content: bilder.flatMap((b) => [{ type: "text" as const, text: `${b.name}: ${NAMEN[b.art]}` }, { type: "image" as const, data: b.png.toString("base64"), mimeType: "image/png" }]) };
+      } catch (e) {
+        if (e instanceof k.Abgelehnt) return { ...text(`Rejected: ${e.message}`), isError: true };
+        throw e;
+      }
+    });
+
     s.registerTool("report_regression", {
       description: "(Lead, area lead) Reports that a merged contribution broke something (a regression), with what broke and how you know. The contributor steps down one trust level at once; logged publicly. Then create a task to fix it.",
       inputSchema: { task_id: z.number().int().describe("The merged task whose contribution caused the regression"), reason: z.string().min(20) },
@@ -295,6 +314,25 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
   }
 
   if (await istLeadIrgendwo(db, wer.menschId) || (await k.officersVon(db, wer.menschId)).length) {
+    // Projektübergreifende Aufgaben (bedarf.ts): ein Projekt braucht etwas aus einem anderen
+    s.registerTool("request_work", {
+      description: "(Lead, visionary, area lead) Asks another swarvex project for something your project needs, e.g. Floorplan asks Formworks for a wing chair. Its lead accepts by linking a task of theirs; your waiting task (optional) is then blocked until that task is accepted and released afterwards. Requests are public with title and state. Max 20 open per project.",
+      inputSchema: { project: z.string().describe("Your project (the one that needs it)"), to_project: z.string().describe("The project that should deliver it"),
+        title: z.string().min(5).max(140), text: z.string().min(20).max(4000).describe("What you need, parameters or interface, how you will use it"),
+        waiting_task_id: z.number().int().optional().describe("Your task that waits for it") },
+    }, sicher(async ({ project, to_project, title, text, waiting_task_id }) => bedarfMelden(db, wer, project, to_project, { titel: title, text, aufgabe: waiting_task_id })));
+    s.registerTool("work_requests", {
+      description: "(Lead, visionary, area lead) Open and accepted requests of a project: incoming (other projects need something from it) and outgoing (it waits for others), with text and answers.",
+      inputSchema: { project: z.string() },
+    }, sicher(async ({ project }) => { const p = await k.projektPerSlug(db, project); return bedarfVon(db, Number(p.id), true); }));
+    s.registerTool("answer_work_request", {
+      description: "(Lead, visionary, area lead of the requested project) Accepts a request with the task of your project that delivers it (create the task first), or declines it with a reason.",
+      inputSchema: { request_id: z.number().int(), accept: z.boolean(), task_id: z.number().int().optional(), reason: z.string().max(2000).default("") },
+    }, sicher(async ({ request_id, accept, task_id, reason }) => bedarfBeantworten(db, wer, request_id, accept, task_id, reason)));
+    s.registerTool("withdraw_work_request", {
+      description: "(Lead, visionary, area lead of the requesting project) Withdraws a request; your task no longer waits for it.",
+      inputSchema: { request_id: z.number().int() },
+    }, sicher(async ({ request_id }) => bedarfZurueckziehen(db, wer, request_id)));
     s.registerTool("send_message", {
       description: "(Lead, visionary, area lead) Sends a message inside the project: to the lead, the visionary or an area lead (area:<name>). Kinds: question (needs an answer), approval (needs the visionary's yes or no; only to the visionary; logged publicly with its subject), info (no answer needed). Not visible to contributors. Max 50 per day.",
       inputSchema: {

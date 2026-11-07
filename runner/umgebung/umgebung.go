@@ -48,6 +48,8 @@ type Umgebung struct {
 	VorschauIn string   // Ordner mit index.html, den Vorschau erzeugt (relativ zum Arbeitsordner)
 	Doku       string   // Shell: Doku, Blueprint oder Bericht als statische Seiten bauen (ohne Netz, nach jedem Merge), optional
 	DokuIn     string   // Ordner mit index.html, den Doku erzeugt (relativ zum Arbeitsordner); erscheint unter /docs/
+	Bilder     string   // Ordner mit Szenenbildern, die die Tests schreiben (<name>.png, <name>.diff.png), für den Bildvergleich im Review
+	Referenzen string   // Ordner mit den Referenzbildern (<name>.png) im Repository
 	Godot      string   // volle Godot-Version (Export-Vorlagen für die Vorschau), sonst leer
 	Einbinden  []string // nur zur Laufzeit: zusätzliche Podman-Argumente (Runner: Engine und Lizenz, nur lesend)
 }
@@ -196,6 +198,10 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 			u.Doku = v
 		case "docs_dir":
 			u.DokuIn = strings.Trim(v, "/")
+		case "images":
+			u.Bilder = strings.Trim(v, "/")
+		case "images_baseline":
+			u.Referenzen = strings.Trim(v, "/")
 		case "protected":
 			for _, g := range strings.FieldsFunc(v, func(r rune) bool { return r == ',' || r == '\n' }) {
 				if g = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(g), "- ")); g != "" {
@@ -203,7 +209,7 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 				}
 			}
 		default:
-			return u, fmt.Errorf("swarvex.yaml: unknown key %q (allowed: template, image, dir, setup, build, test, note, protected, preview, preview_dir, docs, docs_dir)", k)
+			return u, fmt.Errorf("swarvex.yaml: unknown key %q (allowed: template, image, dir, setup, build, test, note, protected, preview, preview_dir, docs, docs_dir, images, images_baseline)", k)
 		}
 	}
 	geschuetzt, err := geschuetztAufWurzel(u.Ordner, u.Geschuetzt)
@@ -216,6 +222,11 @@ func ausYaml(wurzel, text string) (Umgebung, error) {
 	}
 	if (u.Vorschau == "") != (u.VorschauIn == "") {
 		return u, fmt.Errorf("swarvex.yaml: preview and preview_dir belong together (the command and the folder with index.html it creates)")
+	}
+	for _, o := range []string{u.Bilder, u.Referenzen} {
+		if strings.Contains(o, "..") || strings.HasPrefix(o, "/") {
+			return u, fmt.Errorf("swarvex.yaml: images and images_baseline are folders inside the project")
+		}
 	}
 	if strings.Contains(u.VorschauIn, "..") || strings.HasPrefix(u.VorschauIn, "/") {
 		return u, fmt.Errorf("swarvex.yaml: preview_dir must be a folder inside the project")
@@ -644,6 +655,8 @@ func threejs(w string) Umgebung {
 	if u.Bauen != "" {
 		u.Vorschau, u.VorschauIn = "npm run build", "dist"
 	}
+	// Szenen-Tests der Vorlage: Bilder in tests/scene/out, Referenzen in tests/scene/baseline (Bildvergleich im Review)
+	u.Bilder, u.Referenzen = "tests/scene/out", "tests/scene/baseline"
 	return u
 }
 

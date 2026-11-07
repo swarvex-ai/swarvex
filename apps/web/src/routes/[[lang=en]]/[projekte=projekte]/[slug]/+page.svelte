@@ -94,6 +94,21 @@
     </div>
   </header>
 
+  {#if p.requests?.incoming?.length || p.requests?.outgoing?.length}
+    {@const lk = tx().leadKraft}
+    <section class="bedarf" aria-labelledby="t-bedarf">
+      <h2 id="t-bedarf" class="klein-h">{lk.bedarfH2}</h2>
+      <ul>
+        {#each p.requests.outgoing as b (b.id)}
+          <li><span class="leise">{lk.braucht}</span> <a href={pfad(s, `${t.pfad}/${b.project}`)}>{b.project_name}</a>: {b.title} <span class="leise">· {lk.bedarfZustand[b.state] ?? b.state}{#if b.task_id} · {lk.aufgabe} #{b.task_id}{/if}</span></li>
+        {/each}
+        {#each p.requests.incoming as b (b.id)}
+          <li><span class="leise">{lk.gebrauchtVon}</span> <a href={pfad(s, `${t.pfad}/${b.project}`)}>{b.project_name}</a>: {b.title} <span class="leise">· {lk.bedarfZustand[b.state] ?? b.state}{#if b.task_id} · {lk.aufgabe} #{b.task_id}{/if}</span></li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+
   <section aria-labelledby="t-kennzahlen">
     <h2 id="t-kennzahlen" class="sr">{d.kennzahlen}</h2>
     <dl class="kennzahlen">
@@ -316,6 +331,8 @@
   .kopf h1 { font-size: clamp(2.1rem, 4.5vw, 3.2rem); margin-bottom: 10px; }
   .aktionen { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
   .melden { font-size: .88rem; }
+  .bedarf ul { list-style: none; padding: 0; margin: 0 0 24px; display: grid; gap: 4px; }
+  .bedarf .klein-h { font-size: 1rem; margin: 0 0 8px; }
   .anker { display: block; font-size: .85rem; margin-top: 4px; }
   .melden:hover { color: var(--text); }
   .vision { font-size: 1.2rem; color: var(--stahl); max-width: 62ch; margin: 0 0 10px; }

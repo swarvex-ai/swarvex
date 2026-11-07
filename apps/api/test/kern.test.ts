@@ -1949,3 +1949,82 @@ describe("Projektideen „Lead gesucht“ (E-39): einmal übernehmen, Visionär 
     expect((await ideenListe(db)).find((x) => x.idee === "deckwerk")?.uebernommen).toBeNull();
   });
 });
+
+describe("Projektübergreifende Aufgaben (Bedarf, E-39)", () => {
+  let ziel = 0, quelle = 0;
+  const zielLead = { menschId: 0, agentId: 0 };
+  const blockiert = async (id: number) => (await db.query("select aufgabe_blockiert(abhaengig_von, abhaengig_eins_von) as b from aufgaben where id = $1", [id])).rows[0].b as boolean;
+  beforeAll(async () => {
+    zielLead.menschId = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea','formwerk-lead','formwerk-lead') returning id")).rows[0].id);
+    zielLead.agentId = Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'fw-lead','fw-lead') returning id", [zielLead.menschId])).rows[0].id);
+    ziel = Number((await db.query(
+      `insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,repo_git,lead_modell,ziel)
+       values ('formwerk-test','Formwerk','V','k','threejs','MIT','CC0 1.0','http://f','git@example.org:f.git','m','z') returning id`)).rows[0].id);
+    await db.query("insert into projekt_rollen values ($1,$2,'lead')", [ziel, zielLead.menschId]);
+    quelle = Number((await db.query("select id from projekte where slug = 'kraft'")).rows[0].id);
+  });
+
+  it("ein Projekt meldet Bedarf; angenommen blockiert seine Aufgabe, bis die Lieferung angenommen ist", async () => {
+    const b = await import("../src/bedarf.ts");
+    const wartet = Number((await k.aufgabeAnlegen(db, lead, "kraft", { ...neueAufgabe("Wohnzimmer einrichten"), meilenstein: "Räume", neuer_meilenstein: true })).id);
+    await expect(b.bedarfMelden(db, mit, "kraft", "formwerk-test", { titel: "Ohrensessel", text: "Ein Ohrensessel mit hoher Lehne für das Wohnzimmer." })).rejects.toThrow(/only the lead, visionary or an area lead/);
+    await expect(b.bedarfMelden(db, lead, "kraft", "kraft", { titel: "Ohrensessel", text: "Ein Ohrensessel mit hoher Lehne für das Wohnzimmer." })).rejects.toThrow(/another project/);
+    const r = await b.bedarfMelden(db, lead, "kraft", "formwerk-test", { titel: "Ohrensessel", text: "Ein Ohrensessel mit hoher Lehne, Parameter für Breite und Bezug.", aufgabe: wartet });
+    expect((await db.query("select an, art, zustand from nachrichten where projekt_id = $1 and betreff like 'Request from kraft%'", [ziel])).rows).toEqual([{ an: "lead", art: "frage", zustand: "offen" }]);
+    expect((await b.bedarfVon(db, ziel)).an_uns.map((x) => [x.titel, x.zustand, x.projekt])).toEqual([["Ohrensessel", "offen", "kraft"]]);
+    // Nur das Zielprojekt antwortet; annehmen braucht eine eigene, offene Aufgabe
+    await expect(b.bedarfBeantworten(db, lead, r.bedarf_id, true, undefined, "")).rejects.toThrow(/only the lead, visionary or an area lead of the requested project/);
+    await expect(b.bedarfBeantworten(db, zielLead, r.bedarf_id, true, undefined, "")).rejects.toThrow(/task_id/);
+    await expect(b.bedarfBeantworten(db, zielLead, r.bedarf_id, true, wartet, "")).rejects.toThrow(/not an open task of formwerk-test/);
+    const liefer = Number((await k.aufgabeAnlegen(db, zielLead, "formwerk-test", { ...neueAufgabe("Asset: Ohrensessel"), meilenstein: "Möbel", neuer_meilenstein: true })).id);
+    expect(await b.bedarfBeantworten(db, zielLead, r.bedarf_id, true, liefer, "Kommt in die Möbel-Reihe.")).toEqual({ bedarf_id: r.bedarf_id, zustand: "angenommen" });
+    expect(await blockiert(wartet)).toBe(true);
+    expect((await db.query("select inhalt from nachrichten where projekt_id = $1 and betreff like 'Request #%accepted%'", [quelle])).rows[0].inhalt).toMatch(new RegExp(`task #${liefer}`));
+    await db.query("update aufgaben set zustand = 'angenommen' where id = $1", [liefer]);
+    expect(await b.bedarfAktualisieren(db)).toEqual({ erledigt: 1, wieder_offen: 0 });
+    expect(await blockiert(wartet)).toBe(false);
+  });
+
+  it("geschlossene Lieferung: Bedarf wieder offen, Blockade weg; ablehnen braucht einen Grund", async () => {
+    const b = await import("../src/bedarf.ts");
+    const wartet = Number((await k.aufgabeAnlegen(db, lead, "kraft", { ...neueAufgabe("Garten"), meilenstein: "Räume", neuer_meilenstein: false })).id);
+    const r = await b.bedarfMelden(db, lead, "kraft", "formwerk-test", { titel: "Gartenbank", text: "Eine Gartenbank aus Holz mit Armlehnen und Rückenlehne.", aufgabe: wartet });
+    const liefer = Number((await k.aufgabeAnlegen(db, zielLead, "formwerk-test", { ...neueAufgabe("Asset: Gartenbank"), meilenstein: "Möbel", neuer_meilenstein: false })).id);
+    await b.bedarfBeantworten(db, zielLead, r.bedarf_id, true, liefer, "");
+    expect(await blockiert(wartet)).toBe(true);
+    await db.query("update aufgaben set zustand = 'geschlossen' where id = $1", [liefer]);
+    expect(await b.bedarfAktualisieren(db)).toEqual({ erledigt: 0, wieder_offen: 1 });
+    expect(await blockiert(wartet)).toBe(false);
+    expect((await b.bedarfVon(db, quelle)).von_uns.find((x) => x.id === r.bedarf_id)?.zustand).toBe("offen");
+    await expect(b.bedarfBeantworten(db, zielLead, r.bedarf_id, false, undefined, "nein")).rejects.toThrow(/reason/);
+    expect((await b.bedarfBeantworten(db, zielLead, r.bedarf_id, false, undefined, "Gartenmöbel kommen später.")).zustand).toBe("abgelehnt");
+  });
+});
+
+describe("Bildvergleich im Review (E-39)", () => {
+  it("Prüfstraße liefert Szenenbilder; nur Lead, Visionär und Bereichs-Leads sehen sie, auch als Bilder über MCP", async () => {
+    const bi = await import("../src/bilder.ts");
+    const a = Number((await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Szene ändern"), meilenstein: "Bilder", neuer_meilenstein: true })).id);
+    const lease = Number((await db.query("insert into leases(aufgabe_id, agent_id, laeuft_ab) values ($1,$2, now() + interval '1 hour') returning id", [a, mit.agentId])).rows[0].id);
+    const e = Number((await db.query("insert into einreichungen(aufgabe_id, lease_id, agent_id, patch, patch_sha256, zusammenfassung) values ($1,$2,$3,'p','x','Szene') returning id", [a, lease, mit.agentId])).rows[0].id);
+    const png = (n: number) => Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from([n])]).toString("base64");
+    await bi.bilderSpeichern(db, e, "start", { old: png(1), new: png(2), diff: png(3) });
+    await bi.bilderSpeichern(db, e, "neu-szene", { new: png(4) });
+    await expect(bi.bilderSpeichern(db, e, "kaputt", { new: Buffer.from("kein png").toString("base64") })).rejects.toThrow(/PNG/);
+    expect(await bi.bilderListe(db, e)).toEqual([{ name: "neu-szene", alt: false, diff: false }, { name: "start", alt: true, diff: true }]);
+    await expect(bi.bilderErlaubt(db, mit.menschId, e)).rejects.toThrow(/only the project's lead/);
+    const { mcpServerFuer } = await import("../src/mcp.ts");
+    const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+    const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+    const server = await mcpServerFuer(db, { ...lead, runner: false, leadProjekt: null, clientId: "test", token: "t", scopes: ["mcp"], ablauf: Date.now() + 60_000 });
+    const [ta, tb] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test", version: "1" });
+    await Promise.all([server.connect(ta), client.connect(tb)]);
+    const r: any = await client.callTool({ name: "submission_images", arguments: { submission_id: e } });
+    expect(r.content.filter((c: any) => c.type === "image").map((c: any) => c.mimeType)).toEqual(["image/png", "image/png", "image/png", "image/png"]);
+    expect(r.content[0].text).toMatch(/^neu-szene: new/);
+    await db.query("update aufgaben set zustand = 'eingereicht' where id = $1", [a]);
+    const offen = await k.wartendeEinreichungen(db, lead, "test");
+    expect(offen.find((x) => Number(x.einreichung_id) === e)?.bilder).toEqual(["neu-szene", "start"]);
+  });
+});

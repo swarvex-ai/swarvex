@@ -3,6 +3,7 @@
 //   /api/account/login → Anbieter → /interaction/callback (state "konto-<nonce>…") → /api/account/done → /konto
 // Die Sitzung ist ein signiertes Cookie ohne Serverzustand; „Abmelden“ beendet alle Sitzungen des Menschen.
 import { leadAnwesenheit } from "./leaddienst.ts";
+import { bilderErlaubt, bildLesen } from "./bilder.ts";
 import { anhaltendeSignale, bewerben, gesuchOeffnen, gesuchSchliessen, meineBewerbungen, offeneGesuche, teilenLink } from "./leadkraft.ts";
 import { randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -257,6 +258,18 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
         if (err instanceof Abgelehnt) return json(res, 409, { error: err.message });
         throw err;
       }
+    }
+
+    // Bildvergleich im Review (bilder.ts): ein Szenenbild einer Einreichung, nur für Lead, Visionär und Bereichs-Leads
+    const bildPfad = /^\/api\/account\/submissions\/(\d+)\/images\/([a-z0-9][a-z0-9_.-]{0,60})\/(old|new|diff)\.png$/.exec(pfad);
+    if (bildPfad && req.method === "GET") {
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
+      try { await bilderErlaubt(db, menschId, Number(bildPfad[1])); } catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
+      const png = await bildLesen(db, Number(bildPfad[1]), bildPfad[2], bildPfad[3]);
+      if (!png) return json(res, 404, { error: "no such image" });
+      res.writeHead(200, { "content-type": "image/png", "cache-control": "private, max-age=3600", "content-security-policy": "default-src 'none'", "x-content-type-options": "nosniff" });
+      res.end(png);
+      return;
     }
 
     // Lead-Kraft (leadkraft.ts): auf ein Lead-Gesuch bewerben; als Lead oder Visionär ein Gesuch öffnen oder schließen
