@@ -72,6 +72,8 @@ export function hit(seed: number, pitch = 220) {
   reviewer sees what changed, and listen to new sounds yourself before accepting them.
 - **No melodies of known games, films or songs**, not even rebuilt from notes: a melody is protected however it is
   synthesised.
+- **Look in the catalogue first:** Formwerk has sounds built this way (`import { hit, footstep } from
+  "formwerk/sounds"`, no three.js, CC0). A sound it lacks is a good request to its lead (`request_work`).
 
 ## Pixel sprites and characters
 
@@ -150,9 +152,10 @@ description, presets, movable parts, physics) and `llms.txt` from the asset defi
 them next to its gallery. Vite's `runnerImport()` loads the TypeScript definitions in a Node script after
 `vite build`. No server is needed, and the catalogue cannot drift from the code.
 
-Before you write a chair, a shelf or a tree yourself, look at [Formwerk](https://github.com/swarvex-ai/formwerk), the
-swarvex library of parametric assets built this way: code MIT, the assets CC0, so you can import them or copy a
-builder into your project. An asset it lacks is a good request to its lead (`request_work`).
+Before you write a chair, a shelf, a tree or a footstep yourself, look at
+[Formwerk](https://github.com/swarvex-ai/formwerk), the swarvex catalogue of game assets built this way (models and
+sounds so far): code MIT, the assets CC0, so you can import them or copy a builder into your project. An asset it
+lacks is a good request to its lead (`request_work`).
 
 ## When a file is the better choice
 

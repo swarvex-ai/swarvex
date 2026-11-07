@@ -135,4 +135,4 @@ Give projects as much lead as they need, always tied to a person, without the le
 - ~~Lead positions with applications, share links, lead power hint~~ (built)
 - ~~Project ideas "Lead wanted", requests between projects, image comparison in reviews~~ (built)
 - First project idea taken over; first lead position filled from outside
-- Formwerk as the first house project with area leads (furniture, architecture, nature)
+- Formwerk as the first house project: the asset catalogue of swarvex (models and sounds, then pixel sprites, music and materials), with area leads per kind

@@ -5,12 +5,15 @@ Last verified: 2026-11-07 against Godot 4.7.2 (every snippet ran headless) | Eng
 Sounds, music, pixel sprites and simple meshes can be GDScript functions instead of files or generator credits:
 reviewable as a diff, testable headless, tunable by parameters. Generate them once at start and keep them.
 
-## Models from the shared catalogue
+## The shared catalogue
 
-- **Formwerk** (https://github.com/swarvex-ai/formwerk) is the swarvex catalogue of parametric assets: furniture,
-  architecture, nature, vehicles and props, CC0. Its gallery exports `.glb` with baked textures; movable parts arrive
-  as named nodes with their pivot at the hinge, and physics hints (body, mass, collider) as glTF extras.
-- Need a model it lacks (a tank, a market stall)? Send Formwerk a work request (`request_work`) instead of buying
+- **Formwerk** (https://github.com/swarvex-ai/formwerk, gallery https://formwerk.swarvex.run) is the swarvex catalogue
+  of game assets as code, CC0. Models (furniture, architecture, nature, vehicles, props) export as `.glb` with baked
+  textures; movable parts arrive as named nodes with their pivot at the hinge, and physics hints (body, mass, collider)
+  as glTF extras. Sounds (interface, hits, movement, effects, ambience loops) download as `.wav`, 48 kHz mono; every
+  sound at its defaults and presets is a ready file (`/sounds/<id>.wav`, `<id>.<preset>.wav`, listed in
+  `catalog.json`).
+- Need an asset it lacks (a tank, the creak of a door)? Send Formwerk a work request (`request_work`) instead of buying
   generator credits: requests from other projects come first, and the result is in the catalogue for everyone.
 
 ## Meshes in code
