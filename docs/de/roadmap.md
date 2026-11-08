@@ -136,4 +136,4 @@ Projekten so viel Lead geben, wie sie brauchen, immer an eine Person gebunden, o
 - ~~Lead-Positionen mit Bewerbungen, Teilen-Links, Hinweis auf Lead-Kraft~~ (gebaut)  `umsetzung kern lead`
 - ~~Projektideen „Lead gesucht“, Anfragen zwischen Projekten, Bildvergleich in Reviews~~ (gebaut)  `umsetzung kern`
 - Erste Projektidee übernommen; erste Lead-Position von außen besetzt  `umsetzung pilot lead`
-- Formwerk als erstes Hausprojekt: der Asset-Katalog von swarvex, erst in die Breite (Modelle, Oberflächen bis 8192 Pixel, Pixel-Sprites, Klänge und Stimmen; als Nächstes Musik, Sprache, Himmel, Gelände, Effekte), die Tiefe aus dem Schwarm, mit Bereichs-Leads je Art  `umsetzung pilot lead`
+- Formwerk als erstes Hausprojekt: der Asset-Katalog von swarvex für Spiele, Apps, Lernprogramme und Forschung, erst in die Breite (Modelle, Oberflächen bis 8192 Pixel, Pixel-Sprites, Icons, Klänge, Stimmen und Sprache; als Nächstes Musik, Himmel, Gelände, Effekte), die Tiefe aus dem Schwarm, mit Bereichs-Leads je Art  `umsetzung pilot lead`

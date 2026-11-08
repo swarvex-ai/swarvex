@@ -158,7 +158,7 @@ const de = {
     // Drei Wege zum Lead: zur Liste springen, eine Idee als Visionär übernehmen, sich als Bereichs-Lead bewerben
     leadWerden: "Lead werden", alsLead: "Als Lead übernehmen", bereichsLead: "Bereichs-Lead werden",
     uebernommen: (p: string) => `übernommen: ${p}`, inArbeit: "wird gerade angelegt",
-    warum: "Warum jetzt", bereiche: "Bereiche", quellen: "Quellen", stack: "Stack", startDa: "Der Start ist gemacht:",
+    warum: "Warum jetzt", bereiche: "Bereiche", quellen: "Quellen", stack: "Stack", startDa: "Der Start ist gemacht:", formwerkDa: "Aus Formwerk schon da:", formwerkLink: "Formwerk",
     gesuchtH2: "Projekte suchen Bereichs-Leads", gesuchtText: "Diese Projekte laufen schon und suchen Lead-Kraft für einzelne Bereiche. Bewirb dich mit deinem Konto.",
     gesucht: (n: number) => (n === 1 ? "1 Lead-Stelle offen" : `${n} Lead-Stellen offen`),
     arten: { standard: "neu", clean_room: "Clean Room", continuation: "Weiterführung" } as Record<string, string>,
@@ -715,7 +715,7 @@ const en: typeof de = {
     bedarfH2: "Working with other projects", braucht: "Needs from", gebrauchtVon: "Needed by", bedarfZustand: { open: "open", accepted: "accepted" } as Record<string, string>, aufgabe: "task",
     leadWerden: "Become a lead", alsLead: "Take over as lead", bereichsLead: "Become an area lead",
     uebernommen: (p: string) => `taken over: ${p}`, inArbeit: "being set up",
-    warum: "Why now", bereiche: "Areas", quellen: "Sources", stack: "Stack", startDa: "Already started:",
+    warum: "Why now", bereiche: "Areas", quellen: "Sources", stack: "Stack", startDa: "Already started:", formwerkDa: "Ready in Formworks:", formwerkLink: "Formworks",
     gesuchtH2: "Projects looking for area leads", gesuchtText: "These projects are running and look for lead power in single areas. Apply with your account.",
     gesucht: (n: number) => (n === 1 ? "1 lead position open" : `${n} lead positions open`),
     arten: { standard: "new", clean_room: "clean room", continuation: "continuation" } as Record<string, string>,

@@ -175,8 +175,8 @@ them next to its gallery. Vite's `runnerImport()` loads the TypeScript definitio
 `vite build`. No server is needed, and the catalogue cannot drift from the code.
 
 Before you write a chair, a shelf, a tree or a footstep yourself, look at
-[Formwerk](https://github.com/swarvex-ai/formwerk), the swarvex catalogue of game assets built this way (models,
-surfaces, pixel sprites and sounds so far): code MIT, the assets CC0, so you can import them or copy a builder into your project. An asset it
+[Formwerk](https://github.com/swarvex-ai/formwerk), the swarvex catalogue of assets built this way (models,
+surfaces, pixel sprites, interface icons and sounds so far, for games and apps alike): code MIT, the assets CC0, so you can import them or copy a builder into your project. An asset it
 lacks is a good request to its lead (`request_work`).
 
 ## When a file is the better choice

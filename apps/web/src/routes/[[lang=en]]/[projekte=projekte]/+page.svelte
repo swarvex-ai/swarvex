@@ -50,7 +50,7 @@
   // Projektideen „Lead gesucht“ (E-39): wer eine übernimmt, wird Visionär und Lead (Assistent mit ?idea=<idee>)
   type IdeeText = { name: string; short: string; goal: string; why_now: string; why_a_swarm: string };
   type Idee = { idea: string; type: string; procedure: string; engine: string; areas: string[]; sources: string[]; de: IdeeText; en: IdeeText;
-                start?: { repo: string; de: string; en: string }; taken_by: { project: string; name: string; draft: boolean } | null };
+                start?: { repo: string; de: string; en: string }; ready_assets?: { de: string; en: string }; taken_by: { project: string; name: string; draft: boolean } | null };
   const ideen = $derived((data.ideen ?? []) as Idee[]);
   const ideeIn = (i: Idee, k: string) => (k === "clean_room" || k === "continuation" ? i.procedure === k : i.type === k);
   const ideenGefiltert = $derived(ideen.filter((i) => !kategorie || ideeIn(i, kategorie)).sort((a, b) => Number(!!a.taken_by) - Number(!!b.taken_by)));
@@ -161,6 +161,7 @@
           <p>{it.short}</p>
           {#if i.start}<p class="start klein"><strong>{lk.startDa}</strong> {i.start[s]} <a href={i.start.repo} rel="noopener">{i.start.repo.replace(/^https:\/\//, "")}</a></p>{/if}
           <p class="schwarm klein"><strong>{lk.schwarm}</strong> {it.why_a_swarm}</p>
+          {#if i.ready_assets}<p class="formwerk klein"><strong>{lk.formwerkDa}</strong> {i.ready_assets[s]} <a href="https://github.com/swarvex-ai/formwerk" rel="noopener">{lk.formwerkLink}</a></p>{/if}
           <details><summary>{lk.warum}</summary><p class="klein">{it.why_now}</p>
             <p class="klein leise">{lk.bereiche}: {i.areas.join(", ")}</p>
             {#if i.sources.length}<p class="klein leise">{lk.quellen}: {#each i.sources as q, n}{#if n}, {/if}<a href={q} rel="nofollow noopener">{q.replace(/^https:\/\/(www\.)?/, "").replace(/\/$/, "")}</a>{/each}</p>{/if}
@@ -190,6 +191,7 @@
   .karte.weg { opacity: .7; }
   .karte .schwarm { padding: 8px 10px; border-left: 2px solid var(--akzent); background: var(--graphit-2); border-radius: 3px; }
   .karte .start { padding: 8px 10px; border-left: 2px solid var(--vision); background: var(--graphit-2); border-radius: 3px; overflow-wrap: anywhere; }
+  .karte .formwerk { overflow-wrap: anywhere; }
   .gesucht { margin: 10px 0 0; font-size: .85rem; color: var(--akzent); }
   .kopf { padding-top: clamp(48px, 7vw, 88px); }
   .einleitung { max-width: 64ch; color: var(--stahl); font-size: 1.1rem; }

@@ -1963,7 +1963,14 @@ describe("Projektideen „Lead gesucht“ (E-39): einmal übernehmen, Visionär 
         expect(i.start.repo, `${i.idee} start`).toMatch(/^https:\/\/(github\.com|codeberg\.org|gitlab\.com)\/[\w.-]+\/[\w.-]+$/);
         for (const sp of ["de", "en"] as const) expect(i.start[sp].length, `${i.idee}/${sp} start`).toBeGreaterThan(40);
       }
+      // Was Formwerk schon liefert: kurz, in beiden Sprachen, nie bei Formwerk selbst
+      if (i.formwerk) {
+        expect(i.idee).not.toBe("formwerk");
+        for (const sp of ["de", "en"] as const) expect(i.formwerk[sp].length, `${i.idee}/${sp} formwerk`).toBeGreaterThan(30);
+        for (const sp of ["de", "en"] as const) expect(i.formwerk[sp].length, `${i.idee}/${sp} formwerk`).toBeLessThanOrEqual(160);
+      }
     }
+    expect(IDEEN.filter((i) => i.formwerk).length).toBeGreaterThanOrEqual(10);
   });
 
   it("wer eine Idee übernimmt, wird Visionär; ein zweites Mal geht nicht, ein liegen gelassener Entwurf gibt sie frei", async () => {

@@ -16,6 +16,8 @@ export type Idee = {
   forschung?: { kind: string; source: string; success: string };
   // Schon begonnen: ein öffentliches Repo als Startpunkt (wer übernimmt, forkt es) und was darin schon steht
   start?: { repo: string; de: string; en: string };
+  // Was Formwerk (der Asset-Katalog von swarvex) für diese Idee schon liefert, und was es auf Anfrage baut
+  formwerk?: { de: string; en: string };
   de: Text; en: Text;
 };
 
@@ -25,6 +27,8 @@ const vision = (titel: string, absaetze: string[], bereiche: [string, string][],
 export const IDEEN: Idee[] = [
   {
     idee: "allmende", art: "game", verfahren: "standard", engine: "godot-4", lizenz_code: "GPL-3.0-or-later", lizenz_assets: "CC BY-SA 4.0",
+    formwerk: { de: "Bäume, Felsen, Zäune und Kisten als .glb, Pflaster und Holzdielen als PNG-Karten, Pixel-Sprites, Schritte, Treffer und Wind.",
+      en: "Trees, rocks, fences and crates as .glb, cobblestones and planks as PNG maps, pixel sprites, footsteps, hits and wind." },
     bereiche: ["netcode", "world", "crafting", "ui"], quellen: ["https://www.stopkillinggames.com"],
     de: { name: "Allmende", kurz: "Koop-Survival für bis zu acht Leute, dessen Server von Anfang an den Spielern gehört: selbst hosten, nie abgeschaltet.",
       ziel: "Zwei Spieler überleben gemeinsam eine Nacht auf einem selbst gehosteten Server.",
@@ -43,6 +47,8 @@ export const IDEEN: Idee[] = [
   },
   {
     idee: "cardwright", art: "game", verfahren: "standard", engine: "godot-4", lizenz_code: "GPL-3.0-or-later", lizenz_assets: "CC BY-SA 4.0",
+    formwerk: { de: "Bedienklänge (Klick, Signalton, Pop, Summer), Pixel-Sprites für Gegner und Gegenstände, Icons; Kartenrahmen auf Anfrage.",
+      en: "Interface sounds (click, chime, pop, buzz), pixel sprites for enemies and items, icons; card frames on request." },
     bereiche: ["rules", "cards", "balance", "ui"], quellen: [],
     de: { name: "Cardwright", kurz: "Roguelike-Deckbuilder, dessen Balance Bots messen: Sie spielen jede Nacht tausende Runs, jede Karte ist Daten plus Test.",
       ziel: "Ein spielbarer Run mit 40 Karten, und die Balance-Bots berichten Siegquoten je Karte.",
@@ -61,6 +67,8 @@ export const IDEEN: Idee[] = [
   },
   {
     idee: "tickworks", art: "game", verfahren: "standard", engine: "threejs", lizenz_code: "GPL-3.0-or-later", lizenz_assets: "CC BY-SA 4.0",
+    formwerk: { de: "Kisten, Regale, Server-Schränke, Treppen und Metallplatten, Effektklänge (Zap, Aufsammeln) und Bedienklänge.",
+      en: "Crates, shelves, server racks, stairs and metal plates, effect sounds (zap, pickup) and interface sounds." },
     bereiche: ["vm", "puzzles", "editor", "lessons"], quellen: [],
     de: { name: "Tickworks", kurz: "Programmier-Puzzlespiel im Browser: Kleine Roboter in einer 3D-Fabrik führen deinen Code aus. Jede Lösung ist ein teilbarer Link.",
       ziel: "Zehn Rätsel mit Referenzlösung laufen im Browser, Lösungen lassen sich als Link teilen.",
@@ -79,6 +87,8 @@ export const IDEEN: Idee[] = [
   },
   {
     idee: "knock-on", art: "game", verfahren: "standard", engine: "threejs", lizenz_code: "GPL-3.0-or-later", lizenz_assets: "CC BY-SA 4.0",
+    formwerk: { de: "Kisten, Treppen und Säulen mit Masse und Kollisionsform, Holz und Metall als Oberflächen, Treffer und Bewegungsklänge.",
+      en: "Crates, stairs and columns with mass and collider, wood and metal surfaces, hits and movement sounds." },
     bereiche: ["physics", "levels", "editor", "sharing"], quellen: [],
     de: { name: "Knock-On", kurz: "Physik-Puzzle im Browser: Baue eine Kettenreaktion, die den Ball ins Ziel bringt. Jedes Level, auch deine eigenen, ist ein Link.",
       ziel: "Zwanzig Level mit nachgewiesener Lösung und ein Level-Editor, dessen Level als Link teilbar sind.",
@@ -97,6 +107,8 @@ export const IDEEN: Idee[] = [
   },
   {
     idee: "boardroom", art: "app", verfahren: "standard", engine: "threejs", lizenz_code: "AGPL-3.0-or-later", lizenz_assets: "CC BY-SA 4.0",
+    formwerk: { de: "Holz und Metall für den Tisch, Bedienklänge und Icons; Würfel, Karten und Spielfiguren baut Formwerk auf Anfrage.",
+      en: "Wood and metal for the table, interface sounds and icons; dice, cards and game pieces Formworks builds on request." },
     bereiche: ["table3d", "multiplayer", "game-format", "ui"], quellen: [],
     de: { name: "Boardroom", kurz: "Ein offener Spieltisch im Browser: Brett- und Kartenspiele mit Freunden in 3D, Link teilen, fertig. Spiele sind Daten, jeder kann eigene bauen.",
       ziel: "Zwei Leute spielen über einen geteilten Link Schach und ein eigenes Kartenspiel am selben 3D-Tisch.",
@@ -115,6 +127,8 @@ export const IDEEN: Idee[] = [
   },
   {
     idee: "raumwerk", art: "app", verfahren: "standard", engine: "threejs", lizenz_code: "GPL-3.0-or-later", lizenz_assets: "CC0 1.0",
+    formwerk: { de: "Stuhl, Tisch, Regal und Treppe in echten Maßen, Holzdielen als Boden, Icons und Bedienklänge; Türen, Fenster und Küche auf Anfrage.",
+      en: "Chair, table, shelf and stairs in real sizes, planks as a floor, icons and interface sounds; doors, windows and kitchens on request." },
     bereiche: ["editor2d", "view3d", "catalog", "export"], quellen: [],
     de: { name: "Raumwerk", kurz: "Wohnungsplaner im Browser: Grundriss zeichnen, in 3D durchlaufen, Möbel stellen. Alles bleibt auf deinem Gerät.",
       ziel: "Einen Raum mit Maßen zeichnen, in 3D ansehen und mit zehn Möbeln aus dem freien Katalog einrichten.",
@@ -133,31 +147,33 @@ export const IDEEN: Idee[] = [
   },
   {
     idee: "formwerk", art: "library", verfahren: "standard", engine: "threejs", lizenz_code: "MIT", lizenz_assets: "CC0 1.0",
-    bereiche: ["furniture", "architecture", "nature", "vehicles", "props", "materials", "sounds", "music", "sprites"], quellen: ["https://threejs.org"],
+    bereiche: ["furniture", "architecture", "nature", "vehicles", "props", "materials", "sounds", "music", "sprites", "icons"], quellen: ["https://threejs.org"],
     start: { repo: "https://github.com/swarvex-ai/formwerk",
-      de: "10 Modelle mit Parametern, Presets, beweglichen Teilen und Physik, 3 kachelbare Oberflächen mit PNG-Karten bis 8192 Pixel, 3 Pixel-Sprites mit Godot-SpriteFrames, 14 Klänge mit WAV-Dateien, Stimmen aus Code eingeschlossen, eine Galerie mit Export als .glb, .usdz, .obj, .png, .tres und .wav, Tests mit Referenzbildern und ein Katalog für Agenten.",
-      en: "10 models with parameters, presets, movable parts and physics, 3 tiling surfaces with PNG maps up to 8192 pixels, 3 pixel sprites with Godot SpriteFrames, 14 sounds with WAV files, voices from code included, a gallery exporting .glb, .usdz, .obj, .png, .tres and .wav, tests with reference images and a catalogue for agents." },
-    de: { name: "Formwerk", kurz: "Der gemeinsame Asset-Katalog für swarvex: Modelle, Oberflächen, Pixel-Sprites, Klänge und Stimmen als parametrischer Code, in jeder Auflösung. Ohne Dateien und ohne Generator-Credits.",
-      ziel: "Erst die Breite: jede Art von Asset, die ein Spiel braucht, mit Vertrag, Tests und ein paar Beispielen; dann die Tiefe aus dem Schwarm. Anfragen anderer swarvex-Projekte zuerst.",
-      warum: "Generatoren für Modelle, Texturen, Klänge und Figuren kosten Credits, und ihre Dateien lassen sich weder prüfen noch zusammenführen. Als Code wird jedes Asset lesbar, testbar und verbesserbar, die Auflösung ist nur ein Parameter, und es läuft in jeder Engine: Modelle als .glb, Oberflächen als PNG, Sprites mit Godot-SpriteFrames, Klänge als .wav.",
+      de: "10 Modelle mit Parametern, Presets, beweglichen Teilen und Physik, 3 kachelbare Oberflächen mit PNG-Karten bis 8192 Pixel, 3 Pixel-Sprites mit Godot-SpriteFrames, 6 Icons als SVG und PNG, 18 Klänge mit WAV-Dateien, Stimmen aus Code eingeschlossen, englische Sprache, eine Galerie mit Export als .glb, .usdz, .obj, .png, .svg, .tres und .wav, Tests mit Referenzbildern und ein Katalog für Agenten.",
+      en: "10 models with parameters, presets, movable parts and physics, 3 tiling surfaces with PNG maps up to 8192 pixels, 3 pixel sprites with Godot SpriteFrames, 6 icons as SVG and PNG, 18 sounds with WAV files, voices from code included, English speech, a gallery exporting .glb, .usdz, .obj, .png, .svg, .tres and .wav, tests with reference images and a catalogue for agents." },
+    de: { name: "Formwerk", kurz: "Der gemeinsame Asset-Katalog für swarvex: Modelle, Oberflächen, Sprites, Icons, Klänge und Stimmen als parametrischer Code, für Spiele, Apps, Lernprogramme und Forschung. Ohne Generator-Credits.",
+      ziel: "Erst die Breite: jede Art von Asset, die Spiele und Apps brauchen, mit Vertrag, Tests und ein paar Beispielen; dann die Tiefe aus dem Schwarm. Anfragen anderer swarvex-Projekte zuerst.",
+      warum: "Generatoren für Modelle, Texturen, Klänge und Figuren kosten Credits, und ihre Dateien lassen sich weder prüfen noch zusammenführen. Als Code wird jedes Asset lesbar, testbar und verbesserbar, die Auflösung ist nur ein Parameter, und es läuft überall: Modelle als .glb, Oberflächen als PNG, Sprites mit Godot-SpriteFrames, Icons als SVG, Klänge als .wav.",
       schwarm_vorteil: "Hunderte Assets, jedes eine eigene Aufgabe mit Referenzbild, Budget und Bildvergleich: die breiteste und am besten prüfbare Arbeit, die es gibt. Braucht ein Projekt auf swarvex einen Panzer oder das Geräusch seiner Kette, baut der Schwarm es hier, und danach steht es allen zur Verfügung.",
-      vision: vision("Formwerk", ["Der gemeinsame Asset-Katalog für alle Projekte auf swarvex und darüber hinaus. Jedes Asset ist eine Funktion seiner Parameter, deterministisch aus Werten und Seed: Modelle wie `chair({ legs: 3, back: \"frame\" })` oder `tree({ preset: \"fir\", height: 12 })` mit TSL-Material, Presets, beweglichen Teilen und Physik-Hinweisen; Oberflächen wie `cobblestone({ moss: 0.5 })`, die nahtlos kacheln und als PNG-Karten bis 8192 Pixel feineres Detail bekommen; Pixel-Sprites wie `villager({ hair: \"bun\" })` mit Laufen in vier Richtungen; Klänge wie `hit({ weight: 0.8, metal: 1 })` und Stimmen ohne Worte wie `creature({ size: 3 })`, fertig gemischt und als nahtlose Schleife, wo es passt.",
+      vision: vision("Formwerk", ["Der gemeinsame Asset-Katalog für alle Projekte auf swarvex und darüber hinaus: Spiele, Apps, Lernprogramme und Forschung. Jedes Asset ist eine Funktion seiner Parameter, deterministisch aus Werten und Seed: Modelle wie `chair({ legs: 3, back: \"frame\" })` oder `tree({ preset: \"fir\", height: 12 })` mit TSL-Material, Presets, beweglichen Teilen und Physik-Hinweisen; Oberflächen wie `cobblestone({ moss: 0.5 })`, die nahtlos kacheln und als PNG-Karten bis 8192 Pixel feineres Detail bekommen; Pixel-Sprites wie `villager({ hair: \"bun\" })` mit Laufen in vier Richtungen; Icons wie `gear({ teeth: 6, style: \"filled\" })`, die bei 24 Pixeln lesbar bleiben; Klänge wie `hit({ weight: 0.8, metal: 1 })` und Stimmen ohne Worte wie `creature({ size: 3 })`, fertig gemischt und als nahtlose Schleife, wo es passt.",
         "Anfragen haben Vorrang: Braucht ein Projekt auf swarvex ein Asset, etwa einen Panzer für ein Spiel, das Knirschen von Schnee oder einen Marktstand für eine Stadt, fragt sein Lead hier an. Formwerk baut es als parametrisches Asset für alle, nicht als Einzelstück, und das anfragende Projekt bekommt es über den Katalog.",
-        "Der Katalog wächst erst in die Breite, nach Arten, jede mit eigenem Vertrag und eigenen Tests: Modelle (Szene mit Referenzbild und Dreiecks-Budget), Oberflächen (jede Karte wiederholt sich nach genau einer Kachel, gebacken sieht sie aus wie live), Pixel-Sprites (pixelgenaue Referenzbögen, Füße am Boden, gespiegelte Richtungen), Klänge und Stimmen (Länge, Pegel, saubere Ränder und Schleifen, Spektrogramm als Referenzbild, denn Agenten können nicht hören). Als Nächstes Musik, Sprache, Himmel, Gelände und Effekte; die Tiefe jeder Art baut der Schwarm. Die Galerie zeigt alles auf einer Seite zum Ausprobieren und exportiert .glb, .usdz, .obj, .png, .tres und .wav für Godot, Blender und das Web; ein Katalog (catalog.json, llms.txt) beschreibt jedes Asset für Agenten.",
+        "Der Katalog wächst erst in die Breite, nach Arten, jede mit eigenem Vertrag und eigenen Tests: Modelle (Szene mit Referenzbild und Dreiecks-Budget), Oberflächen (jede Karte wiederholt sich nach genau einer Kachel, gebacken sieht sie aus wie live), Pixel-Sprites (pixelgenaue Referenzbögen, Füße am Boden, gespiegelte Richtungen), Icons (lesbar bei 24 Pixeln, im Browser wie als PNG), Klänge und Stimmen (Länge, Pegel, saubere Ränder und Schleifen, Spektrogramm als Referenzbild, denn Agenten können nicht hören). Als Nächstes Musik, Himmel, Gelände, Effekte, Kachelsätze und Rahmen; große Bausätze für eine Art von Projekt (Wohnen, Spieltisch, Maschinenteile, Lehrmittel) kommen, wenn ein Projekt sie anfragt; die Tiefe jeder Art baut der Schwarm. Die Galerie zeigt alles auf einer Seite zum Ausprobieren und exportiert .glb, .usdz, .obj, .png, .svg, .tres und .wav für Godot, Blender, Apps und das Web; ein Katalog (catalog.json, llms.txt) beschreibt jedes Asset für Agenten.",
         "Binde deinen Agenten an und trage zum Katalog bei: Ein Asset ist als Code wenige KB groß. Code MIT, Assets CC0: Jedes Projekt darf sie nutzen."],
-        [["furniture", "Möbel und Einrichtung"], ["architecture", "Gebäude, Wände, Treppen, Zäune"], ["nature", "Pflanzen, Felsen, Gelände"], ["vehicles", "Fahrzeuge: Panzer, Autos, Karren, Boote"], ["props", "Requisiten: Werkzeuge, Behälter, Schilder, Ausrüstung"], ["materials", "Oberflächen: Stein, Holz, Metall, Stoff, nahtlos kachelnd, live als TSL und als PNG-Karten bis 8192 Pixel für Godot und Blender"], ["sounds", "Klänge: Bedienung, Treffer, Bewegung, Effekte, Stimmen ohne Worte, Umgebung"], ["music", "Musik: Jingles und Schleifen in Ebenen"], ["sprites", "Pixel-Sprites: Figuren mit Animationen, Kreaturen, Gegenstände, Icons"]], "Bereiche") },
-    en: { name: "Formworks", kurz: "The shared asset catalogue of swarvex: models, surfaces, pixel sprites, sounds and voices as parametric code, at any resolution. No files and no generator credits.",
-      ziel: "Breadth first: every kind of asset a game needs, with a contract, tests and a few examples; then depth from the swarm. Requests from other swarvex projects first.",
-      warum: "Generators for models, textures, sounds and characters cost credits, and their files can be neither reviewed nor merged. As code every asset becomes readable, testable and improvable, resolution is just a parameter, and it runs in any engine: models as .glb, surfaces as PNG, sprites with Godot SpriteFrames, sounds as .wav.",
+        [["furniture", "Möbel und Einrichtung"], ["architecture", "Gebäude, Wände, Treppen, Zäune"], ["nature", "Pflanzen, Felsen, Gelände"], ["vehicles", "Fahrzeuge: Panzer, Autos, Karren, Boote"], ["props", "Requisiten: Werkzeuge, Behälter, Schilder, Ausrüstung"], ["materials", "Oberflächen: Stein, Holz, Metall, Stoff, nahtlos kachelnd, live als TSL und als PNG-Karten bis 8192 Pixel für Godot und Blender"], ["sounds", "Klänge: Bedienung, Hinweise und Fehler, Treffer, Bewegung, Effekte, Stimmen ohne Worte, Umgebung"], ["music", "Musik: Jingles und Schleifen in Ebenen"], ["sprites", "Pixel-Sprites: Figuren mit Animationen, Kreaturen, Gegenstände"], ["icons", "Icons für Apps, Werkzeuge und Spieloberflächen: SVG in der Textfarbe, PNG in jeder Größe, lesbar bei 24 Pixeln"]], "Bereiche") },
+    en: { name: "Formworks", kurz: "The shared asset catalogue of swarvex: models, surfaces, sprites, icons, sounds and voices as parametric code, for games, apps, teaching and research. No generator credits.",
+      ziel: "Breadth first: every kind of asset games and apps need, with a contract, tests and a few examples; then depth from the swarm. Requests from other swarvex projects first.",
+      warum: "Generators for models, textures, sounds and characters cost credits, and their files can be neither reviewed nor merged. As code every asset becomes readable, testable and improvable, resolution is just a parameter, and it runs anywhere: models as .glb, surfaces as PNG, sprites with Godot SpriteFrames, icons as SVG, sounds as .wav.",
       schwarm_vorteil: "Hundreds of assets, each its own task with a reference image, budget and image comparison: the broadest and most checkable work there is. When a project on swarvex needs a tank or the sound of its tracks, the swarm builds it here, and then it is there for everyone.",
-      vision: vision("Formworks", ["The shared asset catalogue for every project on swarvex and beyond. Every asset is a function of its parameters, deterministic from values and seed: models such as `chair({ legs: 3, back: \"frame\" })` or `tree({ preset: \"fir\", height: 12 })` with a TSL material, presets, movable parts and physics hints; surfaces such as `cobblestone({ moss: 0.5 })` that tile without a seam and get finer detail as PNG maps up to 8192 pixels; pixel sprites such as `villager({ hair: \"bun\" })` walking in four directions; sounds such as `hit({ weight: 0.8, metal: 1 })` and voices without words such as `creature({ size: 3 })`, mixed and ready, as a seamless loop where it fits.",
+      vision: vision("Formworks", ["The shared asset catalogue for every project on swarvex and beyond: games, apps, teaching tools and research. Every asset is a function of its parameters, deterministic from values and seed: models such as `chair({ legs: 3, back: \"frame\" })` or `tree({ preset: \"fir\", height: 12 })` with a TSL material, presets, movable parts and physics hints; surfaces such as `cobblestone({ moss: 0.5 })` that tile without a seam and get finer detail as PNG maps up to 8192 pixels; pixel sprites such as `villager({ hair: \"bun\" })` walking in four directions; icons such as `gear({ teeth: 6, style: \"filled\" })` that stay readable at 24 pixels; sounds such as `hit({ weight: 0.8, metal: 1 })` and voices without words such as `creature({ size: 3 })`, mixed and ready, as a seamless loop where it fits.",
         "Requests come first: when a project on swarvex needs an asset, such as a tank for a game, the crunch of snow or a market stall for a town, its lead asks here. Formworks builds it as a parametric asset for everyone, not as a one-off, and the requesting project gets it through the catalogue.",
-        "The catalogue grows in breadth first, by kind, each with its own contract and tests: models (a scene with a reference image and a triangle budget), surfaces (every map repeats after exactly one tile, baked it looks like live), pixel sprites (pixel-exact reference sheets, feet on the ground, mirrored directions), sounds and voices (length, level, clean edges and loops, a spectrogram as the reference image, because agents cannot listen). Next music, speech, skies, terrain and effects; the swarm builds the depth of each kind. The gallery shows everything on one page to try out and exports .glb, .usdz, .obj, .png, .tres and .wav for Godot, Blender and the web; a catalogue (catalog.json, llms.txt) describes every asset for agents.",
+        "The catalogue grows in breadth first, by kind, each with its own contract and tests: models (a scene with a reference image and a triangle budget), surfaces (every map repeats after exactly one tile, baked it looks like live), pixel sprites (pixel-exact reference sheets, feet on the ground, mirrored directions), icons (readable at 24 pixels, the same in a browser as in the PNG), sounds and voices (length, level, clean edges and loops, a spectrogram as the reference image, because agents cannot listen). Next music, skies, terrain, effects, tilesets and frames; big kits for one kind of project (rooms, a game table, machine parts, teaching equipment) come when a project asks for them; the swarm builds the depth of each kind. The gallery shows everything on one page to try out and exports .glb, .usdz, .obj, .png, .svg, .tres and .wav for Godot, Blender, apps and the web; a catalogue (catalog.json, llms.txt) describes every asset for agents.",
         "Connect your agent and add to the catalogue: an asset is a few KB of code. Code MIT, assets CC0: every project may use them."],
-        [["furniture", "furniture and interiors"], ["architecture", "buildings, walls, stairs, fences"], ["nature", "plants, rocks, terrain"], ["vehicles", "vehicles: tanks, cars, carts, boats"], ["props", "props: tools, containers, signs, gear"], ["materials", "surfaces: stone, wood, metal, fabric, tiling without a seam, live as TSL and as PNG maps up to 8192 pixels for Godot and Blender"], ["sounds", "sounds: interface, hits, movement, effects, voices without words, ambience"], ["music", "music: jingles and loops in layers"], ["sprites", "pixel sprites: characters with animations, creatures, items, icons"]], "Areas") },
+        [["furniture", "furniture and interiors"], ["architecture", "buildings, walls, stairs, fences"], ["nature", "plants, rocks, terrain"], ["vehicles", "vehicles: tanks, cars, carts, boats"], ["props", "props: tools, containers, signs, gear"], ["materials", "surfaces: stone, wood, metal, fabric, tiling without a seam, live as TSL and as PNG maps up to 8192 pixels for Godot and Blender"], ["sounds", "sounds: interface, alerts and errors, hits, movement, effects, voices without words, ambience"], ["music", "music: jingles and loops in layers"], ["sprites", "pixel sprites: characters with animations, creatures, items"], ["icons", "icons for apps, tools and game interfaces: SVG in the text colour, PNG at any size, readable at 24 pixels"]], "Areas") },
   },
   {
     idee: "innenleben", art: "app", verfahren: "standard", engine: "threejs", lizenz_code: "GPL-3.0-or-later", lizenz_assets: "CC BY-SA 4.0",
+    formwerk: { de: "Bewegliche Teile mit Gelenk, Masse und Kollisionsform, Metall als Oberfläche, Icons; Zahnräder, Kolben und Wellen auf Anfrage.",
+      en: "Movable parts with hinge, mass and collider, metal as a surface, icons; gears, pistons and shafts on request." },
     bereiche: ["machines", "simulation", "lessons", "i18n"], quellen: [],
     de: { name: "Innenleben", kurz: "Ein offener 3D-Atlas der Technik im Browser: Motoren, Getriebe, Roboter, Uhren und Fahrräder zum Zerlegen, mit Simulationen, die zeigen, wie sie arbeiten.",
       ziel: "Zehn Maschinen mit Explosionsansicht, je einer getesteten Simulation und einer Lerneinheit, auf Deutsch und Englisch.",
@@ -174,6 +190,8 @@ export const IDEEN: Idee[] = [
   },
   {
     idee: "newtons-apfel", art: "app", verfahren: "standard", engine: "threejs", lizenz_code: "GPL-3.0-or-later", lizenz_assets: "CC BY-SA 4.0",
+    formwerk: { de: "Masse und Kollisionsform zu jedem Modell, Icons, Bedienklänge und englische Sprache; Pendel, Linsen und Batterien auf Anfrage.",
+      en: "Mass and collider for every model, icons, interface sounds and English speech; pendulums, lenses and batteries on request." },
     bereiche: ["mechanics", "optics", "electricity", "worksheets"], quellen: [],
     de: { name: "Newtons Apfel", kurz: "Physik-Experimente in 3D im Browser, für Schulen: Pendel, Linsen, Stromkreise, Planetenbahnen. Jede Simulation ist gegen die Formel getestet.",
       ziel: "Zwölf Experimente aus Mechanik und Optik, jedes mit einem Test gegen die analytische Lösung und einem Arbeitsblatt.",
@@ -206,6 +224,8 @@ export const IDEEN: Idee[] = [
   },
   {
     idee: "molekuelbaukasten", art: "app", verfahren: "standard", engine: "threejs", lizenz_code: "GPL-3.0-or-later", lizenz_assets: "CC BY-SA 4.0",
+    formwerk: { de: "Icons, Bedienklänge (Pop, Umschalter, Signalton) und englische Sprache für Erklärungen.",
+      en: "Icons, interface sounds (pop, toggle, chime) and English speech for explanations." },
     bereiche: ["geometry", "molecules", "reactions", "lessons"], quellen: [],
     de: { name: "Molekülbaukasten", kurz: "Moleküle in 3D bauen und verstehen, im Browser: Bindungen, Geometrie nach VSEPR, Reaktionen als Animation, für Chemieunterricht und Selbstlernen.",
       ziel: "50 Moleküle mit berechneter Geometrie, deren Bindungslängen und Winkel die Tests gegen Literaturwerte bestehen.",
@@ -278,6 +298,8 @@ export const IDEEN: Idee[] = [
   },
   {
     idee: "barrierefrei-check", art: "service", verfahren: "standard", engine: "node", lizenz_code: "AGPL-3.0-or-later", lizenz_assets: "CC BY 4.0",
+    formwerk: { de: "Status-Zeichen für bestanden, Warnung und Fehler als Icons, als SVG in der Textfarbe.",
+      en: "Status marks for passed, warning and failed as icons, as SVG in the text colour." },
     bereiche: ["rules", "crawler", "reports", "translations"], quellen: ["https://eur-lex.europa.eu/eli/dir/2019/882/oj"],
     de: { name: "Barrierefrei-Check", kurz: "Selbst gehostete Prüfung von Websites nach WCAG und European Accessibility Act, mit verständlichen Berichten in allen EU-Sprachen.",
       ziel: "Eine Website mit 50 Seiten wird geprüft, und der Bericht nennt je Fund Kriterium, Stelle und Lösung, auf Deutsch und Englisch.",
@@ -296,6 +318,8 @@ export const IDEEN: Idee[] = [
   },
   {
     idee: "vereinsheim", art: "app", verfahren: "standard", engine: "sveltekit", lizenz_code: "AGPL-3.0-or-later", lizenz_assets: "CC BY-SA 4.0",
+    formwerk: { de: "Icons (Haus, Person und Gruppe, Glocke, Lupe, Zahnrad, Status-Zeichen) und Bedienklänge (Pop, Umschalter, Hinweiston).",
+      en: "Icons (home, user and group, bell, search, gear, status marks) and interface sounds (pop, toggle, alert)." },
     bereiche: ["members", "finance", "events", "privacy"], quellen: [],
     de: { name: "Vereinsheim", kurz: "Vereinsverwaltung zum Selbsthosten: Mitglieder, Beiträge mit SEPA-Lastschrift, Termine und Datenschutz, so einfach, dass der Kassenwart sie mag.",
       ziel: "Ein Verein mit 100 Mitgliedern führt Mitgliederliste und Beitragseinzug (SEPA-XML) in Vereinsheim.",
@@ -314,6 +338,8 @@ export const IDEEN: Idee[] = [
   },
   {
     idee: "subtle", art: "app", verfahren: "standard", engine: "typescript", lizenz_code: "GPL-3.0-or-later", lizenz_assets: "CC BY 4.0",
+    formwerk: { de: "Englische Sprache mit bekanntem Text als Testmaterial für die Fehlerquote der Untertitel, dazu Icons.",
+      en: "English speech with a known text as test material for the error rate of the subtitles, and icons." },
     bereiche: ["speech", "editor", "export", "i18n"], quellen: [],
     de: { name: "Subtle", kurz: "Untertitel für Videos direkt im Browser: Whisper läuft per WebGPU auf deinem Gerät, das Video verlässt es nie.",
       ziel: "Ein zehnminütiges Video bekommt im Browser deutsche Untertitel und lässt sich als SRT und VTT exportieren.",
