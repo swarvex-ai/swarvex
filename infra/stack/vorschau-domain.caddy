@@ -2,26 +2,45 @@
 # dann keinen Speicher (localStorage, IndexedDB) mehr. Zertifikate holt Caddy beim ersten Aufruf je Subdomain (On-Demand,
 # freigegeben über /api/preview-allowed). infra/deploy.sh legt diese Datei an, wenn die .env VORSCHAU_DOMAIN nennt:
 #   Live: VORSCHAU_DOMAIN=<eigene Domain>, im DNS ein A-Eintrag für die Domain selbst und für * auf den Server
-*.{$VORSCHAU_DOMAIN} {
-	tls {
-		on_demand
-	}
+
+# Kopfzeilen und Dateien einer Vorschau. Alles kommt von hier (keine fremden Quellen); das Argument nennt zusätzliche
+# Ziele für Verbindungen (connect-src), die ein Projekt erst nach Zustimmung der Besucher anspricht (Datenschutz,
+# Abschnitt 7 „Projekt-Vorschauen“). Jede Ausnahme steht unten mit ihrem Grund.
+(vorschau_seite) {
 	header {
 		X-Robots-Tag "noindex, nofollow"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
-		# Godot-Web-Exporte mit Threads brauchen Cross-Origin-Isolation; alles muss von hier kommen (keine fremden Quellen)
+		# Godot-Web-Exporte mit Threads brauchen Cross-Origin-Isolation
 		Cross-Origin-Opener-Policy "same-origin"
 		Cross-Origin-Embedder-Policy "require-corp"
 		Cross-Origin-Resource-Policy "same-origin"
-		Content-Security-Policy "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' blob: data:; worker-src 'self' blob:; frame-ancestors 'none'; form-action 'none'; base-uri 'none'"
+		Content-Security-Policy "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' blob: data: {args[0]}; worker-src 'self' blob:; frame-ancestors 'none'; form-action 'none'; base-uri 'none'"
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()"
 		-Server
 	}
 	encode zstd gzip
 	@wasm path *.wasm
 	header @wasm Content-Type "application/wasm"
+}
+
+*.{$VORSCHAU_DOMAIN} {
+	tls {
+		on_demand
+	}
+	import vorschau_seite ""
 	root * /vorschau/{labels.2}
+	file_server
+}
+
+# Formwerk (Hausprojekt): die Sprache lädt das Modell Kokoro-82M und die Stimmen von Hugging Face, erst wenn die
+# Besucherin zustimmt (Entscheidung des Visionärs, 8. 11. 2026). Die Downloads leitet huggingface.co auf *.hf.co um.
+formwerk.{$VORSCHAU_DOMAIN} {
+	tls {
+		on_demand
+	}
+	import vorschau_seite "https://huggingface.co https://*.hf.co"
+	root * /vorschau/formwerk
 	file_server
 }
 

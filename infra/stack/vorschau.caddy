@@ -1,23 +1,39 @@
 # Spielbare Vorschauen der Projekte (Prüfstraße, pipeline/vorschau.go): Projektcode, deshalb auf eigener Adresse,
 # nie unter der der Plattform. infra/deploy.sh legt diese Datei nach /opt/swarvex-data/sites, wenn die .env sie nennt:
 #   Labor: VORSCHAU_ADRESSE=https://<IP>:8444      Live: VORSCHAU_ADRESSE=https://play.<Domain> (eigener DNS-Eintrag)
-{$VORSCHAU_ADRESSE} {
-	tls {$TLS_MODE}
+
+# Kopfzeilen einer Vorschau, wie in vorschau-domain.caddy: alles kommt von hier; das Argument nennt zusätzliche Ziele für
+# Verbindungen, die ein Projekt erst nach Zustimmung der Besucher anspricht (Datenschutz, Abschnitt 7).
+(vorschau_kopf) {
 	header {
 		X-Robots-Tag "noindex, nofollow"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
-		# Godot-Web-Exporte mit Threads brauchen Cross-Origin-Isolation; alles muss von hier kommen (keine fremden Quellen)
+		# Godot-Web-Exporte mit Threads brauchen Cross-Origin-Isolation
 		Cross-Origin-Opener-Policy "same-origin"
 		Cross-Origin-Embedder-Policy "require-corp"
 		Cross-Origin-Resource-Policy "same-origin"
-		Content-Security-Policy "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' blob: data:; worker-src 'self' blob:; frame-ancestors 'none'; form-action 'none'; base-uri 'none'"
+		Content-Security-Policy "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' blob: data: {args[0]}; worker-src 'self' blob:; frame-ancestors 'none'; form-action 'none'; base-uri 'none'"
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()"
 		-Server
 	}
+}
+
+{$VORSCHAU_ADRESSE} {
+	tls {$TLS_MODE}
 	encode zstd gzip
 	@wasm path *.wasm
 	header @wasm Content-Type "application/wasm"
-	root * /vorschau
-	file_server
+	# Formwerk (Hausprojekt): Sprachmodell von Hugging Face nach Zustimmung, siehe vorschau-domain.caddy
+	@formwerk path /formwerk /formwerk/*
+	handle @formwerk {
+		import vorschau_kopf "https://huggingface.co https://*.hf.co"
+		root * /vorschau
+		file_server
+	}
+	handle {
+		import vorschau_kopf ""
+		root * /vorschau
+		file_server
+	}
 }
