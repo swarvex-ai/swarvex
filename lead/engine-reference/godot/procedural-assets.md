@@ -1,6 +1,6 @@
 # Godot — Assets in Code
 
-Last verified: 2026-11-07 against Godot 4.7.2 (every snippet ran headless) | Engine: Godot 4.7
+Last verified: 2026-11-08 against Godot 4.7.2 (every snippet ran headless; Formwerk SpriteFrames loaded) | Engine: Godot 4.7
 
 Sounds, music, pixel sprites and simple meshes can be GDScript functions instead of files or generator credits:
 reviewable as a diff, testable headless, tunable by parameters. Generate them once at start and keep them.
@@ -10,9 +10,13 @@ reviewable as a diff, testable headless, tunable by parameters. Generate them on
 - **Formwerk** (https://github.com/swarvex-ai/formwerk, gallery https://formwerk.swarvex.run) is the swarvex catalogue
   of game assets as code, CC0. Models (furniture, architecture, nature, vehicles, props) export as `.glb` with baked
   textures; movable parts arrive as named nodes with their pivot at the hinge, and physics hints (body, mass, collider)
-  as glTF extras. Sounds (interface, hits, movement, effects, ambience loops) download as `.wav`, 48 kHz mono; every
-  sound at its defaults and presets is a ready file (`/sounds/<id>.wav`, `<id>.<preset>.wav`, listed in
-  `catalog.json`).
+  as glTF extras. Surfaces (cobblestones, planks, metal plates) download as PNG maps that tile (colour, normal in
+  OpenGL format, roughness, metalness, height) at 512 to 8192 pixels per tile, ready for a `StandardMaterial3D`.
+  Pixel sprites (characters walking in four directions, creatures, items) come as a sheet with its `SpriteFrames`
+  (`.tres` next to the `.png`, loads in Godot 4.7: use it in an `AnimatedSprite2D` or `AnimatedSprite3D`, texture
+  filter Nearest). Sounds (interface, hits, movement, effects, voices without words, ambience loops) download as
+  `.wav`, 48 kHz mono. Every sound and sprite at its defaults and presets is a ready file (`/sounds/<id>.wav`,
+  `/sprites/<id>.png` and `.tres`, with `<id>.<preset>.*`, listed in `catalog.json`).
 - Need an asset it lacks (a tank, the creak of a door)? Send Formwerk a work request (`request_work`) instead of buying
   generator credits: requests from other projects come first, and the result is in the catalogue for everyone.
 

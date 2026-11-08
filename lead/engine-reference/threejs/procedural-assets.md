@@ -25,6 +25,24 @@ to WGSL for WebGPU and to GLSL for WebGL 2, so the same material works in both.
 Canvas or `DataTexture` generated at start for patterns. Keep generation deterministic (seeded `rng`), so the scene
 tests see the same image.
 
+Surfaces that repeat (floors, walls) as TSL, live or baked into PNG maps (checked on r187):
+
+- **Tiling:** `mx_noise_float` does not repeat. Build noise on a lattice that wraps after a whole number of cells per
+  tile and hash the wrapped cell with `mx_cell_noise_float(vec3(cell + 0.5, seed))` (integer bit mixing: the same on
+  every GPU, WebGL and WebGPU). Wrap with `c - p * floor((c + 0.5) / p)`, not `mod()`: GPU division is inexact and
+  WGSL's `%` keeps the sign. Test it: bake the map half a tile further on; it must equal the first bake rolled by
+  half.
+- **Shader size:** a surface calls noise and Voronoi dozens of times. Give them a layout
+  (`Fn(([p, period, seed]) => …, { p: "vec2", period: "vec2", seed: "float", return: "float" })`) so they become one
+  shader function; inlined, a cobblestone shader grew to 339 KB, as a function 51 KB.
+- **Normal from height:** central differences one texel apart, scaled by the real relief and tile size in metres;
+  OpenGL convention (green up), as Godot and Blender expect.
+- **Cost:** a live surface runs per pixel and frame (a big floor with Voronoi is too much for small GPUs). Bake it once
+  into textures for large or many surfaces: a full-screen quad with `vertexNode = vec4(positionGeometry.xy, 0, 1)`
+  into a `FloatType` `RenderTarget`, in pieces of at most 512 × 512 per draw (a long single draw loses the WebGL device
+  in software rendering), one baker renderer for the whole session (every renderer is a WebGL context).
+- Formwerk has surfaces built this way (`cobblestone()`, `bakedMaterial()`, `bakeSurface()` from `"formwerk"`).
+
 ## Sound and music
 
 A hit is a few thousand numbers, a music loop a few million. Compute them in plain TypeScript, not with Web Audio
@@ -72,8 +90,9 @@ export function hit(seed: number, pitch = 220) {
   reviewer sees what changed, and listen to new sounds yourself before accepting them.
 - **No melodies of known games, films or songs**, not even rebuilt from notes: a melody is protected however it is
   synthesised.
-- **Look in the catalogue first:** Formwerk has sounds built this way (`import { hit, footstep } from
-  "formwerk/sounds"`, no three.js, CC0). A sound it lacks is a good request to its lead (`request_work`).
+- **Look in the catalogue first:** Formwerk has sounds built this way, voices without words included (`import { hit,
+  footstep, creature, babble } from "formwerk/sounds"`, no three.js, CC0). A sound it lacks is a good request to its
+  lead (`request_work`).
 
 ## Pixel sprites and characters
 
@@ -112,6 +131,9 @@ avoid it: a character is a small image per frame, and code can draw those images
   per-instance attribute.
 - **Checks:** the core test compares every sheet with `tests/core/sprites/<id>.png` pixel for pixel; the scene test
   shows the characters lit in the world.
+
+Formwerk has sprites built this way (`import { villager } from "formwerk/sprites"`, no three.js), with Godot
+SpriteFrames and a JSON of the frames.
 
 [Luminati](https://gitlab.com/stubborn-hug/lumina) (MIT) is a large example of this look, with characters, textures,
 sound and music all made in code. It renders with `WebGLRenderer` and GLSL shaders, so take the ideas, not the
@@ -153,8 +175,8 @@ them next to its gallery. Vite's `runnerImport()` loads the TypeScript definitio
 `vite build`. No server is needed, and the catalogue cannot drift from the code.
 
 Before you write a chair, a shelf, a tree or a footstep yourself, look at
-[Formwerk](https://github.com/swarvex-ai/formwerk), the swarvex catalogue of game assets built this way (models and
-sounds so far): code MIT, the assets CC0, so you can import them or copy a builder into your project. An asset it
+[Formwerk](https://github.com/swarvex-ai/formwerk), the swarvex catalogue of game assets built this way (models,
+surfaces, pixel sprites and sounds so far): code MIT, the assets CC0, so you can import them or copy a builder into your project. An asset it
 lacks is a good request to its lead (`request_work`).
 
 ## When a file is the better choice
