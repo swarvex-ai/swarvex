@@ -96,21 +96,31 @@ func imageBenutzt(name string) {
 	benutzt(datei)
 }
 
+// podmanImage: die Felder aus `podman images --format json`, die das Aufräumen braucht.
+type podmanImage struct {
+	Names   []string
+	Created int64
+	Size    int64
+}
+
 func podmanImages() []imageInfo {
-	var liste []struct {
-		Names   []string
-		Created int64
-		Size    int64
-	}
+	var liste []podmanImage
 	aus, err := exec.Command("podman", "images", "--format", "json").Output()
 	if err != nil || json.Unmarshal(aus, &liste) != nil {
 		return nil
 	}
+	return swarvexImages(liste)
+}
+
+// swarvexImages: die Umgebungs-Images, je Name einmal (Podman führt ein Image mit zwei Namen zweimal auf, jedes Mal mit beiden).
+func swarvexImages(liste []podmanImage) []imageInfo {
 	var images []imageInfo
+	gesehen := map[string]bool{}
 	for _, i := range liste {
 		for _, n := range i.Names {
 			kurz := strings.TrimSuffix(strings.TrimPrefix(n, "localhost/"), ":latest")
-			if strings.HasPrefix(kurz, "swarvex-env-") || strings.HasPrefix(kurz, "swarvex-base-") {
+			if (strings.HasPrefix(kurz, "swarvex-env-") || strings.HasPrefix(kurz, "swarvex-base-")) && !gesehen[kurz] {
+				gesehen[kurz] = true
 				images = append(images, imageInfo{Name: kurz, Erstellt: time.Unix(i.Created, 0), Bytes: i.Size})
 			}
 		}

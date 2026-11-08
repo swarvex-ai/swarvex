@@ -193,3 +193,12 @@ func TestAuftragNenntFruehereRueckgaben(t *testing.T) {
 		t.Error("langer Grund nicht sauber gekürzt")
 	}
 }
+
+func TestSwarvexImagesJeNameEinmal(t *testing.T) {
+	// So liefert `podman images --format json` ein Image mit zwei Namen: zweimal, jedes Mal mit beiden
+	zwei := []string{"localhost/swarvex-env-80a9:latest", "localhost/swarvex-umgebung-80a9:latest"}
+	images := swarvexImages([]podmanImage{{zwei, 1, 2}, {zwei, 1, 2}, {[]string{"localhost/swarvex-proxy:latest", "docker.io/library/golang:1"}, 1, 2}})
+	if len(images) != 1 || images[0].Name != "swarvex-env-80a9" {
+		t.Errorf("Images: %+v", images)
+	}
+}
