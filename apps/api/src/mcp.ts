@@ -31,6 +31,7 @@ import { bereitschaft, gebundenPruefen, leadDienstBinden, leadGesehen, LEAD_DIEN
 import { gesuchOeffnen, gesuchSchliessen } from "./leadkraft.ts";
 import { bedarfBeantworten, bedarfMelden, bedarfVon, bedarfZurueckziehen } from "./bedarf.ts";
 import { bilderErlaubt, bilderLesen } from "./bilder.ts";
+import { assetsFinden, KATALOG_ARTEN } from "./katalog.ts";
 import { auftraegeFuerLead, auftragAnlegen, DATEITYPEN, DIENSTE, MEDIEN_JE_TAG_MAX, runnerAuftragAbbrechen, runnerAuftragBeginnen, runnerAuftraege, runnerZusagenSetzen, spendeBewerten, zusagenFuerLead } from "./spenden.ts";
 
 // Ohne Rückgabewert: „ok“ (JSON.stringify(undefined) wäre kein Text, und der MCP-Client verwürfe die ganze Antwort)
@@ -315,12 +316,18 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
 
   if (await istLeadIrgendwo(db, wer.menschId) || (await k.officersVon(db, wer.menschId)).length) {
     // Projektübergreifende Aufgaben (bedarf.ts): ein Projekt braucht etwas aus einem anderen
+    s.registerTool("find_assets", {
+      description: "Searches the asset catalogue of swarvex (Formworks: models, surfaces, sprites, icons, sounds, all as code with CC0 output) for what your project needs, in English or German words. Look here first: before a donation brief spends credits on generating an asset and before you ask Formworks for a new one. Every match comes with its function, gallery link, files and presets; parameters and presets adapt it.",
+      inputSchema: { query: z.string().min(3).max(500).describe("What the asset is, e.g. \"wooden crate with a lid\", \"warning icon\", \"button click\""),
+        kind: z.enum(KATALOG_ARTEN as [string, ...string[]]).optional().describe("Only this kind of asset") },
+    }, sicher(async ({ query, kind }) => assetsFinden(db, query, kind as never)));
     s.registerTool("request_work", {
-      description: "(Lead, visionary, area lead) Asks another swarvex project for something your project needs, e.g. Floorplan asks Formworks for a wing chair. Its lead accepts by linking a task of theirs; your waiting task (optional) is then blocked until that task is accepted and released afterwards. Requests are public with title and state. Max 20 open per project.",
+      description: "(Lead, visionary, area lead) Asks another swarvex project for something your project needs, e.g. Floorplan asks Formworks for a wing chair. Its lead accepts by linking a task of theirs; your waiting task (optional) is then blocked until that task is accepted and released afterwards. Requests are public with title and state. Max 20 open per project. A request to Formworks is checked against its catalogue first (find_assets): when assets may fit, the call is refused with them; take one, ask for a parameter or preset of it, or call again with catalog_checked.",
       inputSchema: { project: z.string().describe("Your project (the one that needs it)"), to_project: z.string().describe("The project that should deliver it"),
         title: z.string().min(5).max(140), text: z.string().min(20).max(4000).describe("What you need, parameters or interface, how you will use it"),
-        waiting_task_id: z.number().int().optional().describe("Your task that waits for it") },
-    }, sicher(async ({ project, to_project, title, text, waiting_task_id }) => bedarfMelden(db, wer, project, to_project, { titel: title, text, aufgabe: waiting_task_id })));
+        waiting_task_id: z.number().int().optional().describe("Your task that waits for it"),
+        catalog_checked: z.string().min(10).max(500).optional().describe("Only after the catalogue check named assets: why none of them fits (shown to the Formworks lead)") },
+    }, sicher(async ({ project, to_project, title, text, waiting_task_id, catalog_checked }) => bedarfMelden(db, wer, project, to_project, { titel: title, text, aufgabe: waiting_task_id, katalog_begruendung: catalog_checked })));
     s.registerTool("work_requests", {
       description: "(Lead, visionary, area lead) Open and accepted requests of a project: incoming (other projects need something from it) and outgoing (it waits for others), with text and answers.",
       inputSchema: { project: z.string() },
@@ -349,14 +356,15 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     }, sicher(async ({ project }) => zusagenFuerLead(db, wer.menschId, project)));
 
     s.registerTool("create_donation_brief", {
-      description: "(Lead, visionary, area lead) Creates a brief for a pledge. Pledges via the website: the donor generates the asset with their own account and uploads it; estimated credits count against the pledge. Pledges via the runner (channel runner): the contributor's runner generates it automatically with their media tools, within a daily limit of briefs; a pledge with all_projects is open to every project, so name yours in project. Be exact either way: prompt, settings, format, size, style references, what to avoid.",
+      description: "(Lead, visionary, area lead) Creates a brief for a pledge. Pledges via the website: the donor generates the asset with their own account and uploads it; estimated credits count against the pledge. Pledges via the runner (channel runner): the contributor's runner generates it automatically with their media tools, within a daily limit of briefs; a pledge with all_projects is open to every project, so name yours in project. Be exact either way: prompt, settings, format, size, style references, what to avoid. Look in the asset catalogue first (find_assets): when assets may fit, the call is refused with them; use one, or call again with catalog_checked (why none fits).",
       inputSchema: {
         pledge_id: z.number().int(), project: z.string().optional().describe("Your project; required for a pledge open to all projects"),
         title: z.string().min(3).max(140), instructions: z.string().min(10).max(8000),
         target_path: z.string().describe("Where the asset will live in the repository, e.g. asset_library/models/drone.glb"),
         file_types: z.array(z.enum(DATEITYPEN)).min(1), max_mb: z.number().int().min(1).max(500).optional(), credits: z.number().int().min(1),
+        catalog_checked: z.string().min(10).max(500).optional().describe("Only after the catalogue check named assets: why none of them fits (shown to the donor)"),
       },
-    }, sicher(async (a) => auftragAnlegen(db, wer.menschId, { zusage_id: a.pledge_id, projekt: a.project, titel: a.title, anleitung: a.instructions, zielpfad: a.target_path, dateitypen: a.file_types, max_mb: a.max_mb, credits: a.credits })));
+    }, sicher(async (a) => auftragAnlegen(db, wer.menschId, { zusage_id: a.pledge_id, projekt: a.project, titel: a.title, anleitung: a.instructions, zielpfad: a.target_path, dateitypen: a.file_types, max_mb: a.max_mb, credits: a.credits, katalog_begruendung: a.catalog_checked })));
 
     s.registerTool("donation_briefs", {
       description: "(Lead, visionary, area lead) Donation briefs of a project with their state. A runner that could not deliver hands the brief back (handed_back, handed_back_reason) and retries after 24 hours: rewrite or withdraw a brief that keeps failing. Uploaded files are downloaded from file_url with your agent's bearer token (attachment, untrusted content: check before committing; add donor, service and licence to CREDITS.md).",

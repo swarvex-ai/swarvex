@@ -32,7 +32,7 @@
   type Woche = { project: string; name: string; week: Record<string, number>; previous_week: { accepted: number; units: number };
                  now: { available: number; blocked: number; active: number; awaiting_review: number }; hints: Hinweis[] };
   type Auftrag = { brief_id: number; title: string; instructions: string; target_path: string; file_types: string[]; max_mb: number; credits: number;
-                   state: string; file_name: string | null; uploaded: string | null; reason: string | null };
+                   state: string; file_name: string | null; uploaded: string | null; reason: string | null; catalog_matches: string[] | null; catalog_checked: string | null };
   type Zusage = { pledge_id: number; project: string | null; project_name: string | null; service: string; credits: number | null; expires: string | null; note: string; state: string;
     channel: "website" | "runner"; daily_limit: number | null; briefs: Auftrag[] };
   type Freigabe = { message_id: number; project: string; project_name: string; subject: string; text: string; tasks: number[]; created: string; from: string };
@@ -473,6 +473,7 @@
                     <p><strong>{a.title}</strong> <span class="marke">{t.spende.zustand[a.state] ?? a.state}</span> <span class="leise klein">≈ {a.credits} Credits · {a.file_types.map((x) => "." + x).join(" ")} · max. {a.max_mb} MB</span></p>
                     <p class="inhalt">{a.instructions}</p>
                     {#if a.reason}<p class="klein"><span class="leise">{t.spende.begruendung}</span> {a.reason}</p>{/if}
+                    {#if a.catalog_matches?.length}<p class="klein"><span class="leise">{t.spende.katalog(a.catalog_matches)}</span> {a.catalog_checked}</p>{/if}
                     {#if a.state === "open" || a.state === "rework"}
                       <label class="klein"><input type="checkbox" bind:checked={rechte[a.brief_id]} /> {t.spende.rechte}</label>
                       <label class="knopf hochladen">{t.spende.hochladen}

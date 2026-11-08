@@ -90,7 +90,7 @@ export function hit(seed: number, pitch = 220) {
   reviewer sees what changed, and listen to new sounds yourself before accepting them.
 - **No melodies of known games, films or songs**, not even rebuilt from notes: a melody is protected however it is
   synthesised.
-- **Look in the catalogue first:** Formwerk has sounds built this way, voices without words included (`import { hit,
+- **Look in the catalogue first** (`find_assets`): Formwerk has sounds built this way, voices without words included (`import { hit,
   footstep, creature, babble } from "formwerk/sounds"`, no three.js, CC0). A sound it lacks is a good request to its
   lead (`request_work`).
 

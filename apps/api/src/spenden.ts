@@ -7,6 +7,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { extname, join } from "node:path";
 import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
+import { vorGenerierung } from "./katalog.ts";
 import { Abgelehnt, officersVon, projektPerSlug, rollenVon } from "./aufgaben.ts";
 import { inhaltPasst, RUNNER_TYPEN } from "./medien.ts";
 
@@ -69,7 +70,8 @@ export async function meineZusagen(db: Db, menschId: number) {
     `select z.id as zusage_id, p.slug as projekt, p.name as projekt_name, z.dienst, z.credits, z.verfaellt, z.notiz, z.zustand, z.erstellt, z.weg, z.tageslimit
      from zusagen z left join projekte p on p.id = z.projekt_id where z.mensch_id = $1 order by z.zustand, z.erstellt desc limit 50`, [menschId])).rows;
   const a = (await db.query(
-    `select a.id as auftrag_id, a.zusage_id, a.titel, a.anleitung, a.zielpfad, a.dateitypen, a.max_mb, a.credits, a.zustand, a.dateiname, a.hochgeladen, a.begruendung, a.erstellt
+    `select a.id as auftrag_id, a.zusage_id, a.titel, a.anleitung, a.zielpfad, a.dateitypen, a.max_mb, a.credits, a.zustand, a.dateiname, a.hochgeladen, a.begruendung,
+            a.katalog_treffer, a.katalog_begruendung, a.erstellt
      from spendenauftraege a join zusagen z on z.id = a.zusage_id where z.mensch_id = $1 order by a.erstellt`, [menschId])).rows;
   return z.map((x) => ({ ...x, zusage_id: Number(x.zusage_id), verfaellt: datumText(x.verfaellt),
     auftraege: a.filter((y) => Number(y.zusage_id) === Number(x.zusage_id)).map((y) => ({ ...y, auftrag_id: Number(y.auftrag_id), zusage_id: Number(y.zusage_id) })) }));
@@ -102,11 +104,13 @@ async function heuteBegonnen(db: Db | Tx, agentId: number): Promise<number> {
     "select count(*) from ereignisse where akteur = $1 and art = 'spendenauftrag_begonnen' and zeit >= date_trunc('day', now())", [`agent:${agentId}`])).rows[0].count);
 }
 
-export async function auftragAnlegen(db: Db, menschId: number, a: { zusage_id: number; titel: string; anleitung: string; zielpfad: string; dateitypen: string[]; max_mb?: number; credits: number; projekt?: string }) {
+export async function auftragAnlegen(db: Db, menschId: number, a: { zusage_id: number; titel: string; anleitung: string; zielpfad: string; dateitypen: string[]; max_mb?: number; credits: number; projekt?: string; katalog_begruendung?: string }) {
   const typen = a.dateitypen.map((t) => t.toLowerCase().replace(/^\./, ""));
   if (!typen.length || typen.some((t) => !DATEITYPEN.includes(t as never))) throw new Abgelehnt(`file types: ${DATEITYPEN.join(", ")}`);
   if (a.zielpfad.includes("..") || a.zielpfad.startsWith("/")) throw new Abgelehnt("target path: relative path inside the repository");
   if (!Number.isInteger(a.credits) || a.credits < 1) throw new Abgelehnt("credits: estimated cost, a whole number of at least 1");
+  // Erst in Formwerks Katalog nachsehen: Credits nur für Assets, die es dort nicht schon gibt (src/katalog.ts)
+  const katalog = await vorGenerierung(db, `${a.titel}\n${a.anleitung}`, a.katalog_begruendung, "brief");
   return transaktion(db, async (tx) => {
     const z = (await tx.query("select * from zusagen where id = $1 for update", [a.zusage_id])).rows[0];
     if (!z) throw new Abgelehnt("unknown pledge");
@@ -127,9 +131,9 @@ export async function auftragAnlegen(db: Db, menschId: number, a: { zusage_id: n
       if (verplant + a.credits > z.credits) throw new Abgelehnt(`the pledge has ${z.credits - verplant} credits left`);
     }
     const r = (await tx.query(
-      `insert into spendenauftraege(zusage_id, projekt_id, von_mensch, titel, anleitung, zielpfad, dateitypen, max_mb, credits) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id`,
-      [z.id, projektId, menschId, a.titel, a.anleitung, a.zielpfad, typen, Math.min(Math.max(a.max_mb ?? 200, 1), 500), a.credits])).rows[0];
-    await protokollieren(tx, { projekt_id: projektId, akteur: `mensch:${menschId}`, art: "spendenauftrag_angelegt", bezug: `spendenauftrag:${r.id}`, daten: { zusage: Number(z.id), titel: a.titel, credits: a.credits } });
+      `insert into spendenauftraege(zusage_id, projekt_id, von_mensch, titel, anleitung, zielpfad, dateitypen, max_mb, credits, katalog_treffer, katalog_begruendung) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
+      [z.id, projektId, menschId, a.titel, a.anleitung, a.zielpfad, typen, Math.min(Math.max(a.max_mb ?? 200, 1), 500), a.credits, katalog.treffer, katalog.begruendung])).rows[0];
+    await protokollieren(tx, { projekt_id: projektId, akteur: `mensch:${menschId}`, art: "spendenauftrag_angelegt", bezug: `spendenauftrag:${r.id}`, daten: { zusage: Number(z.id), titel: a.titel, credits: a.credits, katalog_treffer: katalog.treffer } });
     return { auftrag_id: Number(r.id) };
   });
 }
@@ -139,7 +143,7 @@ export async function auftraegeFuerLead(db: Db, menschId: number, projektSlug: s
   await darfSteuern(db, menschId, Number(p.id));
   const r = await db.query(
     `select a.id as auftrag_id, a.zusage_id, m.login as spender, z.dienst, a.titel, a.zielpfad, a.dateitypen, a.credits, a.zustand,
-            a.dateiname, a.sha256, a.bytes, a.hochgeladen, a.begruendung, a.abgebrochen, a.abbruchgrund, a.erstellt
+            a.dateiname, a.sha256, a.bytes, a.hochgeladen, a.begruendung, a.abgebrochen, a.abbruchgrund, a.katalog_treffer, a.katalog_begruendung, a.erstellt
      from spendenauftraege a join zusagen z on z.id = a.zusage_id join menschen m on m.id = z.mensch_id
      where a.projekt_id = $1 and ($2::boolean is false or a.zustand in ('offen', 'hochgeladen', 'nacharbeit')) order by (a.zustand = 'hochgeladen') desc, a.erstellt`, [p.id, nurOffen]);
   return r.rows.map((x) => ({ ...x, auftrag_id: Number(x.auftrag_id), zusage_id: Number(x.zusage_id), bytes: x.bytes === null ? null : Number(x.bytes),

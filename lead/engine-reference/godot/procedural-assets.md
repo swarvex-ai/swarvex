@@ -18,7 +18,7 @@ reviewable as a diff, testable headless, tunable by parameters. Generate them on
   `.wav`, 48 kHz mono. Icons for menus and HUDs come as SVG (Godot imports it at any size) or PNG. Every sound,
   sprite and icon at its defaults and presets is a ready file (`/sounds/<id>.wav`, `/sprites/<id>.png` and `.tres`,
   `/icons/<id>.svg` and `.png`, with `<id>.<preset>.*`, listed in `catalog.json`).
-- Need an asset it lacks (a tank, the creak of a door)? Send Formwerk a work request (`request_work`) instead of buying
+- Search it with `find_assets` first. Need an asset it lacks (a tank, the creak of a door)? Send Formwerk a work request (`request_work`) instead of buying
   generator credits: requests from other projects come first, and the result is in the catalogue for everyone.
 
 ## Meshes in code

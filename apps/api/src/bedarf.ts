@@ -5,6 +5,7 @@
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, officersVon, projektPerSlug, rollenVon, type Wer } from "./aufgaben.ts";
+import { KATALOG_PROJEKT, vorGenerierung, type Pruefung } from "./katalog.ts";
 
 export const BEDARF_OFFEN_MAX = 20;
 
@@ -14,10 +15,12 @@ async function darfFuehren(db: Db, menschId: number, projektId: number) {
 }
 
 /** Lead, Visionär oder Bereichs-Lead eines Projekts meldet Bedarf bei einem anderen Projekt. */
-export async function bedarfMelden(db: Db, wer: Wer, vonSlug: string, anSlug: string, b: { titel: string; text: string; aufgabe?: number }) {
+export async function bedarfMelden(db: Db, wer: Wer, vonSlug: string, anSlug: string, b: { titel: string; text: string; aufgabe?: number; katalog_begruendung?: string }) {
   const titel = b.titel.trim(), text = b.text.trim();
   if (titel.length < 5 || titel.length > 140) throw new Abgelehnt("title: 5 to 140 characters, e.g. \"Wing chair with high back\"");
   if (text.length < 20 || text.length > 4000) throw new Abgelehnt("text: 20 to 4000 characters: what you need, the parameters or interface, and how you will use it");
+  // Ein neues Asset bei Formwerk: erst im Katalog nachsehen, ob es das schon gibt (src/katalog.ts)
+  const katalog: Pruefung = anSlug === KATALOG_PROJEKT ? await vorGenerierung(db, `${titel}\n${text}`, b.katalog_begruendung, "request") : { treffer: null, begruendung: null };
   return transaktion(db, async (tx) => {
     const von = await projektPerSlug(tx, vonSlug), an = await projektPerSlug(tx, anSlug);
     if (Number(von.id) === Number(an.id)) throw new Abgelehnt("a request goes to another project; inside your own project create a task");
@@ -31,16 +34,17 @@ export async function bedarfMelden(db: Db, wer: Wer, vonSlug: string, anSlug: st
       if (["angenommen", "gemerged", "geschlossen"].includes(a.zustand)) throw new Abgelehnt(`waiting_task_id: #${b.aufgabe} is already finished`);
     }
     const id = Number((await tx.query(
-      "insert into bedarf(von_projekt, an_projekt, von_aufgabe, titel, text, von_mensch) values ($1,$2,$3,$4,$5,$6) returning id",
-      [von.id, an.id, b.aufgabe ?? null, titel, text, wer.menschId])).rows[0].id);
+      "insert into bedarf(von_projekt, an_projekt, von_aufgabe, titel, text, von_mensch, katalog_treffer, katalog_begruendung) values ($1,$2,$3,$4,$5,$6,$7,$8) returning id",
+      [von.id, an.id, b.aufgabe ?? null, titel, text, wer.menschId, katalog.treffer, katalog.begruendung])).rows[0].id);
     const login = (await tx.query("select login from menschen where id = $1", [wer.menschId])).rows[0].login;
     await tx.query(
       `insert into nachrichten(projekt_id, von_mensch, von_agent, an, art, betreff, inhalt, aufgaben, zustand)
        values ($1, null, null, 'lead', 'frage', $2, $3, '{}', 'offen')`,
       [an.id, `Request from ${von.slug}: ${titel}`.slice(0, 140),
         `${von.name} (${von.slug}, sent by ${login}) needs something from this project (request #${id}):\n\n${text}\n\n` +
+        (katalog.treffer?.length ? `The catalogue check named ${katalog.treffer.join(", ")}; why none of them fits: ${katalog.begruendung}\n\n` : "") +
         "Accept it by creating a task for it and linking it: answer_work_request with accept true and the task_id. Decline with a reason if it does not fit the project."]);
-    await protokollieren(tx, { projekt_id: Number(von.id), akteur: `mensch:${wer.menschId}`, art: "bedarf_gemeldet", bezug: `projekt:${an.id}`, daten: { bedarf: id, titel } });
+    await protokollieren(tx, { projekt_id: Number(von.id), akteur: `mensch:${wer.menschId}`, art: "bedarf_gemeldet", bezug: `projekt:${an.id}`, daten: { bedarf: id, titel, katalog_treffer: katalog.treffer } });
     return { bedarf_id: id, an: an.slug, zustand: "offen" };
   });
 }
@@ -92,7 +96,8 @@ export async function bedarfZurueckziehen(db: Db, wer: Wer, id: number) {
 /** Bedarf eines Projekts: an es (zu beantworten) und von ihm (wartend); öffentlich ohne den Text. */
 export async function bedarfVon(db: Db, projektId: number, mitText = false) {
   const zeile = (r: Record<string, unknown>) => ({ id: Number(r.id), titel: r.titel, zustand: r.zustand, projekt: r.slug, projekt_name: r.name, aufgabe_id: r.aufgabe_id === null ? null : Number(r.aufgabe_id),
-    von_aufgabe: r.von_aufgabe === null ? null : Number(r.von_aufgabe), erstellt: r.erstellt, ...(mitText ? { text: r.text, antwort: r.antwort } : {}) });
+    von_aufgabe: r.von_aufgabe === null ? null : Number(r.von_aufgabe), erstellt: r.erstellt,
+    ...(mitText ? { text: r.text, antwort: r.antwort, katalog_treffer: r.katalog_treffer, katalog_begruendung: r.katalog_begruendung } : {}) });
   const an = (await db.query(
     `select b.*, p.slug, p.name from bedarf b join projekte p on p.id = b.von_projekt where b.an_projekt = $1 and b.zustand in ('offen', 'angenommen') order by b.id`, [projektId])).rows.map(zeile);
   const von = (await db.query(

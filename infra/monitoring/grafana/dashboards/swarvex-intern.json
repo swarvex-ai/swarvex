@@ -205,6 +205,135 @@
    },
    "description": "Je Tag. Viele Abbrüche oder abgelaufene Reservierungen sprechen für unklare Aufgaben, viele rote Tests ohne passende Änderung für wackelige Tests.",
    "id": 5
+  },
+  {
+   "type": "row",
+   "title": "Asset-Katalog: erst nachsehen, dann generieren",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 18,
+    "w": 24,
+    "h": 1
+   },
+   "panels": [],
+   "id": 6
+  },
+  {
+   "type": "stat",
+   "title": "Generiert trotz Katalog-Treffer",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 19,
+    "w": 6,
+    "h": 5
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select count(*) from analytik.katalog_pruefung where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz and trotz_treffer and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Spendenaufträge und Anfragen an Formwerk, bei denen der Katalog passende Assets nannte und der Lead mit Begründung trotzdem generieren oder neu bauen ließ. Steigt die Zahl, ist die Suche zu schwach oder Leads übergehen den Katalog; die Begründungen stehen an den Aufträgen.",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 7
+  },
+  {
+   "type": "stat",
+   "title": "Geprüft gesamt",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 6,
+    "y": 19,
+    "w": 6,
+    "h": 5
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select count(*) from analytik.katalog_pruefung where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz and geprueft and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "description": "Angelegte Spendenaufträge und Anfragen an Formwerk, vor denen der Katalog veröffentlicht war und geprüft wurde.",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none"
+   },
+   "id": 8
+  },
+  {
+   "type": "table",
+   "title": "Je Projekt",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "analytik"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 19,
+    "w": 12,
+    "h": 5
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "analytik"
+     },
+     "editorMode": "code",
+     "rawQuery": true,
+     "format": "table",
+     "rawSql": "select projekt as \"Projekt\", art as \"Art\", count(*) filter (where geprueft) as \"geprüft\", count(*) filter (where trotz_treffer) as \"trotz Treffer\", count(*) filter (where not geprueft) as \"ohne Katalog\" from analytik.katalog_pruefung where tag >= date_trunc('day', $__timeFrom()::timestamptz) and tag <= $__timeTo()::timestamptz and projektart in ($projektart) and engine in ($engine) and projekt in ($projekt) group by 1, 2 order by 4 desc, 3 desc"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "id": 9
   }
  ],
  "links": [

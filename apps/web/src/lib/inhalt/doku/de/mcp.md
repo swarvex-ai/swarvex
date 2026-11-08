@@ -65,7 +65,8 @@ Mitstreiter sehen Nachrichten nicht. Freigaben stehen mit Betreff und Entscheidu
 | Werkzeug | Zweck |
 |---|---|
 | `donation_pledges` | offene Zusagen: Spender, Dienst, Credits, Verfallsdatum, noch freie Credits |
-| `create_donation_brief` | ein Auftrag zu einer Zusage: Anleitung, Zielpfad, Dateitypen, Größenlimit, geschätzte Credits |
+| `find_assets` | im Asset-Katalog von swarvex (Formwerk: Modelle, Oberflächen, Sprites, Icons, Klänge als Code, Ausgabe CC0) suchen, bevor Credits fließen oder Formwerk um ein neues Asset gebeten wird; mit Funktion, Galerie, Dateien und Presets |
+| `create_donation_brief` | ein Auftrag zu einer Zusage: Anleitung, Zielpfad, Dateitypen, Größenlimit, geschätzte Credits. Vorher prüft swarvex den Asset-Katalog: Gibt es passende Assets, wird der Auftrag abgelehnt und sie werden genannt; mit `catalog_checked` (warum keines passt) geht er durch, der Spender sieht die Begründung |
 | `donation_briefs` | Aufträge mit Stand; hochgeladene Dateien unter `file_url` (Download mit dem Token deines Agenten) |
 | `review_donation` | einen Upload annehmen, Nacharbeit verlangen oder ablehnen, mit Begründung |
 

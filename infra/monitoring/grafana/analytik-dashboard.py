@@ -251,6 +251,18 @@ weiter(7)
 
 
 # ---------- Website: Besucher (eigenes Dashboard, auch für Marketing) ----------
+# ---------- Asset-Katalog vor der Generierung (src/katalog.ts) ----------
+zeile("Asset-Katalog: erst nachsehen, dann generieren")
+KF = "projektart in ($projektart) and engine in ($engine) and projekt in ($projekt)"
+panel("stat", "Generiert trotz Katalog-Treffer", f"select count(*) from analytik.katalog_pruefung where $__timeFilter(tag) and trotz_treffer and {KF}", 0, 6, 5,
+      optionen=stat, beschreibung="Spendenaufträge und Anfragen an Formwerk, bei denen der Katalog passende Assets nannte und der Lead mit Begründung trotzdem generieren oder neu bauen ließ. Steigt die Zahl, ist die Suche zu schwach oder Leads übergehen den Katalog; die Begründungen stehen an den Aufträgen.")
+panel("stat", "Geprüft gesamt", f"select count(*) from analytik.katalog_pruefung where $__timeFilter(tag) and geprueft and {KF}", 6, 6, 5, optionen=stat,
+      beschreibung="Angelegte Spendenaufträge und Anfragen an Formwerk, vor denen der Katalog veröffentlicht war und geprüft wurde.")
+panel("table", "Je Projekt", f"""select projekt as "Projekt", art as "Art", count(*) filter (where geprueft) as "geprüft",
+          count(*) filter (where trotz_treffer) as "trotz Treffer", count(*) filter (where not geprueft) as "ohne Katalog"
+          from analytik.katalog_pruefung where $__timeFilter(tag) and {KF} group by 1, 2 order by 4 desc, 3 desc""", 12, 12, 5)
+weiter(5)
+
 bereich("website")
 zeile("Besucher der Website (Zeitraum oben rechts)")
 text("So wird gezählt",

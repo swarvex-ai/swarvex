@@ -2068,3 +2068,127 @@ describe("Bildvergleich im Review (E-39)", () => {
     expect(offen.find((x) => Number(x.einreichung_id) === e)?.bilder).toEqual(["neu-szene", "start"]);
   });
 });
+
+describe("Asset-Katalog vor der Generierung (Formwerk zuerst)", () => {
+  const KATALOG = {
+    models: [
+      { id: "crate", function: "crate", category: "furniture", title: { de: "Kiste", en: "Crate" }, gallery: "https://formwerk.vorschau.example/#crate",
+        description: { de: "Eine Holzkiste mit Deckel, der sich öffnet.", en: "A wooden crate with a lid that opens." },
+        presets: { "treasure-chest": { label: { de: "Schatztruhe", en: "Treasure chest" } } } },
+      { id: "chair", function: "chair", category: "furniture", title: { de: "Stuhl", en: "Chair" },
+        description: { de: "Ein Stuhl mit Lehne.", en: "A chair with a back." }, presets: { "bar-stool": { label: { de: "Barhocker", en: "Bar stool" } } } },
+    ],
+    surfaces: [{ id: "planks", function: "planks", category: "wood", title: { de: "Holzdielen", en: "Planks" }, description: { de: "Dielen aus Holz.", en: "Wooden floor planks." }, presets: {} }],
+    icons: [{ id: "mark", function: "mark", category: "status", title: { de: "Zeichen", en: "Mark" }, files: { svg: "https://formwerk.vorschau.example/icons/mark.svg" },
+      description: { de: "Häkchen, Kreuz und Ausrufezeichen im Kreis.", en: "Check, cross and exclamation in a circle." },
+      presets: { warning: { label: { de: "Warnung", en: "Warning" } }, success: { label: { de: "Erfolg", en: "Success" } } } }],
+    sounds: [{ id: "click", function: "click", category: "ui", title: { de: "Klick", en: "Click" }, file: "https://formwerk.vorschau.example/sounds/click.wav",
+      description: { de: "Kurzer Klick für Knöpfe und Menüs.", en: "A short click for buttons and menus." }, presets: {} }],
+  };
+  const KOPF = "a".repeat(40);
+  let geholt = 0, formwerk = 0, zusage = 0, altHolen: (url: string) => Promise<unknown>, altDomain = "";
+  const kat = () => import("../src/katalog.ts");
+  beforeAll(async () => {
+    const q = (await kat()).quelle;
+    altHolen = q.holen;
+    altDomain = konfig.vorschauDomain;
+    konfig.vorschauDomain = "vorschau.example";
+    q.holen = async (url: string) => { geholt++; expect(url).toBe("https://formwerk.vorschau.example/catalog.json"); return KATALOG; };
+    (await kat()).katalogVergessen();
+    const sp = await import("../src/spenden.ts");
+    const morgen = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    zusage = (await sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "meshy", credits: 500, verfaellt: morgen })).zusage_id;
+    // Ein Projekt, das bei Formwerk anfragt
+    const nutzer = Number((await db.query(
+      `insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,repo_git,lead_modell,ziel)
+       values ('katalog-nutzer','Nutzer','V','k','threejs','MIT','CC0 1.0','http://kn','git@example.org:kn.git','m','z') returning id`)).rows[0].id);
+    await db.query("insert into projekt_rollen values ($1,$2,'lead')", [nutzer, lead.menschId]);
+  });
+  afterAll(async () => {
+    (await kat()).quelle.holen = altHolen;
+    konfig.vorschauDomain = altDomain;
+    (await kat()).katalogVergessen();
+  });
+
+  it("sucht in Wörtern, Wortanfängen und zusammengesetzten Wörtern, auf Deutsch und Englisch; nur die Beschreibung ist kein starker Treffer", async () => {
+    const { assetsFinden } = await kat();
+    expect(await assetsFinden(db, "wooden crate with a lid")).toMatchObject({ catalog_available: false, matches: [] });
+    formwerk = Number((await db.query(
+      `insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,repo_git,lead_modell,ziel,vorschau)
+       values ('formwerk','Formwerk','V','k','threejs','MIT','CC0 1.0','http://fw','git@example.org:fw.git','m','z',$1) returning id`,
+      [{ ok_commit: KOPF, commit: KOPF, status: "ok" }])).rows[0].id);
+    const erst = (q: string, art?: string) => assetsFinden(db, q, art as never).then((r) => r.matches.map((m) => [m.id, m.strong]));
+    expect((await erst("wooden crate with a lid"))[0]).toEqual(["crate", true]);
+    expect((await erst("Holzkiste für die Werkstatt"))[0]).toEqual(["crate", true]); // zusammengesetzt
+    expect((await erst("eine Schatztruhe"))[0]).toEqual(["crate", true]); // Preset
+    expect((await erst("warning icon for the form"))[0]).toEqual(["mark", true]);
+    expect(await erst("sound for buttons")).toEqual([["click", false]]); // nur die Beschreibung
+    expect(await erst("Ohrensessel mit Ohren")).toEqual([]); // Synonyme kennt die Suche nicht
+    expect((await erst("wooden", "surface")).map(([id]) => id)).toEqual(["planks"]);
+    const r = await assetsFinden(db, "click");
+    expect(r).toMatchObject({ catalog_available: true, catalog: "https://formwerk.vorschau.example/catalog.json" });
+    expect(r.matches[0]).toMatchObject({ kind: "sound", function: "click", files: { wav: "https://formwerk.vorschau.example/sounds/click.wav" } });
+    await expect(assetsFinden(db, "a new one")).rejects.toThrow(/say what the asset is/);
+    // Geladen wird einmal je Merge (anderer Commit der Vorschau), nicht bei jeder Suche
+    expect(geholt).toBe(1);
+    await db.query("update projekte set vorschau = $2 where id = $1", [formwerk, { ok_commit: "b".repeat(40), status: "ok" }]);
+    await erst("crate");
+    expect(geholt).toBe(2);
+  });
+
+  it("Spendenauftrag: bei Treffern erst abgelehnt, mit Begründung angelegt; Lead und Spender sehen sie", async () => {
+    const sp = await import("../src/spenden.ts");
+    const brief = { zusage_id: zusage, titel: "Holzkiste mit Deckel", anleitung: "Eine Kiste aus Holz für das Lager, Deckel lässt sich öffnen.", zielpfad: "assets/kiste.glb", dateitypen: ["glb"], credits: 20 };
+    await expect(sp.auftragAnlegen(db, lead.menschId, brief)).rejects.toThrow(/Formworks already has assets that may fit:\n- crate \(model, furniture\): Crate; presets treasure-chest[\s\S]*instead of spending credits/);
+    await expect(sp.auftragAnlegen(db, lead.menschId, { ...brief, katalog_begruendung: "zu kurz" })).rejects.toThrow(/catalog_checked: 10 to 500/);
+    const grund = "Wir brauchen eine fotorealistische Kiste mit gescannter Textur, keine stilisierte.";
+    const { auftrag_id } = await sp.auftragAnlegen(db, lead.menschId, { ...brief, katalog_begruendung: grund });
+    expect((await db.query("select katalog_treffer, katalog_begruendung from spendenauftraege where id = $1", [auftrag_id])).rows[0]).toEqual({ katalog_treffer: ["model:crate"], katalog_begruendung: grund });
+    expect((await sp.auftraegeFuerLead(db, lead.menschId, "test")).find((a) => a.auftrag_id === auftrag_id)).toMatchObject({ katalog_treffer: ["model:crate"], katalog_begruendung: grund });
+    expect((await sp.meineZusagen(db, mit.menschId)).flatMap((z) => z.auftraege).find((a) => a.auftrag_id === auftrag_id)).toMatchObject({ katalog_begruendung: grund });
+    // Nichts Passendes im Katalog: gleich angelegt, als geprüft ohne Treffer
+    const drache = await sp.auftragAnlegen(db, lead.menschId, { ...brief, titel: "Drache, geriggt", anleitung: "Ein Drache mit Skelett und Flugzyklus für den Endkampf.", zielpfad: "assets/drache.glb" });
+    expect((await db.query("select katalog_treffer from spendenauftraege where id = $1", [drache.auftrag_id])).rows[0].katalog_treffer).toEqual([]);
+    expect((await db.query("select art, trotz_treffer from analytik.katalog_pruefung where projekt = 'test' and geprueft order by trotz_treffer")).rows)
+      .toEqual([{ art: "spendenauftrag", trotz_treffer: false }, { art: "spendenauftrag", trotz_treffer: true }]);
+  });
+
+  it("Anfrage an Formwerk wird geprüft, an andere Projekte nicht; ohne veröffentlichten Katalog geht sie ungeprüft durch", async () => {
+    const b = await import("../src/bedarf.ts");
+    const anfrage = { titel: "Warning icon", text: "A warning icon for the errors of our sign-up form, outline style." };
+    await expect(b.bedarfMelden(db, lead, "katalog-nutzer", "formwerk", anfrage)).rejects.toThrow(/mark \(icon, status\)[\s\S]*ask Formworks for a parameter or a preset/);
+    const grund = "We need a triangle with a lightning bolt for high voltage, not an exclamation mark.";
+    const r = await b.bedarfMelden(db, lead, "katalog-nutzer", "formwerk", { ...anfrage, katalog_begruendung: grund });
+    expect((await b.bedarfVon(db, formwerk, true)).an_uns.find((x) => x.id === r.bedarf_id)).toMatchObject({ katalog_treffer: ["icon:mark"], katalog_begruendung: grund });
+    expect((await db.query("select inhalt from nachrichten where projekt_id = $1 and betreff like 'Request from katalog-nutzer%'", [formwerk])).rows[0].inhalt)
+      .toContain(`The catalogue check named icon:mark; why none of them fits: ${grund}`);
+    // An ein anderes Projekt: keine Katalog-Prüfung
+    const anders = await b.bedarfMelden(db, lead, "katalog-nutzer", "test", anfrage);
+    expect((await db.query("select katalog_treffer from bedarf where id = $1", [anders.bedarf_id])).rows[0].katalog_treffer).toBeNull();
+    // Formwerk ohne veröffentlichte Vorschau: ungeprüft
+    await db.query("update projekte set vorschau = null where id = $1", [formwerk]);
+    const ohne = await b.bedarfMelden(db, lead, "katalog-nutzer", "formwerk", { ...anfrage, titel: "Warning icon, bold" });
+    expect((await db.query("select katalog_treffer from bedarf where id = $1", [ohne.bedarf_id])).rows[0].katalog_treffer).toBeNull();
+    await db.query("update projekte set vorschau = $2 where id = $1", [formwerk, { ok_commit: KOPF, status: "ok" }]);
+  });
+
+  it("die Werkzeuge: find_assets für alle, die Ablehnung mit Treffern kommt beim Lead an", async () => {
+    const { mcpServerFuer } = await import("../src/mcp.ts");
+    const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+    const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+    const server = await mcpServerFuer(db, { ...lead, runner: false, leadProjekt: null, clientId: "test", token: "t", scopes: ["mcp"], ablauf: Date.now() + 60_000 });
+    const [a, c] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test", version: "1" });
+    await Promise.all([server.connect(a), client.connect(c)]);
+    const rufen = async (name: string, args: Record<string, unknown>) => { const r: any = await client.callTool({ name, arguments: args }); return { fehler: r.isError === true, text: r.content[0].text as string }; };
+    expect((await client.listTools()).tools.map((t) => t.name)).toContain("find_assets");
+    const f = await rufen("find_assets", { query: "treasure chest" });
+    expect(f.fehler).toBe(false);
+    expect(JSON.parse(f.text).matches[0]).toMatchObject({ id: "crate", strong: true });
+    const brief = { pledge_id: zusage, project: "test", title: "Treasure chest", instructions: "A treasure chest full of gold for the final room.", target_path: "assets/truhe.glb", file_types: ["glb"], credits: 20 };
+    const abgelehnt = await rufen("create_donation_brief", brief);
+    expect(abgelehnt).toMatchObject({ fehler: true });
+    expect(abgelehnt.text).toMatch(/^Rejected: Formworks already has assets that may fit:\n- crate/);
+    expect(await rufen("create_donation_brief", { ...brief, catalog_checked: "The chest must be animated with gold spilling out, Formworks cannot do that." })).toMatchObject({ fehler: false });
+  });
+});
