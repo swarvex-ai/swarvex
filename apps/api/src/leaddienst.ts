@@ -13,7 +13,7 @@
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, officersVon, projektPerSlug, rollenVon, type Wer } from "./aufgaben.ts";
-import { appBereit, repoAus, repoToken } from "./github.ts";
+import { appBereit, installierenUrl, repoAus, repoPruefen, repoToken } from "./github.ts";
 
 /** Werkzeuge, die eine an ein Projekt gebundene Lead-Anmeldung sieht. Alles andere (Aufgaben übernehmen, einreichen,
  *  Gegenprüfungen, Peer-Reviews, Medien-Zusagen, Bereichs-Leads ernennen) bleibt Mitstreitern bzw. dem Menschen. */
@@ -163,13 +163,39 @@ export async function leadGitZugang(db: Db, menschId: number, projektId: number)
   if (!p.repo_git && !p.repo_url) throw new Abgelehnt("the project has no repository connected yet");
   // Der Lead-Dienst holt und schiebt über http(s) mit Token (ssh-Adressen, etwa eines Gitea im Heimnetz: die Web-Adresse)
   const web = (u: unknown) => typeof u === "string" && /^https?:\/\//.test(u);
-  const repo_git = web(p.repo_git) ? String(p.repo_git) : web(p.repo_url) ? `${String(p.repo_url).replace(/\/+$/, "")}.git` : String(p.repo_git);
+  let repo_git = web(p.repo_git) ? String(p.repo_git) : web(p.repo_url) ? `${String(p.repo_url).replace(/\/+$/, "")}.git` : String(p.repo_git);
   const m = (await db.query("select konto_provider, konto_id, login from menschen where id = $1", [menschId])).rows[0];
   const autor = { name: m.login, email: m.konto_provider === "github" ? `${m.konto_id}+${m.login}@users.noreply.github.com` : `${m.login}@users.noreply.swarvex.ai` };
   const rollen = await rollenVon(db, menschId, projektId);
   const schreiben = rollen.includes("lead") || rollen.includes("visionaer");
-  if (!p.github_installation || !appBereit() || !repoAus(String(p.repo_url ?? repo_git)))
-    return { repo_git, autor, schreiben, token: null, hinweis: "not a GitHub repository with the swarvex app: pass your own token with swarvex project lead setup --git-token-file" };
+  const adresse = String(p.repo_url ?? repo_git);
+  const gh = repoAus(adresse);
+  if (!gh || !appBereit())
+    return { repo_git, autor, schreiben, token: null, hinweis: `${gh ? "the swarvex app is not set up on this platform" : "this repository is not on GitHub"}: pass a token that may push to it with --git-token-file (and --git-user)` };
+  if (!p.github_installation) {
+    // Repo auf GitHub, aber (noch) nicht über die App verbunden, z. B. mit Deploy-Schlüssel oder ohne „Verbinden“ im
+    // Assistenten: Ist die App dort installiert und darf der Mensch (Lead oder Visionär) dort schreiben, verbindet der
+    // Lead-Dienst es selbst, mit derselben Prüfung wie „Verbinden“ (repoPruefen). Sonst sagt er genau, was fehlt.
+    const ziel = `github.com/${gh.owner}/${gh.repo}`;
+    if (!schreiben || m.konto_provider !== "github")
+      return { repo_git, autor, schreiben, token: null, hinweis: `${ziel} is not connected through the swarvex app yet; its lead or visionary connects it by running this setup once (signed in with GitHub)` };
+    const r = await repoPruefen(adresse, m.login);
+    if ("fehler" in r) {
+      const was: Record<string, string> = {
+        app_not_installed: `install the swarvex app on ${ziel} (choose this repository): ${installierenUrl("de.konto")}`,
+        private: `${ziel} is private; projects on swarvex are open source: make it public`,
+        no_write_access: `your GitHub account ${m.login} cannot push to ${ziel}`,
+        not_github: `${adresse} is not a GitHub repository address`,
+      };
+      return { repo_git, autor, schreiben, token: null, fehlt: r.fehler, hinweis: was[r.fehler] ?? r.fehler };
+    }
+    await transaktion(db, async (tx) => {
+      await tx.query("update projekte set repo_url = $2, repo_git = $3, github_installation = $4 where id = $1", [projektId, r.repo_url, r.repo_git, r.installation]);
+      await protokollieren(tx, { projekt_id: projektId, akteur: `mensch:${menschId}`, art: "repo_gesetzt", bezug: `projekt:${projektId}`, daten: { repo_git: r.repo_git, ueber: "github-app", durch: "lead-dienst" } });
+    });
+    p.github_installation = r.installation;
+    repo_git = r.repo_git;
+  }
   const token = await repoToken(Number(p.github_installation), repo_git, schreiben);
   return { repo_git, autor, schreiben, token, gueltig_bis: new Date(Date.now() + 50 * 60_000).toISOString() };
 }

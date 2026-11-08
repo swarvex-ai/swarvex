@@ -1,5 +1,13 @@
 // Kern-Tests gegen eine echte PostgreSQL (TEST_DATABASE_URL, wird geleert).
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+// GitHub App: sonst nicht eingerichtet (wie ohne Schlüssel); einzelne Tests schalten sie mit nachgebildetem GitHub ein
+const ghApp = vi.hoisted(() => ({ bereit: false, pruefen: null as null | ((adresse: string, login: string) => Promise<unknown>) }));
+vi.mock("../src/github.ts", async (original) => {
+  const echt = await original<typeof import("../src/github.ts")>();
+  return { ...echt, appBereit: () => ghApp.bereit || echt.appBereit(),
+    repoPruefen: (adresse: string, login: string) => ghApp.pruefen ? ghApp.pruefen(adresse, login) : echt.repoPruefen(adresse, login),
+    repoToken: async (installation: number, adresse: string, schreiben = false) => ghApp.bereit ? `tok-${installation}-${schreiben}` : echt.repoToken(installation, adresse, schreiben) };
+});
 import { migrieren, verbinden, type Db } from "../src/db.ts";
 import { ketteVerifizieren } from "../src/ereignisse.ts";
 import * as k from "../src/aufgaben.ts";
@@ -1916,6 +1924,31 @@ describe("Lead-Dienst (E-38): gebundene Anmeldung, nur ein Projekt, keine Freiga
     expect(g.repo_git).toMatch(/\.git$/);
     expect(g.hinweis).toMatch(/--git-token-file/);
     expect(g.autor.name).toBe("nevs");
+  });
+
+  it("Repo auf GitHub ohne App-Verbindung: der Lead-Dienst nennt den Installationslink und verbindet selbst, sobald die App da ist", async () => {
+    const { leadGitZugang } = await ld();
+    const gh = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('github','4242','gh-lead') returning id")).rows[0].id);
+    const p = Number((await db.query(
+      `insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,repo_git,lead_modell,ziel)
+       values ('gh-lead','GH','Vision','kurz','threejs','MIT','CC0-1.0','https://github.com/swarvex-ai/gh-lead','git@github.com:swarvex-ai/gh-lead.git','Claude','Demo') returning id`)).rows[0].id);
+    await db.query("insert into projekt_rollen values ($1,$2,'lead')", [p, gh]);
+    let antwort: unknown = { fehler: "app_not_installed" };
+    ghApp.bereit = true; ghApp.pruefen = async () => antwort;
+    try {
+      const ohne = await leadGitZugang(db, gh, p);
+      expect(ohne.token).toBeNull();
+      expect(ohne.hinweis).toMatch(/install the swarvex app on github\.com\/swarvex-ai\/gh-lead .*installations\/new/);
+      antwort = { fehler: "no_write_access" };
+      expect((await leadGitZugang(db, gh, p)).hinweis).toMatch(/gh-lead cannot push/);
+      // ein Mitstreiter ohne Lead-Rolle verbindet nichts
+      expect((await leadGitZugang(db, mit.menschId, p)).hinweis).toMatch(/its lead or visionary connects it/);
+      antwort = { installation: 77, repo_url: "https://github.com/swarvex-ai/gh-lead", repo_git: "https://github.com/swarvex-ai/gh-lead.git" };
+      const mit_app = await leadGitZugang(db, gh, p);
+      expect(mit_app).toMatchObject({ token: "tok-77-true", repo_git: "https://github.com/swarvex-ai/gh-lead.git", schreiben: true });
+      expect((await db.query("select repo_git, github_installation from projekte where id = $1", [p])).rows[0]).toEqual({ repo_git: "https://github.com/swarvex-ai/gh-lead.git", github_installation: 77 });
+      expect((await db.query("select daten from ereignisse where art = 'repo_gesetzt' and projekt_id = $1", [p])).rows[0].daten).toMatchObject({ ueber: "github-app", durch: "lead-dienst" });
+    } finally { ghApp.bereit = false; ghApp.pruefen = null; }
   });
 });
 
