@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.13.0 (2026-11-08)
+## 0.13.0 (8 Nov 2026)
 
 - Disk space stays bounded. A task that goes back to the pool now deletes its work tree at once (with LFS files often
   over 1 GB); before, only submitted tasks did. Once a day, between two tasks, the service removes what nothing uses any
