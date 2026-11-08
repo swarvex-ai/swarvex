@@ -37,13 +37,14 @@ var befehlsGruppen = []struct {
 	{"Maintain", []befehlInfo{
 		{"update", "update [--check|--rollback]", "install the newest version; settings stay (--check: what's new, --rollback: back)"},
 		{"version", "version", "show the installed version"},
+		{"clean", "clean [--all] [--dry-run]", "free disk space: old work trees, logs, caches and environment images (the service does this daily)"},
 		{"env", "env", "visionary: check the project environment in its repository"},
 		{"uninstall", "uninstall", "remove everything and sign this device out"},
 	}},
 }
 
 var mitOptionen = map[string]bool{"setup": true, "connect": true, "login": true, "work": true, "service": true, "update": true,
-	"history": true, "budget": true, "env": true, "uninstall": true}
+	"history": true, "budget": true, "env": true, "uninstall": true, "clean": true}
 
 func istHilfe(a string) bool {
 	switch a {

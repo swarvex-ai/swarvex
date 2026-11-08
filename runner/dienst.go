@@ -241,6 +241,7 @@ func statusBefehl() {
 	} else {
 		fmt.Println("Not signed in.")
 	}
+	fmt.Println(datenText())
 	if runtime.GOOS != "linux" {
 		return
 	}

@@ -116,6 +116,7 @@ func lfsAufloesen(z *zugangsdaten, token string, id int64, baum string) ([]strin
 		if err := kopieren(filepath.Join(cache, zg.oid), filepath.Join(baum, zg.pfad)); err != nil {
 			return nil, err
 		}
+		benutzt(filepath.Join(cache, zg.oid)) // zuletzt gebraucht: das Aufräumen löscht es erst nach 30 Tagen ohne Benutzung
 		pfade = append(pfade, filepath.ToSlash(zg.pfad))
 	}
 	fmt.Printf("LFS: %d files, %.1f MB downloaded, the rest from the cache\n", len(zeiger), float64(geladen)/1e6)

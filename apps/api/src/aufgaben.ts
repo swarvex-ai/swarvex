@@ -419,11 +419,35 @@ export async function details(db: Db, wer: Wer, aufgabeId: number) {
     `select b.urteil, b.begruendung, b.erstellt from bewertungen b where b.einreichung_id = (select max(id) from einreichungen where aufgabe_id = $1)
      order by b.id desc limit 1`, [aufgabeId])).rows[0];
   const letzte_bewertung = bw && bw.urteil !== "annehmen" && wieder ? { urteil: bw.urteil, begruendung: bw.begruendung, zeit: bw.erstellt } : null;
-  return { ...a, projekt: p.slug, repo_url: p.repo_url, engine: p.engine, grenzen: GRENZEN, letzte_pruefung, letzte_bewertung };
+  // Gaben frühere Versuche die Aufgabe ohne Ergebnis zurück (Patch zu groß, nichts in den erlaubten Pfaden geändert,
+  // Budget oder Zeit aufgebraucht …), bekommt der nächste die Gründe, damit er nicht in dieselbe Falle läuft. Ein bloßes
+  // Anhalten des Runners sagt nichts über die Aufgabe. Die Gründe kommen von fremden Rechnern: kurz, einzeilig, ohne
+  // Home-Ordner (Benutzernamen), und der Runner reicht sie dem Agenten als Information weiter, nicht als Anweisung.
+  const fruehere_rueckgaben = wieder ? (await db.query(
+    `select zeit, daten->>'grund' as grund from ereignisse
+     where bezug = $1 and art = 'abgebrochen' and coalesce(daten->>'grund', '') not in ('', 'runner was stopped')
+       and zeit > now() - interval '30 days'
+     order by seq desc limit ${FRUEHERE_RUECKGABEN}`, [`aufgabe:${aufgabeId}`])).rows
+    .map((r) => ({ grund: rueckgabeGrund(String(r.grund)), zeit: r.zeit })) : [];
+  return { ...a, projekt: p.slug, repo_url: p.repo_url, engine: p.engine, grenzen: GRENZEN, letzte_pruefung, letzte_bewertung, fruehere_rueckgaben };
 }
 
 /** So viel vom letzten Prüfbericht geht an den nächsten Versuch (das Ende: dort stehen die roten Tests). */
 export const LETZTER_BERICHT = 6000;
+/** Die letzten so vielen Rückgaben ohne Ergebnis gehen an den nächsten Versuch, jede gekürzt auf RUECKGABE_ZEICHEN. */
+export const FRUEHERE_RUECKGABEN = 3;
+export const RUECKGABE_ZEICHEN = 400;
+
+/** Ein Rückgabegrund für fremde Augen: eine Zeile, ohne Steuerzeichen, Home-Ordner als ~, gekürzt. */
+export function rueckgabeGrund(grund: string): string {
+  const zeile = grund
+    .replace(/(?:\/var)?\/(?:home|Users)\/[^/\s"'`]+/g, "~")
+    .replace(/[A-Za-z]:\\Users\\[^\\\s"'`]+/g, "~")
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return zeile.length > RUECKGABE_ZEICHEN ? zeile.slice(0, RUECKGABE_ZEICHEN - 1) + "…" : zeile;
+}
 
 export async function fortschritt(db: Db, wer: Wer, aufgabeId: number, notiz: string, verbrauch: Record<string, number>,
   womit: { agent_programm?: string; modell?: string } = {}) {

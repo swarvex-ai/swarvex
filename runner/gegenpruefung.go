@@ -88,6 +88,7 @@ func gegenpruefen(ctx context.Context, m *mcpClient, z *zugangsdaten, projekt st
 	defer os.RemoveAll(ordner)
 	baum, gitDir := filepath.Join(ordner, "tree"), filepath.Join(ordner, "git")
 	os.MkdirAll(baum, 0o755)
+	amLeben(ctx, ordner)
 	if err := snapshotHolen(z, m.token, job.Aufgabe, baum); err != nil {
 		return "unable", "snapshot: " + err.Error()
 	}

@@ -151,6 +151,7 @@ func medienRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e medienE
 	}
 	fmt.Printf("Media brief %d started (%s, %s): %s\n", b.ID, dienstTitel(b.Dienst), b.Projekt, b.Titel)
 	var verbrauch map[string]float64
+	var ordner string // ab dem Start des Auftrags
 	eintrag := func(ergebnis, grund string) {
 		verlaufMerken(verlaufsDatei(), verlaufEintrag{Zeit: time.Now(), Brief: b.ID, Projekt: b.Projekt, Titel: b.Titel,
 			Ergebnis: ergebnis, Grund: kuerzen(grund, 400), Tokens: tokensAus(verbrauch), Budget: budgetTokensAus(verbrauch), Sekunden: int64(verbrauch["seconds"])})
@@ -163,13 +164,19 @@ func medienRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e medienE
 		}
 		m.werkzeug("abandon_media_brief", map[string]any{"brief_id": b.ID, "reason": kuerzen(grund, 480), "stopped": gestoppt}, nil)
 		eintrag("returned", grund)
+		// Ergebnis- und Arbeitsordner auch bei einer Rückgabe löschen; die Protokolle bleiben für die Fehlersuche
+		if ordner != "" {
+			for _, d := range []string{"out", "work", "cache"} {
+				wegraeumen(filepath.Join(ordner, d))
+			}
+		}
 		if !gestoppt {
 			grund += " (the brief pauses for 24 hours; the lead sees the reason)"
 		}
 		fehlerAus("Media brief returned: " + grund)
 	}
 	abbrechen := func(grund string) { zurueck(grund, false) }
-	ordner := filepath.Join(datenOrdner(), "media", fmt.Sprint(b.ID))
+	ordner = filepath.Join(datenOrdner(), "media", fmt.Sprint(b.ID))
 	os.RemoveAll(ordner)
 	aus := filepath.Join(ordner, "out")
 	arbeit := filepath.Join(ordner, "work")
@@ -178,6 +185,7 @@ func medienRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e medienE
 			abbrechen(err.Error())
 		}
 	}
+	amLeben(basis, ordner)
 	ctx, stopp := context.WithTimeout(basis, e.zeit)
 	defer stopp()
 	var err error
@@ -204,6 +212,7 @@ func medienRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e medienE
 	eintrag("uploaded", "")
 	os.RemoveAll(aus)
 	os.RemoveAll(arbeit)
+	os.RemoveAll(filepath.Join(ordner, "cache"))
 	return true
 }
 
@@ -326,6 +335,7 @@ func werkzeugStarten(ctx context.Context, name, netz string, s medienServer, pro
 	tok := zufall(36)
 	cache := filepath.Join(datenOrdner(), "tool-cache", regexp.MustCompile(`[^A-Za-z0-9_-]`).ReplaceAllString(s.Kennung(), "_"))
 	os.MkdirAll(cache, 0o755)
+	benutzt(cache) // zuletzt gebraucht: das Aufräumen löscht ihn erst nach 30 Tagen ohne Benutzung
 	args := []string{"run", "-d", "--name", name, "--network", netz, "--timeout", fmt.Sprint(sekunden),
 		"--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges", "--memory", "1g", "--pids-limit", "256",
 		"--userns=keep-id:uid=1000,gid=1000", "--user", "1000:1000",

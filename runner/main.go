@@ -67,6 +67,8 @@ func main() {
 		versionBefehl()
 	case "logs", "log":
 		logsBefehl()
+	case "clean":
+		aufraeumenBefehl(os.Args[2:])
 	case "history":
 		historyBefehl(os.Args[2:])
 	case "doctor":

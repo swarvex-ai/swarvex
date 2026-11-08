@@ -5,6 +5,21 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.13.0 (unreleased)
+
+- Disk space stays bounded. A task that goes back to the pool now deletes its work tree at once (with LFS files often
+  over 1 GB); before, only submitted tasks did. Once a day, between two tasks, the service removes what nothing uses any
+  more: work trees left behind after 24 hours (a crash, a hard stop), task logs after 14 days, dependency caches, LFS
+  files and environment images after 30 days without use. Every runner update builds new environment images, and the
+  old ones used to stay.
+- `swarvex clean` does this right away and shows what it removes and how much space that frees; `--dry-run` only shows
+  it, `--all` also removes what is younger, never what a running task uses. `swarvex status` shows how much space the
+  work data and the LFS cache take.
+- Earlier hand-backs reach the next attempt: when runners handed a task back without a result (patch too large, nothing
+  changed in the allowed paths, budget or time used up), the next agent's brief lists the last three reasons, so it
+  does not run into the same problem. They come from other people's runners: one line each, home folders hidden, and
+  the brief marks them as information, not instructions.
+
 ## 0.12.0 (7 Nov 2026)
 
 - Lead service for visionaries: `swarvex project lead setup <project>` runs your project's lead as a background service

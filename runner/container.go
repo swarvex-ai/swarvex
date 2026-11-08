@@ -41,6 +41,7 @@ func umgebungsImage(ctx context.Context, u umgebung.Umgebung, baum string, agent
 	}
 	h := sha256.Sum256([]byte(u.Kennung(baum) + "\n" + agentID))
 	name := "swarvex-env-" + hex.EncodeToString(h[:])[:16]
+	imageBenutzt(name) // zuletzt gebraucht: das Aufräumen löscht Umgebungs-Images erst nach 30 Tagen ohne Benutzung
 	if _, err := podmanAus(ctx, "", "image", "exists", name); err == nil {
 		return name, nil
 	}
@@ -48,6 +49,7 @@ func umgebungsImage(ctx context.Context, u umgebung.Umgebung, baum string, agent
 	if u.Dockerfile != "" {
 		// Eigenes Dockerfile des Projekts (Dev Container): einmal bauen, ohne Agent und ohne Schlüssel.
 		basis = "swarvex-base-" + u.Kennung(baum)
+		imageBenutzt(basis)
 		if _, err := podmanAus(ctx, "", "image", "exists", basis); err != nil {
 			if aus, err := podmanAus(ctx, "", "build", "-q", "-t", basis, "-f", filepath.Join(baum, u.Dockerfile), filepath.Join(baum, u.Kontext)); err != nil {
 				return "", fmt.Errorf("building the project's Dockerfile: %s", letzteZeilen(aus, 20))
@@ -84,6 +86,7 @@ func umgebungErmitteln(wurzel string) (umgebung.Umgebung, error) {
 func cacheOrdner(projekt string) string {
 	ordner := filepath.Join(datenOrdner(), "cache", projekt)
 	os.MkdirAll(ordner, 0o777)
+	benutzt(ordner) // zuletzt gebraucht: das Aufräumen löscht ihn erst nach 30 Tagen ohne Benutzung
 	return ordner
 }
 
