@@ -87,7 +87,10 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       inputSchema: { project: z.string(), seconds: z.number().int().min(0).max(86400), tokens: z.number().int().min(0).default(0),
         reason: z.string().min(1).max(200), outcome: z.string().min(1).max(200) },
     }, sicher(async ({ seconds, tokens, reason, outcome }) => rundeMelden(db, wer, gebunden, { sekunden: seconds, tokens, anlass: reason, ergebnis: outcome })));
-  } else if (z0.runner && (await istLeadIrgendwo(db, wer.menschId) || (await k.officersVon(db, wer.menschId)).length)) {
+  }
+  // Auch eine schon gebundene Anmeldung bekommt es: `swarvex project lead setup` läuft erneut (andere Optionen, nach einem
+  // Abbruch) und bindet dann dasselbe Projekt noch einmal, ohne Änderung; ein anderes lehnt leadDienstBinden ab.
+  if (gebunden !== null || (z0.runner && (await istLeadIrgendwo(db, wer.menschId) || (await k.officersVon(db, wer.menschId)).length))) {
     s.registerTool("bind_lead_service", {
       description: "(swarvex runner) Binds this sign-in to the lead service of one project whose lead, visionary or area lead you are (swarvex project lead setup). From then on it sees only that project's lead tools, decides no approvals and gets git access only for that repository (an area lead's service reads it only). Final for this sign-in; to undo, sign the device out under My account.",
       inputSchema: { project: z.string() },

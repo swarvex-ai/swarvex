@@ -1830,15 +1830,23 @@ describe("Lead-Dienst (E-38): gebundene Anmeldung, nur ein Projekt, keine Freiga
     const namen = await s.namen();
     expect(namen).toContain("pending_submissions");
     expect(namen).toContain("report_lead_cycle");
-    for (const nie of ["reserve_task", "submit_result", "next_check", "peer_reviews_open", "submit_peer_review", "appoint_area_lead", "bind_lead_service", "set_media_pledges"]) expect(namen).not.toContain(nie);
+    for (const nie of ["reserve_task", "submit_result", "next_check", "peer_reviews_open", "submit_peer_review", "appoint_area_lead", "set_media_pledges"]) expect(namen).not.toContain(nie);
+    for (const auch of ["estimate_milestone", "find_assets", "withdraw_work_request"]) expect(namen).toContain(auch);
+    // Jedes registrierte Werkzeug, das die Liste erlaubt, sieht die gebundene Sitzung (neue Lead-Werkzeuge nicht vergessen)
+    const { LEAD_DIENST_WERKZEUGE } = await ld();
+    expect([...LEAD_DIENST_WERKZEUGE].filter((w) => !namen.includes(w))).toEqual([]);
     expect((await s.rufen("metrics", { project: "test" })).fehler).toBe(false);
     const fremdProjekt = await s.rufen("metrics", { project: "lead-anderes" });
     expect(fremdProjekt.fehler).toBe(true);
     expect(fremdProjekt.text).toMatch(/only on project test/);
     const andereAufgabe = await k.aufgabeAnlegen(db, lead, "lead-anderes", { ...neueAufgabe("Fremd"), meilenstein: "X", neuer_meilenstein: true });
     expect((await s.rufen("task_details", { task_id: Number(andereAufgabe.id) })).text).toMatch(/only on project test/);
-    // Eine ungebundene Runner-Anmeldung des Leads bietet das Binden an, eine gebundene nicht mehr
+    // Binden: ungebunden für den Lead; gebunden noch einmal dasselbe Projekt (erneutes lead setup), nie ein anderes
     expect(await (await sitzung(lead, true, null)).namen()).toContain("bind_lead_service");
+    const nochmal = await s.rufen("bind_lead_service", { project: "test" });
+    expect(nochmal.fehler).toBe(false);
+    expect(nochmal.text).toMatch(/"rolle": ?"lead"|"role": ?"lead"/);
+    expect((await s.rufen("bind_lead_service", { project: "lead-anderes" })).text).toMatch(/only on project test/);
   });
 
   it("entscheidet keine Freigaben: die bleiben beim Menschen", async () => {

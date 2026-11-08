@@ -691,8 +691,13 @@ func leadGitAusfuehren(ctx context.Context, l *leadKonfig, befehl string) (strin
 	defer stopp()
 	aus, err := exec.CommandContext(ctx, "podman", args...).CombinedOutput()
 	if err != nil {
+		// Git schweigt manchmal (etwa wenn die Verbindung über den Proxy abbricht): dann wenigstens den Grund und
+		// was der Proxy gesehen hat
+		aus = append(aus, []byte("\n[swarvex] "+err.Error())...)
 		if log, _ := exec.Command("podman", "logs", proxy).CombinedOutput(); strings.Contains(string(log), "egress_blocked") {
 			aus = append(aus, []byte("\n[swarvex] blocked hosts: "+gesperrteHosts(string(log)))...)
+		} else if z := letzteZeilen(string(log), 5); z != "" {
+			aus = append(aus, []byte("\n[swarvex] lead proxy: "+z)...)
 		}
 	}
 	return string(aus), err
