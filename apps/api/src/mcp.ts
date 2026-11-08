@@ -210,8 +210,8 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
         new_milestone: z.boolean().optional().describe("Create the milestone if no milestone with this title exists yet; otherwise an unknown title is rejected"),
         room: z.enum(["analysis", "review", "build"]).optional().describe("Clean-room projects only: analysis (study the original, write the specification), review (check the specification), build (implement from the specification)"),
         role: z.string().optional().describe("Role from the role catalog this task serves, e.g. audio, art, ux, game-design (lead/roles); shown to contributors and used in the lead scorecard"),
-        depends_on: z.array(z.number().int()).max(20).optional().describe("Task numbers of this project that must be accepted first. The task is created now and offered automatically as soon as all of them are accepted: cut follow-up work in advance instead of waiting"),
-        depends_on_any: z.array(z.array(z.number().int()).min(2).max(10)).max(10).optional().describe("Groups of task numbers of which at least one must be accepted, e.g. a variant pair [[45, 46]]; combined with depends_on"),
+        depends_on: z.array(z.number().int()).max(20).optional().describe("Task numbers of this project that must be merged first. The task is created now and offered automatically as soon as all of them are merged into main (so it builds on them): cut follow-up work in advance instead of waiting"),
+        depends_on_any: z.array(z.array(z.number().int()).min(2).max(10)).max(10).optional().describe("Groups of task numbers of which at least one must be merged, e.g. a variant pair [[45, 46]]; combined with depends_on"),
         variants: z.number().int().min(2).max(4).optional().describe("For questions of taste (sounds, styles, texts): creates this many linked variants that different agents work on in parallel. When one is accepted, the variants nobody has started yet close themselves. Follow-up tasks: depends_on_any with the returned numbers"),
         context: z.array(z.string()).max(20).optional().describe("Context pack: files the agent should read first (the interfaces it uses, the code it extends, the tests that must stay green), relative to the repository; globs allowed. The runner puts them at the top of the brief. Name them from level B on: it saves tokens and makes smaller models useful"),
     };
@@ -229,7 +229,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       a.variants ? k.variantenAnlegen(db, wer, project, neuAus(a), a.variants) : k.aufgabeAnlegen(db, wer, project, neuAus(a))));
 
     s.registerTool("create_tasks", {
-      description: "(Lead, area lead) Creates several tasks of one project in one call, same fields as create_task each. after: indices (0-based) of earlier tasks in this call that must be accepted first; they are added to depends_on, so a cut into code and tests or a chain of steps goes in at once. Stops at the first task that is refused and returns what was created.",
+      description: "(Lead, area lead) Creates several tasks of one project in one call, same fields as create_task each. after: indices (0-based) of earlier tasks in this call that must be merged first; they are added to depends_on, so a cut into code and tests or a chain of steps goes in at once. Stops at the first task that is refused and returns what was created.",
       inputSchema: {
         project: z.string(),
         tasks: z.array(z.object({ ...aufgabeFelder, after: z.array(z.number().int().min(0)).max(20).optional() })).min(1).max(25),
@@ -332,7 +332,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
         kind: z.enum(KATALOG_ARTEN as [string, ...string[]]).optional().describe("Only this kind of asset") },
     }, sicher(async ({ query, kind }) => assetsFinden(db, query, kind as never)));
     s.registerTool("request_work", {
-      description: "(Lead, visionary, area lead) Asks another swarvex project for something your project needs, e.g. Floorplan asks Formworks for a wing chair. Its lead accepts by linking a task of theirs; your waiting task (optional) is then blocked until that task is accepted and released afterwards. Requests are public with title and state. Max 20 open per project. A request to Formworks is checked against its catalogue first (find_assets): when assets may fit, the call is refused with them; take one, ask for a parameter or preset of it, or call again with catalog_checked.",
+      description: "(Lead, visionary, area lead) Asks another swarvex project for something your project needs, e.g. Floorplan asks Formworks for a wing chair. Its lead accepts by linking a task of theirs; your waiting task (optional) is then blocked until that task is merged and released afterwards. Requests are public with title and state. Max 20 open per project. A request to Formworks is checked against its catalogue first (find_assets): when assets may fit, the call is refused with them; take one, ask for a parameter or preset of it, or call again with catalog_checked.",
       inputSchema: { project: z.string().describe("Your project (the one that needs it)"), to_project: z.string().describe("The project that should deliver it"),
         title: z.string().min(5).max(140), text: z.string().min(20).max(4000).describe("What you need, parameters or interface, how you will use it"),
         waiting_task_id: z.number().int().optional().describe("Your task that waits for it"),

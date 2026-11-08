@@ -291,14 +291,14 @@ func TestLeadKraft(t *testing.T) {
 
 func TestGruendeZeilen(t *testing.T) {
 	liste := []zurueckgehalten{
-		{ID: 121, Title: "E5 step 3h", Reason: "waits for #120 to be accepted first"},
-		{ID: 120, Title: "E5 step 3g", Reason: "waits for #119 to be accepted first"},
+		{ID: 121, Title: "E5 step 3h", Reason: "waits for #120 to be merged first"},
+		{ID: 120, Title: "E5 step 3g", Reason: "waits for #119 to be merged first"},
 		{ID: 119, Title: "E5 step 3f: item catalogue and equipment menu texts read from ui_texts.gd", Reason: "you handed it back twice within 24 hours; offered to you again from 2026-11-09T03:41:53.511Z"},
 	}
 	z := gruendeZeilen(liste, 2)
 	want := []string{
 		"  #119 E5 step 3f: item catalogue and equipment menu texts read fr…: you handed it back twice within 24 hours; offered to you again from 2026-11-09T03:41:53.511Z",
-		"  #121 E5 step 3h: waits for #120 to be accepted first",
+		"  #121 E5 step 3h: waits for #120 to be merged first",
 		"  … and 1 more",
 	}
 	if strings.Join(z, "\n") != strings.Join(want, "\n") {

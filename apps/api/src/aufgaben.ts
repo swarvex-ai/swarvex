@@ -325,7 +325,7 @@ export async function aufgabenErklaert(db: Db, wer: Wer, projektSlug: string, fa
   // In derselben Reihenfolge wie die Filter in aufgabenPassend; der erste zutreffende Grund zählt.
   const grund = (a: any): string => {
     if (wer.runner === true && !p.repo_git) return "the project has no connected repository yet";
-    if (a.wartet.length) return `waits for ${wartetText(a.wartet)} to be accepted first`;
+    if (a.wartet.length) return `waits for ${wartetText(a.wartet)} to be merged first`;
     if (a.min_vertrauen > m.vertrauensstufe) return `needs trust level ${a.min_vertrauen} (yours: ${m.vertrauensstufe})`;
     if (a.vorrang_mensch !== null && Number(a.vorrang_mensch) !== wer.menschId)
       return `held for its contributor's rework until ${new Date(a.vorrang_bis).toISOString()}`;
@@ -401,7 +401,7 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
     if (m.vertrauensstufe < a.min_vertrauen) throw new Abgelehnt(`trust level ${a.min_vertrauen} required`);
     if (a.zustand !== "offen") throw new Abgelehnt(`task is ${en(a.zustand)}`);
     const wartet = await wartetAuf(tx, a);
-    if (wartet.length) throw new Abgelehnt(`task waits for ${wartetText(wartet)} to be accepted first`);
+    if (wartet.length) throw new Abgelehnt(`task waits for ${wartetText(wartet)} to be merged first`);
     if (wer.runner === false && !ohneAusfuehrung(a.faehigkeiten)) throw new Abgelehnt(NUR_RUNNER);
     const eigeneRollen = await rollenVon(tx, wer.menschId, a.projekt_id);
     if (!eigeneRollen.includes("lead") && !eigeneRollen.includes("visionaer")) {

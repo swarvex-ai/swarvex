@@ -105,7 +105,7 @@ describe("Abhängigkeiten (Fluss ohne Warten)", () => {
     // explain: dieselben Aufgaben, dazu der Grund für die zurückgehaltene
     const erklaert = await k.aufgabenErklaert(db, mit, "test");
     expect(erklaert.aufgaben.map((x) => Number(x.id))).toEqual(await frei());
-    expect(erklaert.zurueckgehalten.find((x) => x.id === Number(f.id))).toMatchObject({ titel: "Folge", grund: `waits for #${v.id} to be accepted first` });
+    expect(erklaert.zurueckgehalten.find((x) => x.id === Number(f.id))).toMatchObject({ titel: "Folge", grund: `waits for #${v.id} to be merged first` });
     // nach außen auf Englisch, wie das MCP-Werkzeug es liefert
     expect(Object.keys(nachAussen(erklaert) as object)).toEqual(["tasks", "held_back"]);
     expect(Object.keys((nachAussen(erklaert) as any).held_back[0])).toEqual(["id", "title", "level", "reason"]);
@@ -114,12 +114,18 @@ describe("Abhängigkeiten (Fluss ohne Warten)", () => {
     const y = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Variante 2"));
     const g = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Nach dem Paar"), abhaengig_von: [Number(v.id)], abhaengig_eins_von: [[Number(x.id), Number(y.id)]] });
     await expect(k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Allein"), abhaengig_eins_von: [[Number(x.id)]] })).rejects.toThrow(/depends_on_any/);
+    // Angenommen reicht nicht: Erst der Merge bringt die Vorgängerin auf main, auf dem die Folgeaufgabe aufbaut
     await db.query("update aufgaben set zustand = 'angenommen' where id = $1", [v.id]);
+    expect(await frei()).not.toContain(Number(f.id));
+    await expect(k.reservieren(db, mit, f.id)).rejects.toThrow(`waits for #${v.id} to be merged first`);
+    await db.query("update aufgaben set zustand = 'gemerged' where id = $1", [v.id]);
     expect(await frei()).toContain(Number(f.id));
     expect(await frei()).not.toContain(Number(g.id));
     expect(await k.wartetAuf(db, (await db.query("select * from aufgaben where id = $1", [g.id])).rows[0])).toEqual([[Number(x.id), Number(y.id)]]);
     await k.schliessen(db, lead, x.id, "Variante verworfen");
     expect(await frei()).not.toContain(Number(g.id));      // geschlossen zählt nicht als erfüllt
+    await db.query("update aufgaben set zustand = 'angenommen' where id = $1", [y.id]);
+    expect(await frei()).not.toContain(Number(g.id));      // auch in der Gruppe erst nach dem Merge
     await db.query("update aufgaben set zustand = 'gemerged' where id = $1", [y.id]);
     expect(await frei()).toContain(Number(g.id));
     for (const t of [f, g]) await k.schliessen(db, lead, t.id, "Test");
@@ -2081,7 +2087,7 @@ describe("Projektübergreifende Aufgaben (Bedarf, E-39)", () => {
     quelle = Number((await db.query("select id from projekte where slug = 'kraft'")).rows[0].id);
   });
 
-  it("ein Projekt meldet Bedarf; angenommen blockiert seine Aufgabe, bis die Lieferung angenommen ist", async () => {
+  it("ein Projekt meldet Bedarf; angenommen blockiert seine Aufgabe, bis die Lieferung gemerged ist", async () => {
     const b = await import("../src/bedarf.ts");
     const wartet = Number((await k.aufgabeAnlegen(db, lead, "kraft", { ...neueAufgabe("Wohnzimmer einrichten"), meilenstein: "Räume", neuer_meilenstein: true })).id);
     await expect(b.bedarfMelden(db, mit, "kraft", "formwerk-test", { titel: "Ohrensessel", text: "Ein Ohrensessel mit hoher Lehne für das Wohnzimmer." })).rejects.toThrow(/only the lead, visionary or an area lead/);
@@ -2098,6 +2104,9 @@ describe("Projektübergreifende Aufgaben (Bedarf, E-39)", () => {
     expect(await blockiert(wartet)).toBe(true);
     expect((await db.query("select inhalt from nachrichten where projekt_id = $1 and betreff like 'Request #%accepted%'", [quelle])).rows[0].inhalt).toMatch(new RegExp(`task #${liefer}`));
     await db.query("update aufgaben set zustand = 'angenommen' where id = $1", [liefer]);
+    expect(await b.bedarfAktualisieren(db)).toEqual({ erledigt: 0, wieder_offen: 0 });
+    expect(await blockiert(wartet)).toBe(true);
+    await db.query("update aufgaben set zustand = 'gemerged' where id = $1", [liefer]);
     expect(await b.bedarfAktualisieren(db)).toEqual({ erledigt: 1, wieder_offen: 0 });
     expect(await blockiert(wartet)).toBe(false);
   });

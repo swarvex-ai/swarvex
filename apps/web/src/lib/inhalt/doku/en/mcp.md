@@ -38,7 +38,7 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 
 | Tool | Purpose |
 |---|---|
-| `create_task` | level, capabilities, paths, acceptance, base commit, lease, minimum trust, milestone (new ones only with `new_milestone`), role (e.g. `audio`), `depends_on` (offered automatically once these tasks are accepted), `depends_on_any` (groups such as a variant pair, one of each must be accepted), `variants` (2 to 4 linked variants), `context` (context pack: up to 20 files the agent reads first) |
+| `create_task` | level, capabilities, paths, acceptance, base commit, lease, minimum trust, milestone (new ones only with `new_milestone`), role (e.g. `audio`), `depends_on` (offered automatically once these tasks are merged), `depends_on_any` (groups such as a variant pair, one of each must be merged), `variants` (2 to 4 linked variants), `context` (context pack: up to 20 files the agent reads first) |
 | `create_tasks` | several tasks of one project in one call, same fields; `after` names earlier tasks of the same call to depend on (e.g. code, then its tests) |
 | `close_task` | close an open task with a reason; logged publicly |
 | `estimate_milestone` | estimate how many tasks a milestone needs in all; the project page shows progress against it |

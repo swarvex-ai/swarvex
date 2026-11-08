@@ -20,7 +20,7 @@ Also:
 
 - "No matching open task" now says why for each open task the runner does not get, for example
   `#119 …: you handed it back twice within 24 hours; offered to you again from 2026-11-09T03:41:53Z` or
-  `#120 …: waits for #119 to be accepted first` (`swarvex status`, `swarvex logs`). Up to five lines, the ones you can
+  `#120 …: waits for #119 to be merged first` (`swarvex status`, `swarvex logs`). Up to five lines, the ones you can
   act on first.
 - `swarvex history` shows long task titles from the start, on one line; before, it cut them at the front.
 

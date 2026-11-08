@@ -1,7 +1,7 @@
 // Projektübergreifende Aufgaben (Bedarf, E-39): Projekte auf swarvex bauen aufeinander auf. Raumwerk meldet bei
 // Formwerk „brauche einen Ohrensessel“; der Lead von Formwerk nimmt an und verknüpft die Aufgabe, die das liefert. Die
 // wartende Aufgabe in Raumwerk ist so lange blockiert (abhaengig_von über Projektgrenzen) und wird frei, sobald die
-// Formwerk-Aufgabe angenommen ist. Bedarf ist öffentlich sichtbar (Titel und Zustand): Er zeigt, wer wen braucht.
+// Formwerk-Aufgabe gemerged ist (migrations/054). Bedarf ist öffentlich sichtbar (Titel und Zustand): Er zeigt, wer wen braucht.
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, officersVon, projektPerSlug, rollenVon, type Wer } from "./aufgaben.ts";
@@ -105,11 +105,11 @@ export async function bedarfVon(db: Db, projektId: number, mitText = false) {
   return { an_uns: an, von_uns: von };
 }
 
-/** Regelmäßig: angenommener Bedarf, dessen Aufgabe fertig ist, ist erledigt; geschlossene Aufgabe: Bedarf wieder offen. */
+/** Regelmäßig: angenommener Bedarf, dessen Aufgabe gemerged ist (auf main, im Katalog), ist erledigt; geschlossene Aufgabe: Bedarf wieder offen. */
 export async function bedarfAktualisieren(db: Db) {
   const erledigt = (await db.query(
     `update bedarf b set zustand = 'erledigt', entschieden = now() from aufgaben a
-     where a.id = b.aufgabe_id and b.zustand = 'angenommen' and a.zustand in ('angenommen', 'gemerged') returning b.id`)).rowCount ?? 0;
+     where a.id = b.aufgabe_id and b.zustand = 'angenommen' and a.zustand = 'gemerged' returning b.id`)).rowCount ?? 0;
   const zurueck = (await db.query(
     `select b.id, b.von_projekt, b.von_aufgabe, b.aufgabe_id, b.titel, n.slug as an_slug from bedarf b join aufgaben a on a.id = b.aufgabe_id join projekte n on n.id = b.an_projekt
      where b.zustand = 'angenommen' and a.zustand = 'geschlossen'`)).rows;
