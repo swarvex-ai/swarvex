@@ -431,7 +431,7 @@ func leadEinrichten(p string, args []string) {
 	if _, err := os.Stat(filepath.Join(leadUnter(n, "work"), ".git")); err != nil {
 		fmt.Println("== Cloning", l.RepoGit, "inside the sandbox")
 		if aus, err := leadGitAusfuehren(ctx, l, "git clone --quiet \"$SWARVEX_REPO\" /work"); err != nil {
-			fehlerAus("cloning: " + letzteZeilen(aus, 15))
+			fehlerAus("cloning: " + strings.TrimSpace(letzteZeilen(aus, 15)+"\n"+err.Error()))
 		}
 	}
 	fmt.Println("== Preparing the lead sandbox (the first time takes a few minutes)")
@@ -908,7 +908,7 @@ func leadImContainer(ctx context.Context, l *leadKonfig, a *leadAnmeldung, anlas
 	zug, err := leadGitAusfuehren(ctx, l, "git fetch --quiet origin; if ! git merge --ff-only --quiet '@{upstream}' >/dev/null 2>&1; then echo SWARVEX_DIVERGED; fi; git lfs pull >/dev/null 2>&1 || true")
 	switch {
 	case err != nil:
-		hinweis = " (the pull failed: " + letzteZeilen(zug, 3) + ")"
+		hinweis = " (the pull failed: " + strings.TrimSpace(letzteZeilen(zug, 3)+" "+err.Error()) + ")"
 	case strings.Contains(zug, "SWARVEX_DIVERGED"):
 		hinweis = " (it could not fast-forward: your local commits or changes diverge from origin/main; rebase them)"
 	}

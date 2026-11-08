@@ -8,7 +8,8 @@ package main
 //	SWARVEX_EGRESS_MODE   public (Standard): nur öffentliche Adressen; lan: auch private (nicht Loopback);
 //	                      only: nur die Hosts aus SWARVEX_EGRESS_ALLOW (Lead-Dienst: der Git-Host des Projekts, lead.go)
 //	SWARVEX_EGRESS_ALLOW  Ausnahmen trotz „public“, durch Komma getrennt: IP, CIDR oder Hostname (z. B. ein Paketspiegel);
-//	                      bei „only“ die erlaubten Hosts: genau genannte auch im eigenen Netz, *.domain nur öffentlich
+//	                      bei „only“ die erlaubten Hosts (Namen oder einzelne Adressen): genau genannte auch im eigenen Netz,
+//	                      *.domain nur öffentlich
 
 import (
 	"context"
@@ -76,8 +77,10 @@ func ausgangRegelnLesen(modus, erlaubt string) (ausgangRegeln, error) {
 		case e == "":
 		case r.nur && strings.HasPrefix(e, "*.") && len(e) > 2:
 			r.muster = append(r.muster, strings.ToLower(e[1:]))
-		case r.nur && (strings.Contains(e, "/") || net.ParseIP(e) != nil):
-			return r, fmt.Errorf("SWARVEX_EGRESS_ALLOW with only: host names, not %q", e)
+		case r.nur && strings.Contains(e, "/"):
+			return r, fmt.Errorf("SWARVEX_EGRESS_ALLOW with only: host names or single addresses, not %q", e)
+		case r.nur && net.ParseIP(e) != nil:
+			r.hosts[net.ParseIP(e).String()] = true // ein Git-Server im eigenen Netz ohne Namen (gitHosts), genau diese Adresse
 		case strings.Contains(e, "/"):
 			_, n, err := net.ParseCIDR(e)
 			if err != nil {
@@ -101,6 +104,9 @@ func (r ausgangRegeln) erlaubt(host string, ip net.IP) bool {
 	}
 	if r.nur {
 		h := strings.ToLower(host)
+		if a := net.ParseIP(h); a != nil {
+			h = a.String() // gleiche Schreibweise wie beim Einlesen
+		}
 		if r.hosts[h] {
 			return !ip.IsMulticast() // genau genannt (der Git-Host), auch im eigenen Netz
 		}

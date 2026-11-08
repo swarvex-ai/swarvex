@@ -35,6 +35,30 @@ func TestAusgangNurGitHosts(t *testing.T) {
 	if _, err := ausgangRegelnLesen("only", "10.0.0.0/8"); err == nil {
 		t.Fatal("only takes host names, no address ranges")
 	}
+	// Ein Git-Server im eigenen Netz ohne Namen: genau diese Adresse, keine Nachbarn
+	ip, err := ausgangRegelnLesen("only", "192.168.10.114")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ip.erlaubt("192.168.10.114", net.ParseIP("192.168.10.114")) || ip.erlaubt("192.168.10.1", net.ParseIP("192.168.10.1")) {
+		t.Error("a single address: exactly that one")
+	}
+}
+
+// Was gitHosts für ein Repo liefert, muss der Lead-Proxy auch annehmen (sonst beendet er sich beim Start, gefunden im
+// ersten echten Lauf im Labor mit einem Git-Server ohne Namen)
+func TestGitHostsPassenZumLeadProxy(t *testing.T) {
+	for _, repo := range []string{"https://github.com/swarvex-ai/rend-and-run.git", "https://codeberg.org/a/b.git",
+		"https://192.168.10.100:3051/neVs/spiel.git", "http://192.168.10.114:8099/lead-test.git", "https://[fd00::5]/x.git"} {
+		h, err := gitHosts(repo)
+		if err != nil {
+			t.Fatalf("%s: %v", repo, err)
+		}
+		r, err := ausgangRegelnLesen("only", h)
+		if err != nil || len(r.hosts)+len(r.muster) == 0 {
+			t.Errorf("%s: the lead proxy refuses %q: %v", repo, h, err)
+		}
+	}
 }
 
 func TestGitHosts(t *testing.T) {
