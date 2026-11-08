@@ -3,6 +3,11 @@
 #
 #   curl -fsSL @PLATFORM@/install.sh | sh
 #
+# For a project's lead (visionary or lead): installs and sets up only its lead service, without the contributor
+# questions:
+#
+#   curl -fsSL @PLATFORM@/install.sh | sh -s -- lead <project>
+#
 # Runs as a normal user (no root, no silent sudo). Verifies the signature of every
 # download and stops if anything is wrong. Then: sign in in the browser.
 # Lab only, with an internal CA: set SWARVEX_CA=/path/ca.crt before `sh`.
@@ -17,6 +22,17 @@ CA_SOURCE="${SWARVEX_CA:-}"
 
 fail() { printf '\n✗ %s\n' "$1" >&2; exit 1; }
 step() { printf '\n== %s\n' "$1"; }
+
+LEAD_PROJECT=""
+case "${1:-}" in
+  "") ;;
+  lead)
+    LEAD_PROJECT="${2:-}"
+    case "$LEAD_PROJECT" in
+      ""|-*|*[!a-z0-9-]*) fail "Usage: curl -fsSL $PLATFORM/install.sh | sh -s -- lead <project>  (the project's address, e.g. my-game)" ;;
+    esac ;;
+  *) fail "Unknown option: $1 (usage: curl -fsSL $PLATFORM/install.sh | sh  or  … | sh -s -- lead <project>)" ;;
+esac
 
 [ "$(id -u)" = "0" ] && fail "Please run as a normal user, not as root. The runner needs no root rights."
 [ "$(uname -s)" = "Linux" ] || fail "Linux only for now (macOS and Windows will follow)."
@@ -137,6 +153,8 @@ CA_ARG=""
 [ -n "$CA_SOURCE" ] && CA_ARG="--ca $CONFIG/ca.crt"
 if [ -n "${SWARVEX_NO_SETUP:-}" ] && { [ -f "$CONFIG/access.json" ] || [ -f "$CONFIG/zugang.json" ]; }; then
   echo "   already signed in"   # Update im Hintergrund: niemand da, der eine neue Anmeldung bestätigen könnte
+elif [ -n "$LEAD_PROJECT" ]; then
+  echo "   the lead service signs in itself in a moment"   # eigene, an das Projekt gebundene Anmeldung
 else
   # Eine gespeicherte Anmeldung wird geprüft (sie kann abgelaufen oder widerrufen sein); nur dann neu anmelden
   # shellcheck disable=SC2086
@@ -168,6 +186,17 @@ case ":$PATH:" in
 esac
 # Einrichtung gleich anschließen: wenige Fragen, Vorschläge aus dem, was schon da ist (swarvex setup).
 # Über `curl … | sh` ist stdin das Skript, deshalb vom Terminal lesen; ohne Terminal (CI) nur der Hinweis.
+if [ -n "$LEAD_PROJECT" ]; then
+  # Nur der Lead-Dienst: Modell (falls der Runner noch keins hat), Gerät bestätigen, Repo über die App, Dienst starten
+  if ( : </dev/tty ) 2>/dev/null; then
+    printf '\n✓ Installed. Now the lead service for %s\n' "$LEAD_PROJECT"
+    "$BIN/swarvex" project lead setup "$LEAD_PROJECT" --platform "$PLATFORM" </dev/tty || {
+      printf '\nNot finished. Continue any time with: swarvex project lead setup %s\n' "$LEAD_PROJECT"; exit 1; }
+  else
+    printf '\n✓ Installed. Next: swarvex project lead setup %s\n' "$LEAD_PROJECT"
+  fi
+  exit 0
+fi
 if [ -z "${SWARVEX_NO_SETUP:-}" ] && ( : </dev/tty ) 2>/dev/null; then
   printf '\n✓ Installed. A few questions and your agent is ready (change later with: swarvex setup)\n'
   "$BIN/swarvex" setup </dev/tty || printf '\nSetup not finished. Continue any time with: swarvex setup\n'

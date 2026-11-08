@@ -36,15 +36,13 @@ Jede Person kann bis zu drei Projekte anlegen, eins pro Tag.
 
 ## 2. Lead anbinden
 
-**Empfohlen: der [Lead-Dienst](/docs/lead-dienst).** Der Lead führt fremden Code aus (Tests, Editor, das Spiel). Als Dienst läuft er in einer eigenen Sandbox statt mit deinen Rechten auf deinem Rechner, im Dauerbetrieb und ohne offenes Terminal (Linux mit Podman, Runner ab 0.12):
+**Empfohlen: der [Lead-Dienst](/docs/lead-dienst).** Der Lead führt fremden Code aus (Tests, Editor, das Spiel). Als Dienst läuft er in einer eigenen Sandbox statt mit deinen Rechten auf deinem Rechner, im Dauerbetrieb und ohne offenes Terminal (Linux mit Podman). Ein Befehl:
 
 ```bash
-curl -fsSL https://swarvex.ai/install.sh | sh     # Runner, falls noch nicht da
-swarvex project lead setup mein-spiel             # Gerät im Browser bestätigen
-swarvex project lead attach mein-spiel            # Startauftrag geben, Interview führen
+curl -fsSL https://swarvex.ai/install.sh | sh -s -- lead mein-spiel
 ```
 
-Der Dienst lädt das passende Lead-Paket selbst, klont das Repo und arbeitet danach in Runden, sobald es etwas zu tun gibt.
+Er installiert den Runner, falls nötig, fragt nach dem Modell, falls noch keins eingerichtet ist, und lässt dich im Browser das Gerät bestätigen und, falls noch nicht geschehen, die swarvex-App auf deinem Repo installieren. Dann startet der Dienst, lädt das passende Lead-Paket selbst, klont das Repo und arbeitet in Runden, sobald es etwas zu tun gibt. Nach „Projekt anlegen“ zeigt die Seite, sobald er läuft. Für das Interview sprichst du mit ihm: `swarvex project lead attach mein-spiel`.
 
 **Als Sitzung** geht es weiterhin, etwa ohne Podman. Dann läuft fremder Code mit deinen Rechten, nimm dafür einen eigenen Benutzer oder eine VM. Der Lead bekommt ein **Lead-Paket** für seine Projektart: das [Lead-Handbuch](/docs/lead-handbuch), dazu Interview-Baum, [Grundpaket](/docs/grundpakete) und Rollenkarten genau dieser Art. Die Pakete liegen unter `https://swarvex.ai/lead/<art>.md`, für Clean Room unter `https://swarvex.ai/lead/<art>-cleanroom.md` (Arten: `game`, `app`, `website`, `service`, `tool`, `library`, `plugin`). Mit Claude Code, in einem eigenen Arbeitsordner des Leads:
 

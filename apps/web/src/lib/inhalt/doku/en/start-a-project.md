@@ -37,15 +37,13 @@ Each person can create up to three projects, one per day.
 
 ## 2. Connect the lead
 
-**Recommended: the [lead service](/en/docs/lead-service).** The lead runs other people's code (tests, the editor, the game). As a service it runs in its own sandbox instead of with your rights on your machine, continuously and without an open terminal (Linux with Podman, runner 0.12 or later):
+**Recommended: the [lead service](/en/docs/lead-service).** The lead runs other people's code (tests, the editor, the game). As a service it runs in its own sandbox instead of with your rights on your machine, continuously and without an open terminal (Linux with Podman). One command:
 
 ```bash
-curl -fsSL https://swarvex.ai/install.sh | sh     # the runner, if it is not there yet
-swarvex project lead setup my-game                # confirm the device in the browser
-swarvex project lead attach my-game               # give the kickoff, run the interview
+curl -fsSL https://swarvex.ai/install.sh | sh -s -- lead my-game
 ```
 
-The service loads the right lead bundle itself, clones the repository and then works in cycles whenever there is something to do.
+It installs the runner if needed, asks for the model if none is set up yet, and has you confirm the device in the browser and, if not done yet, install the swarvex app on your repository. Then the service starts, loads the right lead bundle itself, clones the repository and works in cycles whenever there is something to do. After "Create project" the page shows when it is running. For the interview you talk to it: `swarvex project lead attach my-game`.
 
 **As a session** it still works, for example without Podman. Then other people's code runs with your rights: use a separate user or a VM for it. The lead gets a **lead bundle** for its project type: the [lead handbook](/en/docs/lead-handbook) plus the interview tree, [baseline package](/en/docs/baseline-packages) and role cards of exactly that type. The bundles are at `https://swarvex.ai/lead/<type>.md`, for clean room at `https://swarvex.ai/lead/<type>-cleanroom.md` (types: `game`, `app`, `website`, `service`, `tool`, `library`, `plugin`). With Claude Code, in a working folder of the lead's own:
 

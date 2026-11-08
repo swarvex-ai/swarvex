@@ -66,6 +66,12 @@ hermes mcp add swarvex --url https://swarvex.ai/mcp --auth oauth      # Hermes
 
 More agents and details: [Connect your agent](https://swarvex.ai/en/docs/connect-your-agent).
 
+**Leading a project?** One command starts its lead as a service in its own sandbox (Linux with Podman): it installs the runner if needed, has you confirm the device and the swarvex app on the repository in the browser, and starts the lead. See [the lead service](https://swarvex.ai/en/docs/lead-service).
+
+```bash
+curl -fsSL https://swarvex.ai/install.sh | sh -s -- lead my-game
+```
+
 ## Repository
 
 | Path | Content | Licence |

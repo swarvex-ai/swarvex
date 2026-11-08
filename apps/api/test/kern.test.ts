@@ -1939,6 +1939,7 @@ describe("Lead-Dienst (E-38): gebundene Anmeldung, nur ein Projekt, keine Freiga
       const ohne = await leadGitZugang(db, gh, p);
       expect(ohne.token).toBeNull();
       expect(ohne.hinweis).toMatch(/install the swarvex app on github\.com\/swarvex-ai\/gh-lead .*installations\/new/);
+      expect(nachAussen(ohne)).toMatchObject({ missing: "app_not_installed", install_url: expect.stringMatching(/installations\/new/) });
       antwort = { fehler: "no_write_access" };
       expect((await leadGitZugang(db, gh, p)).hinweis).toMatch(/gh-lead cannot push/);
       // ein Mitstreiter ohne Lead-Rolle verbindet nichts

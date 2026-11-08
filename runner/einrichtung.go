@@ -532,14 +532,53 @@ func setupDialog(ausfuehren bool) []string {
 	}
 
 	fmt.Println("\n== 1/2 Model\nYour agent works with a model of your choice. Your key stays on this machine; the sandbox never sees it.")
+	w, abo := modellWaehlen(f, "Which model should your agent use?")
+	var plan aboPlan
+	if abo {
+		plan = aboErmitteln(f, w)
+	}
+
+	fmt.Println("\n== 2/2 Settings")
+	var agenten []mcpAgent
+	if !istWSL() {
+		agenten = mcpAgentenGefunden()
+	}
+	e := empfehlung(w, abo, plan, agenten)
+	medienEmpfehlen(&e, medienServerFinden())
+	if !e.moeglich {
+		fmt.Println(e.grund)
+		return anpassen(f, z, w, abo, plan, agenten, ausfuehren)
+	}
+	fmt.Println("Recommended:")
+	for _, zeile := range e.zeilen {
+		fmt.Println("  • " + zeile)
+	}
+	if !f.jaNein("Use these settings? (no: choose each one yourself)", true) {
+		return anpassen(f, z, w, abo, plan, agenten, ausfuehren)
+	}
+	pruefen(argsSpeichern(e.args))
+	gefragtMerken(gefragtDatei(), "auto-update", "fair-use", "task-budget", "media")
+	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
+	agentenVerbinden(z, agenten)
+	if !ausfuehren {
+		return e.args
+	}
+	dienstBefehl(append(append([]string{}, e.args...), e.dienstArgs...))
+	return e.args
+}
+
+// modellWaehlen: Modell und Zugang im Terminal wählen (erkannte Agenten, Abo-Token, API-Schlüssel, eigener Server) und
+// prüfen, ob die Sandbox es erreicht. abo: ein Abo statt API-Schlüssel (dann gibt es Kontingent, das verfällt).
+// Für `swarvex setup` und für `swarvex project lead setup` auf einem Rechner ohne eingerichteten Runner.
+func modellWaehlen(f *frager, frage string) (w modellWahl, abo bool) {
 	optionen := modellAuswahl()
 	titel := make([]string, len(optionen))
 	for i, o := range optionen {
 		titel[i] = o.Titel
 	}
-	w := optionen[f.wahl("Which model should your agent use?", titel)]
+	w = optionen[f.wahl(frage, titel)]
 	// Abo statt API-Schlüssel: nur dann gibt es Kontingent, das verfällt (Restkontingent-Modus)
-	abo := w.Key == "claude-setup-token" || (w.Agent == "codex" && strings.HasSuffix(w.Key, "auth.json"))
+	abo = w.Key == "claude-setup-token" || (w.Agent == "codex" && strings.HasSuffix(w.Key, "auth.json"))
 	switch {
 	case w.Key == "claude-setup-token":
 		w.Key = schluesselDatei("claude-token", claudeTokenHolen(f))
@@ -587,42 +626,11 @@ func setupDialog(ausfuehren bool) []string {
 				fmt.Println("  network, so it has to listen there too (Ollama: OLLAMA_HOST=0.0.0.0, best behind your firewall).")
 			}
 			if !f.jaNein("Keep this model anyway?", false) {
-				fehlerAus("Setup cancelled; run `swarvex setup` again when the model is reachable.")
+				fehlerAus("Cancelled; run the command again when the model is reachable.")
 			}
 		}
 	}
-	var plan aboPlan
-	if abo {
-		plan = aboErmitteln(f, w)
-	}
-
-	fmt.Println("\n== 2/2 Settings")
-	var agenten []mcpAgent
-	if !istWSL() {
-		agenten = mcpAgentenGefunden()
-	}
-	e := empfehlung(w, abo, plan, agenten)
-	medienEmpfehlen(&e, medienServerFinden())
-	if !e.moeglich {
-		fmt.Println(e.grund)
-		return anpassen(f, z, w, abo, plan, agenten, ausfuehren)
-	}
-	fmt.Println("Recommended:")
-	for _, zeile := range e.zeilen {
-		fmt.Println("  • " + zeile)
-	}
-	if !f.jaNein("Use these settings? (no: choose each one yourself)", true) {
-		return anpassen(f, z, w, abo, plan, agenten, ausfuehren)
-	}
-	pruefen(argsSpeichern(e.args))
-	gefragtMerken(gefragtDatei(), "auto-update", "fair-use", "task-budget", "media")
-	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
-	agentenVerbinden(z, agenten)
-	if !ausfuehren {
-		return e.args
-	}
-	dienstBefehl(append(append([]string{}, e.args...), e.dienstArgs...))
-	return e.args
+	return w, abo
 }
 
 // empfohlen: der Schnellstart (eine Frage statt aller): beliebiges Projekt, Dienst, automatische Updates, Budget nach

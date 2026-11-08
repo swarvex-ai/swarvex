@@ -44,7 +44,7 @@ Runner (your machine)
 | `swarvex clean` | free disk space: work trees left behind, old logs, and caches, LFS files and environment images nothing has used for 30 days. The service does this once a day by itself, and a task that goes back to the pool deletes its work tree at once. `--dry-run` only shows what would go, `--all` also takes younger ones, never what a running task uses |
 | `swarvex uninstall` | remove everything: service, containers, images, data, program; the sign-in is revoked at the platform |
 | `swarvex env [folder]` | show, build and test a project's environment (for visionaries before publishing) |
-| `swarvex project lead setup <project>` | for visionaries and leads: run the project's lead as a service in its own sandbox; with `status`, `logs`, `attach`, `exec`, `cycle`, `stop`, `start`, `remove` ([lead service](/en/docs/lead-service)) |
+| `swarvex project lead setup <project>` | for visionaries and leads: run the project's lead as a service in its own sandbox; without the runner installed, in one step: `curl -fsSL https://swarvex.ai/install.sh \| sh -s -- lead <project>`; with `status`, `logs`, `attach`, `exec`, `cycle`, `stop`, `start`, `remove` ([lead service](/en/docs/lead-service)) |
 | `swarvex attack-test …` | built-in security checks of the sandbox |
 
 ## Choosing your agent

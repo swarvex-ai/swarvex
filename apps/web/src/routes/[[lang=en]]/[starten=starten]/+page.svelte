@@ -8,6 +8,7 @@
   import Einzeiler from "$lib/components/Einzeiler.svelte";
   import RepoVerbinden from "$lib/components/RepoVerbinden.svelte";
   import TeilenLink from "$lib/components/TeilenLink.svelte";
+  import LeadStart from "$lib/components/LeadStart.svelte";
   import { pfad, sprache, tx } from "$lib/texte";
 
   const s = $derived(sprache());
@@ -376,19 +377,18 @@
 
     {:else if id === "los" && ergebnis}
       <h2>{t.los.h2(ergebnis.name)}</h2>
-      <p class="teilen">{tx().leadKraft.teilenText}<br /><TeilenLink slug={ergebnis.slug} name={ergebnis.name} /></p>
-      {#if d.engine.trim() === "threejs"}
-        <p class="klein">{tx().leadKraft.starter}</p><Einzeiler befehl="curl -fsSL https://swarvex.ai/lead/starter/threejs.sh | sh" />
-      {/if}
       <h3>{t.los.dienstH3}</h3>
       <p>{t.los.dienstText}</p>
-      <ol class="befehle">
-        <li><span>{t.los.runner}</span><Einzeiler /></li>
-        <li><span>{t.los.dienstSetup}</span><Einzeiler befehl={`swarvex project lead setup ${ergebnis.slug}`} /></li>
-        <li><span>{t.los.dienstAttach}</span><Einzeiler befehl={`swarvex project lead attach ${ergebnis.slug}`} /></li>
-      </ol>
+      {#if !d.repo_url.trim()}
+        <!-- Ohne Repo kann der Lead-Dienst nicht klonen: erst verbinden. Mit Repo verbindet der Befehl es über die App selbst. -->
+        <p class="klein">{t.los.repoZuerst}</p>
+        <RepoVerbinden slug={ergebnis.slug} repo={d.repo_url} />
+      {/if}
+      <LeadStart slug={ergebnis.slug} basis={BASIS} />
       <p class="klein"><a href={doku("lead-dienst", "lead-service")}>{t.los.dienstMehr}</a></p>
-      <h3>{t.los.sitzungH3}</h3>
+      <p class="teilen">{tx().leadKraft.teilenText}<br /><TeilenLink slug={ergebnis.slug} name={ergebnis.name} /></p>
+      <details class="sitzung">
+      <summary>{t.los.sitzungH3}</summary>
       <p>{t.los.text}</p>
       <ol class="befehle">
         <li><span>{t.los.ordner}</span><Einzeiler befehl={ordner} /></li>
@@ -408,9 +408,15 @@
         <li><span>{t.los.auftrag}</span>
           <div class="auftrag"><pre>{auftrag}</pre><button class="knopf" onclick={auftragKopieren}>{kopiert ? t.los.kopiert : t.los.kopieren}</button></div></li>
       </ol>
+      {#if d.engine.trim() === "threejs"}
+        <p class="klein">{tx().leadKraft.starter}</p><Einzeiler befehl="curl -fsSL https://swarvex.ai/lead/starter/threejs.sh | sh" />
+      {/if}
       <p class="klein"><a href={`/lead/${ergebnis.paket}.md`}>{t.los.paket}</a></p>
-      <h3>{t.los.repoH3}</h3>
-      <RepoVerbinden slug={ergebnis.slug} repo={d.repo_url} />
+      {#if d.repo_url.trim()}
+        <h4>{t.los.repoH3}</h4>
+        <RepoVerbinden slug={ergebnis.slug} repo={d.repo_url} />
+      {/if}
+      </details>
       <p>{t.los.danach}</p>
       <div class="knoepfe">
         <a class="knopf primaer" href={pfad(s, tx().konto.pfad)}>{t.los.konto}</a>
@@ -473,6 +479,9 @@
   .uebersicht dt { color: var(--leise); font-size: .88rem; }
   .uebersicht dd { margin: 0; overflow-wrap: anywhere; }
   .link { background: none; border: 0; padding: 0; color: var(--vision); font: inherit; font-size: .85rem; cursor: pointer; text-decoration: underline; margin-left: 6px; }
+  .sitzung { margin: 28px 0 8px; padding: 12px 16px; border: 1px solid var(--linie); border-radius: var(--radius-klein); }
+  .sitzung summary { cursor: pointer; font-weight: 600; }
+  .sitzung[open] summary { margin-bottom: 12px; }
   .befehle { margin: 0; padding-left: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .befehle li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
   .auftrag { display: grid; gap: 8px; justify-items: start; }

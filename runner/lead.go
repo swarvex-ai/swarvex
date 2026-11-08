@@ -209,10 +209,12 @@ func leadPaket(info leadProjektInfo) string {
 }
 
 type leadGit struct {
-	RepoGit string  `json:"repo_git"`
-	Token   *string `json:"token"`
-	Hinweis string  `json:"hint"`
-	Autor   struct {
+	RepoGit      string  `json:"repo_git"`
+	Token        *string `json:"token"`
+	Hinweis      string  `json:"hint"`
+	Fehlt        string  `json:"missing"`     // app_not_installed, private, no_write_access (GitHub ohne App-Verbindung)
+	Installieren string  `json:"install_url"` // bei app_not_installed: die Installation der swarvex-App
+	Autor        struct {
 		Name  string `json:"name"`
 		Email string `json:"email"`
 	} `json:"author"`
@@ -329,8 +331,23 @@ func leadEinrichten(p string, args []string) {
 		}
 		n = p + "." + *bereich
 	}
+	gesetzt := map[string]bool{}
+	fs.Visit(func(fl *flag.Flag) { gesetzt[fl.Name] = true })
 	if *modell == "" {
-		fehlerAus("--model is required (the runner has no saved model yet)")
+		// Kein Runner eingerichtet (der Einzeiler `install.sh | sh -s -- lead <projekt>`): das Modell hier wählen
+		f, ok := neuerFrager()
+		if !ok {
+			fehlerAus("--model is required (the runner has no saved model yet)")
+		}
+		fmt.Println("== Model for the lead\nThe lead works with a model of your choice. Your key stays on this machine; the sandbox never sees it.")
+		w, _ := modellWaehlen(f, "Which model should your lead use?")
+		if !gesetzt["agent"] {
+			*agentName = w.Agent
+		}
+		*modell, *modellURL = w.Modell, w.URL
+		if !gesetzt["model-key-file"] {
+			*keyDatei = w.Key
+		}
 	}
 	agent := agentPruefen(*agentName)
 	if *modellURL == "" && !codexAboDatei(agent.Name, *keyDatei) {
@@ -340,6 +357,11 @@ func leadEinrichten(p string, args []string) {
 	basis, ca := plattformUndCA(*plattformWert)
 	if basis == "" {
 		basis = standardPlattform
+	}
+	if eigene := filepath.Join(konfigOrdner(), "ca.crt"); ca == "" {
+		if _, err := os.Stat(eigene); err == nil { // Labor ohne Runner-Anmeldung: die CA, die install.sh abgelegt hat
+			ca = eigene
+		}
 	}
 	info, err := leadProjektLesen(basis, ca, p)
 	pruefen(err)
@@ -388,7 +410,11 @@ func leadEinrichten(p string, args []string) {
 			fehlerAus("taking the area " + *bereich + ": " + err.Error())
 		}
 	}
-	fmt.Println("   signed in and bound to", p, "(only its lead tools; approvals stay with you)")
+	if bereichsLead {
+		fmt.Printf("   ✓ signed in as area lead of %s; this service is bound to it\n", info.Name)
+	} else {
+		fmt.Printf("   ✓ signed in as lead of %s; this service is bound to it (only its lead tools; approvals stay with you)\n", info.Name)
+	}
 	if bereichsLead {
 		fmt.Printf("   as area lead of %q: reviews and cuts tasks in your area; the repository is read-only for it\n", bindung.Bereich)
 	} else if *bereich != "" {
@@ -398,6 +424,15 @@ func leadEinrichten(p string, args []string) {
 	// 2. Git-Zugang
 	g, err := leadGitHolen(&leadKonfig{Plattform: basis, CAPfad: ca}, tok)
 	pruefen(err)
+	if g.Token == nil && *gitToken == "" && g.Fehlt == "app_not_installed" && g.Installieren != "" {
+		g = leadAufAppWarten(g, func() (leadGit, error) {
+			t, err := an.token()
+			if err != nil {
+				return leadGit{}, err
+			}
+			return leadGitHolen(&leadKonfig{Plattform: basis, CAPfad: ca}, t)
+		}, 5*time.Second, 30*time.Minute)
+	}
 	if g.Token == nil && *gitToken == "" {
 		fehlerAus(g.Hinweis)
 	}
@@ -454,8 +489,14 @@ func leadEinrichten(p string, args []string) {
 			fehlerAus("systemctl --user " + strings.Join(a, " ") + ": " + aus)
 		}
 	}
-	fmt.Printf("\n✓ The lead service %s runs as a service in its sandbox.\n", n)
-	fmt.Printf("  State: swarvex project lead status %s · Log: swarvex project lead logs %s · Talk to it: swarvex project lead attach %s\n", n, n, n)
+	if bereichsLead || *bereich != "" {
+		fmt.Printf("\n✓ The lead service %s runs as a service in its sandbox.\n", n)
+	} else {
+		fmt.Printf("\n✓ You are the lead of %s. Your lead service runs in its sandbox and starts its first cycle now.\n", info.Name)
+		fmt.Printf("  The project page shows it as active within a minute: %s/en/projects/%s\n", basis, p)
+	}
+	fmt.Printf("  Talk to it (e.g. the project interview): swarvex project lead attach %s\n", n)
+	fmt.Printf("  State: swarvex project lead status %s · Log: swarvex project lead logs %s\n", n, n)
 	if n == p && !bereichsLead {
 		fmt.Println("  Stop the old lead session on this machine: from now on the service is the lead.")
 	}
@@ -1474,4 +1515,32 @@ func leadEntfernen(p string) {
 	// Der Klon kann ungepushte Arbeit des Leads enthalten: nicht stillschweigend löschen
 	fmt.Printf("  ✓ the clone and the lead's notes stay in %s (delete the folder when you no longer need them)\n", leadOrdner(p))
 	os.Remove(leadUnter(p, "config.json"))
+}
+
+// leadAufAppWarten: Das Repo liegt auf GitHub, die swarvex-App ist dort aber noch nicht installiert. Statt abzubrechen:
+// den Link zeigen (und öffnen) und warten, bis die Plattform das Repo über die App verbinden kann.
+func leadAufAppWarten(g leadGit, holen func() (leadGit, error), abstand, hoechstens time.Duration) leadGit {
+	fmt.Println("== Connect the repository: install the swarvex app on it (choose this repository)")
+	fmt.Println("\n    " + g.Installieren + "\n")
+	browserOeffnen(g.Installieren)
+	fmt.Print("   waiting for the installation (Ctrl+C to stop) …")
+	bis := time.Now().Add(hoechstens)
+	for time.Now().Before(bis) {
+		time.Sleep(abstand)
+		neu, err := holen()
+		if err != nil {
+			continue // Netz weg: weiter warten
+		}
+		if neu.Token != nil {
+			fmt.Println(" connected")
+			return neu
+		}
+		if neu.Fehlt != "app_not_installed" {
+			fmt.Println()
+			return neu // anderer Grund (privat, keine Schreibrechte): der Hinweis sagt ihn
+		}
+		fmt.Print(".")
+	}
+	fmt.Println()
+	return g
 }

@@ -22,7 +22,8 @@ func istWSL() bool {
 }
 
 // browserOeffnen öffnet eine Adresse, wenn das ohne Rückfrage geht (WSL: Windows-Standardbrowser; Linux mit Desktop: xdg-open).
-func browserOeffnen(adresse string) {
+// (im Test austauschbar)
+var browserOeffnen = func(adresse string) {
 	switch {
 	case istWSL():
 		exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", adresse).Start()

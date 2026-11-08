@@ -8,10 +8,10 @@ beschreibung: Den Lead deines Projekts als Dienst in einer eigenen Sandbox betre
 Der Lead prüft fremde Beiträge: Er führt Tests aus, öffnet den Editor, startet das Spiel. Läuft er als Sitzung auf deinem Rechner, läuft dieser fremde Code mit deinen Rechten. Mit dem **Lead-Dienst** (ab Runner 0.12) läuft der Lead stattdessen in einer eigenen Sandbox, im Dauerbetrieb und ohne offenes Terminal.
 
 ```bash
-swarvex project lead setup mein-spiel
+curl -fsSL https://swarvex.ai/install.sh | sh -s -- lead mein-spiel
 ```
 
-Voraussetzung: der Runner ist installiert (`curl -fsSL https://swarvex.ai/install.sh | sh`), Linux mit systemd und Podman, und du bist Visionär oder Lead des Projekts.
+Ein Befehl: Er installiert den Runner, falls er noch fehlt (ohne die Fragen für Mitstreiter), und richtet den Lead-Dienst ein. Ist der Runner schon da, geht auch `swarvex project lead setup mein-spiel`. Voraussetzung: Linux mit systemd und Podman, und du bist Visionär oder Lead des Projekts. Am Ende steht „✓ You are the lead of …“, und die Projektseite zeigt den Lead-Dienst als aktiv; nach „Projekt anlegen“ zeigt es auch die Seite selbst an.
 
 ## Was die Sandbox trennt
 
@@ -28,12 +28,13 @@ Voraussetzung: der Runner ist installiert (`curl -fsSL https://swarvex.ai/instal
 
 ## Einrichten
 
-`swarvex project lead setup <projekt>` fragt nichts, was der Runner schon weiß:
+Der Befehl fragt nichts, was der Runner schon weiß:
 
-1. **Anmeldung:** Der Lead-Dienst meldet sich als eigenes Gerät an. Du bestätigst den Code im Browser mit deinem Konto; die Anmeldung gilt nur für dieses Projekt.
-2. **Umgebung:** Der Container entsteht aus der Projekt-Umgebung, wie die Sandbox einer Aufgabe ([Umgebung](/docs/projekt-starten#umgebung-jede-sprache-jede-engine)), dazu Git und der Agent.
-3. **Repo:** Der Dienst klont das Repo des Projekts. Auf GitHub holt er Tokens über die swarvex GitHub App; bei Gitea, Codeberg und anderen gibst du eine Token-Datei an, die nur dieses Repo betrifft (`--git-token-file`, `--git-user`).
-4. **Dienst:** Ein systemd-Dienst des Benutzers startet mit dem Rechner. Soll er ohne Anmeldung weiterlaufen, einmal `loginctl enable-linger`.
+1. **Modell:** nur, wenn auf dem Rechner noch kein Runner eingerichtet ist: Agent und Modell wie bei `swarvex setup`, etwa Claude Code mit deinem Abo (Token aus `claude setup-token`).
+2. **Anmeldung:** Der Lead-Dienst meldet sich als eigenes Gerät an. Du bestätigst den Code im Browser mit deinem Konto; die Anmeldung gilt nur für dieses Projekt.
+3. **Umgebung:** Der Container entsteht aus der Projekt-Umgebung, wie die Sandbox einer Aufgabe ([Umgebung](/docs/projekt-starten#umgebung-jede-sprache-jede-engine)), dazu Git und der Agent.
+4. **Repo:** Der Dienst klont das Repo des Projekts. Auf GitHub holt er Tokens über die swarvex GitHub App. Ist sie dort noch nicht installiert, zeigt er den Link, öffnet ihn und wartet, bis du sie installiert hast; dann verbindet er das Repo selbst (du brauchst dort Schreibrechte). Bei Gitea, Codeberg und anderen gibst du eine Token-Datei an, die nur dieses Repo betrifft (`--git-token-file`, `--git-user`).
+5. **Dienst:** Ein systemd-Dienst des Benutzers startet mit dem Rechner. Soll er ohne Anmeldung weiterlaufen, einmal `loginctl enable-linger`.
 
 | Option | Bedeutung |
 |---|---|

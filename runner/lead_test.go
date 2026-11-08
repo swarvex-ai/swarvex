@@ -312,3 +312,29 @@ func TestGruendeZeilen(t *testing.T) {
 		t.Fatalf("%v %+v", err, a)
 	}
 }
+
+func TestLeadAufAppWarten(t *testing.T) {
+	tok := "ghs_x"
+	start := leadGit{Fehlt: "app_not_installed", Installieren: "https://github.com/apps/swarvex/installations/new", Hinweis: "install"}
+	n := 0
+	alt := browserOeffnen
+	browserOeffnen = func(string) {}
+	defer func() { browserOeffnen = alt }()
+	g := leadAufAppWarten(start, func() (leadGit, error) {
+		n++
+		if n < 3 {
+			return leadGit{Fehlt: "app_not_installed"}, nil
+		}
+		return leadGit{Token: &tok, RepoGit: "https://github.com/a/b.git"}, nil
+	}, time.Millisecond, time.Second)
+	if g.Token == nil || *g.Token != tok || n != 3 {
+		t.Fatalf("%+v after %d", g, n)
+	}
+	// ein anderer Grund bricht das Warten ab und reicht den Hinweis weiter
+	g = leadAufAppWarten(start, func() (leadGit, error) {
+		return leadGit{Fehlt: "no_write_access", Hinweis: "cannot push"}, nil
+	}, time.Millisecond, time.Second)
+	if g.Token != nil || g.Hinweis != "cannot push" {
+		t.Fatalf("%+v", g)
+	}
+}

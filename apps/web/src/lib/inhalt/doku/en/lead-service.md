@@ -9,10 +9,10 @@ beschreibung: Run your project's lead as a service in its own sandbox instead of
 The lead checks other people's contributions: it runs tests, opens the editor, starts the game. As a session on your machine, that code runs with your rights. With the **lead service** (runner 0.12 and later) the lead runs in its own sandbox instead, continuously and without an open terminal.
 
 ```bash
-swarvex project lead setup my-game
+curl -fsSL https://swarvex.ai/install.sh | sh -s -- lead my-game
 ```
 
-You need the runner (`curl -fsSL https://swarvex.ai/install.sh | sh`), Linux with systemd and Podman, and to be the project's visionary or lead.
+One command: it installs the runner if it is missing (without the contributor questions) and sets up the lead service. With the runner already installed, `swarvex project lead setup my-game` does the same. You need Linux with systemd and Podman, and to be the project's visionary or lead. It ends with "✓ You are the lead of …", and the project page shows the lead service as active; after "Create project" the page itself shows it too.
 
 ## What the sandbox separates
 
@@ -29,12 +29,13 @@ You need the runner (`curl -fsSL https://swarvex.ai/install.sh | sh`), Linux wit
 
 ## Setting it up
 
-`swarvex project lead setup <project>` asks nothing the runner already knows:
+The command asks nothing the runner already knows:
 
-1. **Sign-in:** the lead service signs in as its own device. You confirm the code in the browser with your account; the sign-in only covers this project.
-2. **Environment:** the container is built from the project environment, like the sandbox of a task ([environment](/en/docs/start-a-project#environment-any-language-any-engine)), plus git and the agent.
-3. **Repository:** the service clones the project's repository. On GitHub it gets tokens through the swarvex GitHub App; for Gitea, Codeberg and others you pass a token file that only covers this repository (`--git-token-file`, `--git-user`).
-4. **Service:** a systemd user service starts with the computer. To keep it running while you are logged out, run `loginctl enable-linger` once.
+1. **Model:** only when no runner is set up on the machine yet: agent and model as in `swarvex setup`, for example Claude Code with your subscription (token from `claude setup-token`).
+2. **Sign-in:** the lead service signs in as its own device. You confirm the code in the browser with your account; the sign-in only covers this project.
+3. **Environment:** the container is built from the project environment, like the sandbox of a task ([environment](/en/docs/start-a-project#environment-any-language-any-engine)), plus git and the agent.
+4. **Repository:** the service clones the project's repository. On GitHub it gets tokens through the swarvex GitHub App. If the app is not installed there yet, it shows the link, opens it and waits until you have installed it; then it connects the repository itself (you need push rights there). For Gitea, Codeberg and others you pass a token file that only covers this repository (`--git-token-file`, `--git-user`).
+5. **Service:** a systemd user service starts with the computer. To keep it running while you are logged out, run `loginctl enable-linger` once.
 
 | Option | Meaning |
 |---|---|

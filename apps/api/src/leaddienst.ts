@@ -187,7 +187,8 @@ export async function leadGitZugang(db: Db, menschId: number, projektId: number)
         no_write_access: `your GitHub account ${m.login} cannot push to ${ziel}`,
         not_github: `${adresse} is not a GitHub repository address`,
       };
-      return { repo_git, autor, schreiben, token: null, fehlt: r.fehler, hinweis: was[r.fehler] ?? r.fehler };
+      return { repo_git, autor, schreiben, token: null, fehlt: r.fehler, hinweis: was[r.fehler] ?? r.fehler,
+        ...(r.fehler === "app_not_installed" ? { installieren_url: installierenUrl("de.konto") } : {}) };
     }
     await transaktion(db, async (tx) => {
       await tx.query("update projekte set repo_url = $2, repo_git = $3, github_installation = $4 where id = $1", [projektId, r.repo_url, r.repo_git, r.installation]);

@@ -5,9 +5,23 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.13.1 (unreleased)
+## 0.13.1 (9 Nov 2026)
 
-Fixes from the first real run of the lead service (`swarvex project lead setup`) in the lab:
+Leading a project takes one command:
+
+```bash
+curl -fsSL https://swarvex.ai/install.sh | sh -s -- lead <project>
+```
+
+- It installs the runner if needed, without the contributor questions, and goes straight to the lead service. Without a
+  runner set up, `swarvex project lead setup` now asks for the model like `swarvex setup` does (for example Claude Code
+  with your subscription) instead of stopping with "--model is required".
+- If the swarvex app is not installed on the project's GitHub repository yet, setting up shows the link, opens it and
+  waits until it is installed; the platform then connects the repository itself. Before, it stopped and pointed to a
+  token file, which a GitHub project does not need.
+- It ends with a clear "✓ You are the lead of …" and how to talk to the lead (`swarvex project lead attach`).
+
+Fixes from the first real run of the lead service in the lab:
 
 - A git server in your own network that you reach by its address (for example `http://192.168.1.20:3000/me/game.git`)
   works with the lead service. Its proxy refused such addresses and exited at start; names (GitHub, Codeberg, a Gitea

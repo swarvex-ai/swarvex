@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import Seo from "$lib/components/Seo.svelte";
   import RepoVerbinden from "$lib/components/RepoVerbinden.svelte";
+  import LeadStart from "$lib/components/LeadStart.svelte";
   import TeilenLink from "$lib/components/TeilenLink.svelte";
   import { pfad, sprache, tx, type Hinweis } from "$lib/texte";
 
@@ -47,6 +48,10 @@
   let frage = $state<number | null>(null);
   let arbeitet = $state(false);
   let hinweis = $state("");
+  // Projekte, die du leitest (Lead oder Visionär) und für die noch kein Lead-Dienst angemeldet ist
+  const ohneDienst = $derived(konto ? [...new Map(konto.roles.filter((r) => (r.role === "lead" || r.role === "visionary")
+    && !konto!.lead_services?.some((l) => l.project === r.project)).map((r) => [r.project, r])).values()] : []);
+  let offen = $state<Record<string, boolean>>({});
 
   async function laden() {
     try {
@@ -504,6 +509,13 @@
             <RepoVerbinden slug={r.project} von="konto" />
           </div>
         {/each}
+        <!-- Projekte, die du leitest, ohne Lead-Dienst: der eine Befehl, eingeklappt (wer als Sitzung leitet, braucht ihn nicht) -->
+        {#each ohneDienst as r (r.project)}
+          <details class="dienst-starten" bind:open={offen[r.project]}>
+            <summary>{t.leadDienst.starten(r.name)}</summary>
+            {#if offen[r.project]}<LeadStart slug={r.project} />{/if}
+          </details>
+        {/each}
       </section>
     {/if}
 
@@ -661,6 +673,9 @@
   .hinweis:empty { display: none; }
   .ohne-repo { border: 1px solid var(--linie); border-radius: var(--radius); padding: 16px 18px; margin-top: 16px; display: grid; gap: 10px; }
   .ohne-repo h3 { margin: 0; font-size: 1.05rem; }
+  .dienst-starten { border: 1px solid var(--linie); border-radius: var(--radius); padding: 12px 18px; margin-top: 16px; }
+  .dienst-starten summary { cursor: pointer; font-weight: 600; }
+  .dienst-starten[open] summary { margin-bottom: 12px; }
   .rollen { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 10px 24px; }
   .marke { font: 500 .78rem var(--mono); border: 1px solid var(--linie-hell); border-radius: 5px; padding: 2px 6px; margin-left: 6px; color: var(--stahl); }
   .agenten { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
