@@ -303,6 +303,51 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
   return [...eigene, ...pr, ...n.filter((a) => !a.nacharbeit_bis)];
 }
 
+/**
+ * matching_tasks mit `explain`: die passenden Aufgaben wie oben und je übrige offene Aufgabe, warum sie gerade nicht
+ * angeboten wird. Sonst sieht ein Runner nur „keine Aufgabe“, obwohl die Projektseite offene zeigt.
+ */
+export async function aufgabenErklaert(db: Db, wer: Wer, projektSlug: string, faehigkeiten?: string[]) {
+  const aufgaben = await aufgabenPassend(db, wer, projektSlug, faehigkeiten);
+  const angeboten = new Set(aufgaben.map((a) => Number(a.id)));
+  const p = await projektPerSlug(db, projektSlug);
+  const m = (await db.query("select vertrauensstufe from menschen where id = $1", [wer.menschId])).rows[0];
+  const r = await db.query(
+    `select a.id, a.titel, a.stufe, a.faehigkeiten, a.min_vertrauen, a.raum, v.mensch_id as vorrang_mensch, v.bis as vorrang_bis,
+       aufgabe_wartet_auf(a.abhaengig_von, a.abhaengig_eins_von) as wartet,
+       array(select ev.zeit from ereignisse ev where ev.bezug = 'aufgabe:' || a.id and ev.art = 'abgebrochen' and ev.akteur = $2
+               and ev.zeit > now() - interval '24 hours' order by ev.zeit desc) as abbrueche
+     from aufgaben a left join lateral nacharbeit_vorrang(a.id) v on true
+     where a.projekt_id = $1 and a.zustand = 'offen' order by a.id`, [p.id, akteur(wer)]);
+  const bisher = p.verfahren === "clean_room" ? await raeumeVon(db, wer.menschId, p.id) : [];
+  const rollen = await rollenVon(db, wer.menschId, p.id);
+  const frei = rollen.includes("lead") || rollen.includes("visionaer") ? null : await stufenFreigabe(db, wer.agentId);
+  // In derselben Reihenfolge wie die Filter in aufgabenPassend; der erste zutreffende Grund zählt.
+  const grund = (a: any): string => {
+    if (wer.runner === true && !p.repo_git) return "the project has no connected repository yet";
+    if (a.wartet.length) return `waits for ${wartetText(a.wartet)} to be accepted first`;
+    if (a.min_vertrauen > m.vertrauensstufe) return `needs trust level ${a.min_vertrauen} (yours: ${m.vertrauensstufe})`;
+    if (a.vorrang_mensch !== null && Number(a.vorrang_mensch) !== wer.menschId)
+      return `held for its contributor's rework until ${new Date(a.vorrang_bis).toISOString()}`;
+    if (a.abbrueche.length >= 2)
+      return `you handed it back twice within 24 hours; offered to you again from ${new Date(new Date(a.abbrueche[1]).getTime() + 24 * 3600_000).toISOString()}`;
+    if (a.raum && trennwand(bisher, a.raum)) return "clean room: it is on the other side of the wall from your earlier work";
+    if (wer.runner === false && !ohneAusfuehrung(a.faehigkeiten)) return NUR_RUNNER;
+    const fehlt = faehigkeiten?.length ? a.faehigkeiten.filter((f: string) => !faehigkeiten.includes(f)) : [];
+    if (fehlt.length) return `needs capabilities you did not list: ${fehlt.join(", ")}`;
+    if (frei) {
+      const stufe = STUFEN.indexOf(a.stufe), bis = STUFEN.indexOf(frei.bis);
+      if (stufe > bis + 1) return `level ${a.stufe} needs an agent that has shown level ${STUFEN[stufe - 1]} (yours: up to ${frei.bis})`;
+      if (stufe === bis + 1) return `level ${a.stufe} is a trial for you; trials come at most every ${ZUTEILUNG.probe_jeder}th attempt while other tasks are open`;
+    }
+    return "not offered right now";
+  };
+  return {
+    aufgaben,
+    zurueckgehalten: r.rows.filter((a) => !angeboten.has(Number(a.id))).map((a) => ({ id: Number(a.id), titel: a.titel, stufe: a.stufe, grund: grund(a) })),
+  };
+}
+
 class TrennwandVerletzt extends Abgelehnt {
   projektId: number;
   raum: string;
@@ -849,6 +894,10 @@ export async function gemergedMelden(db: Db, einreichungId: number, commit: stri
     const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];
     const a = await aufgabeSperren(tx, e.aufgabe_id);
     await wechseln(tx, a, "gemerged", "pruefstrasse", "gemerged", { einreichung: einreichungId, commit });
+    // Der Merge-Zug hat gerade auf main geschoben: Das ist der neue Stand. Sonst kennt die Plattform ihn erst mit dem
+    // nächsten Lauf von pipeline/vorschau.go (bis zu fünf Minuten oder länger), und eine Folgeaufgabe, die jetzt frei
+    // wird, bekäme beim Reservieren eine Basis ohne ihre Vorgängerin.
+    if (/^[0-9a-f]{40}$/.test(commit)) await tx.query("update projekte set kopf_commit = $2 where id = $1", [a.projekt_id, commit]);
     const autor = (await tx.query("select mensch_id from agenten where id = $1", [e.agent_id])).rows[0];
     await vertrauenAktualisieren(tx, Number(autor.mensch_id), "merged");
   });

@@ -70,7 +70,7 @@ export const FELDER: Record<string, string> = {
   hash: "hash", jws: "jws",
   // cross-checks (proprietary engines)
   gegenpruefung: "cross_check", gegenpruefung_id: "check_id", quelle: "source", engine: "engine",
-  widerspricht_selbst: "contradicts_own_run", ohne_gegenpruefung: "without_cross_check", grund: "reason",
+  widerspricht_selbst: "contradicts_own_run", ohne_gegenpruefung: "without_cross_check", grund: "reason", zurueckgehalten: "held_back",
   // officers and lead scorecard
   officer_id: "area_lead_id", officers: "area_leads", officer: "area_lead", bereich: "area", deine_bereiche: "your_areas", stufen: "levels", seit: "since",
   lead_bilanz: "lead_scorecard", bewertet: "reviewed", je_rolle: "by_role", offen: "open", unberuehrt: "untouched_3_days", warten_auf_bewertung: "awaiting_review",

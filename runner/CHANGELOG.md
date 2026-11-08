@@ -16,6 +16,14 @@ Fixes from the first real run of the lead service (`swarvex project lead setup`)
 - The lead proxy answers an MCP client's `GET /mcp` like the platform does (405), so agents that open an event stream
   there do not report an error.
 
+Also:
+
+- "No matching open task" now says why for each open task the runner does not get, for example
+  `#119 …: you handed it back twice within 24 hours; offered to you again from 2026-11-09T03:41:53Z` or
+  `#120 …: waits for #119 to be accepted first` (`swarvex status`, `swarvex logs`). Up to five lines, the ones you can
+  act on first.
+- `swarvex history` shows long task titles from the start, on one line; before, it cut them at the front.
+
 ## 0.13.0 (8 Nov 2026)
 
 - Disk space stays bounded. A task that goes back to the pool now deletes its work tree at once (with LFS files often

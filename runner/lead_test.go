@@ -288,3 +288,27 @@ func TestLeadKraft(t *testing.T) {
 		t.Errorf("area lead's service: read-only, %q", leadBereichText(l))
 	}
 }
+
+func TestGruendeZeilen(t *testing.T) {
+	liste := []zurueckgehalten{
+		{ID: 121, Title: "E5 step 3h", Reason: "waits for #120 to be accepted first"},
+		{ID: 120, Title: "E5 step 3g", Reason: "waits for #119 to be accepted first"},
+		{ID: 119, Title: "E5 step 3f: item catalogue and equipment menu texts read from ui_texts.gd", Reason: "you handed it back twice within 24 hours; offered to you again from 2026-11-09T03:41:53.511Z"},
+	}
+	z := gruendeZeilen(liste, 2)
+	want := []string{
+		"  #119 E5 step 3f: item catalogue and equipment menu texts read fr…: you handed it back twice within 24 hours; offered to you again from 2026-11-09T03:41:53.511Z",
+		"  #121 E5 step 3h: waits for #120 to be accepted first",
+		"  … and 1 more",
+	}
+	if strings.Join(z, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("got\n%s", strings.Join(z, "\n"))
+	}
+	if titelKurz("kurz", 60) != "kurz" || titelKurz("äöüäöü", 4) != "äöü…" {
+		t.Fatal("titelKurz")
+	}
+	var a passendeAufgaben
+	if err := json.Unmarshal([]byte(`{"tasks":[{"id":7,"title":"x"}],"held_back":[{"id":8,"title":"y","level":"B","reason":"r"}]}`), &a); err != nil || a.Tasks[0].ID != 7 || a.HeldBack[0].Reason != "r" {
+		t.Fatalf("%v %+v", err, a)
+	}
+}

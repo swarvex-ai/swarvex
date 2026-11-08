@@ -102,6 +102,13 @@ describe("Abhängigkeiten (Fluss ohne Warten)", () => {
     expect(await frei()).toContain(Number(v.id));
     expect(await frei()).not.toContain(Number(f.id));
     await expect(k.reservieren(db, mit, f.id)).rejects.toThrow(/waits for/);
+    // explain: dieselben Aufgaben, dazu der Grund für die zurückgehaltene
+    const erklaert = await k.aufgabenErklaert(db, mit, "test");
+    expect(erklaert.aufgaben.map((x) => Number(x.id))).toEqual(await frei());
+    expect(erklaert.zurueckgehalten.find((x) => x.id === Number(f.id))).toMatchObject({ titel: "Folge", grund: `waits for #${v.id} to be accepted first` });
+    // nach außen auf Englisch, wie das MCP-Werkzeug es liefert
+    expect(Object.keys(nachAussen(erklaert) as object)).toEqual(["tasks", "held_back"]);
+    expect(Object.keys((nachAussen(erklaert) as any).held_back[0])).toEqual(["id", "title", "level", "reason"]);
     // Varianten-Paar: Folgeaufgabe braucht v und eine der beiden Varianten
     const x = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Variante 1"));
     const y = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Variante 2"));
@@ -156,6 +163,15 @@ describe("Abbrüche", () => {
     await k.reservieren(db, mit, a.id);
     await k.abbrechen(db, mit, a.id, "Budget");
     expect(await ids(mit)).not.toContain(Number(a.id));
+    // matching_tasks mit explain nennt den Grund und den Zeitpunkt, ab dem sie wieder angeboten wird
+    const erst = (await db.query("select min(zeit) as t from ereignisse where art = 'abgebrochen' and bezug = $1", [`aufgabe:${a.id}`])).rows[0].t;
+    const erklaert = await k.aufgabenErklaert(db, mit, "test");
+    expect(erklaert.aufgaben.map((x) => Number(x.id))).not.toContain(Number(a.id));
+    const grund = erklaert.zurueckgehalten.find((x) => x.id === Number(a.id))!.grund;
+    expect(grund).toMatch(/handed it back twice within 24 hours/);
+    expect(grund).toContain(new Date(new Date(erst).getTime() + 24 * 3600_000).toISOString());
+    // ein anderer Agent bekommt sie weiter
+    expect(await ids(fremd)).toContain(Number(a.id));
     await k.schliessen(db, lead, a.id, "Test");
   });
 });
@@ -617,9 +633,13 @@ describe("Zustandsmaschine", () => {
     await expect(k.bewerten(db, { menschId: mit.menschId, agentId: lead.agentId }, eid, "annehmen", "selbst")).rejects.toThrow(/own submission/);
     await db.query("delete from projekt_rollen where mensch_id = $1 and rolle = 'lead'", [mit.menschId]);
     await k.bewerten(db, lead, eid, "annehmen", "sauber umgesetzt");
-    await k.gemergedMelden(db, eid, "abc123");
+    // Der Merge-Commit wird sofort zum bekannten Stand von main: Eine Folgeaufgabe, die jetzt frei wird, baut darauf auf
+    const merge = "4".repeat(40);
+    await k.gemergedMelden(db, eid, merge);
     const zustand = (await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand;
     expect(zustand).toBe("gemerged");
+    expect((await db.query("select kopf_commit from projekte where slug = 'test'")).rows[0].kopf_commit).toBe(merge);
+    await db.query("update projekte set kopf_commit = null where slug = 'test'");
     const arten = (await db.query("select art from ereignisse where bezug = $1 order by seq", [`aufgabe:${a.id}`])).rows.map((r) => r.art);
     expect(arten).toEqual(["aufgabe_angelegt", "aufgabe_reserviert", "arbeit_begonnen", "ergebnis_eingereicht", "pruefung_gestartet", "pruefung_beendet", "bewertet", "gemerged"]);
   });

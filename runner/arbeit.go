@@ -224,25 +224,28 @@ func arbeitenBefehl(args []string) {
 	// 1. Aufgabe wählen und reservieren.
 	id := *nur
 	if id == 0 {
-		var liste []struct {
-			ID int64 `json:"id"`
-		}
+		var antwort passendeAufgaben
+		var gruende []zurueckgehalten
 		for _, p := range projekte {
-			filter := map[string]any{"project": p}
+			filter := map[string]any{"project": p, "explain": true}
 			if *faehigkeiten != "" {
 				filter["capabilities"] = strings.Split(*faehigkeiten, ",")
 			}
-			pruefen(m.werkzeug("matching_tasks", filter, &liste))
-			if len(liste) > 0 {
+			pruefen(m.werkzeug("matching_tasks", filter, &antwort))
+			if len(antwort.Tasks) > 0 {
 				*projekt = p
 				break
 			}
+			gruende = append(gruende, antwort.HeldBack...)
 		}
-		if len(liste) == 0 {
+		if len(antwort.Tasks) == 0 {
 			fmt.Println("No matching open task.")
+			for _, z := range gruendeZeilen(gruende, 5) {
+				fmt.Println(z)
+			}
 			os.Exit(3) // Dauerbetrieb wartet dann und fragt später wieder
 		}
-		id = liste[0].ID
+		id = antwort.Tasks[0].ID
 	}
 	if basis.Err() != nil {
 		fmt.Println("Stopped, no task reserved.")
@@ -1044,4 +1047,50 @@ func budgetHinweis(amBudget bool, budget int) string {
 		return ""
 	}
 	return fmt.Sprintf("Note: the agent was stopped at the token budget (%d tokens); the result may be incomplete.\n\n", budget)
+}
+
+// passendeAufgaben: Antwort von matching_tasks mit explain. held_back nennt je offene Aufgabe, die dieser Runner gerade
+// nicht bekommt, den Grund (wartet auf eine andere, zweimal zurückgegeben, Stufe, Fähigkeiten …).
+type passendeAufgaben struct {
+	Tasks []struct {
+		ID int64 `json:"id"`
+	} `json:"tasks"`
+	HeldBack []zurueckgehalten `json:"held_back"`
+}
+
+type zurueckgehalten struct {
+	ID     int64  `json:"id"`
+	Title  string `json:"title"`
+	Reason string `json:"reason"`
+}
+
+// gruendeZeilen: höchstens n Zeilen für das Protokoll, die Gründe, die der Mensch beheben oder abwarten kann, vor den
+// Aufgaben, die nur auf eine andere warten.
+func gruendeZeilen(liste []zurueckgehalten, n int) []string {
+	var vorn, hinten []zurueckgehalten
+	for _, z := range liste {
+		if strings.HasPrefix(z.Reason, "waits for") {
+			hinten = append(hinten, z)
+		} else {
+			vorn = append(vorn, z)
+		}
+	}
+	var zeilen []string
+	for i, z := range append(vorn, hinten...) {
+		if i == n {
+			zeilen = append(zeilen, fmt.Sprintf("  … and %d more", len(liste)-n))
+			break
+		}
+		zeilen = append(zeilen, fmt.Sprintf("  #%d %s: %s", z.ID, titelKurz(z.Title, 60), z.Reason))
+	}
+	return zeilen
+}
+
+// titelKurz: der Anfang eines Titels für eine Zeile (kuerzen behält das Ende, das ist für Protokolle gedacht).
+func titelKurz(titel string, n int) string {
+	r := []rune(titel)
+	if len(r) <= n {
+		return titel
+	}
+	return strings.TrimSpace(string(r[:n-1])) + "…"
 }

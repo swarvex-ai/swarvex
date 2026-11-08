@@ -88,7 +88,7 @@ func historyBefehl(args []string) {
 		if e.Brief > 0 {
 			nummer = fmt.Sprintf("media brief %d:", e.Brief)
 		}
-		fmt.Printf("%s  %s %s\n", e.Zeit.Local().Format("2006-01-02 15:04"), nummer, kuerzen(e.Titel, 60))
+		fmt.Printf("%s  %s %s\n", e.Zeit.Local().Format("2006-01-02 15:04"), nummer, titelKurz(e.Titel, 60))
 		was := map[string]string{"submitted": "✓ submitted", "uploaded": "✓ uploaded", "returned": "✗ handed back"}[e.Ergebnis]
 		if was == "" {
 			was = e.Ergebnis
