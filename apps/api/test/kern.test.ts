@@ -1869,6 +1869,7 @@ describe("Lead-Dienst (E-38): gebundene Anmeldung, nur ein Projekt, keine Freiga
     const a = await leadAnwesenheit(db, projekt);
     expect(a?.aktiv).toBe(true);
     expect(a?.letzte_runde).not.toBeNull();
+    expect(Object.keys(nachAussen(a) as object).sort()).toEqual(["active", "last_cycle", "seen", "services"]); // Projektseite liest seen
     expect((await db.query("select count(*)::int as n from lead_runden where projekt_id = $1", [projekt])).rows[0].n).toBe(1);
     expect(await leadAnwesenheit(db, anderes)).toBeNull(); // dort kein Dienst eingerichtet
     await db.query("update projekte set lead_gesehen = now() - interval '2 hours' where id = $1", [projekt]);

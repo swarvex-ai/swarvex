@@ -151,6 +151,9 @@ func TestPlattformWeiter(t *testing.T) {
 	if c := rufe("GET", "/api/account", "Bearer "+tok); c != http.StatusForbidden {
 		t.Errorf("other platform paths are closed: %d", c)
 	}
+	if c := rufe("GET", "/mcp", "Bearer "+tok); c != http.StatusMethodNotAllowed {
+		t.Errorf("GET /mcp like the platform (MCP clients expect 405 when there is no event stream): %d", c)
+	}
 	if c := rufe("POST", "/mcp", "Bearer "+tok); c != http.StatusOK || gesehen != "POST /mcp Bearer echtes-token" {
 		t.Errorf("forwarded with the real token: %d %q", c, gesehen)
 	}

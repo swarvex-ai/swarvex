@@ -85,6 +85,13 @@ func plattformWeiter(ziel *url.URL, tokenDatei, tok string, client *http.Client)
 			http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
 			return
 		}
+		if r.URL.Path == "/mcp" && r.Method != http.MethodPost {
+			// Wie die Plattform (MCP Streamable HTTP): kein eigener Ereignis-Strom, MCP-Clients fragen GET an und
+			// erwarten dann 405, ein 403 halten manche für einen Fehler
+			w.Header().Set("Allow", "POST")
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
 		if !(r.Method == http.MethodPost && r.URL.Path == "/mcp") && !(r.Method == http.MethodGet && (spendenDatei.MatchString(r.URL.Path) || leadInhalt.MatchString(r.URL.Path))) {
 			ereignis("rejected", map[string]any{"reason": "path", "method": r.Method, "path": r.URL.Path})
 			http.Error(w, `{"error":"not allowed"}`, http.StatusForbidden)
