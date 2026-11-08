@@ -55,8 +55,12 @@
         <span role="cell" class="zahl"><Zaehler wert={p.week.tokens} /></span>
         <span role="cell" class="zahl"><Zaehler wert={p.week.accepted} /></span>
         <span role="cell" class="fortschritt">
-          <span class="balken"><i style="width:{p.progress_percent}%"></i></span>
-          <span class="zahl klein">{p.progress_percent} %</span>
+          {#if p.progress_percent !== null}
+            <span class="balken"><i style="width:{p.progress_percent}%"></i></span>
+            <span class="zahl klein">≈ {p.progress_percent} %</span>
+          {:else}
+            <span class="zahl klein">{p.tasks_done}/{p.tasks_planned}</span>
+          {/if}
         </span>
       </a>
     {/each}

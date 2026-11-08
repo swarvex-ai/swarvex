@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrieren, verbinden, type Db } from "../src/db.ts";
 import { ketteVerifizieren } from "../src/ereignisse.ts";
 import * as k from "../src/aufgaben.ts";
+import { nachAussen } from "../src/aussen.ts";
 import { kennzahlen, projektListe } from "../src/kennzahlen.ts";
 import { projektAnlegen, projektPruefen, repoVerbinden, uebersetzungSetzen, type NeuesProjekt } from "../src/projekte.ts";
 import * as g from "../src/gegenpruefung.ts";
@@ -956,10 +957,57 @@ describe("Ereignisprotokoll (S9)", () => {
 describe("Kennzahlen", () => {
   it("liefert Fortschritt und Statusboard-Werte", async () => {
     const z = await kennzahlen(db, "test");
-    expect(z.fortschritt_prozent).toBeGreaterThan(0);
+    // Ohne Schätzung des Leads kein Prozentwert, nur erledigt von geplant (E-41)
+    expect(z.fortschritt_prozent).toBeNull();
+    expect(z.aufgaben_fertig).toBeGreaterThan(0);
+    expect(z.aufgaben_geplant).toBeGreaterThanOrEqual(z.aufgaben_fertig);
+    expect(z.meilensteine.every((m) => m.fortschritt_prozent === null && m.geplant >= m.fertig)).toBe(true);
     expect(z.lead_modell).toBe("Claude Opus 5.5");
     expect(z.mitstreiter_menschen).toBeGreaterThanOrEqual(2);
     expect(z.spenden_monat.tokens).toBeGreaterThanOrEqual(5000); // Verbrauch aus dem ersten Durchlauf
+  });
+
+  it("zeigt Fortschritt nur gegen die Schätzung des Leads, je Meilenstein und gesamt (E-41)", async () => {
+    const vorher = await kennzahlen(db, "test"), benannt = vorher.meilensteine.filter((m) => m.titel);
+    expect(benannt.length).toBeGreaterThan(0);
+    const m1 = benannt[0];
+    await expect(k.meilensteinSchaetzen(db, mit, "test", { titel: m1.titel!, schaetzung: 50 })).rejects.toThrow(/lead/);
+    if (m1.geplant > 1) await expect(k.meilensteinSchaetzen(db, lead, "test", { titel: m1.titel!, schaetzung: m1.geplant - 1 })).rejects.toThrow(/at least/);
+    await expect(k.meilensteinSchaetzen(db, lead, "test", { titel: m1.titel!, schaetzung: 0 })).rejects.toThrow(/1 to 10000/);
+    // Ein Meilenstein geschätzt, die anderen nicht: Prozent nur für ihn, gesamt noch keiner
+    const r = await k.meilensteinSchaetzen(db, lead, "test", { titel: m1.titel!, schaetzung: m1.geplant * 4, ziel: "Erste spielbare Strecke" });
+    expect(r).toMatchObject({ schaetzung: m1.geplant * 4, geplant: m1.geplant, fertig: m1.fertig, fortschritt_prozent: Math.round((100 * m1.fertig) / (m1.geplant * 4)) });
+    let z = await kennzahlen(db, "test");
+    expect(z.meilensteine.find((m) => m.titel === m1.titel)).toMatchObject({ ziel: "Erste spielbare Strecke", schaetzung: m1.geplant * 4, fortschritt_prozent: r.fortschritt_prozent });
+    if (benannt.length > 1) expect(z.fortschritt_prozent).toBeNull();
+    for (const m of benannt.slice(1)) await k.meilensteinSchaetzen(db, lead, "test", { titel: m.titel!, schaetzung: Math.max(1, m.geplant * 2) });
+    z = await kennzahlen(db, "test");
+    const umfang = (m: (typeof z.meilensteine)[number]) => Math.max(m.schaetzung!, m.geplant);
+    const summe = (f: (m: (typeof z.meilensteine)[number]) => number) => z.meilensteine.filter((m) => m.titel).reduce((s, m) => s + f(m), 0);
+    expect(z.fortschritt_prozent).toBe(Math.round((100 * summe((m) => m.fertig)) / summe(umfang)));
+    // A future milestone without tasks counts with its estimate: the total goes down
+    const frueher = z.fortschritt_prozent!;
+    await k.meilensteinSchaetzen(db, lead, "test", { titel: "Zukunft", schaetzung: 500 });
+    z = await kennzahlen(db, "test");
+    expect(z.meilensteine.find((m) => m.titel === "Zukunft")).toMatchObject({ geplant: 0, fertig: 0, fortschritt_prozent: 0 });
+    expect(z.fortschritt_prozent!).toBeLessThan(frueher);
+    // Publicly logged with the old value; outside it speaks English
+    const e = (await db.query("select daten from ereignisse where art = 'meilenstein_geschaetzt' order by seq desc limit 1")).rows[0].daten;
+    expect(e).toMatchObject({ titel: "Zukunft", schaetzung: 500, vorher: null });
+    await k.meilensteinSchaetzen(db, lead, "test", { titel: "Zukunft", schaetzung: 300 });
+    expect((await db.query("select daten from ereignisse where art = 'meilenstein_geschaetzt' order by seq desc limit 1")).rows[0].daten).toMatchObject({ schaetzung: 300, vorher: 500 });
+    const aussen = nachAussen(await kennzahlen(db, "test")) as Record<string, unknown> & { milestones: Record<string, unknown>[] };
+    expect(aussen).toHaveProperty("tasks_planned");
+    expect(aussen.milestones.find((m) => m.title === "Zukunft")).toMatchObject({ estimate: 300, planned: 0, done: 0 });
+    // The README badge without a preview: the estimate, marked as approximate
+    const { abzeichen } = await import("../src/kennzahlen.ts");
+    const altVorschau = (await db.query("select vorschau from projekte where slug = 'test'")).rows[0].vorschau;
+    await db.query("update projekte set vorschau = null where slug = 'test'");
+    expect(await abzeichen(db, "test")).toContain(`≈ ${(await kennzahlen(db, "test")).fortschritt_prozent} %`);
+    await db.query("update projekte set vorschau = $1 where slug = 'test'", [altVorschau]);
+    // Leave the test project as it was for the tests after this one
+    await db.query("update meilensteine set schaetzung = null, ziel = null, geschaetzt = null where projekt_id = (select id from projekte where slug = 'test')");
+    await db.query("delete from meilensteine where titel = 'Zukunft'");
   });
 });
 

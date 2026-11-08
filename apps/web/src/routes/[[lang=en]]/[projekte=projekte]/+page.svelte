@@ -22,7 +22,7 @@
     aktiv: (p: Projekt) => p.agents_active * 3 + p.week.accepted * 2 + p.week.submissions,
     tokens: (p: Projekt) => p.week.tokens,
     agenten: (p: Projekt) => p.week.agents,
-    fortschritt: (p: Projekt) => p.progress_percent,
+    fortschritt: (p: Projekt) => p.progress_percent ?? -1,
   };
   let ordnung = $state<keyof typeof ordnungen>("aktiv");
   let suche = $state("");
@@ -128,7 +128,7 @@
               <div><dt>{t.offen}</dt><dd><Zaehler wert={p.tasks_open} /></dd></div>
               <div><dt>{t.tokens}</dt><dd><Zaehler wert={p.week.tokens} /></dd></div>
               <div><dt>{t.angenommen}</dt><dd><Zaehler wert={p.week.accepted} /></dd></div>
-              <div class="fortschritt"><dt>{t.fortschritt}</dt><dd><span class="balken"><i style="width:{p.progress_percent}%"></i></span>{p.progress_percent} %</dd></div>
+              <div class="fortschritt"><dt>{t.fortschritt}</dt><dd>{#if p.progress_percent !== null}<span class="balken"><i style="width:{p.progress_percent}%"></i></span>≈ {p.progress_percent} %{:else}{t.vonGeplant(p.tasks_done, p.tasks_planned)}{/if}</dd></div>
             </dl>
           </a>
         </li>

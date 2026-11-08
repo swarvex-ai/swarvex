@@ -6,7 +6,7 @@ import { bedarfVon } from "./bedarf.ts";
 import { nachweis } from "./cleanroom.ts";
 import type { Db } from "./db.ts";
 import { schwarmBilanz } from "./bilanz.ts";
-import { STUFEN_GEWICHT, folgeaufgaben, projektPerSlug } from "./aufgaben.ts";
+import { folgeaufgaben, projektPerSlug } from "./aufgaben.ts";
 import { ketteVerifizieren } from "./ereignisse.ts";
 import { creditSpenden } from "./spenden.ts";
 import { einreichungsVorschauUrl, konfig, vorschauUrl } from "./konfig.ts";
@@ -105,16 +105,27 @@ async function schwarmZahlen(db: Db, slug: string) {
 
 export async function kennzahlen(db: Db, slug: string) {
   const p = await projektPerSlug(db, slug);
-  const aufgaben = (await db.query("select a.id, a.stufe, a.zustand, a.faehigkeiten, m.titel as meilenstein from aufgaben a left join meilensteine m on m.id = a.meilenstein_id where a.projekt_id = $1 and a.zustand <> 'geschlossen'", [p.id])).rows;
-  const gruppen = new Map<string, { gesamt: number; fertig: number }>();
+  const aufgaben = (await db.query("select a.id, a.stufe, a.zustand, a.faehigkeiten, a.meilenstein_id from aufgaben a where a.projekt_id = $1 and a.zustand <> 'geschlossen'", [p.id])).rows;
+  // Fortschritt (E-41): Leads planen rollierend, angelegte Aufgaben sind nur ein Teil. Gezählt wird erledigt von geplant;
+  // einen Prozentwert gibt es nur gegen die Schätzung des Leads, wie viele Aufgaben ein Meilenstein insgesamt braucht.
+  const zaehlung = new Map<number | null, { geplant: number; fertig: number }>();
   for (const a of aufgaben) {
-    const g = gruppen.get(a.meilenstein ?? "") ?? { gesamt: 0, fertig: 0 };
-    g.gesamt += STUFEN_GEWICHT[a.stufe];
-    if (ERLEDIGT.has(a.zustand)) g.fertig += STUFEN_GEWICHT[a.stufe];
-    gruppen.set(a.meilenstein ?? "", g);
+    const schluessel = a.meilenstein_id === null ? null : Number(a.meilenstein_id), z = zaehlung.get(schluessel) ?? { geplant: 0, fertig: 0 };
+    z.geplant++;
+    if (ERLEDIGT.has(a.zustand)) z.fertig++;
+    zaehlung.set(schluessel, z);
   }
-  const meilensteine = [...gruppen].map(([titel, g]) => ({ titel: titel || null, fortschritt_prozent: g.gesamt ? Math.round((100 * g.fertig) / g.gesamt) : 0 }));
-  const gesamt = meilensteine.length ? Math.round(meilensteine.reduce((s, m) => s + m.fortschritt_prozent, 0) / meilensteine.length) : 0;
+  const ms = (await db.query("select id, titel, ziel, schaetzung, geschaetzt from meilensteine where projekt_id = $1 order by reihenfolge, id", [p.id])).rows;
+  const meilensteine = ms.filter((m) => zaehlung.has(Number(m.id)) || m.schaetzung).map((m) => {
+    const z = zaehlung.get(Number(m.id)) ?? { geplant: 0, fertig: 0 }, umfang = m.schaetzung ? Math.max(m.schaetzung, z.geplant) : null;
+    return { titel: m.titel as string | null, ziel: m.ziel ?? null, fertig: z.fertig, geplant: z.geplant, schaetzung: m.schaetzung ?? null,
+      fortschritt_prozent: umfang ? Math.round((100 * z.fertig) / umfang) : null, geschaetzt_am: m.geschaetzt ?? null };
+  });
+  const ohne = zaehlung.get(null);
+  if (ohne) meilensteine.push({ titel: null, ziel: null, ...ohne, schaetzung: null, fortschritt_prozent: null, geschaetzt_am: null });
+  const benannt = meilensteine.filter((m) => m.titel !== null);
+  const gesamt = benannt.length && benannt.every((m) => m.schaetzung)
+    ? Math.round((100 * benannt.reduce((s, m) => s + m.fertig, 0)) / benannt.reduce((s, m) => s + Math.max(m.schaetzung!, m.geplant), 0)) : null;
   const aktiv = (await db.query(
     "select a.faehigkeiten from leases l join aufgaben a on a.id = l.aufgabe_id where a.projekt_id = $1 and l.beendet is null and l.laeuft_ab > now()", [p.id])).rows;
   const nachArt: Record<string, number> = {};
@@ -135,8 +146,8 @@ export async function kennzahlen(db: Db, slug: string) {
     projekt: p.slug, name: p.name, vision_kurz: p.vision_kurz, sprache: p.sprache, uebersetzungen: p.uebersetzungen ?? {}, vision_veroeffentlicht: vision?.zeit ?? null,
     lead_modell: p.lead_modell, engine: p.engine, lizenz: `${p.lizenz_code} / ${p.lizenz_assets}`, ziel: p.ziel,
     projektart: p.projektart ?? null, verfahren: p.verfahren, ...(p.forschung ? { forschung: p.forschung } : {}), ...(p.upstream ? { upstream: p.upstream } : {}),
-    fortschritt_prozent: gesamt, meilensteine,
-    fortschritt_berechnung: "accepted tasks ÷ all tasks per milestone, weighted A=1 B=2 C=3 D=5; total = mean of the milestones",
+    fortschritt_prozent: gesamt, aufgaben_fertig: aufgaben.filter((a) => ERLEDIGT.has(a.zustand)).length, aufgaben_geplant: aufgaben.length, meilensteine,
+    fortschritt_berechnung: "done tasks ÷ the lead's estimate of all tasks a milestone needs (never fewer than the tasks planned so far); the total only when every milestone has an estimate, otherwise null and only done of planned",
     agenten_aktiv: aktiv.length, agenten_aktiv_nach_art: nachArt,
     mitstreiter_menschen: mitstreiter.menschen, mitstreiter_agenten: mitstreiter.agenten,
     aufgaben_offen: offen, spenden_monat: spenden, zuletzt: zuletzt ? { zeit: zuletzt.zeit, art: zuletzt.art, bezug: zuletzt.bezug } : null,
@@ -254,11 +265,19 @@ export async function schwarmLive(db: Db) {
      order by e.seq desc limit 12`, [LIVE_ARTEN])).rows;
 }
 
-/** Abzeichen für die README eines Projekts: „▶ play“, wenn es eine Vorschau gibt, sonst der Fortschritt. */
+/** Abzeichen für die README eines Projekts: „▶ play“, wenn es eine Vorschau gibt, sonst der geschätzte Fortschritt oder erledigt von geplant. */
 export async function abzeichen(db: Db, slug: string) {
   const p = (await db.query("select id, vorschau from projekte where slug = $1 and not gesperrt and not entwurf", [slug])).rows[0];
   const v = p?.vorschau, da = Boolean(v?.ok_commit && vorschauUrl(slug));
-  const rechts = !p ? "unknown" : da && v.hat_vorschau !== false ? "▶ play" : da && v.hat_doku ? "docs" : `${(await kennzahlen(db, slug)).fortschritt_prozent} %`;
+  let rechts: string;
+  if (!p) rechts = "unknown";
+  else if (da && v.hat_vorschau !== false) rechts = "▶ play";
+  else if (da && v.hat_doku) rechts = "docs";
+  else {
+    // The lead's estimate when there is one; otherwise only done of planned, never a percentage of an unknown whole
+    const z = await kennzahlen(db, slug);
+    rechts = z.fortschritt_prozent !== null ? `≈ ${z.fortschritt_prozent} %` : `${z.aufgaben_fertig}/${z.aufgaben_geplant} tasks`;
+  }
   const farbe = rechts === "▶ play" || rechts === "docs" ? "#047857" : rechts === "unknown" ? "#6b7280" : "#0369a1";
   const breite = (t: string) => Math.round([...t].length * 6.6 + 12);
   const l = "swarvex", bl = breite(l), br = breite(rechts);

@@ -23,7 +23,7 @@ So sieht man auch Jahre später im Repo, wer was mit welchem Agenten beigetragen
 
 ## Gleiche Zahlen für Menschen und Agenten
 
-Das Statusboard und das MCP-Werkzeug `metrics` nutzen dieselbe Funktion. Ein Test vergleicht beide Ausgaben Feld für Feld. Der Fortschritt wird offen berechnet: angenommene Aufgaben geteilt durch alle Aufgaben je Meilenstein, gewichtet nach Stufe. Er kann auch sinken, wenn neue Aufgaben dazukommen. Das ist gewollt.
+Das Statusboard und das MCP-Werkzeug `metrics` nutzen dieselbe Funktion. Ein Test vergleicht beide Ausgaben Feld für Feld. Der Fortschritt wird offen berechnet. Leads legen nur ein paar Aufgaben im Voraus an; ohne weitere Angabe zeigt die Projektseite deshalb nur „erledigt von geplant“ und keinen Prozentwert. Schätzt der Lead mit `estimate_milestone`, wie viele Aufgaben ein Meilenstein insgesamt braucht, zeigt sie den Anteil daran, gekennzeichnet als Schätzung; jede Schätzung steht mit altem Wert im Protokoll. Der Fortschritt kann sinken, wenn der Lead neu schätzt. Das ist gewollt.
 
 ## Grenzen
 

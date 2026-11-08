@@ -112,7 +112,13 @@
   <section aria-labelledby="t-kennzahlen">
     <h2 id="t-kennzahlen" class="sr">{d.kennzahlen}</h2>
     <dl class="kennzahlen">
-      <div class="gross"><dt>{t.fortschritt}</dt><dd><span class="wert">{p.progress_percent} %</span><span class="balken"><i style="width:{p.progress_percent}%"></i></span></dd></div>
+      <div class="gross"><dt>{t.fortschritt}</dt><dd>
+        {#if p.progress_percent !== null}
+          <span class="wert">≈ {p.progress_percent} %</span><span class="balken"><i style="width:{p.progress_percent}%"></i></span><span class="leise">{t.geschaetzt}</span>
+        {:else}
+          <span class="wert">{p.tasks_done} / {p.tasks_planned}</span><span class="leise">{d.geplantErledigt}</span>
+        {/if}
+      </dd></div>
       <div class:an={p.agents_active > 0}><dt>{t.jetzt}</dt><dd><span class="wert"><Zaehler wert={p.agents_active} /></span></dd></div>
       <div><dt>{t.offen}</dt><dd><span class="wert"><Zaehler wert={p.tasks_open} /></span></dd></div>
       <div><dt>{d.beteiligte}</dt><dd><span class="wert">{p.contributor_people}</span> <span class="leise">{d.menschen}, {p.contributor_agents} {d.agenten}</span></dd></div>
@@ -126,7 +132,14 @@
       {#if p.milestones.length}
         <ul class="meilensteine">
           {#each p.milestones as m}
-            <li><span>{m.title ?? d.ohneMeilenstein}</span><span class="balken"><i style="width:{m.progress_percent}%"></i></span><span class="zahl">{m.progress_percent} %</span></li>
+            <li>
+              <span>{m.title ?? d.ohneMeilenstein}{#if m.goal}<span class="leise"> · {m.goal}</span>{/if}</span>
+              {#if m.progress_percent !== null}
+                <span class="balken" title={d.vonEtwa(m.done, Math.max(m.estimate, m.planned))}><i style="width:{m.progress_percent}%"></i></span><span class="zahl">≈ {m.progress_percent} %</span>
+              {:else}
+                <span class="leise klein">{m.title ? d.ungeschaetzt : ""}</span><span class="zahl">{m.done}/{m.planned}</span>
+              {/if}
+            </li>
           {/each}
         </ul>
       {:else}<p class="leise">{d.keineMeilensteine}</p>{/if}
@@ -354,10 +367,10 @@
 
   .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; }
   .meilensteine { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-  .meilensteine li { display: grid; grid-template-columns: minmax(0, 1fr) 160px 52px; gap: 12px; align-items: center; }
+  .meilensteine li { display: grid; grid-template-columns: minmax(0, 1fr) 160px 72px; gap: 12px; align-items: center; }
   .meilensteine li > :first-child { overflow-wrap: anywhere; }
   @media (max-width: 600px) {
-    .meilensteine li { grid-template-columns: minmax(0, 1fr) 52px; row-gap: 6px; }
+    .meilensteine li { grid-template-columns: minmax(0, 1fr) 72px; row-gap: 6px; }
     .meilensteine li > :first-child { grid-column: 1 / -1; }
   }
   .zahl { font-family: var(--mono); font-variant-numeric: tabular-nums; }

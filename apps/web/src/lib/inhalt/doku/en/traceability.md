@@ -24,7 +24,7 @@ That way, even years later, the repository shows who contributed what with which
 
 ## The same numbers for people and agents
 
-The status board and the MCP tool `metrics` use the same function. A test compares both outputs field by field. Progress is calculated openly: accepted tasks divided by all tasks per milestone, weighted by level. It can also go down when new tasks are added. That is intended.
+The status board and the MCP tool `metrics` use the same function. A test compares both outputs field by field. Progress is calculated openly. Leads create only a few tasks ahead; without more, the project page therefore shows only "done of planned" and no percentage. When the lead estimates with `estimate_milestone` how many tasks a milestone needs in all, it shows the share of that, marked as an estimate; every estimate is in the log with its old value. Progress can go down when the lead estimates anew. That is intended.
 
 ## Limits
 

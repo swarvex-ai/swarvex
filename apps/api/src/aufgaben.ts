@@ -627,6 +627,34 @@ export async function schliessen(db: Db, wer: Wer, aufgabeId: number, grund: str
   });
 }
 
+/** Lead: schätzt, wie viele Aufgaben ein Meilenstein insgesamt braucht, auch die noch nicht angelegten (E-41). Legt den
+ *  Meilenstein an, wenn es ihn noch nicht gibt; öffentlich protokolliert mit dem alten Wert. */
+export async function meilensteinSchaetzen(db: Db, wer: Wer, slug: string, e: { titel: string; schaetzung: number; ziel?: string; reihenfolge?: number }) {
+  const titel = e.titel.trim(), ziel = e.ziel?.trim();
+  if (!titel || titel.length > 80) throw new Abgelehnt("milestone: a title of 1 to 80 characters, e.g. M2 or \"First playable level\"");
+  if (!Number.isInteger(e.schaetzung) || e.schaetzung < 1 || e.schaetzung > 10000) throw new Abgelehnt("estimated_tasks: a whole number from 1 to 10000");
+  if (ziel !== undefined && (ziel.length < 5 || ziel.length > 200)) throw new Abgelehnt("goal: 5 to 200 characters on what the milestone delivers");
+  return transaktion(db, async (tx) => {
+    const p = await projektPerSlug(tx, slug);
+    await mussLeadSein(tx, wer.menschId, Number(p.id));
+    let m = (await tx.query("select * from meilensteine where projekt_id = $1 and titel = $2 for update", [p.id, titel])).rows[0];
+    if (!m) {
+      const naechste = (await tx.query("select coalesce(max(reihenfolge), 0) + 1 as n from meilensteine where projekt_id = $1", [p.id])).rows[0].n;
+      m = (await tx.query("insert into meilensteine(projekt_id, titel, reihenfolge) values ($1, $2, $3) returning *", [p.id, titel, e.reihenfolge ?? naechste])).rows[0];
+    }
+    const z = (await tx.query(
+      `select count(*)::int as geplant, count(*) filter (where zustand in ('angenommen', 'gemerged'))::int as fertig
+       from aufgaben where meilenstein_id = $1 and zustand <> 'geschlossen'`, [m.id])).rows[0];
+    if (e.schaetzung < z.geplant) throw new Abgelehnt(`estimated_tasks: ${titel} already has ${z.geplant} planned tasks; estimate at least that many, or close the tasks it no longer needs`);
+    await tx.query("update meilensteine set schaetzung = $2, ziel = coalesce($3, ziel), reihenfolge = coalesce($4, reihenfolge), geschaetzt = now() where id = $1",
+      [m.id, e.schaetzung, ziel ?? null, e.reihenfolge ?? null]);
+    await protokollieren(tx, { projekt_id: Number(p.id), akteur: akteur(wer), art: "meilenstein_geschaetzt", bezug: `meilenstein:${m.id}`,
+      daten: { titel, schaetzung: e.schaetzung, vorher: m.schaetzung ?? null, ...(ziel ? { ziel } : {}) } });
+    return { meilenstein: titel, ziel: ziel ?? m.ziel ?? null, schaetzung: e.schaetzung, geplant: z.geplant, fertig: z.fertig,
+      fortschritt_prozent: Math.round((100 * z.fertig) / e.schaetzung) };
+  });
+}
+
 /** Läuft periodisch (pg-boss): abgelaufene Reservierungen geben ihre Aufgabe frei. */
 export async function leasesAufraeumen(db: Db): Promise<number> {
   return transaktion(db, (tx) => leasesBeenden(tx, { abgelaufen: true }, "reservierung_abgelaufen"));

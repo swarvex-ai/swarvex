@@ -7,7 +7,7 @@ export const FELDER: Record<string, string> = {
   // projects and metrics
   projekt: "project", projekte: "projects", sprache: "language", uebersetzungen: "translations", kritisch_vertrauen: "critical_path_trust", vision_kurz: "vision_short", vision_veroeffentlicht: "vision_published",
   vision: "vision", vision_md: "vision_md", lead_modell: "lead_model", lizenz: "license", lizenz_code: "license_code",
-  lizenz_assets: "license_assets", ziel: "goal", fortschritt_prozent: "progress_percent", fortschritt_berechnung: "progress_calculation",
+  lizenz_assets: "license_assets", ziel: "goal", fortschritt_prozent: "progress_percent", aufgaben_geplant: "tasks_planned", geplant: "planned", fertig: "done", schaetzung: "estimate", geschaetzt_am: "estimated_at", reihenfolge: "order", vorher: "before", fortschritt_berechnung: "progress_calculation",
   meilensteine: "milestones", meilenstein: "milestone", agenten_aktiv: "agents_active", agenten_aktiv_nach_art: "agents_active_by_kind",
   mitstreiter_menschen: "contributor_people", mitstreiter_agenten: "contributor_agents", aufgaben_offen: "tasks_open",
   spenden_monat: "donated_this_month", zuletzt: "last", sucht: "wants", woche: "week", stand: "as_of", summe: "total",
@@ -112,7 +112,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     // event types
     vision_veroeffentlicht: "vision_published", vision_aktualisiert: "vision_updated", uebersetzung_gesetzt: "translation_set", aufgabe_angelegt: "task_created", aufgabe_reserviert: "task_reserved",
     arbeit_begonnen: "work_started", fortschritt: "progress", ergebnis_eingereicht: "result_submitted", einreichung_abgewiesen: "submission_rejected",
-    abgebrochen: "abandoned", reservierung_abgelaufen: "reservation_expired", aufgabe_geschlossen: "task_closed", reservierung_beendet_sperre: "reservation_ended_block",
+    abgebrochen: "abandoned", reservierung_abgelaufen: "reservation_expired", aufgabe_geschlossen: "task_closed", meilenstein_geschaetzt: "milestone_estimated", reservierung_beendet_sperre: "reservation_ended_block",
     reservierung_beendet_abmeldung: "reservation_ended_sign_out", pruefung_gestartet: "check_started", pruefung_beendet: "check_finished",
     zurueck_in_pool: "back_to_pool", projekt_tests_rot: "project_tests_red", zur_bewertung_freigegeben: "released_for_review", vorschau_gebaut: "preview_built", vorschau_feedback: "preview_feedback", bewertet: "reviewed", gemerged: "merged", mitstreiter_beigetreten: "contributor_joined",
     mensch_registriert: "person_registered", agent_angebunden: "agent_connected", agent_abgemeldet: "agent_signed_out",
@@ -138,7 +138,7 @@ WERTE.deine_rollen = WERTE.rolle;
 export const umkehren = (karte: Record<string, string>) => Object.fromEntries(Object.entries(karte).map(([de, en]) => [en, de]));
 
 /** References like "aufgabe:12" or "mensch:3" (event subject and actor). */
-const BEZUG: Record<string, string> = { aufgabe: "task", mensch: "person", projekt: "project", meldung: "report", einreichung: "submission", nachricht: "message", zusage: "pledge", spendenauftrag: "donation_brief",
+const BEZUG: Record<string, string> = { aufgabe: "task", meilenstein: "milestone", mensch: "person", projekt: "project", meldung: "report", einreichung: "submission", nachricht: "message", zusage: "pledge", spendenauftrag: "donation_brief",
   agent: "agent", konto: "account", system: "system", pruefstrasse: "pipeline", unbekannt: "unknown" };
 const bezugUebersetzen = (v: string) => v.replace(/^([a-z]+)(?=:|$)/, (p) => BEZUG[p] ?? p);
 

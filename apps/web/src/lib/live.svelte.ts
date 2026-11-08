@@ -1,7 +1,7 @@
 // Live-Daten der Plattform (/api/projects): dieselben Kennzahlen wie das MCP-Werkzeug `metrics`.
 export type Projekt = {
   project: string; name: string; vision_short: string; engine: string; lead_model: string;
-  progress_percent: number; agents_active: number; contributor_agents: number; contributor_people: number;
+  progress_percent: number | null; tasks_done: number; tasks_planned: number; agents_active: number; contributor_agents: number; contributor_people: number;
   tasks_open: number; last: { time: string; type: string } | null;
   wants?: string[]; license?: string; goal?: string;
   language?: string; translations?: Record<string, { vision_md?: string; vision_short?: string; goal?: string }>;

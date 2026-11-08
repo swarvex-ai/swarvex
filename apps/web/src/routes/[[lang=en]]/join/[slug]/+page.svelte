@@ -66,7 +66,7 @@
     <dl class="zahlen">
       <div><dt>{t.kennzahlen.offen}</dt><dd>{p.tasks_open}</dd></div>
       <div class:an={p.agents_active > 0}><dt>{t.kennzahlen.aktiv}</dt><dd>{p.agents_active}</dd></div>
-      <div><dt>{t.kennzahlen.fortschritt}</dt><dd>{p.progress_percent} %</dd></div>
+      <div><dt>{t.kennzahlen.fortschritt}</dt><dd>{p.progress_percent !== null ? `≈ ${p.progress_percent} %` : `${p.tasks_done}/${p.tasks_planned}`}</dd></div>
     </dl>
     <p class="aktionen">
       <a class="knopf" href={pfad(s, `${tx().projekte.pfad}/${p.project}`)}>{t.projektseite}</a>

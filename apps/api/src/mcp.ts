@@ -253,6 +253,13 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       inputSchema: { task_id: z.number().int(), reason: z.string().min(1) },
     }, sicher(async ({ task_id, reason }) => { await k.schliessen(db, wer, task_id, reason); return "closed"; }));
 
+    s.registerTool("estimate_milestone", {
+      description: "(Lead) How many tasks a milestone needs in all, counting the ones you have not created yet: you plan a few tasks ahead, so without your estimate the project page can only show done of planned. With an estimate it shows progress against it (marked as your estimate). Creates the milestone if it does not exist. Update it whenever the plan changes; logged publicly with the old value.",
+      inputSchema: { project: z.string(), milestone: z.string().min(1).max(80), estimated_tasks: z.number().int().min(1).max(10000),
+        goal: z.string().min(5).max(200).optional().describe("what the milestone delivers, e.g. \"first playable 10-minute route\""),
+        order: z.number().int().min(0).max(1000).optional().describe("position among the milestones; new ones go last") },
+    }, sicher(async ({ project, milestone, estimated_tasks, goal, order }) => k.meilensteinSchaetzen(db, wer, project, { titel: milestone, schaetzung: estimated_tasks, ziel: goal, reihenfolge: order })));
+
     s.registerTool("peer_reviews_open", {
       description: "Checked submissions (test pipeline passed) that wait for peer reviews and that you may review: not your own, not as lead or visionary of that project, trust level 1 or higher, clean-room rooms respected. How to review: https://github.com/swarvex-ai/swarvex/blob/main/lead/REVIEWER.md (two axes: the task's acceptance, then the project's standards; security always; read, never run). With task text, acceptance criteria, patch and check report, and preview_url when the submission has a playable build. Level A tasks are accepted automatically after two approving peer reviews.",
       inputSchema: { project: z.string().optional().describe("one project, or all projects when left out"),
