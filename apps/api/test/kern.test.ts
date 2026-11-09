@@ -1549,6 +1549,28 @@ describe("Zuteilung nach nachgewiesener Stufe", () => {
   });
 });
 
+describe("MCP: Fremdprüfung für Prüfer ohne Lead-Rolle", () => {
+  it("ab Vertrauensstufe 1 gibt es peer_reviews_open und submit_peer_review, darunter nicht, Lead-Werkzeuge nie", async () => {
+    const { mcpServerFuer } = await import("../src/mcp.ts");
+    const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+    const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+    const namen = async (login: string, stufe: number) => {
+      const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login, vertrauensstufe) values ('gitea',$1,$1,$2) returning id", [login, stufe])).rows[0].id);
+      const ag = Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,$2,$2) returning id", [m, `${login}-hermes`])).rows[0].id);
+      const server = await mcpServerFuer(db, { menschId: m, agentId: ag, runner: false, leadProjekt: null, clientId: "test", token: "t", scopes: ["mcp"], ablauf: Date.now() + 60_000 });
+      const [a, b] = InMemoryTransport.createLinkedPair();
+      const client = new Client({ name: "test", version: "1" });
+      await Promise.all([server.connect(a), client.connect(b)]);
+      return (await client.listTools()).tools.map((t) => t.name);
+    };
+    const pruefer = await namen("pruefer-ohne-lead", 1);
+    expect(pruefer).toEqual(expect.arrayContaining(["peer_reviews_open", "submit_peer_review"]));
+    for (const nie of ["pending_submissions", "review_submission", "create_task"]) expect(pruefer).not.toContain(nie);
+    const neu = await namen("neu-ohne-stufe", 0);
+    for (const nie of ["peer_reviews_open", "submit_peer_review"]) expect(neu).not.toContain(nie);
+  });
+});
+
 describe("MCP: Aufgaben gebündelt anlegen, Kontextpaket", () => {
   const werkzeuge = async (wer: { menschId: number; agentId: number; runner?: boolean; leadProjekt?: number | null }) => {
     const { mcpServerFuer } = await import("../src/mcp.ts");
