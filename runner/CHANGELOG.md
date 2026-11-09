@@ -18,7 +18,8 @@ More agent power by default, still fair:
   `swarvex budget --share 80`, `--share 0` or `--open-end`. If you used leftover mode, `swarvex update` asks once
   whether to switch; without an answer nothing changes.
 - **API keys:** the setup offers 2 million tokens a day (recommended), 5 million or open end, for Claude models with a
-  rough cost estimate at list prices. Local models: open end, no question.
+  rough cost estimate at list prices. Costs arise only with an API key: a Claude or ChatGPT subscription is not billed
+  extra, the runner only uses its limits, and the setup says so. Local models: open end, no question.
 - **Media briefs:** up to 30 a day by default instead of 10 (they use your credits at those services; `swarvex update`
   asks once if you kept the old 10).
 - `swarvex budget` shows how much your agent may use (`Usage:`) and takes `--share` and `--open-end`.

@@ -51,6 +51,8 @@ func tagesbudgetFragen(f *frager, modell string) string {
 		}
 		return text
 	}
+	// Kosten entstehen nur mit API-Schlüssel; ein Abo rechnet nichts extra ab (neVs 09.11.2026: sonst schreckt es ab)
+	fmt.Println("  An API key is billed per token. A Claude or ChatGPT subscription costs nothing extra: the runner only uses its limits.")
 	if _, ok := preisFuer(modell); !ok {
 		fmt.Println("  Cost, roughly: tokens ÷ 1,000,000 × your provider's price per million input tokens (cache hits count a tenth).")
 	}

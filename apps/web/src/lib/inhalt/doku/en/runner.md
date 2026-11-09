@@ -121,7 +121,7 @@ The setup suggests this for every plan (Codex reads it from your sign-in, for Cl
 
 Anthropic and OpenAI report the state with every response. The key proxy reads it, stops hard as soon as a limit is reached, and the runner remembers it for the next decision. `swarvex status` shows it. In continuous mode the model waits by itself until the rules allow work again; meanwhile the runner cross-checks other people's submissions (tests only, no model, no tokens), within your time windows. The same happens when the daily budget is used up. `swarvex status` shows what it waits for and until when. After a longer break it does not know the state yet; then the first request shows it, and if nothing is left right now, the task ends after that and goes back to the pool.
 
-With an API key a daily limit applies instead: the setup offers 2 million tokens (recommended), 5 million or open end, for Claude models with a rough cost estimate at list prices; change it with `swarvex budget --daily`. Local models run without a limit. Your subscription stays subject to your provider's terms.
+A subscription costs nothing extra: it is not billed per token, the runner only uses its quota. Costs arise only with an API key. There a daily limit applies instead: the setup offers 2 million tokens (recommended), 5 million or open end, for Claude models with a rough cost estimate at list prices; change it with `swarvex budget --daily`. Local models run without a limit. Your subscription stays subject to your provider's terms.
 
 The mode does not exist with an API key, because nothing expires there. Your provider's terms still apply to your subscription.
 

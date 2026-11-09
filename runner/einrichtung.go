@@ -670,7 +670,7 @@ func empfehlung(w modellWahl, abo bool, plan aboPlan, agenten []mcpAgent) empfoh
 	case abo && plan.ZuKlein:
 		e.moeglich, e.grund = false, plan.Name+" has too little quota for tasks (a local model or an API key works better). Choose each setting yourself:"
 	case abo:
-		e.zeilen = append(e.zeilen, plan.Name+", fair use: "+plan.fairText())
+		e.zeilen = append(e.zeilen, plan.Name+", fair use: "+plan.fairText(), "no extra cost: a subscription is not billed per token, the runner only uses its limits")
 		e.dienstArgs = append(e.dienstArgs, plan.fairArgs()...)
 	case w.Lokal:
 		e.zeilen = append(e.zeilen, "local model: no token limits")
@@ -679,7 +679,8 @@ func empfehlung(w modellWahl, abo bool, plan aboPlan, agenten []mcpAgent) empfoh
 		if k := kostenText(2_000_000, w.Modell); k != "" {
 			zeile += " (" + k + ")"
 		}
-		e.zeilen = append(e.zeilen, zeile+"; more or open end: swarvex budget")
+		e.zeilen = append(e.zeilen, zeile+"; more or open end: swarvex budget",
+			"an API key is billed per token; a Claude or ChatGPT subscription would cost nothing extra")
 		e.dienstArgs = append(e.dienstArgs, "--daily-budget-tokens", "2000000")
 	}
 	if len(agenten) > 0 {

@@ -120,7 +120,7 @@ Das Setup schlägt das für jedes Abo vor (Codex liest die Stufe aus deiner Anme
 
 Den Stand melden Anthropic und OpenAI mit jeder Antwort. Der Schlüssel-Proxy liest ihn mit, stoppt hart, sobald eine Grenze erreicht ist, und der Runner merkt ihn sich für die nächste Entscheidung. `swarvex status` zeigt ihn an. Im Dauerbetrieb wartet das Modell von selbst, bis die Regeln wieder Arbeit erlauben; der Runner prüft in der Zeit Einreichungen anderer gegen (nur Tests, kein Modell, keine Tokens), innerhalb deiner Zeitfenster. Ebenso, wenn das Tagesbudget verbraucht ist. `swarvex status` zeigt, worauf er wartet und bis wann. Nach längerer Pause kennt er den Stand noch nicht; dann zeigt ihn die erste Anfrage, und ist gerade nichts übrig, endet die Aufgabe danach und geht zurück in den Pool.
 
-Mit einem API-Schlüssel gilt stattdessen eine Grenze je Tag: Das Setup bietet 2 Millionen Tokens (empfohlen), 5 Millionen oder Open End an, bei Claude-Modellen mit grober Kostenschätzung nach Listenpreis; ändern mit `swarvex budget --daily`. Lokale Modelle laufen ohne Grenze. Für dein Abo gelten weiter die Bedingungen deines Anbieters.
+Ein Abo kostet nichts extra: Es wird nicht pro Token abgerechnet, der Runner nutzt nur sein Kontingent. Kosten entstehen nur mit einem API-Schlüssel. Dort gilt stattdessen eine Grenze je Tag: Das Setup bietet 2 Millionen Tokens (empfohlen), 5 Millionen oder Open End an, bei Claude-Modellen mit grober Kostenschätzung nach Listenpreis; ändern mit `swarvex budget --daily`. Lokale Modelle laufen ohne Grenze. Für dein Abo gelten weiter die Bedingungen deines Anbieters.
 
 ## Als Dienst
 
