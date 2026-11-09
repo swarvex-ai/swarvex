@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -251,7 +252,9 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 		b.WriteString("No automated tests configured (swarvex.yaml: test). The lead reviews the contribution by hand.\n")
 		return true, b.String(), false
 	}
-	gruen := testen(&b, func() (string, error) { return imContainer(image, baum, cache, u, u.Testen, false, 1800) })
+	// Was der Beitrag ändert, an den Test (SWARVEX_CHANGED): Ein Projekt kann damit nur das Betroffene prüfen
+	geaendert, _ := geaendertePfade(baum)
+	gruen := testen(&b, func() (string, error) { return imContainer(image, baum, cache, u, u.Testen, false, testSekunden, geaendertEnv(geaendert)...) })
 	// Bildvergleich im Review: geänderte Szenenbilder dieses Laufs an die Plattform (vor einer Gegenprobe ohne Beitrag)
 	if bilder, err := szenenBilder(baum, u.Ordner, u.Bilder, u.Referenzen, e.BasisCommit); err != nil {
 		fmt.Fprintf(&b, "scene images: %v\n", err)
@@ -268,6 +271,10 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 	if gruen {
 		return true, b.String(), false
 	}
+	if strings.Contains(b.String(), Zeitlimit) {
+		// Am Zeitlimit liegt es am Projekt, nicht am Beitrag: weiter in die Bewertung, der Lead erfährt es
+		return true, b.String(), true
+	}
 	basisRot = gegenprobe(&b, func() (string, bool, error) {
 		if aus, err := befehl(baum, nil, "git", "apply", "-R", patchDatei); err != nil {
 			return aus, false, err
@@ -277,7 +284,7 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 				return "build failed:\n" + aus, false, nil
 			}
 		}
-		aus, err := imContainer(image, baum, cache, u, u.Testen, false, 1800)
+		aus, err := imContainer(image, baum, cache, u, u.Testen, false, testSekunden, geaendertEnv(geaendert)...)
 		return aus, err == nil, nil
 	})
 	return basisRot, b.String(), basisRot
@@ -310,6 +317,12 @@ func testen(b *strings.Builder, lauf func() (string, error)) bool {
 	fmt.Fprintf(b, "=== Test\n%s\n", erster)
 	if err == nil {
 		return true
+	}
+	if zeitUm(err) {
+		// Ein zweiter Lauf (und eine Gegenprobe) kosteten nur noch einmal so lange und hielten alle anderen auf
+		fmt.Fprintf(b, "=== Test %s (%d minutes); not run a second time.\nThe project's tests take too long for the test pipeline: "+
+			"the lead should make them faster, for example by testing only what a contribution changes (SWARVEX_CHANGED lists its files).\n", Zeitlimit, testSekunden/60)
+		return false
 	}
 	zweiter, err := lauf()
 	if err == nil {
@@ -386,6 +399,26 @@ func pruefImage(u umgebung.Umgebung, baum string) (string, error) {
 		return "", fmt.Errorf("building the environment: %s", aus)
 	}
 	return name, nil
+}
+
+// testSekunden: höchstens so lange je Testlauf; Zeitlimit steht dann im Bericht (`timeout` endet mit 124).
+const (
+	testSekunden = 1800
+	Zeitlimit    = "stopped at the time limit"
+)
+
+func zeitUm(err error) bool {
+	var ee *exec.ExitError
+	return errors.As(err, &ee) && ee.ExitCode() == 124
+}
+
+// geaendertEnv: die geänderten Pfade für den Test, eine Zeile je Pfad (SWARVEX_CHANGED). Ohne die Variable (eigener
+// Lauf, CI) prüft ein Projekt alles; mit ihr kann es nur prüfen, was der Beitrag berührt.
+func geaendertEnv(pfade []string) []string {
+	if len(pfade) == 0 {
+		return nil
+	}
+	return []string{"-e", "SWARVEX_CHANGED=" + strings.Join(pfade, "\n")}
 }
 
 // imContainer führt einen Befehl der Umgebung aus: mit Netz nur zum Einrichten, sonst ohne.

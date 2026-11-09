@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -77,5 +78,27 @@ func TestGegenprobe(t *testing.T) {
 		if rot := gegenprobe(&b, func() (string, bool, error) { return "lauf", f.bestanden, f.err }); rot != f.rot || !strings.Contains(b.String(), f.enthaelt) {
 			t.Errorf("%s: rot=%v report=%q", f.name, rot, b.String())
 		}
+	}
+}
+
+// Am Zeitlimit (timeout endet mit 124) kein zweiter Lauf: er kostete nur noch einmal so lange und hielte alle auf.
+func TestTestenZeitlimitOhneZweitenLauf(t *testing.T) {
+	limit := exec.Command("sh", "-c", "exit 124").Run()
+	if !zeitUm(limit) || zeitUm(errors.New("1")) || zeitUm(nil) {
+		t.Fatalf("zeitUm: %v", limit)
+	}
+	n := 0
+	var b strings.Builder
+	if testen(&b, func() (string, error) { n++; return "lauf", limit }) || n != 1 || !strings.Contains(b.String(), Zeitlimit) {
+		t.Errorf("ok after the time limit or run again: runs=%d report=%q", n, b.String())
+	}
+}
+
+func TestGeaendertEnv(t *testing.T) {
+	if geaendertEnv(nil) != nil {
+		t.Error("without changes: no variable, the project tests everything")
+	}
+	if got := geaendertEnv([]string{"src/a.ts", "tests/b.png"}); len(got) != 2 || got[0] != "-e" || got[1] != "SWARVEX_CHANGED=src/a.ts\ntests/b.png" {
+		t.Errorf("geaendertEnv: %q", got)
 	}
 }

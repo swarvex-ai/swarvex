@@ -229,6 +229,15 @@ func (b *echteBahn) testen(s *zugStand) (zugErgebnis, string) {
 	if aus, err := befehl(sp, gitEnv(leseKey, e), "git", "lfs", "fetch", "origin", s.kopf); err != nil {
 		return zugFehler, "LFS: " + aus
 	}
+	// Was der ganze Zug gegenüber main ändert, an den Test (SWARVEX_CHANGED), auch bei der Gegenprobe auf main
+	var geaendert []string
+	if aus, err := befehl(sp, nil, "git", "-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", s.kopf, s.spitze); err == nil {
+		for _, p := range strings.Split(strings.TrimSpace(aus), "\n") {
+			if p != "" {
+				geaendert = append(geaendert, p)
+			}
+		}
+	}
 	ordner, _ := os.MkdirTemp(arbeit, "train-")
 	defer os.RemoveAll(ordner)
 	lauf := func(commit string) (zugErgebnis, string, string) {
@@ -237,13 +246,14 @@ func (b *echteBahn) testen(s *zugStand) (zugErgebnis, string) {
 			return zugFehler, "checkout: " + aus, ""
 		}
 		defer befehl(sp, nil, "git", "worktree", "remove", "--force", baum)
-		return projektTesten(baum, e.Slug)
+		return projektTesten(baum, e.Slug, geaendert)
 	}
 	var bericht strings.Builder
 	fmt.Fprintf(&bericht, "Merge train: %d accepted contributions on main at %s\n", len(s.dabei), kurz(s.kopf))
 	ergebnis, text, ausgabe := lauf(s.spitze)
 	bericht.WriteString(text)
-	if ergebnis != zugRot {
+	if ergebnis != zugRot || strings.Contains(text, Zeitlimit) {
+		// Am Zeitlimit keine Gegenprobe: sie kostete noch einmal so lange und hielte alle anderen Züge auf
 		return ergebnis, bericht.String()
 	}
 	// Gegenprobe: Ist main schon ohne den Zug rot, zählt nur, was der Zug neu kaputt macht
@@ -271,7 +281,7 @@ func (b *echteBahn) testen(s *zugStand) (zugErgebnis, string) {
 
 // projektTesten: Umgebung, Einrichten (mit Netz), Bauen und Testen (ohne Netz, zweiter Lauf bei Rot) in baum.
 // Liefert das Ergebnis, den Bericht und die Ausgabe des letzten Testlaufs.
-func projektTesten(baum, slug string) (zugErgebnis, string, string) {
+func projektTesten(baum, slug string, geaendert []string) (zugErgebnis, string, string) {
 	var b strings.Builder
 	exec.Command("chmod", "-R", "a+rwX", baum).Run()
 	u, err := umgebung.Ermitteln(baum)
@@ -300,7 +310,7 @@ func projektTesten(baum, slug string) (zugErgebnis, string, string) {
 	}
 	var letzte string
 	ok := testen(&b, func() (string, error) {
-		aus, err := imContainer(image, baum, cache, u, u.Testen, false, 1800)
+		aus, err := imContainer(image, baum, cache, u, u.Testen, false, testSekunden, geaendertEnv(geaendert)...)
 		letzte = aus
 		return aus, err
 	})
