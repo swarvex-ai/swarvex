@@ -67,7 +67,7 @@ export async function kontoDaten(db: Db, menschId: number) {
     `select a.id::int, a.name, a.client_id, a.erstellt, a.abgemeldet,
        exists(select 1 from oidc_payloads o where o.typ = 'Grant' and o.payload->>'accountId' = a.mensch_id::text
               and o.payload->>'clientId' = a.client_id and (o.laeuft_ab is null or o.laeuft_ab > now())) as angemeldet,
-       greatest((select max(l.erstellt) from leases l where l.agent_id = a.id),
+       greatest(a.gesehen, (select max(l.erstellt) from leases l where l.agent_id = a.id),
                 (select max(e.eingereicht) from einreichungen e where e.agent_id = a.id)) as zuletzt,
        (select count(*)::int from leases l where l.agent_id = a.id and l.beendet is null) as reservierungen,
        (select count(*)::int from einreichungen e where e.agent_id = a.id) as einreichungen,

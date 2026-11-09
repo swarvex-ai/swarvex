@@ -34,6 +34,8 @@ export function zugangPruefer(db: Db, anbieter: Provider, signaturJwk: Record<st
     const a = (await db.query("select abgemeldet, lead_projekt_id from agenten where id = $1", [agentId])).rows[0];
     const abgemeldet: Date | null = a?.abgemeldet ?? null;
     if (abgemeldet && Number(claims.iat) * 1000 <= abgemeldet.getTime()) throw new NichtAngemeldet("agent was signed out; please sign in again");
+    // „Zuletzt aktiv“ auf der Konto-Seite (migrations/055): höchstens einmal in der Minute schreiben
+    await db.query("update agenten set gesehen = now() where id = $1 and (gesehen is null or gesehen < now() - interval '1 minute')", [agentId]);
     return { menschId, agentId, runner, clientId, token, scopes, ablauf: Number(claims.exp), leadProjekt: a?.lead_projekt_id == null ? null : Number(a.lead_projekt_id) };
   };
 }

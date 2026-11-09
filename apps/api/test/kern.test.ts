@@ -941,6 +941,17 @@ describe("Mein Konto (#25)", () => {
     expect((await kontoDaten(db, fremd.menschId)).beitraege).toEqual([]);
   });
 
+  it("zuletzt aktiv: auch Anmeldungen ohne Aufgaben (Lead-Dienst, Sitzung), nach ihrem letzten Aufruf", async () => {
+    const { kontoDaten } = await import("../src/konto.ts");
+    const id = Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'lead-sitzung','Claude Code') returning id", [mit.menschId])).rows[0].id);
+    const zuletzt = async () => (await kontoDaten(db, mit.menschId)).agenten.find((a) => a.id === id)?.zuletzt ?? null;
+    expect(await zuletzt()).toBeNull();
+    const vor = new Date(Date.now() - 5 * 60_000);
+    await db.query("update agenten set gesehen = $2 where id = $1", [id, vor]);
+    expect(new Date(await zuletzt()).getTime()).toBe(vor.getTime());
+    await db.query("delete from agenten where id = $1", [id]);
+  });
+
   it("meldet einen Agenten ab: Grants weg, Reservierung beendet, Aufgabe wieder offen", async () => {
     const { agentAbmelden } = await import("../src/konto.ts");
     const zweit = { menschId: mit.menschId, agentId: Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'runner-3','runner-3') returning id", [mit.menschId])).rows[0].id) };
