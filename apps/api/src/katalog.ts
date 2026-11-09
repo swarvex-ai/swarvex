@@ -8,7 +8,7 @@
 // Die Suche ist bewusst einfach (Wörter, Wortanfänge, zusammengesetzte Wörter), ohne Modell: Synonyme wie
 // „Ohrensessel“ und „Stuhl“ findet sie nicht, dafür bleibt sie vorhersagbar und kostet nichts.
 import type { Db } from "./db.ts";
-import { vorschauUrl } from "./konfig.ts";
+import { einreichungsVorschauUrl, vorschauUrl } from "./konfig.ts";
 import { Abgelehnt } from "./aufgaben.ts";
 
 /** Das Projekt, dessen Vorschau den Katalog veröffentlicht. */
@@ -138,6 +138,48 @@ export async function katalogLaden(db: Db): Promise<{ verfuegbar: true; url: str
     if (zwischen && zwischen.url === url) return { verfuegbar: true, url, eintraege: zwischen.eintraege };
     return { verfuegbar: false, grund: `the ${KATALOG_PROJEKT} catalogue could not be loaded (${(e as Error).message})` };
   }
+}
+
+/** Die Asset-Kennungen eines catalog.json (alle Arten). */
+export function katalogIds(k: unknown): string[] {
+  const o = (k ?? {}) as Record<string, unknown>;
+  return Object.keys(ARTEN).flatMap((feld) => (Array.isArray(o[feld]) ? (o[feld] as Roh[]) : []))
+    .filter((r) => r && typeof r.id === "string").map((r) => r.id);
+}
+
+/**
+ * Sprungziel in der Vorschau einer Formwerk-Einreichung (neVs 09.11.): „ausprobieren“ soll das Asset der Einreichung
+ * zeigen, nicht die Startseite der Galerie (die öffnet ein Asset über #<id>). Erst die Dateinamen im Patch
+ * (src/assets/<kategorie>/<id>.ts, tests/scene/baseline/<id>.png), dann ein Asset, das es im Katalog von main noch nicht
+ * gibt; es gilt nur, was im Katalog der Einreichungs-Vorschau steht. Leer: keines gefunden (dann die Startseite).
+ */
+export function zielWaehlen(patch: string, idsVorschau: string[], idsMain: Set<string>): string {
+  const ids = new Set(idsVorschau);
+  for (const m of patch.matchAll(/^\+\+\+ b\/(\S+)$/gm)) {
+    const name = m[1].split("/").pop()!.replace(/\.[^.]+$/, "");
+    if (ids.has(name)) return `#${name}`;
+  }
+  const neu = idsVorschau.find((id) => !idsMain.has(id));
+  return neu ? `#${neu}` : "";
+}
+
+/**
+ * Adresse der Vorschau einer Einreichung zum Ausprobieren; bei Formwerk mit dem Asset als Sprungziel. Das Ziel wird
+ * einmal ermittelt und steht dann an der Einreichung (vorschau.ziel); ließ sich der Katalog nicht laden, beim nächsten
+ * Mal wieder.
+ */
+export async function einreichungsVorschau(db: Db, slug: string, einreichungId: number): Promise<string> {
+  const url = einreichungsVorschauUrl(einreichungId);
+  if (!url || slug !== KATALOG_PROJEKT) return url;
+  const e = (await db.query("select patch, vorschau->>'ziel' as ziel from einreichungen where id = $1", [einreichungId])).rows[0];
+  if (!e) return url;
+  if (typeof e.ziel === "string") return url + e.ziel;
+  let idsVorschau: string[];
+  try { idsVorschau = katalogIds(await quelle.holen(`${url}catalog.json`)); } catch { return url; }
+  const main = await katalogLaden(db);
+  const ziel = zielWaehlen(String(e.patch ?? ""), idsVorschau, new Set(main.verfuegbar ? main.eintraege.map((x) => x.roh.id) : []));
+  await db.query("update einreichungen set vorschau = vorschau || jsonb_build_object('ziel', $2::text) where id = $1", [einreichungId, ziel]);
+  return url + ziel;
 }
 
 /** Werkzeug find_assets: alle Treffer, starke zuerst. */

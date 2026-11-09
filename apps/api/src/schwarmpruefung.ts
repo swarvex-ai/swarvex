@@ -11,6 +11,7 @@ import { Abgelehnt, rollenVon, variantenSchliessen, wechseln, type Wer } from ".
 import { raeumeVon, trennwand } from "./cleanroom.ts";
 import { modellSchluessel } from "./modelle.ts";
 import { einreichungsVorschauUrl } from "./konfig.ts";
+import { einreichungsVorschau } from "./katalog.ts";
 import { vertrauenAktualisieren } from "./vertrauen.ts";
 
 /** Zustimmungen verschiedener Menschen, nach denen eine Aufgabe der Stufe A ohne Lead angenommen wird. */
@@ -52,11 +53,11 @@ export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: stri
     const gleich = (z: { autor_modell: string | null }) => (z.autor_modell && modellSchluessel(z.autor_modell) === eigenes ? 1 : 0);
     erlaubt.sort((x, y) => gleich(x) - gleich(y));
   }
-  return erlaubt.slice(0, 20).map(({ projekt_id, autor, raum, vorschau_status, ...z }) => ({
-    ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: einreichungsVorschauUrl(Number(z.einreichung_id)) } : {}),
+  return Promise.all(erlaubt.slice(0, 20).map(async ({ projekt_id, autor, raum, vorschau_status, ...z }) => ({
+    ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: await einreichungsVorschau(db, z.projekt, Number(z.einreichung_id)) } : {}),
     ...z, bericht: String(z.bericht ?? "").slice(-4000),
     automatisch_ab: AUTO_ANNAHME.stufen.includes(z.stufe) ? AUTO_ANNAHME.zustimmungen : null,
-  }));
+  })));
 }
 
 /** Fremdprüfung abgeben; bei Stufe A und genug Zustimmungen wird die Aufgabe automatisch angenommen. */

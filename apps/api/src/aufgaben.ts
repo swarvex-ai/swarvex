@@ -12,6 +12,7 @@ import { aufgabePruefen, raeumeVon, trennwand, type Raum } from "./cleanroom.ts"
 import { WERTE } from "./aussen.ts";
 import { eigenenLaufFesthalten, nachEinreichen, proprietaer } from "./gegenpruefung.ts";
 import { einreichungsVorschauUrl } from "./konfig.ts";
+import { einreichungsVorschau } from "./katalog.ts";
 import { vertrauenAktualisieren } from "./vertrauen.ts";
 
 const en = (zustand: string) => WERTE.zustand[zustand] ?? zustand;
@@ -935,7 +936,7 @@ export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: strin
      where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok')
        and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id`, [p.id]);   // nur die neueste je Aufgabe
   // Vorschau dieser Einreichung zum Ausprobieren vor der Bewertung (pipeline/vorschau.go)
-  const zeilen = r.rows.map(({ vorschau_status, ...z }) => ({ ...z, ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: einreichungsVorschauUrl(Number(z.einreichung_id)) } : {}) }));
+  const zeilen = await Promise.all(r.rows.map(async ({ vorschau_status, ...z }) => ({ ...z, ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: await einreichungsVorschau(db, p.slug, Number(z.einreichung_id)) } : {}) })));
   // Szenenbilder für den Bildvergleich (bilder.ts): welche Szenen sich ändern; ansehen mit submission_images
   for (const z of zeilen) {
     const b = await bilderListe(db, Number(z.einreichung_id));

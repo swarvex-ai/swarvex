@@ -11,7 +11,7 @@ import { ketteVerifizieren } from "./ereignisse.ts";
 import { creditSpenden } from "./spenden.ts";
 import { einreichungsVorschauUrl, konfig, vorschauUrl } from "./konfig.ts";
 import { feedbackZahlen } from "./feedback.ts";
-import { KATALOG_PROJEKT, katalogLaden } from "./katalog.ts";
+import { einreichungsVorschau, KATALOG_PROJEKT, katalogLaden } from "./katalog.ts";
 
 const ERLEDIGT = new Set(["angenommen", "gemerged"]);
 
@@ -206,7 +206,7 @@ export async function projektListe(db: Db) {
 export async function projektDetail(db: Db, slug: string) {
   const k = await kennzahlen(db, slug);
   const p = (await db.query("select id, vision_md, repo_url, verfahren, vorbild, vorschau, fortlaufend from projekte where slug = $1", [slug])).rows[0];
-  const aufgaben = (await db.query(
+  const aufgaben = await Promise.all((await db.query(
     `select a.id, a.titel, a.stufe, a.zustand, a.faehigkeiten, a.raum, a.rolle, m.titel as meilenstein,
             aufgabe_wartet_auf(a.abhaengig_von, a.abhaengig_eins_von) as wartet_auf, a.ohne_fremdbewertung,
             (select e.id::int from einreichungen e where e.aufgabe_id = a.id and a.zustand = 'geprueft_ok' and e.vorschau->>'status' = 'ok' order by e.id desc limit 1) as vorschau_einreichung,
@@ -221,7 +221,7 @@ export async function projektDetail(db: Db, slug: string) {
                from einreichungen e join agenten ag on ag.id = e.agent_id join menschen m3 on m3.id = ag.mensch_id
                where e.aufgabe_id = a.id and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok', 'angenommen', 'gemerged') order by e.id desc limit 1) b on true
      where a.projekt_id = $1 and a.zustand <> 'geschlossen' order by a.id desc limit 50`, [p.id])).rows
-    .map(({ vorschau_einreichung, ...a }) => ({ ...a, ...(vorschau_einreichung && einreichungsVorschauUrl(1) ? { vorschau_url: einreichungsVorschauUrl(vorschau_einreichung) } : {}) }));
+    .map(async ({ vorschau_einreichung, ...a }) => ({ ...a, ...(vorschau_einreichung && einreichungsVorschauUrl(1) ? { vorschau_url: await einreichungsVorschau(db, slug, vorschau_einreichung) } : {}) })));
   // Beitragende: pro Mensch eingereicht und angenommen, mit den genutzten Agenten
   const beitragende = (await db.query(
     `select m.login as mensch, count(e.id)::int as eingereicht,
