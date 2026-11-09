@@ -261,16 +261,20 @@ export async function stufenFreigabe(db: Db | Tx, agentId: number) {
   return { bis: STUFEN[bis], probe: bis < STUFEN.length - 1 ? STUFEN[bis + 1] : null, probe_dran: probenKurz * ZUTEILUNG.probe_jeder <= versucheKurz };
 }
 
+const KOPF_FEHLT = "the platform has not read the repository's main branch yet (it does every five minutes after connecting)";
+
 /** Offene Aufgaben, die der Mensch nach Vertrauensstufe bearbeiten darf (optional nach Fähigkeiten gefiltert). */
 export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, faehigkeiten?: string[]) {
   const p = await projektPerSlug(db, projektSlug);
   // Ohne verbundenes Repo gibt es keinen Snapshot: dem Runner nichts anbieten, statt ihn reservieren und scheitern zu lassen.
   if (wer.runner === true && !p.repo_git) return [];
   const m = (await db.query("select vertrauensstufe from menschen where id = $1", [wer.menschId])).rows[0];
+  // Gerade verbundenes Repo: bis die Pipeline den Stand von main meldet (alle fünf Minuten), fehlt die Basis für den Snapshot
+  const ohneKopf = wer.runner === true && !p.kopf_commit;
   const r = await db.query(
     `select id, titel, stufe, faehigkeiten, pfade, lease_minuten, raum, v.bis as nacharbeit_bis
      from aufgaben a left join lateral nacharbeit_vorrang(a.id) v on true
-     where projekt_id = $1 and zustand = 'offen' and min_vertrauen <= $2
+     where projekt_id = $1 and zustand = 'offen' and min_vertrauen <= $2 and (not $5 or a.basis_commit is not null)
        and not aufgabe_blockiert(a.abhaengig_von, a.abhaengig_eins_von)
        -- Nacharbeit: 24 Stunden nur für die Person, die die Aufgabe gemacht hat (nacharbeit_vorrang)
        and (v.mensch_id is null or v.mensch_id = $4)
@@ -278,7 +282,7 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
        and (select count(*) from ereignisse ev where ev.bezug = 'aufgabe:' || a.id and ev.art = 'abgebrochen' and ev.akteur = $3
               and ev.zeit > now() - interval '24 hours') < 2
      order by id`,
-    [p.id, m.vertrauensstufe, akteur(wer), wer.menschId],
+    [p.id, m.vertrauensstufe, akteur(wer), wer.menschId, ohneKopf],
   );
   // Clean Room: Aufgaben auf der anderen Seite der Trennwand gar nicht erst anbieten.
   const bisher = p.verfahren === "clean_room" ? await raeumeVon(db, wer.menschId, p.id) : [];
@@ -313,7 +317,7 @@ export async function aufgabenErklaert(db: Db, wer: Wer, projektSlug: string, fa
   const p = await projektPerSlug(db, projektSlug);
   const m = (await db.query("select vertrauensstufe from menschen where id = $1", [wer.menschId])).rows[0];
   const r = await db.query(
-    `select a.id, a.titel, a.stufe, a.faehigkeiten, a.min_vertrauen, a.raum, v.mensch_id as vorrang_mensch, v.bis as vorrang_bis,
+    `select a.id, a.titel, a.stufe, a.faehigkeiten, a.min_vertrauen, a.raum, a.basis_commit, v.mensch_id as vorrang_mensch, v.bis as vorrang_bis,
        aufgabe_wartet_auf(a.abhaengig_von, a.abhaengig_eins_von) as wartet,
        array(select ev.zeit from ereignisse ev where ev.bezug = 'aufgabe:' || a.id and ev.art = 'abgebrochen' and ev.akteur = $2
                and ev.zeit > now() - interval '24 hours' order by ev.zeit desc) as abbrueche
@@ -325,6 +329,7 @@ export async function aufgabenErklaert(db: Db, wer: Wer, projektSlug: string, fa
   // In derselben Reihenfolge wie die Filter in aufgabenPassend; der erste zutreffende Grund zählt.
   const grund = (a: any): string => {
     if (wer.runner === true && !p.repo_git) return "the project has no connected repository yet";
+    if (wer.runner === true && !p.kopf_commit && !a.basis_commit) return KOPF_FEHLT;
     if (a.wartet.length) return `waits for ${wartetText(a.wartet)} to be merged first`;
     if (a.min_vertrauen > m.vertrauensstufe) return `needs trust level ${a.min_vertrauen} (yours: ${m.vertrauensstufe})`;
     if (a.vorrang_mensch !== null && Number(a.vorrang_mensch) !== wer.menschId)
@@ -427,6 +432,7 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
     // Jeder Versuch arbeitet auf dem neuesten Stand von main (die Prüfstraße meldet ihn, migrations/040): Fixes und
     // angenommene Vorgänger sind dabei. Eine reservierte Aufgabe behält ihre Basis bis zur Einreichung.
     const kopf: string | null = (await tx.query("select kopf_commit from projekte where id = $1", [a.projekt_id])).rows[0]?.kopf_commit ?? null;
+    if (wer.runner === true && !kopf && !a.basis_commit) throw new Abgelehnt(KOPF_FEHLT);
     const neueBasis = kopf && kopf !== a.basis_commit ? kopf : null;
     if (neueBasis) await tx.query("update aufgaben set basis_commit = $2 where id = $1", [a.id, neueBasis]);
     const lease = (await tx.query(

@@ -152,7 +152,7 @@ describe("Direkt-Modus (#8)", () => {
     expect(k.ohneAusfuehrung(["text.en", "code.gdscript"])).toBe(false);
     expect(k.ohneAusfuehrung(["simulation"])).toBe(false);
     expect(k.ohneAusfuehrung([])).toBe(false);
-    const code = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Code direkt"));
+    const code = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Code direkt"), basis_commit: "c".repeat(40) });
     const text = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Text direkt"), faehigkeiten: ["text.en"], pfade: ["docs/**"] });
     const direkt = { ...mit, runner: false };
     const ids = (await k.aufgabenPassend(db, direkt, "test")).map((x) => Number(x.id));
@@ -515,7 +515,14 @@ describe("Projekt starten (Assistent)", () => {
     // ohne verbundenes Repo bekommt der Runner nichts angeboten (kein Snapshot möglich)
     expect(await k.aufgabenPassend(db, { menschId: mit.menschId, agentId: mit.agentId, runner: true }, "mein-spiel")).toEqual([]);
     await db.query("update projekte set repo_git = 'https://github.com/x/mein-spiel.git' where slug = 'mein-spiel'");
-    expect((await k.aufgabenPassend(db, { menschId: mit.menschId, agentId: mit.agentId, runner: true }, "mein-spiel")).length).toBe(1);
+    // gerade verbunden: bis die Pipeline den Stand von main meldet, fehlt die Basis; nicht anbieten, Grund nennen, nicht reservieren
+    const runner = { menschId: mit.menschId, agentId: mit.agentId, runner: true };
+    expect(await k.aufgabenPassend(db, runner, "mein-spiel")).toEqual([]);
+    const erklaert = await k.aufgabenErklaert(db, runner, "mein-spiel");
+    expect(erklaert.zurueckgehalten.map((x) => x.grund)).toEqual([expect.stringMatching(/not read the repository's main branch yet/)]);
+    await expect(k.reservieren(db, runner, erklaert.zurueckgehalten[0].id)).rejects.toThrow(/not read the repository's main branch yet/);
+    await db.query("update projekte set kopf_commit = $1 where slug = 'mein-spiel'", ["e".repeat(40)]);
+    expect((await k.aufgabenPassend(db, runner, "mein-spiel")).length).toBe(1);
     await expect(repoVerbinden(db, "mein-spiel", mit.menschId, "https://github.com/x/y")).rejects.toThrow(/only the visionary/);
     await expect(repoVerbinden(db, "mein-spiel", m, "https://github.com/x/y")).rejects.toThrow(/sign in with GitHub/);
   });
@@ -1415,6 +1422,9 @@ describe("Bereichs-Sitzungen des Leads und Stufe C für Bereichs-Leads", () => {
 });
 
 describe("Zuteilung nach nachgewiesener Stufe", () => {
+  // Runner bekommen nur Aufgaben mit Basis (Stand von main bekannt)
+  beforeAll(async () => { await db.query("update projekte set kopf_commit = $1 where slug = 'test'", ["d".repeat(40)]); });
+  afterAll(async () => { await db.query("update projekte set kopf_commit = null where slug = 'test'"); });
   const neuerAgent = async (login: string) => {
     const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login) values ('gitea',$1,$1) returning id", [login])).rows[0].id);
     const ag = Number((await db.query("insert into agenten(mensch_id, client_id, name, runner) values ($1,$2,$2,true) returning id", [m, `${login}-runner`])).rows[0].id);
