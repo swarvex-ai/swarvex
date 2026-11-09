@@ -91,7 +91,9 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
         const r = await db.query(
           `select e.id as einreichung_id, e.patch, e.patch_sha256, a.id as aufgabe_id, a.basis_commit, a.pfade, p.slug, p.repo_git, p.github_installation
            from einreichungen e join aufgaben a on a.id = e.aufgabe_id join projekte p on p.id = a.projekt_id join agenten ag on ag.id = e.agent_id
-           where a.zustand = 'eingereicht' and p.engine !~* '(unity|unreal)'
+           -- „pruefung“ ohne Ergebnis: Ein Prüflauf läuft auf einer Plattform immer allein (systemd), beim Abholen ist
+           -- also jede solche Aufgabe von einem abgebrochenen Lauf (Neustart, Absturz) und wird neu geprüft
+           where a.zustand in ('eingereicht', 'pruefung') and p.engine !~* '(unity|unreal)'
            and not exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'projekt')
            and not ${WARTET_AUF_GEGENPRUEFUNG}
            and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id`);

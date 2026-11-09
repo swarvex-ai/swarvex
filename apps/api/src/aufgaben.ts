@@ -730,6 +730,11 @@ export async function pruefungStarten(db: Db, einreichungId: number) {
     const e = (await tx.query("select * from einreichungen where id = $1", [einreichungId])).rows[0];
     if (!e) throw new Abgelehnt("unknown submission");
     const a = await aufgabeSperren(tx, e.aufgabe_id);
+    // Ein abgebrochener Lauf ließ die Aufgabe in „pruefung“ (pruefstrasse.ts, /pipeline/pending): neu starten, ohne Wechsel
+    if (a.zustand === "pruefung") {
+      await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: "pruefstrasse", art: "pruefung_gestartet", bezug: `aufgabe:${a.id}`, daten: { einreichung: einreichungId, erneut: true } });
+      return;
+    }
     await wechseln(tx, a, "pruefung", "pruefstrasse", "pruefung_gestartet", { einreichung: einreichungId });
   });
 }

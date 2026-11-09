@@ -1212,6 +1212,18 @@ describe("Vorschau nach dem Merge", () => {
     };
     try {
       await db.query("update projekte set repo_git = 'https://github.com/x/test.git' where slug = 'test'");
+      // Ein abgebrochener Prüflauf (Neustart, Absturz) lässt die Aufgabe in „pruefung“: der nächste Lauf holt sie wieder
+      const haengt = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Abgebrochene Prüfung"));
+      await k.reservieren(db, mit, haengt.id);
+      const he = (await k.einreichen(db, mit, haengt.id, { patch: PATCH_OK, zusammenfassung: "x", eigene_tests: "", verbrauch: {} })) as { einreichung_id: number };
+      await k.pruefungStarten(db, he.einreichung_id);
+      const offen = async () => (await senden("GET", "/pipeline/pending") as { submission_id?: number; einreichung_id?: number }[]).map((x) => Number(x.submission_id ?? x.einreichung_id));
+      expect(await offen()).toContain(Number(he.einreichung_id));
+      await k.pruefungStarten(db, he.einreichung_id);
+      await k.pruefungMelden(db, he.einreichung_id, "ok", "grün", "sig");
+      expect(await offen()).not.toContain(Number(he.einreichung_id));
+      expect((await db.query("select zustand from aufgaben where id = $1", [haengt.id])).rows[0].zustand).toBe("geprueft_ok");
+      await db.query("update aufgaben set zustand = 'geschlossen' where id = $1", [haengt.id]);
       konfig.vorschau = "";
       expect(await senden("GET", "/pipeline/previews")).toEqual([]);
       konfig.vorschau = "https://play.example";
