@@ -5,6 +5,18 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.13.2 (9 Nov 2026)
+
+- Your own test run and cross-checks tell the project's tests what the contribution changes (`SWARVEX_CHANGED`, one
+  path per line, like the test pipeline). A project with many similar parts tests only the affected ones: in Formwerk
+  one asset instead of the whole catalogue, minutes instead of half an hour.
+- `swarvex status` says what the service is waiting for, for example
+  `Waiting: leftover mode: …, until Tue 10 Nov 01:00`, and "Latest messages" shows the runner's own lines without
+  Podman's container events. Before, it often showed an old error while the runner was simply waiting.
+- Lead service: in a conversation (`swarvex project lead attach`) the lead knows that the runner waits for work
+  between conversations, so it no longer offers to start a waiting loop of its own (that would keep the service from
+  running its cycles). Setting it up no longer tells you to stop an old lead session as if there always were one.
+
 ## 0.13.1 (9 Nov 2026)
 
 Leading a project takes one command:

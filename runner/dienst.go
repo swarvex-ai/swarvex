@@ -10,12 +10,14 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -255,10 +257,62 @@ func statusBefehl() {
 	} else {
 		fmt.Println("Service:", zustand)
 	}
-	if aus, err := exec.Command("journalctl", "--user", "-u", "swarvex", "-n", "5", "--no-pager", "-o", "cat").Output(); err == nil && len(aus) > 0 {
-		fmt.Println("Latest messages:")
-		fmt.Print(string(aus))
+	if w, ok := wartenLesen(time.Now()); ok && zustand == "active" {
+		fmt.Printf("Waiting: %s, until %s\n", w.Grund, zeitpunkt(w.Bis))
 	}
+	if aus, err := exec.Command("journalctl", "--user", "-u", "swarvex", "-n", "80", "--no-pager", "-o", "cat").Output(); err == nil {
+		if z := letzteMeldungen(string(aus), 5); len(z) > 0 {
+			fmt.Println("Latest messages:")
+			fmt.Println(strings.Join(z, "\n"))
+		}
+	}
+}
+
+// Worauf der Dauerbetrieb wartet (waiting.json im Datenordner), für swarvex status: Das Journal ordnet die Zeilen
+// kurzlebiger Kindprozesse nicht immer dem Dienst zu, und die letzte Zeile dort wäre oft ein alter Fehler.
+type wartenStand struct {
+	Grund string    `json:"reason"`
+	Bis   time.Time `json:"until"`
+}
+
+func wartenDatei() string { return filepath.Join(datenOrdner(), "waiting.json") }
+
+// wartenMerken: leerer Grund = es wird nicht (mehr) gewartet.
+func wartenMerken(grund string, bis time.Time) {
+	if grund == "" {
+		os.Remove(wartenDatei())
+		return
+	}
+	roh, _ := json.Marshal(wartenStand{Grund: grund, Bis: bis})
+	os.MkdirAll(datenOrdner(), 0o755)
+	os.WriteFile(wartenDatei(), roh, 0o644)
+}
+
+func wartenLesen(jetzt time.Time) (wartenStand, bool) {
+	var w wartenStand
+	roh, err := os.ReadFile(wartenDatei())
+	if err != nil || json.Unmarshal(roh, &w) != nil || !w.Bis.After(jetzt) {
+		return wartenStand{}, false
+	}
+	return w, true
+}
+
+// rauschen: Zeilen von Podman (conmon, Container-Ereignisse) und JSON-Zeilen des Schlüssel-Proxys im Journal
+var rauschen = regexp.MustCompile(`^(conmon |\{|\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+ [+-]\d{4} \S+ m=\+)`)
+
+// letzteMeldungen: die letzten n Zeilen des Journals, die der Runner selbst geschrieben hat.
+func letzteMeldungen(aus string, n int) []string {
+	var z []string
+	for _, l := range strings.Split(aus, "\n") {
+		if strings.TrimSpace(l) == "" || rauschen.MatchString(l) {
+			continue
+		}
+		z = append(z, l)
+	}
+	if len(z) > n {
+		z = z[len(z)-n:]
+	}
+	return z
 }
 
 // dienstHinweis: was bei einem gestoppten Dienst zu tun ist; leer, solange er läuft oder gerade (neu) startet.

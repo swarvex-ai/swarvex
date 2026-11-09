@@ -498,7 +498,7 @@ func leadEinrichten(p string, args []string) {
 	fmt.Printf("  Talk to it (e.g. the project interview): swarvex project lead attach %s\n", n)
 	fmt.Printf("  State: swarvex project lead status %s · Log: swarvex project lead logs %s\n", n, n)
 	if n == p && !bereichsLead {
-		fmt.Println("  Stop the old lead session on this machine: from now on the service is the lead.")
+		fmt.Println("  If a lead session (Claude Code, Codex …) led this project before, end it: from now on the service is the lead.")
 	}
 	if aus, _ := exec.Command("loginctl", "show-user", os.Getenv("USER"), "-p", "Linger", "--value").Output(); strings.TrimSpace(string(aus)) != "yes" && !istWSL() {
 		fmt.Println("  Note: the service only runs while you are logged in. To keep it working without a login, run once: loginctl enable-linger")
@@ -905,6 +905,17 @@ Why this cycle runs now: %[2]s.
 - Network: only the model, swarvex and the git host. Packages cannot be installed from the internet here; dependencies are set up by the runner from the project's environment (swarvex.yaml).
 - Approvals belong to the visionary: ask with send_message (kind approval) and continue with other work. You cannot decide approvals yourself.
 - Keep docs/status.md current as the handbook says: the next cycle starts from it. End the cycle when the queue is worked through.
+`
+
+// leadGespraech: was der Lead im Gespräch (swarvex project lead attach) zusätzlich wissen muss.
+const leadGespraech = `
+
+## This conversation (swarvex project lead attach)
+
+You run as this project's lead service, and a person is talking to you directly in a terminal. The runner waits for
+work and starts your cycles between conversations: do not call wait_for_work and do not start a work loop here. Answer,
+do what the person asks, keep docs/status.md current, and let them end the conversation. While they are connected,
+the service skips its own cycles.
 `
 
 // leadBereichZeile: für Status und Protokoll, z. B. " (area combat)"
@@ -1365,7 +1376,9 @@ func leadAnschliessen(p string) {
 	pruefen(err)
 	paket, err := leadPaketHolen(l)
 	pruefen(err)
-	pruefen(os.WriteFile(leadUnter(p, filepath.Join("run", "LEAD.md")), []byte(paket), 0o644))
+	// Im Gespräch kein eigenes Warten auf Arbeit: das macht der Runner zwischen den Gesprächen (die Runden schreiben
+	// LEAD.md wieder ohne diesen Abschnitt)
+	pruefen(os.WriteFile(leadUnter(p, filepath.Join("run", "LEAD.md")), []byte(paket+leadGespraech), 0o644))
 	netz, err := internesNetz(ctx)
 	pruefen(err)
 	agent := agenten[l.Agent]

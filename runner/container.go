@@ -221,10 +221,10 @@ func ausgangsProxyStarten(ctx context.Context, name, netz, modus, erlaubt string
 }
 
 // ohneNetz führt einen Befehl der Umgebung ohne jedes Netz aus (Bauen, Testen).
-func ohneNetz(ctx context.Context, u umgebung.Umgebung, image, baum, cache, befehl string, sekunden int) (string, error) {
+func ohneNetz(ctx context.Context, u umgebung.Umgebung, image, baum, cache, befehl string, sekunden int, extra ...string) (string, error) {
 	name := "swarvex-cmd-" + zufall(6)
 	args := append(containerArgs(name, baum, cache, u, sekunden), "--network", "none")
-	args = append(args, image, "sh", "-ec", befehl)
+	args = append(append(args, extra...), image, "sh", "-ec", befehl)
 	cmd := exec.CommandContext(ctx, "podman", args...)
 	cmd.Cancel = func() error { exec.Command("podman", "kill", name).Run(); return cmd.Process.Kill() }
 	cmd.WaitDelay = 10 * time.Second

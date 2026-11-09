@@ -21,8 +21,9 @@ import (
 )
 
 // eigenerTestlauf: Bauen und Testen im Arbeitsbaum, ohne Netz. Liefert "pass"/"fail" (leer ohne
-// Testbefehl) und das Ende der Ausgabe für die Zusammenfassung.
-func eigenerTestlauf(ctx context.Context, u umgebung.Umgebung, image, baum, cache string) (string, string) {
+// Testbefehl) und das Ende der Ausgabe für die Zusammenfassung. geaendert: die Pfade des Beitrags; der Testschritt
+// bekommt sie wie in der Prüfstraße als SWARVEX_CHANGED, damit ein Projekt nur das Betroffene prüfen kann.
+func eigenerTestlauf(ctx context.Context, u umgebung.Umgebung, image, baum, cache string, geaendert []string) (string, string) {
 	if strings.TrimSpace(u.Testen) == "" {
 		return "", "no test command configured"
 	}
@@ -32,7 +33,11 @@ func eigenerTestlauf(ctx context.Context, u umgebung.Umgebung, image, baum, cach
 			continue
 		}
 		start := time.Now()
-		aus, err := ohneNetz(ctx, u, image, baum, cache, schritt.befehl, 3600)
+		var extra []string
+		if schritt.name == "test" && len(geaendert) > 0 {
+			extra = []string{"-e", "SWARVEX_CHANGED=" + strings.Join(geaendert, "\n")}
+		}
+		aus, err := ohneNetz(ctx, u, image, baum, cache, schritt.befehl, 3600, extra...)
 		fmt.Fprintf(&bericht, "=== %s (%s)\n%s\n", schritt.name, time.Since(start).Round(time.Second), letzteZeilen(aus, 60))
 		if err != nil {
 			fmt.Fprintf(&bericht, "%s failed: %v\n", schritt.name, err)
@@ -40,6 +45,23 @@ func eigenerTestlauf(ctx context.Context, u umgebung.Umgebung, image, baum, cach
 		}
 	}
 	return "pass", bericht.String()
+}
+
+// patchPfade: die Dateien, die ein Patch ändert, anlegt oder löscht (aus den „diff --git“-Zeilen), ohne doppelte.
+func patchPfade(patch string) []string {
+	var pfade []string
+	for _, zeile := range strings.Split(patch, "\n") {
+		if !strings.HasPrefix(zeile, "diff --git a/") {
+			continue
+		}
+		teile := strings.SplitN(strings.TrimPrefix(zeile, "diff --git a/"), " b/", 2)
+		for _, p := range teile {
+			if p = strings.Trim(p, "\""); p != "" && !enthaelt(pfade, p) {
+				pfade = append(pfade, p)
+			}
+		}
+	}
+	return pfade
 }
 
 type gegenpruefungsAuftrag struct {
@@ -120,7 +142,7 @@ func gegenpruefen(ctx context.Context, m *mcpClient, z *zugangsdaten, projekt st
 	if err := einrichten(ctx, u, image, baum, cache, filepath.Join(ordner, "setup.log")); err != nil {
 		return "unable", err.Error()
 	}
-	ergebnis, bericht := eigenerTestlauf(ctx, u, image, baum, cache)
+	ergebnis, bericht := eigenerTestlauf(ctx, u, image, baum, cache, patchPfade(job.Patch))
 	if ergebnis == "" {
 		return "unable", bericht
 	}

@@ -386,7 +386,7 @@ func arbeitenBefehl(args []string) {
 
 	// 5b. Eigener Testlauf (ohne Agent, ohne Netz). Bei Unity/Unreal ist das die erste Prüfung.
 	m.werkzeug("report_progress", map[string]any{"task_id": id, "note": "running the project's tests"}, nil)
-	testErgebnis, testBericht := eigenerTestlauf(basis, u, image, arbeitsbaum, cache)
+	testErgebnis, testBericht := eigenerTestlauf(basis, u, image, arbeitsbaum, cache, patchPfade(patch))
 	gestoppt()
 	if testErgebnis != "" {
 		fmt.Printf("Own test run: %s\n", testErgebnis)
@@ -892,12 +892,14 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 				fehlerAus("The time windows never open.")
 			}
 			fmt.Printf("Outside the time windows. Waiting until %s.\n", zeitpunkt(n))
+			wartenMerken("outside the time windows", n)
 			// in Stücken schlafen, damit Uhrumstellung oder Ruhezustand nicht zu Fehlzeiten führen
 			for time.Now().Before(n) && basis.Err() == nil {
 				schlafen(min(time.Until(n), 10*time.Minute))
 			}
 			continue
 		}
+		wartenMerken("", time.Time{}) // eine Runde läuft: nicht mehr „wartet“
 		kind := exec.Command(os.Args[0], append([]string{"work"}, args...)...)
 		kind.Stdout, kind.Stderr = os.Stdout, os.Stderr
 		code := 0
@@ -933,6 +935,7 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 		case 6:
 			n := mitternacht(time.Now())
 			fmt.Printf("Daily budget used up. Waiting until %s.\n", zeitpunkt(n))
+			wartenMerken("daily budget used up", n)
 			for time.Now().Before(n) && basis.Err() == nil {
 				schlafen(min(time.Until(n), 10*time.Minute))
 			}
@@ -940,11 +943,17 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 		case 7:
 			// Das Kind hat Grund und Zeitpunkt schon genannt; aus dem gemerkten Stand ergibt sich, wie lange.
 			n := time.Now().Add(30 * time.Minute)
+			grund := "leftover mode: the subscription has nothing left over right now"
 			if k, ok := kontingentLesen(kontingentDatei()); ok && restModus != nil {
-				if _, _, ab := restModus.fuer(k, time.Now()).pruefen(k.fortgeschrieben(time.Now()), time.Now()); ab.After(time.Now()) {
+				if erlaubt, g, ab := restModus.fuer(k, time.Now()).pruefen(k.fortgeschrieben(time.Now()), time.Now()); ab.After(time.Now()) {
 					n = ab
+					if !erlaubt && g != "" {
+						grund = "leftover mode: " + g
+					}
 				}
 			}
+			fmt.Printf("Leftover mode: waiting until %s.\n", zeitpunkt(n))
+			wartenMerken(grund, n)
 			for time.Now().Before(n) && basis.Err() == nil {
 				schlafen(min(time.Until(n), 10*time.Minute))
 			}
