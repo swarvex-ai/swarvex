@@ -580,6 +580,40 @@ describe("Bewertung durch den Schwarm", () => {
     expect((await db.query("select zustand, basis_commit from aufgaben where id = $1", [a.id])).rows[0]).toEqual({ zustand: "offen", basis_commit: kopf });
     await k.schliessen(db, lead, a.id, "Test");
   });
+  it("eigene Beiträge des Leads: der Lead bewertet nicht, eine Fremdprüfung nimmt an oder schickt in die Nacharbeit", async () => {
+    const { fremdPruefen, offeneFremdpruefungen } = await import("../src/schwarmpruefung.ts");
+    const { aufArbeitWarten } = await import("../src/fluss.ts");
+    // ein zweiter Agent desselben Menschen wie der Lead, etwa sein Runner
+    const runner = { menschId: lead.menschId, agentId: Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'lead-runner','lead-runner') returning id", [lead.menschId])).rows[0].id) };
+    const eigen = async (titel: string) => {
+      const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe(titel), stufe: "B" });
+      await k.reservieren(db, runner, a.id);
+      const e: any = await k.einreichen(db, runner, a.id, { patch: PATCH_OK, zusammenfassung: "fertig", eigene_tests: "ok", verbrauch: { tokens: 10 } });
+      await k.pruefungStarten(db, e.einreichung_id);
+      await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
+      return { a, eid: Number(e.einreichung_id) };
+    };
+    const { a, eid } = await eigen("Vom Lead selbst");
+    await expect(k.bewerten(db, lead, eid, "annehmen", "sieht gut aus")).rejects.toThrow(/peer review/);
+    const w = (await k.wartendeEinreichungen(db, lead, "test")).find((x) => Number(x.einreichung_id) === eid);
+    expect(w).toMatchObject({ eigener_beitrag: true, hinweis: expect.stringContaining("peer review") });
+    // weckt den Lead nicht: er kann nichts tun
+    expect((await aufArbeitWarten(db, lead, "test", 0, ["reviews"])).zum_bewerten.map((x) => x.einreichung_id)).not.toContain(eid);
+    const p5 = await pruefer("pruefer-5"), p6 = await pruefer("pruefer-6");
+    const offen = (await offeneFremdpruefungen(db, p5, "test")).find((x) => x.einreichung_id === eid);
+    expect(offen).toMatchObject({ vom_lead: true, automatisch_ab: 1 });
+    expect((await offeneFremdpruefungen(db, p5, "test"))[0].einreichung_id).toBe(eid);   // zuerst
+    expect(await fremdPruefen(db, p5, eid, "zustimmen", "Akzeptanz erfüllt, Tests grün, sauber")).toMatchObject({ zustimmungen: 1, automatisch_angenommen: true });
+    expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("angenommen");
+    const b = (await db.query("select b.urteil, ag.mensch_id::int as m from bewertungen b join agenten ag on ag.id = b.agent_id where b.einreichung_id = $1", [eid])).rows[0];
+    expect(b).toEqual({ urteil: "annehmen", m: p5.menschId });   // vier Augen: ein anderer Mensch
+    // ein Einwand schickt in die Nacharbeit
+    const { a: a2, eid: eid2 } = await eigen("Vom Lead selbst, mit Einwand");
+    expect(await fremdPruefen(db, p6, eid2, "aenderungen", "Das Rad geht durch die Wanne, bitte nach vorn")).toMatchObject({ automatisch_angenommen: false, zurueckgegeben: true });
+    expect((await db.query("select zustand from aufgaben where id = $1", [a2.id])).rows[0].zustand).toBe("offen");
+    expect((await db.query("select urteil from bewertungen where einreichung_id = $1", [eid2])).rows[0].urteil).toBe("nacharbeit");
+    await k.schliessen(db, lead, a2.id, "Test");
+  });
   it("Merge-Zug rot: zurück in den Pool mit neuem Stand, der nächste Versuch bekommt den Bericht", async () => {
     const { a, eid } = await geprueft("Zug rot", "A");
     await expect(k.zugRotMelden(db, eid, "b".repeat(40), "FAIL x", "sig")).rejects.toThrow(/task is/);   // noch nicht angenommen

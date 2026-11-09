@@ -2,7 +2,7 @@
 // die ohnehin öffentlich sind. Im Konto für die eigenen Projekte als Visionär und als MCP-Werkzeug weekly_report.
 // Die Hinweise nennen nur Engpässe, die der Visionär selbst lösen kann (bewerten, Bereichs-Lead ernennen, Lead nachfragen).
 import type { Db } from "./db.ts";
-import { STUFEN_GEWICHT } from "./aufgaben.ts";
+import { STUFEN_GEWICHT, VOM_LEAD } from "./aufgaben.ts";
 import { angebot } from "./fluss.ts";
 
 const TAG = 86_400_000;
@@ -36,9 +36,14 @@ export async function wochenbericht(db: Db, projektId: number, bis = new Date())
   const diese = await woche(db, projektId, von, bis);
   const vorige = await woche(db, projektId, new Date(von.getTime() - 7 * TAG), von);
   const a = await angebot(db, projektId);
+  // eigene Beiträge eines Leads getrennt: sie wartet nicht auf den Lead, sondern auf die Schwarmprüfung
   const warten = (await db.query(
-    `select count(*)::int as n, extract(epoch from now() - min(pr.erstellt))::int / 3600 as aelteste_h
+    `select count(*) filter (where not x.vom_lead)::int as n,
+            extract(epoch from now() - min(pr.erstellt) filter (where not x.vom_lead))::int / 3600 as aelteste_h,
+            count(*) filter (where x.vom_lead)::int as n_lead,
+            extract(epoch from now() - min(pr.erstellt) filter (where x.vom_lead))::int / 3600 as aelteste_lead_h
      from aufgaben a join lateral (select erstellt from pruefungen p join einreichungen e on e.id = p.einreichung_id where e.aufgabe_id = a.id order by p.id desc limit 1) pr on true
+     join lateral (select ${VOM_LEAD("e", "a.projekt_id")} as vom_lead from einreichungen e where e.aufgabe_id = a.id order by e.id desc limit 1) x on true
      where a.projekt_id = $1 and a.zustand = 'geprueft_ok'`, [projektId])).rows[0];
   const freigaben = Number((await db.query("select count(*) from nachrichten where projekt_id = $1 and art = 'freigabe' and zustand = 'offen'", [projektId])).rows[0].count);
   const rueckmeldungen = Number((await db.query("select count(*) from vorschau_feedback where projekt_id = $1 and zustand = 'neu'", [projektId])).rows[0].count);
@@ -47,6 +52,8 @@ export async function wochenbericht(db: Db, projektId: number, bis = new Date())
   if (freigaben) hinweise.push({ code: "approvals", n: freigaben, text: `${freigaben} approval request${freigaben > 1 ? "s wait" : " waits"} for your decision (your account, approvals).` });
   if (warten.n && warten.aelteste_h >= 24) hinweise.push({ code: "review_wait", n: warten.n, stunden: warten.aelteste_h,
     text: `${warten.n} checked submission${warten.n > 1 ? "s wait" : " waits"} for review, the oldest for ${warten.aelteste_h} h: ask the lead, or appoint an area lead for the busiest area.` });
+  if (warten.n_lead && warten.aelteste_lead_h >= 24) hinweise.push({ code: "peer_review_wait", n: warten.n_lead, stunden: warten.aelteste_lead_h,
+    text: `${warten.n_lead} submission${warten.n_lead > 1 ? "s" : ""} by the project's own lead ${warten.n_lead > 1 ? "wait" : "waits"} for a peer review, the oldest for ${warten.aelteste_lead_h} h: the lead may not review its own; one approval from another person with trust level 1 accepts it, or an area lead with their own account reviews it.` });
   if (rueckmeldungen) hinweise.push({ code: "feedback", n: rueckmeldungen,
     text: `${rueckmeldungen} feedback entr${rueckmeldungen > 1 ? "ies" : "y"} on the preview ${rueckmeldungen > 1 ? "wait" : "waits"} for the lead (preview_feedback): good material for the next tasks.` });
   if (a.aktiv > 0 && a.frei < a.aktiv) hinweise.push({ code: "backlog_low", frei: a.frei, aktiv: a.aktiv,

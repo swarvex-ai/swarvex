@@ -23,7 +23,8 @@ export async function aufArbeitWarten(db: Db, wer: Wer, slug: string, maxSekunde
   const ende = Date.now() + Math.min(Math.max(maxSekunden, 0), 600) * 1000;
   for (;;) {
     // wartendeEinreichungen prüft die Rolle (Lead, Visionär, Bereichs-Lead) und filtert für Bereichs-Leads auf ihren Bereich
-    const bereit = wecken.includes("reviews") ? (await wartendeEinreichungen(db, wer, slug)).filter((e) => e.zustand === "geprueft_ok")
+    // eigene Beiträge wecken nicht: sie gehen an die Schwarmprüfung
+    const bereit = wecken.includes("reviews") ? (await wartendeEinreichungen(db, wer, slug)).filter((e) => e.zustand === "geprueft_ok" && !e.eigener_beitrag)
       .map((e) => ({ einreichung_id: Number(e.einreichung_id), aufgabe_id: Number(e.aufgabe_id), titel: e.titel })) : [];
     const nachrichten = wecken.includes("messages") ? (await offeneFuerMich(db, wer.menschId, Number(p.id)))?.offen ?? 0 : 0;
     const a = await angebot(db, Number(p.id));

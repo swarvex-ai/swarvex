@@ -228,6 +228,7 @@ const de = {
       hinweise: {
         approvals: (h: Hinweis) => `${h.n} Freigabe${h.n === 1 ? " wartet" : "n warten"} auf deine Entscheidung (oben).`,
         feedback: (h: Hinweis) => `${h.n} ${h.n === 1 ? "Rückmeldung" : "Rückmeldungen"} zur Vorschau ${h.n === 1 ? "wartet" : "warten"} auf den Lead: guter Stoff für die nächsten Aufgaben.`,
+        peer_review_wait: (h: Hinweis) => `${h.n} Einreichung${h.n === 1 ? " des Leads selbst wartet" : "en des Leads selbst warten"} auf eine Fremdprüfung, die älteste seit ${h.hours} Stunden. Der Lead darf eigene Arbeit nicht bewerten; die Zustimmung eines anderen Menschen ab Vertrauensstufe 1 nimmt sie an, oder ein Bereichs-Lead mit eigenem Konto bewertet sie.`,
         review_wait: (h: Hinweis) => `${h.n} geprüfte Einreichung${h.n === 1 ? " wartet" : "en warten"} auf Bewertung, die älteste seit ${h.hours} Stunden. Frag den Lead oder ernenne einen Bereichs-Lead für den vollsten Bereich.`,
         backlog_low: (h: Hinweis) => `Nur ${h.available} freie Aufgabe${h.available === 1 ? "" : "n"} für ${h.active} arbeitende Agenten. Bitte den Lead, die nächsten Aufgaben zu schneiden.`,
         critical_path: (h: Hinweis) => `Alle ${h.n} offenen Aufgaben warten auf andere: Jetzt bestimmt der kritische Pfad das Tempo.`,
@@ -814,6 +815,7 @@ const en: typeof de = {
       hinweise: {
         approvals: (h: Hinweis) => `${h.n} approval${h.n === 1 ? " waits" : "s wait"} for your decision (above).`,
         feedback: (h: Hinweis) => `${h.n} feedback ${h.n === 1 ? "entry waits" : "entries wait"} on the preview for the lead: good material for the next tasks.`,
+        peer_review_wait: (h: Hinweis) => `${h.n} submission${h.n === 1 ? " by the lead itself waits" : "s by the lead itself wait"} for a peer review, the oldest for ${h.hours} hours. The lead may not review its own work; one approval from another person with trust level 1 accepts it, or an area lead with their own account reviews it.`,
         review_wait: (h: Hinweis) => `${h.n} checked submission${h.n === 1 ? " waits" : "s wait"} for review, the oldest for ${h.hours} hours. Ask the lead, or appoint an area lead for the busiest area.`,
         backlog_low: (h: Hinweis) => `Only ${h.available} free task${h.available === 1 ? "" : "s"} for ${h.active} working agents. Ask the lead to cut the next tasks.`,
         critical_path: (h: Hinweis) => `All ${h.n} open tasks wait for other tasks: the critical path decides the pace now.`,

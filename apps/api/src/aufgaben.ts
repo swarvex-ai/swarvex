@@ -46,6 +46,15 @@ export type Wer = { menschId: number; agentId: number; runner?: boolean };
  *  simulation, Unbekanntes) läuft nur im Runner mit Sandbox. */
 const OHNE_AUSFUEHRUNG = [/^text\./, /^design\./, /^asset\./, /^review$/, /^daten$/];
 export const ohneAusfuehrung = (faehigkeiten: string[]) => faehigkeiten.length > 0 && faehigkeiten.every((f) => OHNE_AUSFUEHRUNG.some((r) => r.test(f)));
+/**
+ * SQL: stammt die Einreichung <e> von einem Menschen, der das Projekt <projekt> führt (Lead oder Visionär)? Solche
+ * eigenen Beiträge darf er nicht bewerten, auch nicht über einen zweiten Agenten; sie gehen an die Schwarmprüfung
+ * (schwarmpruefung.ts, LEAD_EIGEN).
+ */
+export const VOM_LEAD = (e: string, projekt: string) =>
+  `exists (select 1 from agenten vl_ag join projekt_rollen vl_r on vl_r.mensch_id = vl_ag.mensch_id
+           where vl_ag.id = ${e}.agent_id and vl_r.projekt_id = ${projekt} and vl_r.rolle in ('lead', 'visionaer'))`;
+export const EIGENER_BEITRAG = "your own submission: you may not review it, not even through a second agent. It goes to peer review: one approval from another person with trust level 1 or higher accepts levels A and B, a request for changes sends it back for rework. Another person who leads the project (visionary, area lead) may also review it. Do not ask the visionary when they are you.";
 export const NUR_RUNNER = "this task runs code; work on it with the swarvex runner, which keeps it in a sandbox (https://swarvex.ai/en/docs/runner)";
 const akteur = (w: Wer) => `agent:${w.agentId}`;
 
@@ -795,7 +804,11 @@ export async function bewerten(db: Db, wer: Wer, einreichungId: number, urteil: 
     const a = await aufgabeSperren(tx, e.aufgabe_id);
     await mussLeadOderOfficerSein(tx, wer.menschId, Number(a.projekt_id), a);
     const autor = (await tx.query("select mensch_id from agenten where id = $1", [e.agent_id])).rows[0];
-    if (Number(autor.mensch_id) === wer.menschId) throw new Abgelehnt("nobody reviews their own submission, not even through a second agent");
+    if (Number(autor.mensch_id) === wer.menschId) {
+      const rollen = await rollenVon(tx, wer.menschId, Number(a.projekt_id));
+      throw new Abgelehnt(rollen.includes("lead") || rollen.includes("visionaer") ? EIGENER_BEITRAG
+        : "nobody reviews their own submission, not even through a second agent: the project's lead reviews it");
+    }
     if (a.zustand !== "geprueft_ok") throw new Abgelehnt(`review only after a passing check (task is ${en(a.zustand)})`);
     // Bewertet wird nur die neueste Einreichung: eine ältere ist überholt, ihr Urteil gälte sonst für die Aufgabe
     const neueste = Number((await tx.query("select max(id) from einreichungen where aufgabe_id = $1", [a.id])).rows[0].max);
@@ -930,13 +943,17 @@ export async function wartendeEinreichungen(db: Db, wer: Wer, projektSlug: strin
     `select e.id as einreichung_id, a.id as aufgabe_id, a.titel, a.zustand, a.stufe, a.rolle, a.raum, a.pfade, a.faehigkeiten, e.zusammenfassung, e.patch, p.ergebnis as pruefung, p.bericht,
        e.vorschau->>'status' as vorschau_status,
        (select coalesce(jsonb_agg(jsonb_build_object('urteil', f.urteil, 'begruendung', f.begruendung, 'von', m.login) order by f.id), '[]')
-          from fremdpruefungen f join menschen m on m.id = f.mensch_id where f.einreichung_id = e.id) as fremdpruefungen
+          from fremdpruefungen f join menschen m on m.id = f.mensch_id where f.einreichung_id = e.id) as fremdpruefungen,
+       (select ag.mensch_id::int from agenten ag where ag.id = e.agent_id) = $2 as eigener_beitrag
      from einreichungen e join aufgaben a on a.id = e.aufgabe_id
      left join lateral (select ergebnis, bericht from pruefungen where einreichung_id = e.id order by id desc limit 1) p on true
      where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok')
-       and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id`, [p.id]);   // nur die neueste je Aufgabe
+       and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id`, [p.id, wer.menschId]);   // nur die neueste je Aufgabe
   // Vorschau dieser Einreichung zum Ausprobieren vor der Bewertung (pipeline/vorschau.go)
-  const zeilen = await Promise.all(r.rows.map(async ({ vorschau_status, ...z }) => ({ ...z, ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: await einreichungsVorschau(db, p.slug, Number(z.einreichung_id)) } : {}) })));
+  // eigene Beiträge: nicht bewerten (EIGENER_BEITRAG), sie gehen an die Schwarmprüfung
+  const zeilen = await Promise.all(r.rows.map(async ({ vorschau_status, eigener_beitrag, ...z }) => ({ ...z,
+    ...(eigener_beitrag ? { eigener_beitrag: true, hinweis: EIGENER_BEITRAG } : {}),
+    ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: await einreichungsVorschau(db, p.slug, Number(z.einreichung_id)) } : {}) })));
   // Szenenbilder für den Bildvergleich (bilder.ts): welche Szenen sich ändern; ansehen mit submission_images
   for (const z of zeilen) {
     const b = await bilderListe(db, Number(z.einreichung_id));
