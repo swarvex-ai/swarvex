@@ -154,6 +154,8 @@ func budgetBefehl(args []string) {
 	medienTag := fs.String("media", "", fmt.Sprintf("media briefs per day at most (1–%d, 0 = no media briefs)", medienHoechstens))
 	anteil := fs.String("share", "", "subscription: work evenly over the week up to this percent of it (e.g. 60 or 80; 0 = only what would expire)")
 	offenesEnde := fs.Bool("open-end", false, "no limits: no daily budget, and with a subscription no fair-use rules (your own work can run short)")
+	anliegen := fs.String("kinds", "", "which projects with --project auto: "+anliegenNamen()+" (comma-separated) or all")
+	leerlauf := fs.String("when-idle", "", "on: start work only while nobody uses this computer (screen locked or idle); off: any time")
 	sofort := fs.Bool("now", false, "restart the service right away, even during a task (the task is handed back)")
 	fs.Parse(args)
 
@@ -164,7 +166,7 @@ func budgetBefehl(args []string) {
 	if mitDienst {
 		quelle = dienst
 	}
-	if *aufgabe == "" && *tag == "" && *medienTag == "" && *anteil == "" && !*offenesEnde {
+	if *aufgabe == "" && *tag == "" && *medienTag == "" && *anteil == "" && !*offenesEnde && *anliegen == "" && *leerlauf == "" {
 		w, ok := argWert(quelle, "budget-tokens")
 		fmt.Println("Per task:", grenzeText(w, ok, "0"))
 		if mitDienst {
@@ -177,6 +179,12 @@ func budgetBefehl(args []string) {
 		fmt.Println("Media:   ", medienText(quelle))
 		if mitDienst {
 			fmt.Println("Usage:   ", nutzungText(dienst))
+			if hatFlag(dienst, "only-when-idle") {
+				fmt.Println("Idle:     only while nobody uses this computer")
+			}
+		}
+		if a, ok := argWert(quelle, "kinds"); ok && a != "" {
+			fmt.Println("Projects: only", strings.ReplaceAll(a, ",", ", "))
 		}
 		fmt.Println("Change: swarvex budget --daily 2000000 --task 0 --media 30, with a subscription --share 60, no limits: --open-end")
 		return
@@ -229,6 +237,48 @@ func budgetBefehl(args []string) {
 				dienst = argSetzen(dienst, "subscription-share", strconv.FormatFloat(n, 'f', -1, 64))
 			}
 			fmt.Println("Usage:", nutzungText(dienst))
+		}
+	}
+	if *anliegen != "" {
+		namen, err := anliegenLesen(*anliegen)
+		if err != nil {
+			fehlerAus("--kinds: " + err.Error())
+		}
+		setzen := func(args []string) []string {
+			args = argEntfernen(args, "kinds", true)
+			if len(namen) > 0 {
+				args = argSetzen(args, "kinds", strings.Join(namen, ","))
+			}
+			return args
+		}
+		if gespeichert != nil {
+			gespeichert = setzen(gespeichert)
+			pruefen(argsSpeichern(gespeichert))
+		}
+		if mitDienst {
+			dienst = setzen(dienst)
+		}
+		if len(namen) == 0 {
+			fmt.Println("Projects: any")
+		} else {
+			fmt.Println("Projects: only", strings.Join(namen, ", "))
+		}
+	}
+	if *leerlauf != "" {
+		if !mitDienst {
+			fehlerAus("Idle mode applies to the service; set one up with `swarvex setup`.")
+		}
+		switch *leerlauf {
+		case "on":
+			if !hatFlag(dienst, "only-when-idle") {
+				dienst = append(dienst, "--only-when-idle")
+			}
+			fmt.Println("Idle mode on: new work starts only while nobody uses this computer (screen locked or idle).")
+		case "off":
+			dienst = argEntfernen(dienst, "only-when-idle", false)
+			fmt.Println("Idle mode off.")
+		default:
+			fehlerAus("--when-idle: on or off")
 		}
 	}
 	if *medienTag != "" {

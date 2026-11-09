@@ -13,6 +13,13 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   are told apart by a short hash of the key file (for Codex, the ChatGPT account, which stays the same when the token
   is renewed).
 - `swarvex status` shows that newest state, and "Latest messages" leaves out systemd's resource lines.
+- **Only when idle** (`--only-when-idle`, `swarvex budget --when-idle on`): the service starts new work only while
+  nobody uses this computer, that is while every desktop session of yours is locked or idle (as your desktop reports
+  it to systemd-logind). A running task finishes; `swarvex status` says it waits for you. A computer without a desktop
+  (a server) always counts as free. The setup offers it on desktops under "choose each setting yourself".
+- **Choose what you support** (`--kinds`, `swarvex budget --kinds games,research`): with "any project", only projects
+  of these kinds: games, apps (apps, websites, services, tools, plugins), libraries (libraries and asset catalogues
+  such as Formwerk), research, other. The setup offers it next to "any project"; `--kinds all` goes back to any.
 - Setting up over SSH: when connecting an agent such as Hermes cannot finish its sign-in (the provider redirects to
   127.0.0.1 of the server, which your browser cannot reach), the setup now prints the tunnel for it, with the port from
   the agent's link and the address of your SSH session (`ssh -N -L 27890:127.0.0.1:27890 you@server`), then the

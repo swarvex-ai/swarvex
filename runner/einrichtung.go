@@ -484,6 +484,7 @@ type projektInfo struct {
 	Projekt string   `json:"project"`
 	Name    string   `json:"name"`
 	Offen   int      `json:"tasks_open"`
+	Art     string   `json:"project_type"`
 	Sucht   []string `json:"wants"` // Fähigkeiten, die offene Aufgaben am häufigsten verlangen
 }
 
@@ -508,7 +509,7 @@ func projekteFuer(projekt string, z *zugangsdaten) []string {
 	}
 	var r []string
 	for _, p := range projekteLaden(z.Plattform, z.CAPfad) {
-		if p.Offen > 0 {
+		if p.Offen > 0 && passtZuAnliegen(p.Art, bevorzugteAnliegen) {
 			r = append(r, p.Projekt)
 		}
 	}
@@ -729,7 +730,7 @@ func anpassen(f *frager, z *zugangsdaten, w modellWahl, abo bool, plan aboPlan, 
 
 	fmt.Println("\n-- Project")
 	projekte := projekteLaden(z.Plattform, z.CAPfad)
-	pTitel := []string{"Any project, wherever most is open (recommended)"}
+	pTitel := []string{"Any project, wherever most is open (recommended)", "Only some kinds of projects (games, apps, research …)"}
 	for _, p := range projekte {
 		titel := fmt.Sprintf("%s (%s, %d open tasks)", p.Name, p.Projekt, p.Offen)
 		if len(p.Sucht) > 0 {
@@ -737,11 +738,17 @@ func anpassen(f *frager, z *zugangsdaten, w modellWahl, abo bool, plan aboPlan, 
 		}
 		pTitel = append(pTitel, titel)
 	}
-	projekt := "auto"
-	if i := f.wahl("Where should your agent help?", pTitel); i > 0 {
-		projekt = projekte[i-1].Projekt
+	projekt, anliegen := "auto", ""
+	switch i := f.wahl("Where should your agent help?", pTitel); {
+	case i == 1:
+		anliegen = anliegenFragen(f)
+	case i > 1:
+		projekt = projekte[i-2].Projekt
 	}
 	args := modellArgs(w, projekt)
+	if anliegen != "" {
+		args = append(args, "--kinds", anliegen)
+	}
 
 	fmt.Println("\n-- When")
 	modus := f.wahl("How should it run?", []string{"As a service in the background (recommended)", "Try one task now", "Only save, I start it myself with `swarvex work`"})
@@ -761,6 +768,9 @@ func anpassen(f *frager, z *zugangsdaten, w modellWahl, abo bool, plan aboPlan, 
 		}
 		if fenster != "" {
 			dienstArgs = append(dienstArgs, "--schedule", fenster)
+		}
+		if grafischeSitzung() && f.jaNein("Only while you are not using this computer (screen locked or idle)?", false) {
+			dienstArgs = append(dienstArgs, "--only-when-idle")
 		}
 		if abo {
 			dienstArgs = append(dienstArgs, aboNutzungFragen(f, plan)...)

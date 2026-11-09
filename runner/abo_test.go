@@ -227,7 +227,7 @@ func TestSetupDialog(t *testing.T) {
 		}
 	})
 	t.Run("Anpassen", func(t *testing.T) {
-		vorbereiten(t, "1\nm1\nn\nm2\n3\n200000\n")
+		vorbereiten(t, "1\nm1\nn\nm2\n1\n3\n200000\n") // Projekt: 1 = irgendeins (seit 0.13.4 auch „nur bestimmte Arten“)
 		t.Setenv("OPENROUTER_API_KEY", "sk-or-test")
 		if text := strings.Join(setupDialog(false), " "); !strings.Contains(text, "--model m2") || !strings.Contains(text, "--budget-tokens 200000") {
 			t.Fatalf("args: %s", text)

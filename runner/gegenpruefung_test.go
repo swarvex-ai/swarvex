@@ -64,19 +64,19 @@ func TestWartenMerken(t *testing.T) {
 func TestGegenpruefenBisZumWartende(t *testing.T) {
 	n := time.Now().Add(300 * time.Millisecond)
 	laeufe, pausen := 0, 0
-	gegenpruefenBis(context.Background(), nil, n, time.Minute, func() bool { laeufe++; return laeufe <= 2 },
+	gegenpruefenBis(context.Background(), func() bool { return true }, n, time.Minute, func() bool { laeufe++; return laeufe <= 2 },
 		func(d time.Duration) { pausen++; time.Sleep(min(d, 40*time.Millisecond)) })
 	if laeufe < 3 || pausen == 0 || time.Now().Before(n) {
 		t.Errorf("runs=%d pauses=%d, ended before the wait was over: %v", laeufe, pausen, time.Now().Before(n))
 	}
-	// Zeitfenster zu: keine Gegenprüfung
+	// Zeitfenster zu (oder jemand benutzt den Rechner im Leerlauf-Modus): keine Gegenprüfung
 	ab := time.Now().Add(2 * time.Hour)
 	zu, err := zeitfensterLesen(fmt.Sprintf("daily %02d:00-%02d:30", ab.Hour(), ab.Hour()))
 	if err != nil {
 		t.Fatal(err)
 	}
 	laeufe = 0
-	gegenpruefenBis(context.Background(), zu, time.Now().Add(100*time.Millisecond), time.Minute, func() bool { laeufe++; return true },
+	gegenpruefenBis(context.Background(), func() bool { return zu.offen(time.Now()) }, time.Now().Add(100*time.Millisecond), time.Minute, func() bool { laeufe++; return true },
 		func(d time.Duration) { time.Sleep(min(d, 40*time.Millisecond)) })
 	if laeufe != 0 {
 		t.Errorf("cross-checked outside the time windows: %d", laeufe)

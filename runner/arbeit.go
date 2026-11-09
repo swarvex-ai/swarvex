@@ -79,6 +79,8 @@ func arbeitenBefehl(args []string) {
 	autoAktualisieren := fs.Bool("auto-update", false, "with --continuous: install new runner versions by itself, at most once a day and only between tasks")
 	pause := fs.Duration("pause", 2*time.Minute, "wait time in continuous mode when no matching task is open")
 	nurPruefen := fs.Bool("check-only", false, "only check the options, reserve nothing (used by `swarvex service`)")
+	leerlauf := fs.Bool("only-when-idle", false, "continuous mode: start work only while nobody uses this computer (all your desktop sessions locked or idle); a running task finishes")
+	anliegenText := fs.String("kinds", "", "with --project auto: only projects of these kinds, comma-separated: "+anliegenNamen()+" (empty or all: any)")
 	nurGegen := fs.Bool("cross-checks-only", false, "only cross-check other people's submissions, no task and no model (the continuous mode does this while it waits for leftover quota or the daily budget)")
 	rest := fs.Bool("leftover", false, "beta, subscriptions only: work only with what your subscription would let expire, shortly before its weekly reset")
 	anteil := fs.Float64("subscription-share", 0, "subscriptions only: work evenly over the week up to this percent of the weekly quota (60 = recommended; pauses while you use more yourself), plus what would expire before the reset")
@@ -132,6 +134,9 @@ func arbeitenBefehl(args []string) {
 		pruefen(r.gueltig())
 		restModus = &r
 	}
+	nurLeerlauf = *leerlauf
+	bevorzugteAnliegen, err = anliegenLesen(*anliegenText)
+	pruefen(err)
 	if *nurPruefen {
 		return
 	}
@@ -253,6 +258,9 @@ func arbeitenBefehl(args []string) {
 		}
 		if len(antwort.Tasks) == 0 {
 			fmt.Println("No matching open task.")
+			if len(bevorzugteAnliegen) > 0 {
+				fmt.Printf("Only projects of these kinds: %s (any: swarvex budget --kinds all).\n", strings.Join(bevorzugteAnliegen, ", "))
+			}
 			for _, z := range gruendeZeilen(gruende, 5) {
 				fmt.Println(z)
 			}
@@ -886,7 +894,8 @@ func fehlerPause(inFolge int) time.Duration {
 // Einreichungen gegen (Tests, kein Modell, keine Tokens), nur in den Zeitfenstern; nach einer Gegenprüfung fragt er
 // gleich nach der nächsten, sonst nach der Pause wieder.
 func nurGegenpruefen(basis context.Context, fenster zeitfenster, n time.Time, pause time.Duration, args []string, schlafen func(time.Duration)) {
-	gegenpruefenBis(basis, fenster, n, pause, func() bool {
+	darf := func() bool { return fenster.offen(time.Now()) && (!nurLeerlauf || rechnerFrei()) }
+	gegenpruefenBis(basis, darf, n, pause, func() bool {
 		kind := exec.CommandContext(basis, os.Args[0], append(append([]string{"work"}, args...), "--cross-checks-only")...)
 		kind.Stdout, kind.Stderr = os.Stdout, os.Stderr
 		kind.Cancel = func() error { return kind.Process.Signal(syscall.SIGTERM) } // die Gegenprüfung räumt selbst auf
@@ -896,9 +905,9 @@ func nurGegenpruefen(basis context.Context, fenster zeitfenster, n time.Time, pa
 }
 
 // gegenpruefenBis: die Schleife dazu; pruefen liefert true, wenn eine Gegenprüfung lief.
-func gegenpruefenBis(basis context.Context, fenster zeitfenster, n time.Time, pause time.Duration, pruefen func() bool, schlafen func(time.Duration)) {
+func gegenpruefenBis(basis context.Context, darf func() bool, n time.Time, pause time.Duration, pruefen func() bool, schlafen func(time.Duration)) {
 	for time.Now().Before(n) && basis.Err() == nil {
-		if fenster.offen(time.Now()) && pruefen() && basis.Err() == nil {
+		if darf() && pruefen() && basis.Err() == nil {
 			continue
 		}
 		schlafen(min(time.Until(n), pause))
@@ -929,6 +938,7 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 	// (Images aus der Zeit vor 0.13 tragen noch keinen Stempel und zählten sonst nach ihrem Bau-Datum).
 	zuletztAufgeraeumt := time.Now().Add(time.Hour - aufraeumTakt)
 	fehlerFolge := 0
+	wartetAufLeerlauf := false
 	for basis.Err() == nil {
 		if autoAktualisieren && time.Since(letzterUpdateCheck) > 24*time.Hour {
 			letzterUpdateCheck = time.Now()
@@ -969,6 +979,16 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 			}
 			continue
 		}
+		if nurLeerlauf && !rechnerFrei() {
+			if !wartetAufLeerlauf {
+				fmt.Println("Idle mode: you are using this computer; new work starts once your screen is locked or idle.")
+				wartetAufLeerlauf = true
+			}
+			wartenMerken("idle mode: you are using this computer (new work starts once the screen is locked or idle)", time.Time{})
+			schlafen(time.Minute)
+			continue
+		}
+		wartetAufLeerlauf = false
 		wartenMerken("", time.Time{}) // eine Runde läuft: nicht mehr „wartet“
 		kind := exec.Command(os.Args[0], append([]string{"work"}, args...)...)
 		kind.Stdout, kind.Stderr = os.Stdout, os.Stderr

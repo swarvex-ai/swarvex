@@ -265,7 +265,11 @@ func statusBefehl() {
 		fmt.Println("Service:", zustand)
 	}
 	if w, ok := wartenLesen(time.Now()); ok && zustand == "active" {
-		fmt.Printf("Waiting: %s, until %s\n", w.Grund, zeitpunkt(w.Bis))
+		if w.Bis.IsZero() {
+			fmt.Printf("Waiting: %s\n", w.Grund)
+		} else {
+			fmt.Printf("Waiting: %s, until %s\n", w.Grund, zeitpunkt(w.Bis))
+		}
 	}
 	if aus, err := exec.Command("journalctl", "--user", "-u", "swarvex", "-n", "80", "--no-pager", "-o", "cat").Output(); err == nil {
 		if z := letzteMeldungen(string(aus), 5); len(z) > 0 {
@@ -298,7 +302,8 @@ func wartenMerken(grund string, bis time.Time) {
 func wartenLesen(jetzt time.Time) (wartenStand, bool) {
 	var w wartenStand
 	roh, err := os.ReadFile(wartenDatei())
-	if err != nil || json.Unmarshal(roh, &w) != nil || !w.Bis.After(jetzt) {
+	// ohne Zeitpunkt (Leerlauf-Modus): bis die nächste Runde den Stand löscht
+	if err != nil || json.Unmarshal(roh, &w) != nil || (!w.Bis.IsZero() && !w.Bis.After(jetzt)) {
 		return wartenStand{}, false
 	}
 	return w, true

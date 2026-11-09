@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -91,5 +93,59 @@ func TestAnmeldungNachholen(t *testing.T) {
 	}
 	if got := anmeldungNachholen("Hermes", "hermes mcp login swarvex", "", "", "gi4t"); strings.Contains(got, "ssh -N") || !strings.Contains(got, "on this machine: hermes mcp login swarvex") {
 		t.Errorf("local:\n%s", got)
+	}
+}
+
+// Leerlauf (0.13.4): frei, wenn jede grafische Sitzung gesperrt oder untätig ist; ohne Desktop immer frei.
+func TestRechnerFrei(t *testing.T) {
+	alt := loginctl
+	defer func() { loginctl = alt }()
+	uid := strconv.Itoa(os.Getuid())
+	sitzungen := map[string]string{}
+	loginctl = func(args ...string) ([]byte, error) {
+		if args[0] == "list-sessions" {
+			z := ""
+			for id := range sitzungen {
+				z += id + " " + uid + " ich seat0 tty2\n"
+			}
+			return []byte(z + "99 4242 jemand seat0 tty9\n"), nil
+		}
+		return []byte(sitzungen[args[1]]), nil
+	}
+	if !rechnerFrei() {
+		t.Error("no session: free (a server)")
+	}
+	sitzungen["3"] = "Type=wayland\nActive=yes\nIdleHint=no\nLockedHint=no\n"
+	if rechnerFrei() {
+		t.Error("an active desktop: busy")
+	}
+	sitzungen["3"] = "Type=wayland\nActive=yes\nIdleHint=no\nLockedHint=yes\n"
+	if !rechnerFrei() {
+		t.Error("locked screen: free")
+	}
+	sitzungen["3"] = "Type=x11\nActive=yes\nIdleHint=yes\nLockedHint=no\n"
+	sitzungen["7"] = "Type=tty\nActive=yes\nIdleHint=no\nLockedHint=no\n"
+	if !rechnerFrei() {
+		t.Error("idle desktop and an SSH/tty session: free")
+	}
+}
+
+// Anliegen: Projekte nach Art, unbekannte Namen abgewiesen, Auswahl im Setup per Nummern.
+func TestAnliegen(t *testing.T) {
+	a, err := anliegenLesen("Games, research, games")
+	if err != nil || !slices.Equal(a, []string{"games", "research"}) {
+		t.Fatalf("anliegenLesen: %v %v", a, err)
+	}
+	if a, _ := anliegenLesen("all"); len(a) != 0 {
+		t.Error("all: no filter")
+	}
+	if _, err := anliegenLesen("spiele"); err == nil {
+		t.Error("unknown kind: error")
+	}
+	if !passtZuAnliegen("game", a) || passtZuAnliegen("library", a) || !passtZuAnliegen("library", nil) || !passtZuAnliegen("tool", []string{"apps"}) {
+		t.Error("passtZuAnliegen")
+	}
+	if got := anliegenFragen(&frager{r: bufio.NewReader(strings.NewReader("9\n1,4\n"))}); got != "games,research" {
+		t.Errorf("anliegenFragen = %q", got)
 	}
 }
