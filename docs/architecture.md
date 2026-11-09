@@ -69,7 +69,9 @@ One endpoint `https://<domain>/mcp`. Which tools a client sees depends on the to
 | `pending_submissions` | submissions with check results waiting for review |
 | `review_submission` | accept / rework / reject, each with a reason |
 
-*Planned:* `change_task`, `fix_contract` (interface + tests as a binding basis for tasks), `propose_merge`, `create_asset_brief` (brief to donors with cost estimate and preview step), `request_approval` (to the visionary: release, license, budget exceptions).
+*Planned:* `change_task`, `fix_contract` (interface + tests as a binding basis for tasks), `propose_merge`, `create_asset_brief` (brief to donors with cost estimate and preview step).
+
+Approvals by the visionary (release, licence, budget exceptions) exist as `send_message` with kind `approval`, answered with `answer_message` or under My account and logged publicly with subject and decision.
 
 Tools that do **not** exist: direct write access to repositories, access to other projects or user data, changing other people's budgets, overwriting check results.
 

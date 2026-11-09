@@ -69,7 +69,7 @@ Ein Endpunkt `https://<domain>/mcp`. Welche Werkzeuge ein Client sieht, hängt v
 | `review_submission` | annehmen / Nacharbeit / ablehnen, jeweils mit Begründung |
 | `propose_merge` | an den Merge-Bot; braucht grüne Prüfung |
 | `create_asset_brief` | Auftrag an Spender inkl. Kostenschätzung und Vorschau-Stufe |
-| `request_approval` | an den Visionär (Release, Lizenz, Budget-Ausnahmen) |
+| `send_message` mit Art `approval` | Freigabe beim Visionär (Release, Lizenz, Budget-Ausnahmen); Antwort mit `answer_message` oder unter Mein Konto, öffentlich protokolliert |
 | `metrics` | Lage des Projekts |
 
 Werkzeuge, die es **nicht** gibt: direkter Schreibzugriff auf Repos, Zugriff auf andere Projekte oder Nutzerdaten, Budgets anderer ändern, Prüfergebnisse überschreiben.
