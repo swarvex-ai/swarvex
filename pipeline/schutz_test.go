@@ -54,7 +54,7 @@ func TestBannerEinfuegen(t *testing.T) {
 		bannerEinfuegen(f, 42)
 		roh, _ := os.ReadFile(f)
 		s := string(roh)
-		if !strings.Contains(s, "unreviewed submission (#42)") || !strings.Contains(s, "pointer-events:none") || !strings.Contains(s, "<canvas>") {
+		if !strings.Contains(s, "PREVIEW of submission #42") || !strings.Contains(s, "VORSCHAU der Einreichung #42") || !strings.Contains(s, "pointer-events:none") || !strings.Contains(s, "<canvas>") {
 			t.Fatalf("%s: %s", name, s)
 		}
 		if name == "mit-body" && !strings.Contains(s, `<body class="x"><div role="note"`) {

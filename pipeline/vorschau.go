@@ -380,17 +380,20 @@ func godotVorlagen(voll string) (string, error) {
 	return ordner, os.Rename(neu, ordner)
 }
 
-// bannerEinfuegen setzt in die Startseite einer Einreichungs-Vorschau einen Hinweis: ungeprüft, keine Passwörter
-// oder persönlichen Daten eingeben. Er liegt am unteren Rand und lässt Klicks durch, damit er kein Spiel stört.
+// bannerEinfuegen setzt in die Startseite einer Einreichungs-Vorschau einen Hinweis: noch nicht bewertet, nicht Teil
+// des Projekts, keine Passwörter oder persönlichen Daten eingeben. Ein gelb-schraffierter Streifen (neVs 09.11.: der
+// dunkle Hinweis ging unter, die Vorschau sah aus wie die Galerie). Er liegt am unteren Rand und lässt Klicks durch,
+// damit er kein Spiel und keine Kopfzeile verdeckt.
 func bannerEinfuegen(datei string, id int64) {
 	roh, err := os.ReadFile(datei)
 	if err != nil {
 		return
 	}
 	banner := fmt.Sprintf(`<div role="note" style="position:fixed;left:0;right:0;bottom:0;z-index:2147483647;pointer-events:none;`+
-		`font:13px/1.4 system-ui,sans-serif;background:rgba(20,20,20,.85);color:#fff;padding:6px 12px;text-align:center">`+
-		`Preview of an unreviewed submission (#%d) · not checked by the project yet · never enter passwords or personal data here`+
-		` · Vorschau einer ungeprüften Einreichung · hier nie Passwörter oder persönliche Daten eingeben</div>`, id)
+		`font:600 14px/1.4 system-ui,sans-serif;color:#111;padding:8px 12px;text-align:center;border-top:3px solid #111;`+
+		`background:repeating-linear-gradient(-45deg,#ffc400 0 16px,#ffb000 16px 32px)">`+
+		`PREVIEW of submission #%d · not reviewed yet and not part of the project · never enter passwords or personal data here`+
+		` · VORSCHAU der Einreichung #%d · noch nicht bewertet und nicht Teil des Projekts · hier nie Passwörter oder persönliche Daten eingeben</div>`, id, id)
 	html := string(roh)
 	if i := strings.Index(strings.ToLower(html), "<body"); i >= 0 {
 		if j := strings.Index(html[i:], ">"); j >= 0 {
