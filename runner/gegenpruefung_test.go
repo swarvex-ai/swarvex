@@ -81,3 +81,10 @@ func TestGegenpruefenBisZumWartende(t *testing.T) {
 		t.Errorf("cross-checked outside the time windows: %d", laeufe)
 	}
 }
+
+// Nach einer Rückgabe gleich die nächste Aufgabe; erst Fehler in Folge machen die Pause länger.
+func TestFehlerPause(t *testing.T) {
+	if fehlerPause(1) != 15*time.Second || fehlerPause(2) != time.Minute || fehlerPause(3) != 5*time.Minute || fehlerPause(9) != 5*time.Minute {
+		t.Errorf("fehlerPause: %v %v %v", fehlerPause(1), fehlerPause(2), fehlerPause(3))
+	}
+}

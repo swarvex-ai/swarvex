@@ -77,7 +77,7 @@ func arbeitenBefehl(args []string) {
 	mindest := fs.Duration("min-time", 15*time.Minute, "do not start a new task if the time window ends sooner (only with stop)")
 	dauer := fs.Bool("continuous", false, "keep taking tasks; outside the time windows wait for the next window")
 	autoAktualisieren := fs.Bool("auto-update", false, "with --continuous: install new runner versions by itself, at most once a day and only between tasks")
-	pause := fs.Duration("pause", 5*time.Minute, "wait time in continuous mode when no matching task is open")
+	pause := fs.Duration("pause", 2*time.Minute, "wait time in continuous mode when no matching task is open")
 	nurPruefen := fs.Bool("check-only", false, "only check the options, reserve nothing (used by `swarvex service`)")
 	nurGegen := fs.Bool("cross-checks-only", false, "only cross-check other people's submissions, no task and no model (the continuous mode does this while it waits for leftover quota or the daily budget)")
 	rest := fs.Bool("leftover", false, "beta, subscriptions only: work only with what your subscription would let expire, shortly before its weekly reset")
@@ -228,6 +228,9 @@ func arbeitenBefehl(args []string) {
 
 	// 1. Aufgabe wählen und reservieren.
 	id := *nur
+	var kandidaten []struct {
+		ID int64 `json:"id"`
+	}
 	if id == 0 {
 		var antwort passendeAufgaben
 		var gruende []zurueckgehalten
@@ -250,6 +253,7 @@ func arbeitenBefehl(args []string) {
 			}
 			os.Exit(3) // Dauerbetrieb wartet dann und fragt später wieder
 		}
+		kandidaten = antwort.Tasks
 		id = antwort.Tasks[0].ID
 	}
 	if basis.Err() != nil {
@@ -257,7 +261,27 @@ func arbeitenBefehl(args []string) {
 		os.Exit(5)
 	}
 	var lease map[string]any
-	pruefen(m.werkzeug("reserve_task", map[string]any{"task_id": id}, &lease))
+	if *nur != 0 {
+		pruefen(m.werkzeug("reserve_task", map[string]any{"task_id": id}, &lease))
+	} else {
+		// War jemand schneller (oder gilt eine Regel erst beim Reservieren), gleich die nächste passende Aufgabe nehmen
+		id = 0
+		for i, k := range kandidaten {
+			if i == 3 {
+				break
+			}
+			err := m.werkzeug("reserve_task", map[string]any{"task_id": k.ID}, &lease)
+			if err == nil {
+				id = k.ID
+				break
+			}
+			fmt.Printf("Task %d could not be reserved (%v); trying the next one.\n", k.ID, err)
+		}
+		if id == 0 {
+			fmt.Println("No matching open task could be reserved.")
+			os.Exit(3)
+		}
+	}
 	// Ab hier gibt jeder Fehler die Aufgabe sofort zurück in den Pool (und landet in `swarvex history`).
 	var a aufgabe
 	var verbrauch map[string]float64
@@ -841,6 +865,17 @@ func einruecken(text string) string {
 // Kindprozess („work“ ohne --continuous), damit ein Fehler nicht den ganzen Runner beendet.
 // Exit-Codes des Kindes: 0 erledigt, 3 keine passende Aufgabe, 4 außerhalb bzw. zu kurz vor Fensterende,
 // 5 gestoppt vor der Reservierung, 6 Tagesbudget verbraucht, 7 Restkontingent: gerade nichts übrig.
+// fehlerPause: nach einer gescheiterten Runde kurz, nach mehreren in Folge länger (15 s, 1 min, dann 5 min).
+func fehlerPause(inFolge int) time.Duration {
+	switch {
+	case inFolge <= 1:
+		return 15 * time.Second
+	case inFolge == 2:
+		return time.Minute
+	}
+	return 5 * time.Minute
+}
+
 // nurGegenpruefen: Bis n (Restkontingent, Tagesbudget) arbeitet kein Modell. Der Runner prüft in der Zeit fremde
 // Einreichungen gegen (Tests, kein Modell, keine Tokens), nur in den Zeitfenstern; nach einer Gegenprüfung fragt er
 // gleich nach der nächsten, sonst nach der Pause wieder.
@@ -887,6 +922,7 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 	// Das erste Aufräumen eine Stunde nach dem Start: Bis dahin haben Aufgaben ihre Images und Caches als benutzt markiert
 	// (Images aus der Zeit vor 0.13 tragen noch keinen Stempel und zählten sonst nach ihrem Bau-Datum).
 	zuletztAufgeraeumt := time.Now().Add(time.Hour - aufraeumTakt)
+	fehlerFolge := 0
 	for basis.Err() == nil {
 		if autoAktualisieren && time.Since(letzterUpdateCheck) > 24*time.Hour {
 			letzterUpdateCheck = time.Now()
@@ -955,6 +991,7 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 		}
 		switch code {
 		case 0:
+			fehlerFolge = 0
 			continue // gleich die nächste Aufgabe
 		case 3:
 			fmt.Printf("No matching task. Next attempt in %s.\n", pause)
@@ -983,8 +1020,15 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 			nurGegenpruefen(basis, fenster, n, pause, args, schlafen)
 			continue
 		default:
-			fmt.Printf("Task ended with an error (code %d). Next attempt in %s.\n", code, pause)
+			// Eine Rückgabe oder ein Fehler: gleich die nächste Aufgabe (die Plattform bietet dieselbe nach zwei Rückgaben
+			// nicht mehr an); erst bei Fehlern in Folge länger warten, damit ein kaputter Rechner nicht im Kreis läuft
+			fehlerFolge++
+			warte := fehlerPause(fehlerFolge)
+			fmt.Printf("Task ended with an error (code %d). Next attempt in %s.\n", code, warte)
+			schlafen(warte)
+			continue
 		}
+		fehlerFolge = 0
 		if code != 4 {
 			schlafen(pause)
 		} else {

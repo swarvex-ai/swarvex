@@ -11,6 +11,12 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   cross-checks other people's submissions, within your time windows: it runs their tests in the sandbox, without a
   model and without tokens. That keeps the swarm's checks flowing while your subscription rests. Before, it only
   slept until the next chance (with a Claude Max plan in leftover mode often for days).
+- No idle minutes after a failed task: when a task goes back to the pool (or a round fails), the runner takes the next
+  task after 15 seconds instead of 5 minutes; only failures in a row make the pause longer (1 minute, then 5), so a
+  broken setup does not spin. The platform no longer offers a task you handed back twice, so this does not loop.
+- If reserving a task fails (someone else was quicker), the runner reserves the next matching one right away instead
+  of ending the round with an error.
+- With nothing open, it asks again after 2 minutes instead of 5 (`--pause`).
 
 ## 0.13.2 (9 Nov 2026)
 
