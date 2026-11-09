@@ -73,6 +73,7 @@ export const FELDER: Record<string, string> = {
   widerspricht_selbst: "contradicts_own_run", ohne_gegenpruefung: "without_cross_check", grund: "reason", zurueckgehalten: "held_back", installieren_url: "install_url",
   // officers and lead scorecard
   officer_id: "area_lead_id", officers: "area_leads", officer: "area_lead", bereich: "area", deine_bereiche: "your_areas", stufen: "levels", seit: "since",
+  fortlaufend: "ongoing", laufend: "ongoing_figures", katalog: "catalogue", arten: "kinds", diese_woche: "this_week", beantwortet: "answered",
   lead_bilanz: "lead_scorecard", bewertet: "reviewed", je_rolle: "by_role", offen: "open", unberuehrt: "untouched_3_days", warten_auf_bewertung: "awaiting_review",
   reservierungen_ohne_ergebnis: "reservations_without_result", einreichungen_30t: "submissions_30d", annahme_prozent: "acceptance_percent",
   nacharbeit_prozent: "rework_percent",
@@ -110,7 +111,7 @@ export const WERTE: Record<string, Record<string, string>> = {
   entscheidung: { freigegeben: "approved", abgelehnt: "declined" },
   art: {
     // event types
-    vision_veroeffentlicht: "vision_published", vision_aktualisiert: "vision_updated", uebersetzung_gesetzt: "translation_set", aufgabe_angelegt: "task_created", aufgabe_reserviert: "task_reserved",
+    vision_veroeffentlicht: "vision_published", vision_aktualisiert: "vision_updated", projekt_fortlaufend: "project_ongoing_set", uebersetzung_gesetzt: "translation_set", aufgabe_angelegt: "task_created", aufgabe_reserviert: "task_reserved",
     arbeit_begonnen: "work_started", fortschritt: "progress", ergebnis_eingereicht: "result_submitted", einreichung_abgewiesen: "submission_rejected",
     abgebrochen: "abandoned", reservierung_abgelaufen: "reservation_expired", aufgabe_geschlossen: "task_closed", meilenstein_geschaetzt: "milestone_estimated", reservierung_beendet_sperre: "reservation_ended_block",
     reservierung_beendet_abmeldung: "reservation_ended_sign_out", pruefung_gestartet: "check_started", pruefung_beendet: "check_finished",

@@ -57,11 +57,26 @@ export function sitzungAusstellen(geheimnis: string, menschId: number, jetzt = D
   return `${menschId}.${jetzt}.${signieren(geheimnis, `sitzung:${menschId}:${jetzt}`)}`;
 }
 
+/** Fortlaufend ohne Endziel (migrations/057): nur der Visionär schaltet um, öffentlich protokolliert. */
+export async function fortlaufendSetzen(db: Db, menschId: number, slug: string, an: boolean) {
+  return transaktion(db, async (tx) => {
+    const p = (await tx.query(
+      `select p.id, p.fortlaufend from projekte p join projekt_rollen r on r.projekt_id = p.id and r.mensch_id = $2 and r.rolle = 'visionaer'
+       where p.slug = $1 for update`, [slug, menschId])).rows[0];
+    if (!p) throw new Abgelehnt("only the visionary of this project can change this");
+    if (p.fortlaufend !== an) {
+      await tx.query("update projekte set fortlaufend = $2 where id = $1", [p.id, an]);
+      await protokollieren(tx, { projekt_id: Number(p.id), akteur: `mensch:${menschId}`, art: "projekt_fortlaufend", bezug: `projekt:${p.id}`, daten: { fortlaufend: an } });
+    }
+    return { projekt: slug, fortlaufend: an };
+  });
+}
+
 /** Alles, was die Konto-Seite zeigt; zugleich der Export „Meine Daten“. */
 export async function kontoDaten(db: Db, menschId: number) {
   const mensch = (await db.query("select login, konto_provider as anbieter, erstellt, vertrauensstufe, profil_oeffentlich from menschen where id = $1", [menschId])).rows[0];
   const rollen = (await db.query(
-    `select p.slug as projekt, p.name, r.rolle, p.repo_git is not null as repo_verbunden, p.entwurf from projekt_rollen r join projekte p on p.id = r.projekt_id
+    `select p.slug as projekt, p.name, r.rolle, p.repo_git is not null as repo_verbunden, p.entwurf, p.fortlaufend from projekt_rollen r join projekte p on p.id = r.projekt_id
      where r.mensch_id = $1 order by p.name, r.rolle`, [menschId])).rows;
   const agenten = (await db.query(
     `select a.id::int, a.name, a.client_id, a.erstellt, a.abgemeldet,
@@ -290,6 +305,22 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
           { bereich: String(e.area ?? ""), pfade: liste(e.paths), faehigkeiten: liste(e.capabilities), raum, text: String(e.text ?? "") })));
       } catch (err) {
         if (err instanceof Abgelehnt) return json(res, 409, { error: err.message });
+        throw err;
+      }
+    }
+
+    // Fortlaufend ohne Endziel: der Visionär schaltet es auf seiner Projektkarte um (fortlaufendSetzen)
+    const laufend = /^\/api\/account\/projects\/([a-z0-9-]+)\/ongoing$/.exec(pfad);
+    if (laufend && req.method === "POST") {
+      if (!eigeneHerkunft(req)) return json(res, 403, { error: "foreign_origin" });
+      if (!menschId) return json(res, 401, { error: "not_signed_in" });
+      let e: { ongoing?: unknown } = {};
+      try { e = JSON.parse(await textLesen(req, 1_000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
+      if (typeof e.ongoing !== "boolean") return json(res, 400, { error: "ongoing: true or false" });
+      try {
+        return json(res, 200, nachAussen(await fortlaufendSetzen(db, menschId, laufend[1], e.ongoing)));
+      } catch (err) {
+        if (err instanceof Abgelehnt) return json(res, 403, { error: err.message });
         throw err;
       }
     }

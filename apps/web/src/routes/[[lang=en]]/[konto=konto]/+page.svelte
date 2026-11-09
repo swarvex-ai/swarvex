@@ -20,7 +20,7 @@
                  images: number; audio: number; models_3d: number; videos: number; texts: number; reviews: number };
   type Modell = { agent_program: string; model: string; submissions: number; accepted: number; acceptance_percent: number; tokens_per_accepted: number | null };
   type Konto = { person: { login: string; provider: string; created: string; trust_level: number; public_profile?: boolean };
-                 roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean }[]; agents: Agent[]; contributions: Beitrag[];
+                 roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean; ongoing?: boolean }[]; agents: Agent[]; contributions: Beitrag[];
                  total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[]; weekly_reports?: Woche[]; lead_services?: LeadDienst[];
                  lead_power?: { project: string; name: string; share_link: string; lead_positions: Gesuch[]; signals: string[] }[];
                  my_applications?: { id: number; project: string; project_name: string; area: string; created: string; status: string }[];
@@ -51,14 +51,14 @@
   let hinweis = $state("");
   // Überblick oben: je Projekt deine Rollen, sein Lead-Dienst (der Rechner steht im Namen der Geräte-Anmeldung,
   // „swarvex project lead: <projekt> (<rechner>)“), der Stand der Aufgaben (Wochenbericht) und wartende Freigaben
-  type Karte = { project: string; name: string; rollen: string[]; draft: boolean; repo: boolean; leitet: boolean;
+  type Karte = { project: string; name: string; rollen: string[]; draft: boolean; repo: boolean; leitet: boolean; fortlaufend: boolean;
                  dienst: LeadDienst | null; rechner: string | null; jetzt: Woche["now"] | null; freigaben: number };
   const rechnerAus = (name: string) => /\(([^()]+)\)\s*$/.exec(name)?.[1] ?? null;
   const karten = $derived.by(() => {
     if (!konto) return [] as Karte[];
     const je = new Map<string, Karte>();
     for (const r of konto.roles) {
-      const k = je.get(r.project) ?? { project: r.project, name: r.name, rollen: [], draft: false, repo: r.repo_connected, leitet: false, dienst: null, rechner: null, jetzt: null, freigaben: 0 };
+      const k = je.get(r.project) ?? { project: r.project, name: r.name, rollen: [], draft: false, repo: r.repo_connected, leitet: false, fortlaufend: r.ongoing ?? false, dienst: null, rechner: null, jetzt: null, freigaben: 0 };
       k.rollen.push(r.role);
       k.draft ||= r.draft && r.role === "visionary";
       k.leitet ||= r.role === "lead" || r.role === "visionary";
@@ -96,6 +96,21 @@
     const r = await fetch(adresse, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
     if (!r.ok) throw new Error(String(r.status));
     return r.json();
+  }
+
+  // Fortlaufend ohne Endziel (nur Visionär): Die Projektseite zeigt dann Bestand und Anfragen statt Fortschritt
+  async function fortlaufendSetzen(slug: string, an: boolean) {
+    arbeitet = true;
+    hinweis = "";
+    try {
+      const r = await fetch(`/api/account/projects/${slug}/ongoing`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ongoing: an }) });
+      if (!r.ok) throw new Error(String(r.status));
+      await laden();
+    } catch {
+      hinweis = t.aktionFehler;
+    } finally {
+      arbeitet = false;
+    }
   }
 
   async function agentAbmelden(a: Agent) {
@@ -335,6 +350,10 @@
               {/if}
               {#if k.jetzt}<p class="stand klein">{u.stand(k.jetzt)}</p>{/if}
               {#if k.freigaben}<p class="klein"><a href="#t-freigaben">{u.freigaben(k.freigaben)}</a></p>{/if}
+              {#if k.rollen.includes("visionary") && !k.draft}
+                <label class="schalter klein"><input type="checkbox" checked={k.fortlaufend} disabled={arbeitet}
+                  onchange={(e) => fortlaufendSetzen(k.project, e.currentTarget.checked)} /> {u.fortlaufend}</label>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -744,6 +763,8 @@
   .projektkarte .sprechen { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .projektkarte .stand { color: var(--stahl); }
   .projektkarte .ohne-repo, .projektkarte .dienst-starten { margin-top: 0; }
+  .schalter { display: flex; gap: 8px; align-items: flex-start; color: var(--stahl); cursor: pointer; }
+  .schalter input { margin-top: 3px; }
   .kurzliste { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; }
   .alt { color: var(--bernstein); }
   p.alt { margin: 0; }

@@ -11,6 +11,7 @@ import { ketteVerifizieren } from "./ereignisse.ts";
 import { creditSpenden } from "./spenden.ts";
 import { einreichungsVorschauUrl, konfig, vorschauUrl } from "./konfig.ts";
 import { feedbackZahlen } from "./feedback.ts";
+import { KATALOG_PROJEKT, katalogLaden } from "./katalog.ts";
 
 const ERLEDIGT = new Set(["angenommen", "gemerged"]);
 
@@ -204,7 +205,7 @@ export async function projektListe(db: Db) {
 /** Alles für die Projektseite der Website: Kennzahlen, Vision, Aufgaben, Beitragende, Protokoll. */
 export async function projektDetail(db: Db, slug: string) {
   const k = await kennzahlen(db, slug);
-  const p = (await db.query("select id, vision_md, repo_url, verfahren, vorbild, vorschau from projekte where slug = $1", [slug])).rows[0];
+  const p = (await db.query("select id, vision_md, repo_url, verfahren, vorbild, vorschau, fortlaufend from projekte where slug = $1", [slug])).rows[0];
   const aufgaben = (await db.query(
     `select a.id, a.titel, a.stufe, a.zustand, a.faehigkeiten, a.raum, a.rolle, m.titel as meilenstein,
             aufgabe_wartet_auf(a.abhaengig_von, a.abhaengig_eins_von) as wartet_auf, a.ohne_fremdbewertung,
@@ -250,9 +251,26 @@ export async function projektDetail(db: Db, slug: string) {
   const vorschau = vorschauUrl(slug) && v && v.status !== "none"
     ? { url: v.ok_commit && v.hat_vorschau !== false ? vorschauUrl(slug) : null, docs_url: v.ok_commit && v.hat_doku ? `${vorschauUrl(slug)}docs/` : null, ok_commit: v.ok_commit, ok_zeit: v.ok_zeit, commit: v.commit, status: v.status, zeit: v.zeit,
         rueckmeldungen: await feedbackZahlen(db, Number(p.id)) } : null;
-  return { ...k, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, vorschau, lead_dienst: await leadAnwesenheit(db, Number(p.id)), lead_gesuche: await offeneGesuche(db, Number(p.id)), bedarf: await bedarfVon(db, Number(p.id)), aufgaben, kritisch_vertrauen, beitragende, ereignisse, bilanz: await schwarmBilanz(db, Number(p.id)),
+  // Fortlaufend (migrations/057): Bestand, Anfragen und Galerie statt Fortschritt und Schwarm-Bilanz
+  const laufend = p.fortlaufend ? await laufendeZahlen(db, Number(p.id), slug) : null;
+  return { ...k, fortlaufend: p.fortlaufend, laufend, vision_md: p.vision_md, repo_url: p.repo_url, verfahren: p.verfahren, clean_room, vorschau, lead_dienst: await leadAnwesenheit(db, Number(p.id)), lead_gesuche: await offeneGesuche(db, Number(p.id)), bedarf: await bedarfVon(db, Number(p.id)), aufgaben, kritisch_vertrauen, beitragende, ereignisse, bilanz: await schwarmBilanz(db, Number(p.id)),
            protokoll: { ok: kette.ok, eintraege: kette.anzahl, kopf: kette.kopf,
                         veroeffentlicht: kopf ? { seq: Number(kopf.seq), zeit: kopf.zeit } : null } };
+}
+
+/** Für fortlaufende Projekte: was diese Woche dazukam, Anfragen anderer Projekte und beim Katalog sein Bestand. */
+async function laufendeZahlen(db: Db, projektId: number, slug: string) {
+  const diese_woche = Number((await db.query(
+    "select count(*) from ereignisse where projekt_id = $1 and art = 'gemerged' and zeit > now() - interval '7 days'", [projektId])).rows[0].count);
+  const anfragen = (await db.query(
+    `select count(*) filter (where zustand in ('offen', 'angenommen'))::int as offen, count(*) filter (where zustand = 'erledigt')::int as beantwortet
+     from bedarf where an_projekt = $1`, [projektId])).rows[0];
+  let katalog: { assets: number; arten: number } | null = null;
+  if (slug === KATALOG_PROJEKT) {
+    const k = await katalogLaden(db);
+    if (k.verfuegbar) katalog = { assets: k.eintraege.length, arten: new Set(k.eintraege.map((e) => e.art)).size };
+  }
+  return { katalog, diese_woche, anfragen };
 }
 
 /** Live-Ansicht der Startseite: die letzten öffentlichen Ereignisse aller Projekte, ohne Namen (nur Art, Projekt, Zeit). */

@@ -952,6 +952,27 @@ describe("Mein Konto (#25)", () => {
     await db.query("delete from agenten where id = $1", [id]);
   });
 
+  it("fortlaufend: nur der Visionär schaltet um; die Projektseite bekommt Bestand und Anfragen statt Fortschritt", async () => {
+    const { fortlaufendSetzen } = await import("../src/konto.ts");
+    const { projektDetail } = await import("../src/kennzahlen.ts");
+    await expect(fortlaufendSetzen(db, mit.menschId, "test", true)).rejects.toThrow(/only the visionary/);
+    const pid = Number((await db.query("select id from projekte where slug = 'test'")).rows[0].id);
+    await db.query("insert into projekt_rollen(projekt_id, mensch_id, rolle) values ($1, $2, 'visionaer') on conflict do nothing", [pid, lead.menschId]);
+    try {
+      expect(await fortlaufendSetzen(db, lead.menschId, "test", true)).toEqual({ projekt: "test", fortlaufend: true });
+      const d = await projektDetail(db, "test") as { fortlaufend: boolean; laufend: { katalog: unknown; diese_woche: number; anfragen: { offen: number; beantwortet: number } } };
+      expect(d.fortlaufend).toBe(true);
+      expect(d.laufend).toMatchObject({ katalog: null, anfragen: { offen: expect.any(Number), beantwortet: expect.any(Number) } });
+      expect(d.laufend.diese_woche).toBeGreaterThanOrEqual(0);
+      expect((await db.query("select count(*)::int as n from ereignisse where art = 'projekt_fortlaufend'")).rows[0].n).toBe(1);
+      await fortlaufendSetzen(db, lead.menschId, "test", false);
+      expect((await projektDetail(db, "test") as { laufend: unknown }).laufend).toBeNull();
+    } finally {
+      await db.query("update projekte set fortlaufend = false where id = $1", [pid]);
+      await db.query("delete from projekt_rollen where projekt_id = $1 and mensch_id = $2 and rolle = 'visionaer'", [pid, lead.menschId]);
+    }
+  });
+
   it("meldet einen Agenten ab: Grants weg, Reservierung beendet, Aufgabe wieder offen", async () => {
     const { agentAbmelden } = await import("../src/konto.ts");
     const zweit = { menschId: mit.menschId, agentId: Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,'runner-3','runner-3') returning id", [mit.menschId])).rows[0].id) };

@@ -50,6 +50,10 @@
     single_agent: { hours: number }; speedup: number | null; four_eyes_percent: number | null; pipeline_passed_percent: number | null;
     quality?: { rework_percent: number | null; regressions: number; merge_train_failed: number }; cost?: { tokens_per_unit: number | null } };
   const b = $derived(t.detail.bilanz);
+  // Fortlaufend ohne Endziel (z. B. Formwerk): Bestand, Anfragen und Galerie statt Fortschritt und Zeitvergleich
+  type Laufend = { catalogue: { assets: number; kinds: number } | null; this_week: number; requests: { open: number; answered: number } };
+  const laufend = $derived((p.ongoing ? p.ongoing_figures : null) as Laufend | null);
+  const l = $derived(d.laufend);
   type Jetzt = { available: number; blocked: number; active: number; waiting_for_check: number; oldest_check_hours: number | null; awaiting_review: number; oldest_review_hours: number | null; bottleneck: string | null };
   const bilanz = $derived(p.swarm_balance as { time_flow: Record<string, number | null> | null; now: Jetzt; total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; units?: number; evidence?: string; units_per_day?: number; throughput_factor?: number } | null } | undefined);
   const paket = $derived((p.project_type ? data.pakete?.[`${p.project_type}${p.procedure === "clean_room" ? "-cleanroom" : p.procedure === "continuation" ? "-continuation" : ""}`] : undefined) as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
@@ -112,8 +116,12 @@
   <section aria-labelledby="t-kennzahlen">
     <h2 id="t-kennzahlen" class="sr">{d.kennzahlen}</h2>
     <dl class="kennzahlen">
-      <div class="gross"><dt>{t.fortschritt}</dt><dd>
-        {#if p.progress_percent !== null}
+      <div class="gross"><dt>{laufend ? l.bestand : t.fortschritt}</dt><dd>
+        {#if laufend?.catalogue}
+          <span class="wert">{l.assets(laufend.catalogue.assets)}</span><span class="leise">{l.arten(laufend.catalogue.kinds)} · {l.dieseWoche(laufend.this_week)}</span>
+        {:else if laufend}
+          <span class="wert">{l.gemerged(laufend.this_week)}</span><span class="leise">{l.gemergedText}</span>
+        {:else if p.progress_percent !== null}
           <span class="wert">≈ {p.progress_percent} %</span><span class="balken"><i style="width:{p.progress_percent}%"></i></span><span class="leise">{t.geschaetzt}</span>
         {:else}
           <span class="wert">{p.tasks_done} / {p.tasks_planned}</span><span class="leise">{d.geplantErledigt}</span>
@@ -127,6 +135,17 @@
   </section>
 
   <div class="zwei">
+    {#if laufend}
+    <section aria-labelledby="t-laufend">
+      <h2 id="t-laufend">{l.h2}</h2>
+      <dl class="laufend">
+        {#if laufend.catalogue}<div><dt>{l.katalog}</dt><dd>{l.assets(laufend.catalogue.assets)} {l.arten(laufend.catalogue.kinds)} · {l.dieseWoche(laufend.this_week)}</dd></div>{/if}
+        <div><dt>{l.anfragen}</dt><dd>{l.anfragenStand(laufend.requests.open, laufend.requests.answered)}</dd></div>
+        {#if p.preview?.url}<div><dt>{l.galerie}</dt><dd><a href={p.preview.url} target="_blank" rel="noopener noreferrer">{p.preview.url.replace(/^https?:\/\//, "").replace(/\/$/, "")} ↗</a></dd></div>{/if}
+      </dl>
+      <p class="leise klein">{l.text}</p>
+    </section>
+    {:else}
     <section aria-labelledby="t-meilensteine">
       <h2 id="t-meilensteine">{d.meilensteine}</h2>
       {#if p.milestones.length}
@@ -145,6 +164,7 @@
       {:else}<p class="leise">{d.keineMeilensteine}</p>{/if}
       <details class="klein"><summary>{d.berechnung}</summary><p class="leise">{d.berechnungText}</p></details>
     </section>
+    {/if}
     <section aria-labelledby="t-steckbrief">
       <h2 id="t-steckbrief" class="sr">Steckbrief</h2>
       <dl class="steckbrief">
@@ -193,8 +213,14 @@
   </div>
 
   <section aria-labelledby="t-bilanz" class="bilanz">
+    {#if laufend}
+    <h2 id="t-bilanz">{b.bremstH3}</h2>
+    {:else}
     <h2 id="t-bilanz">{b.h2} <a class="leise klein-titel" href={methode}>{b.wie}</a></h2>
-    {#if bilanz?.total}
+    {/if}
+    {#if laufend}
+      <!-- fortlaufend: kein Zeitvergleich, nur was gerade bremst (unten) -->
+    {:else if bilanz?.total}
       {@const g = bilanz.total}
       <div class="spalten">
         <div class="spalte schwarm">
@@ -247,7 +273,7 @@
     {/if}
     {#if bilanz?.now}
       {@const j = bilanz.now}
-      <h3 class="unterkopf">{b.bremstH3}</h3>
+      {#if !laufend}<h3 class="unterkopf">{b.bremstH3}</h3>{/if}
       <p class="bremst klein" class:frei={!j.bottleneck}>
         <!-- Einen Bereichs-Lead nennt der Hinweis nur, wenn die Lead-Bilanz ihn empfiehlt (Rolle mit Last und Bewegung, apps/api/src/kennzahlen.ts) -->
         {#if j.bottleneck === "review"}{b.engpass.review(j.awaiting_review, j.oldest_review_hours ?? 0)}{#if p.lead_scorecard?.area_lead_recommendation?.length}{b.engpass.reviewBereich(p.lead_scorecard.area_lead_recommendation.map((e: { role: string }) => e.role).join(", "))}{/if}
@@ -258,7 +284,7 @@
         {:else}{b.engpass.keiner}{/if}
       </p>
     {/if}
-    {#if bilanz?.comparison}
+    {#if bilanz?.comparison && !laufend}
       {@const v = bilanz.comparison}
       <p class="vergleich klein"><strong>{b.vergleich}:</strong> {s === "en" ? v.description_en : v.description}: {b.tage(v.calendar_days)}{#if v.units && v.units_per_day}{b.vergleichEinheiten(v.units, v.units_per_day)} (<a href={v.evidence} rel="noopener">{b.beleg}</a>){/if}.
         {#if v.throughput_factor}<strong class="faktor-satz">{b.durchsatzFaktor(v.throughput_factor)}</strong>{/if}</p>
@@ -367,6 +393,10 @@
 
   .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; }
   .meilensteine { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .laufend { margin: 0 0 10px; display: grid; gap: 10px; }
+  .laufend div { display: grid; gap: 2px; }
+  .laufend dt { color: var(--leise); font-size: .85rem; }
+  .laufend dd { margin: 0; }
   .meilensteine li { display: grid; grid-template-columns: minmax(0, 1fr) 160px 72px; gap: 12px; align-items: center; }
   .meilensteine li > :first-child { overflow-wrap: anywhere; }
   @media (max-width: 600px) {
