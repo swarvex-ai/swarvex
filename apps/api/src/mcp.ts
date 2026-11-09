@@ -299,7 +299,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     }, sicher(async ({ project, max_seconds, wake_on }) => aufArbeitWarten(db, wer, project, max_seconds, wake_on)));
 
     s.registerTool("pending_submissions", {
-      description: "(Lead, area lead) A project's submissions with their check results, waiting for your review. Area leads see their area only. preview_url, when present, is a playable build of that submission: try it before deciding (or ask the visionary to). own_submission: from an agent of your own person; you may not review it, it goes to peer review (see its hint).",
+      description: "(Lead, area lead) A project's submissions with their check results, waiting for your review. Area leads see their area only. preview_url, when present, is a playable build of that submission: try it before deciding (or ask the visionary to). own_submission: from an agent of your own person; you may not accept it, but send it back yourself when you see a flaw; otherwise it goes to peer review (see its hint).",
       inputSchema: { project: z.string() },
     }, sicher(async ({ project }) => k.wartendeEinreichungen(db, wer, project)));
 
@@ -326,7 +326,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     }, sicher(async ({ task_id, reason }) => k.regressionMelden(db, wer, task_id, reason)));
 
     s.registerTool("review_submission", {
-      description: "(Lead, area lead) Reviews a checked submission: accept, rework (back to the pool) or reject, always with a reason. Area leads: levels A and B in their area only.",
+      description: "(Lead, area lead) Reviews a checked submission: accept, rework (back to the pool) or reject, always with a reason. Area leads: levels A and B in their area only. Your own submissions (own_submission): rework or reject only, never accept.",
       inputSchema: { submission_id: z.number().int(), verdict: z.enum(["accept", "rework", "reject"]), reason: z.string().min(3) },
     }, sicher(async ({ submission_id, verdict, reason }) => { await k.bewerten(db, wer, submission_id, URTEIL_REIN[verdict], reason); return "reviewed"; }));
   }

@@ -613,6 +613,15 @@ describe("Bewertung durch den Schwarm", () => {
     expect((await db.query("select zustand from aufgaben where id = $1", [a2.id])).rows[0].zustand).toBe("offen");
     expect((await db.query("select urteil from bewertungen where einreichung_id = $1", [eid2])).rows[0].urteil).toBe("nacharbeit");
     await k.schliessen(db, lead, a2.id, "Test");
+    // Selbst-Nacharbeit: Sieht der Lead selbst einen Fehler, schickt er die eigene Einreichung zurück; annehmen bleibt verboten
+    const { a: a3, eid: eid3 } = await eigen("Vom Lead selbst, Fehler selbst gesehen");
+    expect(w?.hinweis).toContain("send it back yourself");
+    await k.bewerten(db, lead, eid3, "nacharbeit", "Das Rad sitzt im Wannenboden, nach vorn setzen");
+    expect((await db.query("select zustand from aufgaben where id = $1", [a3.id])).rows[0].zustand).toBe("offen");
+    const ev3 = (await db.query("select daten from ereignisse where bezug = $1 and art = 'bewertet' order by seq desc limit 1", [`aufgabe:${a3.id}`])).rows[0].daten;
+    expect(ev3).toMatchObject({ urteil: "nacharbeit", selbst: true });
+    expect((await offeneFremdpruefungen(db, p5, "test")).map((x) => x.einreichung_id)).not.toContain(eid3);
+    await k.schliessen(db, lead, a3.id, "Test");
   });
   it("Merge-Zug rot: zurück in den Pool mit neuem Stand, der nächste Versuch bekommt den Bericht", async () => {
     const { a, eid } = await geprueft("Zug rot", "A");

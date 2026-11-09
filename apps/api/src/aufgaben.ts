@@ -54,7 +54,7 @@ export const ohneAusfuehrung = (faehigkeiten: string[]) => faehigkeiten.length >
 export const VOM_LEAD = (e: string, projekt: string) =>
   `exists (select 1 from agenten vl_ag join projekt_rollen vl_r on vl_r.mensch_id = vl_ag.mensch_id
            where vl_ag.id = ${e}.agent_id and vl_r.projekt_id = ${projekt} and vl_r.rolle in ('lead', 'visionaer'))`;
-export const EIGENER_BEITRAG = "your own submission: you may not review it, not even through a second agent. It goes to peer review: one approval from another person with trust level 1 or higher accepts levels A and B, a request for changes sends it back for rework. Another person who leads the project (visionary, area lead) may also review it. Do not ask the visionary when they are you.";
+export const EIGENER_BEITRAG = "your own submission: you may not accept it, not even through a second agent. When you see a flaw, send it back yourself (review_submission with rework or reject). Otherwise it goes to peer review: one approval from another person with trust level 1 or higher accepts levels A and B, a request for changes sends it back for rework. Another person who leads the project (visionary, area lead) may also review it. Do not ask the visionary when they are you.";
 export const NUR_RUNNER = "this task runs code; work on it with the swarvex runner, which keeps it in a sandbox (https://swarvex.ai/en/docs/runner)";
 const akteur = (w: Wer) => `agent:${w.agentId}`;
 
@@ -804,17 +804,21 @@ export async function bewerten(db: Db, wer: Wer, einreichungId: number, urteil: 
     const a = await aufgabeSperren(tx, e.aufgabe_id);
     await mussLeadOderOfficerSein(tx, wer.menschId, Number(a.projekt_id), a);
     const autor = (await tx.query("select mensch_id from agenten where id = $1", [e.agent_id])).rows[0];
-    if (Number(autor.mensch_id) === wer.menschId) {
+    // Vier Augen verhindern, dass sich jemand selbst annimmt. Strenger mit sich selbst zu sein schadet nicht (neVs
+    // 09.11.2026): Die eigene Einreichung in die Nacharbeit schicken oder ablehnen darf man, nur annehmen nicht. Sonst nahm
+    // eine einzelne Fremdprüfung eine Einreichung an, deren Fehler der Lead längst kannte.
+    const selbst = Number(autor.mensch_id) === wer.menschId;
+    if (selbst && urteil === "annehmen") {
       const rollen = await rollenVon(tx, wer.menschId, Number(a.projekt_id));
       throw new Abgelehnt(rollen.includes("lead") || rollen.includes("visionaer") ? EIGENER_BEITRAG
-        : "nobody reviews their own submission, not even through a second agent: the project's lead reviews it");
+        : "nobody accepts their own submission, not even through a second agent: the project's lead reviews it (you may send it back for rework yourself)");
     }
     if (a.zustand !== "geprueft_ok") throw new Abgelehnt(`review only after a passing check (task is ${en(a.zustand)})`);
     // Bewertet wird nur die neueste Einreichung: eine ältere ist überholt, ihr Urteil gälte sonst für die Aufgabe
     const neueste = Number((await tx.query("select max(id) from einreichungen where aufgabe_id = $1", [a.id])).rows[0].max);
     if (neueste !== einreichungId) throw new Abgelehnt(`submission ${einreichungId} is superseded by ${neueste}; review that one`);
     await tx.query("insert into bewertungen(einreichung_id, agent_id, urteil, begruendung) values ($1,$2,$3,$4)", [einreichungId, wer.agentId, urteil, begruendung]);
-    await wechseln(tx, a, urteil === "annehmen" ? "angenommen" : "offen", akteur(wer), "bewertet", { einreichung: einreichungId, urteil, begruendung });
+    await wechseln(tx, a, urteil === "annehmen" ? "angenommen" : "offen", akteur(wer), "bewertet", { einreichung: einreichungId, urteil, begruendung, ...(selbst ? { selbst: true } : {}) });
     if (urteil === "annehmen") await variantenSchliessen(tx, a);
     if (urteil === "ablehnen") await vertrauenAktualisieren(tx, Number(autor.mensch_id), "rejected");
   });
