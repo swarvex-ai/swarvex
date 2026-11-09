@@ -16,6 +16,8 @@ package main
 //	                       im Datenstrom auch als Ereignis codex.rate_limits
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -406,6 +408,79 @@ func kontingentLesen(datei string) (kontingentStand, bool) {
 		return kontingentStand{}, false
 	}
 	return k, true
+}
+
+// ---- geteilter Stand: Runner und Lead-Dienste mit demselben Abo ----
+//
+// Jeder Schlüssel-Proxy kennt den Stand nur aus seinen eigenen Antworten. Laufen auf einem Rechner Runner und
+// Lead-Dienste mit demselben Abo, legen alle den neuesten Stand unter quota/<Kennung>.json ab, und der Runner entscheidet
+// mit dem neuesten (sonst rechnete er mit Stunden altem Verbrauch, während die Leads weiterarbeiten).
+
+// aboKennung: woran Runner und Lead-Dienste dasselbe Abo erkennen: bei Codex das ChatGPT-Konto (die Datei ändert sich
+// mit jedem Erneuern), sonst der Inhalt der Schlüsseldatei; nur als kurzer Hash. Leer ohne lesbare Datei.
+func aboKennung(keyDatei string) string {
+	if keyDatei == "" {
+		return ""
+	}
+	roh, err := os.ReadFile(keyDatei)
+	if err != nil {
+		return ""
+	}
+	quelle := strings.TrimSpace(string(roh))
+	if istCodexAnmeldung(roh) {
+		var d struct {
+			Tokens struct {
+				Konto string `json:"account_id"`
+			} `json:"tokens"`
+		}
+		if json.Unmarshal(roh, &d) != nil || d.Tokens.Konto == "" {
+			return ""
+		}
+		quelle = "codex:" + d.Tokens.Konto
+	}
+	if quelle == "" {
+		return ""
+	}
+	s := sha256.Sum256([]byte(quelle))
+	return hex.EncodeToString(s[:8])
+}
+
+// aboAktiv: die Kennung des Abos, mit dem dieser Runner arbeitet (gesetzt in `swarvex work`).
+var aboAktiv string
+
+func geteilteKontingentDatei(kennung string) string {
+	return filepath.Join(datenOrdner(), "quota", kennung+".json")
+}
+
+// kontingentTeilen: den Stand für alle mit diesem Abo ablegen, wenn er neuer ist als der dort (atomar: mehrere Dienste
+// schreiben). Die Nacht-Buchführung gehört dem Runner und bleibt in quota.json.
+func kontingentTeilen(kennung string, k kontingentStand) {
+	if kennung == "" || len(k.Fenster) == 0 {
+		return
+	}
+	datei := geteilteKontingentDatei(kennung)
+	if alt, ok := kontingentLesen(datei); ok && !k.Zeit.After(alt.Zeit) {
+		return
+	}
+	k.Nacht = nil
+	roh, _ := json.Marshal(k)
+	os.MkdirAll(filepath.Dir(datei), 0o755)
+	os.WriteFile(datei+".neu", roh, 0o644)
+	os.Rename(datei+".neu", datei)
+}
+
+// kontingentAktuell: der neueste bekannte Stand, der eigene des Runners oder der geteilte; die Nacht immer aus dem eigenen.
+func kontingentAktuell(kennung string) (kontingentStand, bool) {
+	eigen, ok := kontingentLesen(kontingentDatei())
+	if kennung == "" {
+		return eigen, ok
+	}
+	geteilt, ok2 := kontingentLesen(geteilteKontingentDatei(kennung))
+	if !ok2 || (ok && !geteilt.Zeit.After(eigen.Zeit)) {
+		return eigen, ok
+	}
+	geteilt.Nacht = eigen.Nacht
+	return geteilt, true
 }
 
 // kontingentAusProtokoll: das letzte Ereignis "quota" im Protokoll des Proxys.

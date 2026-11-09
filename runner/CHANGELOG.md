@@ -5,6 +5,15 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.13.4 (9 Nov 2026)
+
+- Runner and lead services on one machine share the state of a subscription they both use: whoever got the latest
+  answer from the provider writes it, and the runner decides by the newest. Before, it went by its own last request
+  (in our lab by the morning's 27 % while two leads had worked on for hours). Different subscriptions never mix: they
+  are told apart by a short hash of the key file (for Codex, the ChatGPT account, which stays the same when the token
+  is renewed).
+- `swarvex status` shows that newest state, and "Latest messages" leaves out systemd's resource lines.
+
 ## 0.13.3 (9 Nov 2026)
 
 More agent power by default, still fair:

@@ -1013,6 +1013,10 @@ func leadImContainer(ctx context.Context, l *leadKonfig, a *leadAnmeldung, anlas
 	exec.Command("podman", "rm", "-f", name).Run()
 	protokoll, _ := exec.Command("podman", "logs", proxy).CombinedOutput()
 	verbrauch := verbrauchAusProxy(string(protokoll))
+	// Der Abo-Stand dieser Runde für den Runner mit demselben Abo (sonst entschiede er mit einem veralteten)
+	if k, ok := kontingentAusProtokoll(string(protokoll)); ok {
+		kontingentTeilen(aboKennung(l.KeyDatei), k)
+	}
 	stempel := time.Now().Format("20060102-150405")
 	os.WriteFile(leadUnter(p, filepath.Join("log", stempel+".log")), aus, 0o600)
 	os.WriteFile(leadUnter(p, filepath.Join("log", stempel+".proxy.log")), protokoll, 0o600)

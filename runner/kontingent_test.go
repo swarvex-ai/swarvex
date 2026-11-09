@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -187,5 +188,48 @@ func TestGleichmaessig(t *testing.T) {
 	}
 	if !strings.Contains(r.String(), ";pace=60") {
 		t.Errorf("String: %s", r.String())
+	}
+}
+
+// Runner und Lead-Dienste mit demselben Abo teilen den neuesten Stand (0.13.4); verschiedene Abos nie.
+func TestGeteilterKontingentStand(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	dir := t.TempDir()
+	claude := dir + "/claude-token"
+	os.WriteFile(claude, []byte("sk-ant-oat-test\n"), 0o600)
+	anders := dir + "/anderes"
+	os.WriteFile(anders, []byte("sk-ant-oat-anders"), 0o600)
+	codex1, codex2 := dir+"/auth1.json", dir+"/auth2.json"
+	os.WriteFile(codex1, []byte(`{"auth_mode":"chatgpt","tokens":{"access_token":"a","account_id":"konto-1","id_token":"x"}}`), 0o600)
+	os.WriteFile(codex2, []byte(`{"auth_mode":"chatgpt","tokens":{"access_token":"b-erneuert","account_id":"konto-1","id_token":"y"}}`), 0o600)
+	if aboKennung(claude) == "" || aboKennung(claude) == aboKennung(anders) || aboKennung("") != "" || aboKennung(dir+"/fehlt") != "" {
+		t.Fatal("aboKennung: each subscription its own, empty without a file")
+	}
+	if aboKennung(codex1) != aboKennung(codex2) {
+		t.Error("Codex: the same ChatGPT account after a token refresh")
+	}
+	kennung := aboKennung(claude)
+	alt := time.Date(2026, 11, 9, 8, 32, 0, 0, time.UTC)
+	reset := time.Date(2026, 11, 14, 4, 0, 0, 0, time.UTC)
+	stand := func(z time.Time, p float64) kontingentStand {
+		return kontingentStand{Zeit: z, Fenster: []kontingentFenster{{Name: "7d", Minuten: 10080, Prozent: p, Reset: reset}}}
+	}
+	eigen := stand(alt, 27)
+	eigen.Nacht = &nachtStand{Beginn: alt, Prozent: 20}
+	kontingentMerken(kontingentDatei(), eigen)
+	// ein Lead-Dienst mit demselben Abo meldet später mehr Verbrauch
+	kontingentTeilen(kennung, stand(alt.Add(5*time.Hour), 41))
+	k, ok := kontingentAktuell(kennung)
+	if !ok || k.Fenster[0].Prozent != 41 || k.Nacht == nil || k.Nacht.Prozent != 20 {
+		t.Errorf("newest state with the runner's night: %+v", k)
+	}
+	// ein älterer Stand überschreibt den neueren nicht
+	kontingentTeilen(kennung, stand(alt.Add(time.Hour), 30))
+	if k, _ := kontingentAktuell(kennung); k.Fenster[0].Prozent != 41 {
+		t.Errorf("an older state must not win: %+v", k)
+	}
+	// ein anderes Abo sieht nur den eigenen Stand
+	if k, _ := kontingentAktuell(aboKennung(anders)); k.Fenster[0].Prozent != 27 {
+		t.Errorf("another subscription: %+v", k)
 	}
 }

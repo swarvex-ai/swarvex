@@ -114,6 +114,9 @@ func arbeitenBefehl(args []string) {
 			fehlerAus("--model-key-file: a Codex sign-in (auth.json) only works with --agent codex")
 		}
 		aboZugang = istCodexAnmeldung(roh) || strings.HasPrefix(strings.TrimSpace(string(roh)), "sk-ant-oat")
+		if aboZugang {
+			aboAktiv = aboKennung(*keyDatei) // den Stand mit Lead-Diensten desselben Abos teilen (kontingent.go)
+		}
 	}
 	if *rest || *anteil > 0 {
 		if !aboZugang {
@@ -148,7 +151,7 @@ func arbeitenBefehl(args []string) {
 	// Restkontingent: nur kurz vor dem Wochen-Reset und nur bis zur Reserve (Exit-Code 7, kontingent.go).
 	// Reine Gegenprüfungen brauchen kein Modell: für sie gelten Restkontingent und Tagesbudget nicht.
 	if restModus != nil && !*nurGegen {
-		if k, ok := kontingentLesen(kontingentDatei()); ok {
+		if k, ok := kontingentAktuell(aboAktiv); ok {
 			if erlaubt, grund, ab := restModus.fuer(k, time.Now()).pruefen(k.fortgeschrieben(time.Now()), time.Now()); !erlaubt {
 				fmt.Printf("Subscription: %s. Next chance from %s.\n", grund, zeitpunkt(ab))
 				os.Exit(7)
@@ -762,7 +765,7 @@ func schluesselProxyStarten(ctx context.Context, name, netz string, agent agentA
 		proxyArgs = append(proxyArgs, "-e", "SWARVEX_ACCOUNT_ID="+zugang.Konto)
 	}
 	if restModus != nil {
-		k, _ := kontingentLesen(kontingentDatei())
+		k, _ := kontingentAktuell(aboAktiv)
 		proxyArgs = append(proxyArgs, "-e", "SWARVEX_LEFTOVER="+restModus.fuer(k, time.Now()).String())
 	}
 	if aus, err := exec.CommandContext(ctx, "podman", append(proxyArgs, "swarvex-proxy")...).CombinedOutput(); err != nil {
@@ -782,6 +785,7 @@ func proxyAuswerten(name, ordner string) map[string]float64 {
 			k.Nacht = alt.Nacht // der Beginn der Nacht bleibt, auch wenn diese Aufgabe ihn nicht neu gesetzt hat
 		}
 		kontingentMerken(kontingentDatei(), k)
+		kontingentTeilen(aboAktiv, k) // für die Lead-Dienste mit demselben Abo
 	}
 	return verbrauchAusProxy(string(proxyLog))
 }
@@ -1009,7 +1013,7 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 			// Das Kind hat Grund und Zeitpunkt schon genannt; aus dem gemerkten Stand ergibt sich, wie lange.
 			n := time.Now().Add(30 * time.Minute)
 			grund := "subscription: your rules allow nothing more right now"
-			if k, ok := kontingentLesen(kontingentDatei()); ok && restModus != nil {
+			if k, ok := kontingentAktuell(aboAktiv); ok && restModus != nil {
 				if erlaubt, g, ab := restModus.fuer(k, time.Now()).pruefen(k.fortgeschrieben(time.Now()), time.Now()); ab.After(time.Now()) {
 					n = ab
 					if !erlaubt && g != "" {

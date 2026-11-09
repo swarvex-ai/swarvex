@@ -28,6 +28,7 @@ func TestLetzteMeldungen(t *testing.T) {
 		"2026-11-09 09:35:44.846909755 +0100 CET m=+0.056163216 container died 4ed90a16 (image=localhost/swarvex-proxy:latest)\n" +
 		`{"type":"quota","windows":[]}` + "\n\n" +
 		"error: sandbox: agent exited with an error: exit status 1\n" +
+		"swarvex.service: Consumed 14.265s CPU time over 15h 44min 7.779s wall clock time, 983.5M memory peak.\n" +
 		"Leftover mode: waiting until Tue 10 Nov 01:00.\n"
 	got := letzteMeldungen(journal, 5)
 	want := []string{"No matching task. Next attempt in 5m0s.", "error: sandbox: agent exited with an error: exit status 1", "Leftover mode: waiting until Tue 10 Nov 01:00."}

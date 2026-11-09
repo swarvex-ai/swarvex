@@ -230,7 +230,14 @@ func logsBefehl() {
 func statusBefehl() {
 	fmt.Println("Runner:", versionText(version))
 	fmt.Printf("Usage today: %d tokens\n", verbrauchAmTag(verbrauchsDatei(), time.Now()))
-	if k, ok := kontingentLesen(kontingentDatei()); ok {
+	// Der neueste Stand, auch aus den Lead-Diensten mit demselben Abo
+	einheit, _ := os.ReadFile(dienstDatei())
+	dienstArgs, _ := einheitArgsLesen(string(einheit))
+	key, _ := argWert(dienstArgs, "model-key-file")
+	if key == "" {
+		key, _ = argWert(gespeicherteArgs(), "model-key-file")
+	}
+	if k, ok := kontingentAktuell(aboKennung(key)); ok {
 		fmt.Printf("Subscription (as of %s): %s\n", zeitpunkt(k.Zeit), kontingentText(k, time.Now()))
 	}
 	if z, err := zugangLaden(); err == nil {
@@ -297,8 +304,9 @@ func wartenLesen(jetzt time.Time) (wartenStand, bool) {
 	return w, true
 }
 
-// rauschen: Zeilen von Podman (conmon, Container-Ereignisse) und JSON-Zeilen des Schlüssel-Proxys im Journal
-var rauschen = regexp.MustCompile(`^(conmon |\{|\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+ [+-]\d{4} \S+ m=\+)`)
+// rauschen: Zeilen von Podman (conmon, Container-Ereignisse), JSON-Zeilen des Schlüssel-Proxys und die
+// Ressourcen-Zeilen von systemd („swarvex.service: Consumed …“) im Journal
+var rauschen = regexp.MustCompile(`^(conmon |\{|\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+ [+-]\d{4} \S+ m=\+|swarvex\.service: )`)
 
 // letzteMeldungen: die letzten n Zeilen des Journals, die der Runner selbst geschrieben hat.
 func letzteMeldungen(aus string, n int) []string {
