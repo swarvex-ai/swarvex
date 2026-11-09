@@ -247,6 +247,12 @@
   }
 
   const datum = (x: string | null) => (x ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Europe/Berlin" }).format(new Date(x)) : "–");
+  // Angemeldet, aber lange nicht benutzt (z. B. ein Rechner, der inzwischen mit einem anderen Konto läuft): Tage, sonst 0
+  const ungenutzt = (a: Agent) => {
+    if (!a.signed_in) return 0;
+    const tage = Math.floor((Date.now() - new Date(a.last ?? a.created).getTime()) / 86_400_000);
+    return tage >= 3 ? tage : 0;
+  };
   const zeit = (x: string | null) => (x ? new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(x)) : t.agent.nie);
   const zahl = (n: number) => new Intl.NumberFormat(locale).format(n);
   const status = (a: Agent) => (a.signed_in ? "an" : a.signed_out ? "ab" : "aus");
@@ -343,7 +349,8 @@
       {:else}
         <ul class="kurzliste">
           {#each mitarbeit as a (a.id)}
-            <li><strong>{a.name}</strong> <span class="leise">{a.reservations ? u.arbeitet(a.reservations) : u.frei} · {t.agent.zuletzt} {zeit(a.last)}</span></li>
+            <li><strong>{a.name}</strong> <span class="leise">{a.reservations ? u.arbeitet(a.reservations) : u.frei} · {t.agent.zuletzt} {zeit(a.last)}</span>
+              {#if ungenutzt(a)}<span class="alt">{t.agent.ungenutzt(ungenutzt(a))}</span>{/if}</li>
           {/each}
         </ul>
       {/if}
@@ -602,6 +609,7 @@
                 <div><dt>{t.agent.einreichungen}</dt><dd>{a.submissions}</dd></div>
                 {#if a.signed_out}<div><dt>{t.agent.abgemeldetAm}</dt><dd>{zeit(a.signed_out)}</dd></div>{/if}
               </dl>
+              {#if ungenutzt(a)}<p class="alt klein">{t.agent.ungenutzt(ungenutzt(a))}</p>{/if}
               {#if a.signed_in || a.reservations > 0}
                 <div class="aktion">
                   {#if frage === a.id}
@@ -737,6 +745,8 @@
   .projektkarte .stand { color: var(--stahl); }
   .projektkarte .ohne-repo, .projektkarte .dienst-starten { margin-top: 0; }
   .kurzliste { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; }
+  .alt { color: var(--bernstein); }
+  p.alt { margin: 0; }
   .kurzliste li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--linie); border-radius: var(--radius-klein); }
   .marke { font: 500 .78rem var(--mono); border: 1px solid var(--linie-hell); border-radius: 5px; padding: 2px 6px; margin-left: 6px; color: var(--stahl); }
   .agenten { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
