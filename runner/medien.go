@@ -48,7 +48,7 @@ var medienTypen = []string{"glb", "fbx", "obj", "png", "jpg", "jpeg", "webp", "m
 
 // MedienStandard: Aufträge je Tag, wenn nichts anderes eingestellt ist; höchstens medienHoechstens (wie die Plattform).
 const (
-	medienStandard   = 10
+	medienStandard   = 30
 	medienHoechstens = 30
 	werkzeugImage    = "swarvex-tool"
 	medienBasis      = werkzeugImage // die Agent-Schicht der Medien-Sandbox liegt auf dem Werkzeug-Image (glibc, sonst nichts Nötiges)

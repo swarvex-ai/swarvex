@@ -197,13 +197,25 @@ type restRegeln struct {
 	// Stand des langen Fensters zu ihrem Beginn (< 0: unbekannt; die erste Antwort in der Nacht setzt ihn).
 	NachtVon, NachtBis time.Time
 	NachtBasis         float64
+	// Gleichmäßig: über die ganze Woche, solange der Verbrauch des langen Fensters (eigener und des Agenten) unter einer
+	// Linie bleibt, die von 0 zu Beginn bis Gleichmaessig Prozent am Reset steigt (0 = aus). Nutzt der Besitzer selbst
+	// viel, liegt er über der Linie, und der Agent pausiert. Vorlauf: so viele Prozentpunkte darf eine laufende Aufgabe
+	// über die Linie gehen (der Proxy setzt ihn), damit sie nicht mittendrin endet; begonnen wird nur darunter.
+	Gleichmaessig float64
+	Vorlauf       float64
 }
+
+// laufendVorlauf: so weit darf eine laufende Aufgabe über die gleichmäßige Linie gehen (Prozentpunkte der Woche).
+const laufendVorlauf = 5.0
 
 // String: die Regeln für den Proxy (ohne NachtText, die Nacht steht als Zeitpunkte darin).
 func (r restRegeln) String() string {
 	s := fmt.Sprintf("reserve=%g;before=%s;session=%g", r.Reserve, r.VorReset, r.Sitzung)
 	if r.NachtAnteil > 0 && !r.NachtVon.IsZero() {
 		s += fmt.Sprintf(";nightshare=%g;nightmax=%g;night=%d-%d;nightbase=%g", r.NachtAnteil, r.NachtDecke, r.NachtVon.Unix(), r.NachtBis.Unix(), r.NachtBasis)
+	}
+	if r.Gleichmaessig > 0 {
+		s += fmt.Sprintf(";pace=%g", r.Gleichmaessig)
 	}
 	return s
 }
@@ -215,6 +227,9 @@ func (r restRegeln) gueltig() error {
 	}
 	if r.NachtAnteil < 0 || r.NachtAnteil > 100 || (r.NachtAnteil > 0 && (r.NachtDecke <= 0 || r.NachtDecke > 100)) {
 		return fmt.Errorf("leftover: night share 0–100 %%, night max 1–100 %%")
+	}
+	if r.Gleichmaessig < 0 || r.Gleichmaessig > 100 {
+		return fmt.Errorf("subscription share: 0–100 %% of the week")
 	}
 	if r.NachtText != "" {
 		if _, err := zeitfensterLesen(r.NachtText); err != nil {
@@ -245,6 +260,8 @@ func restRegelnLesen(s string) (restRegeln, error) {
 			r.NachtDecke, err = strconv.ParseFloat(wert, 64)
 		case "nightbase":
 			r.NachtBasis, err = strconv.ParseFloat(wert, 64)
+		case "pace":
+			r.Gleichmaessig, err = strconv.ParseFloat(wert, 64)
 		case "night":
 			von, bis, _ := strings.Cut(wert, "-")
 			var a, b int64
@@ -304,6 +321,22 @@ func (r restRegeln) pruefen(f []kontingentFenster, jetzt time.Time) (bool, strin
 	kurz, lang := f[0], f[len(f)-1]
 	start := lang.Reset.Add(-r.VorReset)
 	vorReset, nacht := !jetzt.Before(start), r.inNacht(jetzt)
+	if r.Gleichmaessig > 0 && !vorReset {
+		ok, grund, ab := r.gleichmaessig(kurz, lang, jetzt)
+		if ok {
+			return true, "", time.Time{}
+		}
+		if !nacht {
+			// Wieder möglich, sobald die Linie den Verbrauch einholt, eine Nacht beginnt oder die Restzeit vor dem Reset
+			if r.NachtAnteil > 0 && r.NachtVon.After(jetzt) && r.NachtVon.Before(ab) {
+				ab = r.NachtVon
+			}
+			if start.Before(ab) {
+				ab = start
+			}
+			return false, grund, ab
+		}
+	}
 	if !vorReset && !nacht {
 		grund := fmt.Sprintf("the %s window resets at %s; leftover work starts %s before", lang.Name, zeitpunkt(lang.Reset), r.VorReset)
 		if r.NachtAnteil > 0 && r.NachtVon.After(jetzt) && r.NachtVon.Before(start) {
@@ -331,6 +364,29 @@ func (r restRegeln) pruefen(f []kontingentFenster, jetzt time.Time) (bool, strin
 		}
 	}
 	return true, "", time.Time{}
+}
+
+// gleichmaessig: liegt der Verbrauch der Woche unter der Linie bis Gleichmaessig Prozent am Reset (plus Vorlauf für eine
+// laufende Aufgabe), und ist im kurzen Fenster noch Platz für den Besitzer? Sonst der Grund und ab wann wieder.
+func (r restRegeln) gleichmaessig(kurz, lang kontingentFenster, jetzt time.Time) (bool, string, time.Time) {
+	if kurz.Name != lang.Name && kurz.Prozent >= r.Sitzung {
+		return false, fmt.Sprintf("%.0f %% of the %s window used (%.0f %% of it stays yours)", kurz.Prozent, kurz.Name, 100-r.Sitzung), kurz.Reset
+	}
+	dauer := time.Duration(lang.Minuten) * time.Minute
+	if dauer <= 0 {
+		return false, "the length of the " + lang.Name + " window is unknown", lang.Reset
+	}
+	beginn := lang.Reset.Add(-dauer)
+	anteil := min(max(float64(jetzt.Sub(beginn))/float64(dauer), 0), 1)
+	linie := r.Gleichmaessig * anteil
+	if lang.Prozent < min(linie+r.Vorlauf, r.Gleichmaessig+r.Vorlauf) {
+		return true, "", time.Time{}
+	}
+	ab := lang.Reset
+	if lang.Prozent < r.Gleichmaessig {
+		ab = beginn.Add(time.Duration(lang.Prozent / r.Gleichmaessig * float64(dauer)))
+	}
+	return false, fmt.Sprintf("%.0f %% of the %s window used; evenly up to %.0f %% allows %.0f %% by now", lang.Prozent, lang.Name, r.Gleichmaessig, linie), ab
 }
 
 // ---- gemerkter Stand (quota.json im Datenordner) ----
@@ -419,7 +475,9 @@ func (w *kontingentWaechter) erlaubt() error {
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if ok, grund, _ := w.regeln.pruefen(w.stand.fortgeschrieben(time.Now()), time.Now()); !ok {
+	r := *w.regeln
+	r.Vorlauf = laufendVorlauf // eine laufende Aufgabe endet nicht, weil sie die gleichmäßige Linie knapp überschreitet
+	if ok, grund, _ := r.pruefen(w.stand.fortgeschrieben(time.Now()), time.Now()); !ok {
 		return fmt.Errorf("%s", grund)
 	}
 	return nil

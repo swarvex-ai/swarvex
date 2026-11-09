@@ -144,3 +144,48 @@ func TestProxyStopptAnDerReserve(t *testing.T) {
 		t.Errorf("Reserve erreicht: %d", c)
 	}
 }
+
+// Gleichmäßig (0.13.3): Der Agent arbeitet über die ganze Woche, solange der Verbrauch unter der Linie bis 60 % am
+// Reset liegt; nutzt der Besitzer mehr, pausiert er bis die Linie ihn einholt. Laufende Aufgaben dürfen 5 Punkte drüber.
+func TestGleichmaessig(t *testing.T) {
+	reset := time.Date(2026, 11, 14, 4, 0, 0, 0, time.UTC)
+	woche := 7 * 24 * time.Hour
+	mitte := reset.Add(-woche / 2) // Hälfte der Woche: Linie bei 30 %
+	f := func(kurz, lang float64) []kontingentFenster {
+		return []kontingentFenster{{Name: "5h", Minuten: 300, Prozent: kurz, Reset: mitte.Add(2 * time.Hour)}, {Name: "7d", Minuten: 10080, Prozent: lang, Reset: reset}}
+	}
+	r, err := restRegelnLesen("reserve=10;before=24h;session=80;pace=60")
+	if err != nil || r.Gleichmaessig != 60 {
+		t.Fatalf("lesen: %+v %v", r, err)
+	}
+	if ok, grund, _ := r.pruefen(f(10, 25), mitte); !ok {
+		t.Errorf("unter der Linie (25 < 30): %s", grund)
+	}
+	ok, grund, ab := r.pruefen(f(10, 36), mitte)
+	if ok || !strings.Contains(grund, "evenly up to 60 % allows 30 % by now") {
+		t.Errorf("über der Linie: %v %q", ok, grund)
+	}
+	// wieder, wenn die Linie 36 % erreicht: 36/60 der Woche nach ihrem Beginn
+	if want := reset.Add(-woche).Add(time.Duration(36.0 / 60 * float64(woche))); !ab.Equal(want) {
+		t.Errorf("ab %v, want %v", ab, want)
+	}
+	if ok, grund, ab := r.pruefen(f(85, 20), mitte); ok || !ab.Equal(mitte.Add(2*time.Hour)) || !strings.Contains(grund, "stays yours") {
+		t.Errorf("5-Stunden-Fenster voll: %v %q %v", ok, grund, ab)
+	}
+	// Eine laufende Aufgabe (Proxy) darf bis 5 Punkte über die Linie
+	r.Vorlauf = laufendVorlauf
+	if ok, _, _ := r.pruefen(f(10, 33), mitte); !ok {
+		t.Error("laufende Aufgabe knapp über der Linie: weiter")
+	}
+	if ok, _, _ := r.pruefen(f(10, 36), mitte); ok {
+		t.Error("laufende Aufgabe deutlich über der Linie: stoppen")
+	}
+	// Die letzten 24 Stunden: wie bisher der Rest bis zur Reserve
+	r.Vorlauf = 0
+	if ok, grund, _ := r.pruefen(f(10, 70), reset.Add(-2*time.Hour)); !ok {
+		t.Errorf("vor dem Reset gilt der Rest bis 90 %%: %s", grund)
+	}
+	if !strings.Contains(r.String(), ";pace=60") {
+		t.Errorf("String: %s", r.String())
+	}
+}

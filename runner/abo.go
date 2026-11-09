@@ -19,6 +19,10 @@ const (
 	fairNacht   = "daily 01:00-06:00"
 	fairDecke   = 80.0 // keine Nachtarbeit mehr, sobald so viel der Woche verbraucht ist
 	fairReserve = 10.0 // bleibt immer dem Besitzer
+	// fairAnteil: Standard seit 0.13.3 (neVs 09.11.2026): gleichmäßig über die Woche bis zu diesem Anteil; der Agent
+	// pausiert, solange der Besitzer selbst mehr nutzt, und lässt in jedem 5-Stunden-Fenster 20 % frei.
+	fairAnteil = 60.0
+	mehrAnteil = 80.0
 )
 
 type aboPlan struct {
@@ -102,20 +106,16 @@ func planTitel(p []aboPlan) []string {
 // fairMoeglich: gibt es für diese Stufe einen Vorschlag, der ohne Rückfrage gilt?
 func (p aboPlan) fairMoeglich() bool { return !p.Firma && !p.ZuKlein }
 
-func (p aboPlan) fairText() string {
-	if p.NachtAnteil > 0 {
-		return fmt.Sprintf("nights 01:00–06:00 up to %g %% of the week (not above %g %% used), plus what would expire before the weekly reset; %g %% of the week always stays yours",
-			p.NachtAnteil, fairDecke, fairReserve)
-	}
-	return fmt.Sprintf("only what would expire: the last 24 hours before the weekly reset; %g %% of the week always stays yours", fairReserve)
+func (p aboPlan) fairText() string { return anteilText(fairAnteil) }
+
+func anteilText(anteil float64) string {
+	return fmt.Sprintf("evenly over the week up to %g %% of it (it pauses while you use more yourself; 20 %% of every 5-hour window stays yours), plus what would expire before the weekly reset", anteil)
 }
 
-func (p aboPlan) fairArgs() []string {
-	a := []string{"--leftover"}
-	if p.NachtAnteil > 0 {
-		a = append(a, "--leftover-night", fairNacht, "--leftover-night-share", fmt.Sprint(p.NachtAnteil), "--leftover-night-max", fmt.Sprint(fairDecke))
-	}
-	return a
+func (p aboPlan) fairArgs() []string { return anteilArgs(fairAnteil) }
+
+func anteilArgs(anteil float64) []string {
+	return []string{"--leftover", "--subscription-share", fmt.Sprint(anteil)}
 }
 
 // aboNutzungFragen: unter „Anpassen“: fair, nur der Rest, ganz oder eigene Werte (alles bis 100 % möglich).
@@ -126,9 +126,11 @@ func aboNutzungFragen(f *frager, p aboPlan) []string {
 		optionen = append(optionen, "Fair for "+p.Name+" (recommended): "+p.fairText())
 		ergebnis = append(ergebnis, p.fairArgs)
 	}
-	optionen = append(optionen, "Only what would expire before the weekly reset ("+fmt.Sprint(fairReserve)+" % stays yours)",
-		"Fully, without limits (your own work can run short)", "My own values")
-	ergebnis = append(ergebnis, func() []string { return []string{"--leftover"} }, func() []string { return nil }, func() []string { return eigeneWerteFragen(f) })
+	optionen = append(optionen, fmt.Sprintf("More: evenly up to %g %% of the week", mehrAnteil),
+		"Only what would expire before the weekly reset ("+fmt.Sprint(fairReserve)+" % stays yours)",
+		"Open end: no limits (your own work can run short)", "My own values")
+	ergebnis = append(ergebnis, func() []string { return anteilArgs(mehrAnteil) }, func() []string { return []string{"--leftover"} },
+		func() []string { return nil }, func() []string { return eigeneWerteFragen(f) })
 	if p.Firma {
 		fmt.Println("  " + p.Name + ": check that your organisation allows this; swarvex never uses work accounts on its own.")
 	}
@@ -149,6 +151,7 @@ func eigeneWerteFragen(f *frager) []string {
 			}
 		}
 		r := restRegeln{NachtDecke: fairDecke}
+		r.Gleichmaessig = zahl("Work evenly over the week up to this percent of it (0 = only what would expire)", fmt.Sprint(fairAnteil))
 		r.Reserve = zahl("Percent of the week that always stays yours (0 = none)", fmt.Sprint(fairReserve))
 		vor, err := time.ParseDuration(f.frage("Use what would expire from this long before the weekly reset", "24h"))
 		if err != nil {
@@ -167,6 +170,9 @@ func eigeneWerteFragen(f *frager) []string {
 			continue
 		}
 		a := []string{"--leftover", "--leftover-reserve", fmt.Sprint(r.Reserve), "--leftover-before-reset", r.VorReset.String(), "--leftover-session-max", fmt.Sprint(r.Sitzung)}
+		if r.Gleichmaessig > 0 {
+			a = append(a, "--subscription-share", fmt.Sprint(r.Gleichmaessig))
+		}
 		if r.NachtText != "" && r.NachtAnteil > 0 {
 			a = append(a, "--leftover-night", r.NachtText, "--leftover-night-share", fmt.Sprint(r.NachtAnteil), "--leftover-night-max", fmt.Sprint(r.NachtDecke))
 		}

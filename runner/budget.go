@@ -31,6 +31,46 @@ func argWert(args []string, name string) (string, bool) {
 	return wert, gefunden
 }
 
+// hatWert: ist ein Flag mit Wert gesetzt (--name wert oder --name=wert)?
+func hatWert(args []string, name string) bool {
+	_, ok := argWert(args, name)
+	return ok
+}
+
+// argEntfernen nimmt ein Flag heraus (alle Vorkommen); mitWert: es hat einen Wert (--name wert), sonst ein Schalter.
+func argEntfernen(args []string, name string, mitWert bool) []string {
+	r := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		n, _, mitGleich := strings.Cut(strings.TrimLeft(args[i], "-"), "=")
+		if strings.HasPrefix(args[i], "-") && n == name {
+			if mitWert && !mitGleich {
+				i++
+			}
+			continue
+		}
+		r = append(r, args[i])
+	}
+	return r
+}
+
+// aboRegeln: alle Flags der Abo-Regeln (Gleichmäßig, Restkontingent, Nachtanteil); true: mit Wert.
+var aboRegeln = map[string]bool{"leftover": false, "subscription-share": true, "leftover-reserve": true, "leftover-before-reset": true,
+	"leftover-session-max": true, "leftover-night": true, "leftover-night-share": true, "leftover-night-max": true}
+
+// nutzungText: wie viel der Agent nutzen darf, in einer Zeile für swarvex budget.
+func nutzungText(dienst []string) string {
+	if a, ok := argWert(dienst, "subscription-share"); ok {
+		return "subscription evenly up to " + a + " % of the week, plus what would expire before the reset"
+	}
+	if hatFlag(dienst, "leftover") {
+		return "subscription: only what would expire before the weekly reset"
+	}
+	if t, ok := argWert(dienst, "daily-budget-tokens"); ok && t != "0" {
+		return "up to the daily budget"
+	}
+	return "open end (no limits)"
+}
+
 // argSetzen ersetzt ein Flag mit Wert (alle Vorkommen) durch --name wert am Ende.
 func argSetzen(args []string, name, wert string) []string {
 	r := make([]string, 0, len(args)+2)
@@ -112,6 +152,8 @@ func budgetBefehl(args []string) {
 	aufgabe := fs.String("task", "", "tokens per task at most (0 = no limit, otherwise at least 50000)")
 	tag := fs.String("daily", "", "tokens per day at most, across all tasks (0 = no limit)")
 	medienTag := fs.String("media", "", fmt.Sprintf("media briefs per day at most (1–%d, 0 = no media briefs)", medienHoechstens))
+	anteil := fs.String("share", "", "subscription: work evenly over the week up to this percent of it (e.g. 60 or 80; 0 = only what would expire)")
+	offenesEnde := fs.Bool("open-end", false, "no limits: no daily budget, and with a subscription no fair-use rules (your own work can run short)")
 	sofort := fs.Bool("now", false, "restart the service right away, even during a task (the task is handed back)")
 	fs.Parse(args)
 
@@ -122,7 +164,7 @@ func budgetBefehl(args []string) {
 	if mitDienst {
 		quelle = dienst
 	}
-	if *aufgabe == "" && *tag == "" && *medienTag == "" {
+	if *aufgabe == "" && *tag == "" && *medienTag == "" && *anteil == "" && !*offenesEnde {
 		w, ok := argWert(quelle, "budget-tokens")
 		fmt.Println("Per task:", grenzeText(w, ok, "0"))
 		if mitDienst {
@@ -133,7 +175,10 @@ func budgetBefehl(args []string) {
 		}
 		fmt.Printf("Used today: %s tokens (cache hits count a tenth)\n", tausender(verbrauchAmTag(verbrauchsDatei(), time.Now())))
 		fmt.Println("Media:   ", medienText(quelle))
-		fmt.Println("Change: swarvex budget --daily 2000000 --task 0 --media 10")
+		if mitDienst {
+			fmt.Println("Usage:   ", nutzungText(dienst))
+		}
+		fmt.Println("Change: swarvex budget --daily 2000000 --task 0 --media 30, with a subscription --share 60, no limits: --open-end")
 		return
 	}
 	if gespeichert == nil && !mitDienst {
@@ -159,6 +204,32 @@ func budgetBefehl(args []string) {
 			fehlerAus("The daily limit only applies to the service; set one up with `swarvex setup`.")
 		}
 		dienst = argSetzen(dienst, "daily-budget-tokens", *tag)
+	}
+	if *anteil != "" || *offenesEnde {
+		if !mitDienst {
+			fehlerAus("These limits apply to the service; set one up with `swarvex setup`.")
+		}
+		if *offenesEnde {
+			for name, mitWert := range aboRegeln {
+				dienst = argEntfernen(dienst, name, mitWert)
+			}
+			dienst = argSetzen(dienst, "daily-budget-tokens", "0")
+			fmt.Println("Open end: your agent works without limits (your provider's own limits still apply).")
+		} else {
+			n, err := strconv.ParseFloat(strings.TrimSuffix(*anteil, "%"), 64)
+			if err != nil || n < 0 || n > 100 {
+				fehlerAus("--share: 0 (only what would expire) to 100 percent of the week")
+			}
+			if !hatFlag(dienst, "leftover") {
+				dienst = append(dienst, "--leftover")
+			}
+			if n == 0 {
+				dienst = argEntfernen(dienst, "subscription-share", true)
+			} else {
+				dienst = argSetzen(dienst, "subscription-share", strconv.FormatFloat(n, 'f', -1, 64))
+			}
+			fmt.Println("Usage:", nutzungText(dienst))
+		}
 	}
 	if *medienTag != "" {
 		n, err := strconv.Atoi(*medienTag)

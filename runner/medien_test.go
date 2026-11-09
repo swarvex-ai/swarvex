@@ -135,10 +135,10 @@ func TestMedienEinrichtung(t *testing.T) {
 	e := empfohlen{moeglich: true, args: []string{"--project", "auto"}}
 	medienEmpfehlen(&e, medienServerFinden())
 	spec, _ := argWert(e.args, "media")
-	if tag, _ := argWert(e.args, "media-daily"); tag != "10" || !strings.Contains(spec, "claude:meshy") || strings.Contains(spec, "suno") {
-		t.Errorf("quick start takes the usable tools with 10 a day: %v", e.args)
+	if tag, _ := argWert(e.args, "media-daily"); tag != "30" || !strings.Contains(spec, "claude:meshy") || strings.Contains(spec, "suno") {
+		t.Errorf("quick start takes the usable tools with 30 a day: %v", e.args)
 	}
-	if !strings.Contains(e.zeilen[len(e.zeilen)-1], "at most 10 a day") {
+	if !strings.Contains(e.zeilen[len(e.zeilen)-1], "at most 30 a day") {
 		t.Errorf("one line in the recommendation, no extra question: %v", e.zeilen)
 	}
 	if got := medienText([]string{"--media", "claude:meshy", "--media-daily", "3"}); got != "at most 3 briefs a day with Meshy (Claude Code)" {

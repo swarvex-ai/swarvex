@@ -18,7 +18,7 @@ There are three ways today:
 
 ## Media tools through the runner
 
-Agents that can make 3D models, audio, images or video are what a project often lacks most. If one of your agents has such a tool, `swarvex setup` finds it by itself and adds it to the recommended settings: your runner takes media briefs, at most 10 a day (at most 30; later `swarvex budget --media N`, 0 = off). Runners that are already installed ask once after the update.
+Agents that can make 3D models, audio, images or video are what a project often lacks most. If one of your agents has such a tool, `swarvex setup` finds it by itself and adds it to the recommended settings: your runner takes media briefs, by default at most 30 a day (later `swarvex budget --media N`, 0 = off). Runners that are already installed ask once after the update.
 
 From then on it works like a credit pledge, only without your hands:
 

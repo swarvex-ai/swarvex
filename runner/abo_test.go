@@ -127,21 +127,18 @@ func TestAboStufen(t *testing.T) {
 	if p := codexPlanLesen(datei); p != "pro" {
 		t.Errorf("aus der Anmeldung: %q", p)
 	}
-	if a := claudePlaene[2].fairArgs(); !slices.Equal(a, []string{"--leftover", "--leftover-night", fairNacht, "--leftover-night-share", "10", "--leftover-night-max", "80"}) {
-		t.Errorf("Max 20x: %v", a)
-	}
-	if a := claudePlaene[1].fairArgs(); a[len(a)-3] != "5" {
-		t.Errorf("Max 5x: %v", a)
-	}
-	if a := claudePlaene[0].fairArgs(); !slices.Equal(a, []string{"--leftover"}) {
-		t.Errorf("Pro: nur der Rest, %v", a)
+	// Seit 0.13.3 für jede Stufe: gleichmäßig über die Woche bis 60 % (die Linie richtet sich nach dem echten Fenster)
+	for _, p := range claudePlaene[:3] {
+		if a := p.fairArgs(); !slices.Equal(a, []string{"--leftover", "--subscription-share", "60"}) {
+			t.Errorf("%s: %v", p.Name, a)
+		}
 	}
 }
 
 func TestEmpfehlung(t *testing.T) {
 	abo := modellWahl{Agent: "claude", Modell: "claude-sonnet-5-5", URL: "https://api.anthropic.com", Key: "/k"}
 	e := empfehlung(abo, true, claudePlaene[2], nil)
-	if !e.moeglich || !slices.Contains(e.dienstArgs, "--leftover-night-share") || !slices.Contains(e.dienstArgs, "--auto-update") ||
+	if !e.moeglich || !slices.Contains(e.dienstArgs, "--subscription-share") || !slices.Contains(e.dienstArgs, "--auto-update") ||
 		slices.Contains(e.dienstArgs, "--daily-budget-tokens") || !slices.Contains(e.args, "auto") {
 		t.Errorf("Max 20x: %+v", e)
 	}
@@ -160,17 +157,21 @@ func TestEmpfehlung(t *testing.T) {
 
 // Unter „Anpassen“ lässt sich alles frei einstellen, auch 100 %.
 func TestEigeneWerte(t *testing.T) {
-	f := &frager{r: bufio.NewReader(strings.NewReader("4\n0\n12h\n100\ndaily 22:00-07:00\n100\n100\n"))}
+	f := &frager{r: bufio.NewReader(strings.NewReader("5\n70\n0\n12h\n100\ndaily 22:00-07:00\n100\n100\n"))}
 	a := aboNutzungFragen(f, claudePlaene[2])
 	text := strings.Join(a, " ")
-	for _, teil := range []string{"--leftover-reserve 0", "--leftover-before-reset 12h0m0s", "--leftover-session-max 100", "--leftover-night daily 22:00-07:00", "--leftover-night-share 100", "--leftover-night-max 100"} {
+	for _, teil := range []string{"--subscription-share 70", "--leftover-reserve 0", "--leftover-before-reset 12h0m0s", "--leftover-session-max 100", "--leftover-night daily 22:00-07:00", "--leftover-night-share 100", "--leftover-night-max 100"} {
 		if !strings.Contains(text, teil) {
 			t.Errorf("fehlt %q in %s", teil, text)
 		}
 	}
-	f = &frager{r: bufio.NewReader(strings.NewReader("3\n"))}
+	f = &frager{r: bufio.NewReader(strings.NewReader("4\n"))}
 	if a := aboNutzungFragen(f, claudePlaene[2]); a != nil {
-		t.Errorf("ganz nutzen: ohne Restkontingent-Modus, %v", a)
+		t.Errorf("Open End: ohne Regeln, %v", a)
+	}
+	f = &frager{r: bufio.NewReader(strings.NewReader("2\n"))}
+	if a := aboNutzungFragen(f, claudePlaene[2]); !slices.Equal(a, []string{"--leftover", "--subscription-share", "80"}) {
+		t.Errorf("mehr: %v", a)
 	}
 }
 
@@ -243,7 +244,7 @@ func TestSetupDialog(t *testing.T) {
 			t.Fatalf("args: %s", text)
 		}
 		if !strings.Contains(aus, "Subscription: ChatGPT Pro (from your Codex sign-in)") || strings.Contains(aus, "Which ChatGPT plan") ||
-			!strings.Contains(aus, "ChatGPT Pro, fair use: nights 01:00–06:00 up to 10 % of the week (not above 80 % used)") {
+			!strings.Contains(aus, "ChatGPT Pro, fair use: evenly over the week up to 60 %") {
 			t.Errorf("Ausgabe:\n%s", aus)
 		}
 	})

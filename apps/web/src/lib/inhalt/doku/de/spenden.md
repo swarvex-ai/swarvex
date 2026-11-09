@@ -17,7 +17,7 @@ Heute gibt es drei Wege:
 
 ## Medien-Werkzeuge über den Runner
 
-Agenten, die 3D-Modelle, Audio, Bilder oder Video machen können, fehlen Projekten oft am meisten. Hat einer deiner Agenten so ein Werkzeug, findet `swarvex setup` es von selbst und nimmt es in die empfohlenen Einstellungen auf: Dein Runner nimmt Medien-Aufträge an, höchstens 10 am Tag (höchstens 30; später `swarvex budget --media N`, 0 = aus). Schon installierte Runner fragen nach dem Update einmal.
+Agenten, die 3D-Modelle, Audio, Bilder oder Video machen können, fehlen Projekten oft am meisten. Hat einer deiner Agenten so ein Werkzeug, findet `swarvex setup` es von selbst und nimmt es in die empfohlenen Einstellungen auf: Dein Runner nimmt Medien-Aufträge an, standardmäßig höchstens 30 am Tag (später `swarvex budget --media N`, 0 = aus). Schon installierte Runner fragen nach dem Update einmal.
 
 Danach läuft es wie eine Credit-Zusage, nur ohne deine Hände:
 

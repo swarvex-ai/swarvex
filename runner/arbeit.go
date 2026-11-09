@@ -81,6 +81,7 @@ func arbeitenBefehl(args []string) {
 	nurPruefen := fs.Bool("check-only", false, "only check the options, reserve nothing (used by `swarvex service`)")
 	nurGegen := fs.Bool("cross-checks-only", false, "only cross-check other people's submissions, no task and no model (the continuous mode does this while it waits for leftover quota or the daily budget)")
 	rest := fs.Bool("leftover", false, "beta, subscriptions only: work only with what your subscription would let expire, shortly before its weekly reset")
+	anteil := fs.Float64("subscription-share", 0, "subscriptions only: work evenly over the week up to this percent of the weekly quota (60 = recommended; pauses while you use more yourself), plus what would expire before the reset")
 	restReserve := fs.Float64("leftover-reserve", 10, "with --leftover: percent of the weekly window that always stays yours")
 	restVor := fs.Duration("leftover-before-reset", 24*time.Hour, "with --leftover: start this long before the weekly window resets")
 	restSitzung := fs.Float64("leftover-session-max", 80, "with --leftover: never fill the 5-hour window beyond this percent")
@@ -114,12 +115,13 @@ func arbeitenBefehl(args []string) {
 		}
 		aboZugang = istCodexAnmeldung(roh) || strings.HasPrefix(strings.TrimSpace(string(roh)), "sk-ant-oat")
 	}
-	if *rest {
+	if *rest || *anteil > 0 {
 		if !aboZugang {
-			fehlerAus("--leftover works only with a subscription (Claude via `claude setup-token`, ChatGPT via the Codex sign-in): with an API key nothing expires")
+			fehlerAus("--leftover and --subscription-share work only with a subscription (Claude via `claude setup-token`, ChatGPT via the Codex sign-in): an API key has a daily budget instead")
 		}
 		r, err := restRegelnLesen(fmt.Sprintf("reserve=%g;before=%s;session=%g", *restReserve, *restVor, *restSitzung))
 		pruefen(err)
+		r.Gleichmaessig = *anteil
 		r.NachtText, r.NachtAnteil, r.NachtDecke = *restNacht, *restNachtAnteil, *restNachtDecke
 		if r.NachtAnteil > 0 && r.NachtText == "" {
 			r.NachtText = fairNacht
@@ -148,11 +150,11 @@ func arbeitenBefehl(args []string) {
 	if restModus != nil && !*nurGegen {
 		if k, ok := kontingentLesen(kontingentDatei()); ok {
 			if erlaubt, grund, ab := restModus.fuer(k, time.Now()).pruefen(k.fortgeschrieben(time.Now()), time.Now()); !erlaubt {
-				fmt.Printf("Leftover mode: %s. Next chance from %s.\n", grund, zeitpunkt(ab))
+				fmt.Printf("Subscription: %s. Next chance from %s.\n", grund, zeitpunkt(ab))
 				os.Exit(7)
 			}
 		} else {
-			fmt.Println("Leftover mode: the subscription's state is not known yet; the first request shows it, and the proxy stops if it is not leftover.")
+			fmt.Println("Subscription: its state is not known yet; the first request shows it, and the proxy stops if your rules do not allow more.")
 		}
 	}
 	// Tagesbudget: keine Aufgabe mehr, wenn es verbraucht ist (Exit-Code 6); sonst Aufgabenbudget auf den Rest kürzen.
@@ -1006,16 +1008,16 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 		case 7:
 			// Das Kind hat Grund und Zeitpunkt schon genannt; aus dem gemerkten Stand ergibt sich, wie lange.
 			n := time.Now().Add(30 * time.Minute)
-			grund := "leftover mode: the subscription has nothing left over right now"
+			grund := "subscription: your rules allow nothing more right now"
 			if k, ok := kontingentLesen(kontingentDatei()); ok && restModus != nil {
 				if erlaubt, g, ab := restModus.fuer(k, time.Now()).pruefen(k.fortgeschrieben(time.Now()), time.Now()); ab.After(time.Now()) {
 					n = ab
 					if !erlaubt && g != "" {
-						grund = "leftover mode: " + g
+						grund = "subscription: " + g
 					}
 				}
 			}
-			fmt.Printf("Leftover mode: the model waits until %s; meanwhile cross-checks of other people's submissions (no model, no tokens).\n", zeitpunkt(n))
+			fmt.Printf("Subscription: the model waits until %s; meanwhile cross-checks of other people's submissions (no model, no tokens).\n", zeitpunkt(n))
 			wartenMerken(grund+"; meanwhile cross-checks (no model)", n)
 			nurGegenpruefen(basis, fenster, n, pause, args, schlafen)
 			continue

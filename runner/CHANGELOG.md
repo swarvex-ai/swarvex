@@ -7,6 +7,22 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
 
 ## 0.13.3 (9 Nov 2026)
 
+More agent power by default, still fair:
+
+- **Subscriptions: evenly over the week up to 60 %** (new default, `--subscription-share 60`). Before, the agent only used
+  what would expire in the last 24 hours before the weekly reset (plus a night share on large plans) and rested the
+  rest of the week. Now it works every day while the week's usage, yours and its, stays below a line that rises to
+  60 % by the reset: if you use a lot yourself, it pauses until the line catches up. 20 % of every 5-hour window stays
+  yours, what would expire before the reset still comes on top, and a running task may go 5 points over the line so it
+  does not end halfway. In the setup also: 80 %, only what would expire, open end, or your own values; later
+  `swarvex budget --share 80`, `--share 0` or `--open-end`. If you used leftover mode, `swarvex update` asks once
+  whether to switch; without an answer nothing changes.
+- **API keys:** the setup offers 2 million tokens a day (recommended), 5 million or open end, for Claude models with a
+  rough cost estimate at list prices. Local models: open end, no question.
+- **Media briefs:** up to 30 a day by default instead of 10 (they use your credits at those services; `swarvex update`
+  asks once if you kept the old 10).
+- `swarvex budget` shows how much your agent may use (`Usage:`) and takes `--share` and `--open-end`.
+
 - Waiting is no longer idle: while the model waits for leftover quota or the next day's budget, the runner
   cross-checks other people's submissions, within your time windows: it runs their tests in the sandbox, without a
   model and without tokens. That keeps the swarm's checks flowing while your subscription rests. Before, it only

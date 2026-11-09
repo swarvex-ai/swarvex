@@ -40,9 +40,19 @@ var neueFragen = []neueFrage{
 				e.dienst, e.dienstNeu = append(e.dienst, "--auto-update"), true
 			}
 		}},
+	{Name: "even-share", Seit: "0.13.3", Titel: "even use of your subscription over the week",
+		offen: func(e *einrichtungStand) bool {
+			return e.mitDienst && hatFlag(e.dienst, "leftover") && !hatWert(e.dienst, "subscription-share")
+		},
+		fragen: func(f *frager, e *einrichtungStand) {
+			fmt.Println("  Your agent uses only what your subscription would let expire (and a night share), so it rests most of the week.")
+			if f.jaNein(fmt.Sprintf("New: let it work evenly over the week up to %g %% (it pauses while you use more yourself; 20 %% of every 5-hour window stays yours)?", fairAnteil), true) {
+				e.dienst, e.dienstNeu = argSetzen(e.dienst, "subscription-share", fmt.Sprint(fairAnteil)), true
+			}
+		}},
 	{Name: "fair-use", Seit: "0.9.4", Titel: "fair night use of your subscription",
 		offen: func(e *einrichtungStand) bool {
-			return e.mitDienst && hatFlag(e.dienst, "leftover") && !hatFlag(e.dienst, "leftover-night-share")
+			return e.mitDienst && hatFlag(e.dienst, "leftover") && !hatFlag(e.dienst, "leftover-night-share") && !hatWert(e.dienst, "subscription-share")
 		},
 		fragen: func(f *frager, e *einrichtungStand) {
 			agent, _ := argWert(e.dienst, "agent")
@@ -77,6 +87,23 @@ var neueFragen = []neueFrage{
 			}
 			if e.mitDienst && !hatFlag(e.dienst, "leftover") && (tag == "" || tag == "0") {
 				fmt.Println("  Without a daily budget nothing caps a task any more; with a paid API key set one: swarvex budget --daily 2000000")
+			}
+		}},
+	{Name: "media-30", Seit: "0.13.3", Titel: "more media briefs per day",
+		offen: func(e *einrichtungStand) bool {
+			w, _ := argWert(e.dienst, "media-daily")
+			v, _ := argWert(e.work, "media-daily")
+			return w == "10" || v == "10"
+		},
+		fragen: func(f *frager, e *einrichtungStand) {
+			if !f.jaNein(fmt.Sprintf("Media briefs: up to %d a day (the new default) instead of 10? They use your credits at those services.", medienStandard), true) {
+				return
+			}
+			if w, _ := argWert(e.work, "media-daily"); w == "10" {
+				e.work, e.workNeu = argSetzen(e.work, "media-daily", fmt.Sprint(medienStandard)), true
+			}
+			if w, _ := argWert(e.dienst, "media-daily"); w == "10" {
+				e.dienst, e.dienstNeu = argSetzen(e.dienst, "media-daily", fmt.Sprint(medienStandard)), true
 			}
 		}},
 	{Name: "media", Seit: "0.10.0", Titel: "media tools for projects' briefs",

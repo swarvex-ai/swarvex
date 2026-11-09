@@ -675,7 +675,11 @@ func empfehlung(w modellWahl, abo bool, plan aboPlan, agenten []mcpAgent) empfoh
 	case w.Lokal:
 		e.zeilen = append(e.zeilen, "local model: no token limits")
 	default:
-		e.zeilen = append(e.zeilen, "at most 2,000,000 tokens per day, however they split between tasks")
+		zeile := "at most 2,000,000 tokens per day, however they split between tasks"
+		if k := kostenText(2_000_000, w.Modell); k != "" {
+			zeile += " (" + k + ")"
+		}
+		e.zeilen = append(e.zeilen, zeile+"; more or open end: swarvex budget")
 		e.dienstArgs = append(e.dienstArgs, "--daily-budget-tokens", "2000000")
 	}
 	if len(agenten) > 0 {
@@ -759,12 +763,11 @@ func anpassen(f *frager, z *zugangsdaten, w modellWahl, abo bool, plan aboPlan, 
 		}
 		if abo {
 			dienstArgs = append(dienstArgs, aboNutzungFragen(f, plan)...)
+		} else if w.Lokal {
+			fmt.Println("  Local model: no token limit (open end).")
+			dienstArgs = append(dienstArgs, "--daily-budget-tokens", "0")
 		} else {
-			vorschlag := "2000000"
-			if w.Lokal {
-				vorschlag = "0"
-			}
-			dienstArgs = append(dienstArgs, "--daily-budget-tokens", f.frage("Tokens per day at most (0 = no limit)", vorschlag))
+			dienstArgs = append(dienstArgs, "--daily-budget-tokens", tagesbudgetFragen(f, w.Modell))
 		}
 		if f.jaNein(autoUpdateFrage, true) {
 			dienstArgs = append(dienstArgs, "--auto-update")
