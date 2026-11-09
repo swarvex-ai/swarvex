@@ -81,3 +81,15 @@ func TestKostenUndTagesbudget(t *testing.T) {
 		}
 	}
 }
+
+// Über SSH: eine abgebrochene Anmeldung nennt den Tunnel mit Port und Adresse statt „am Desktop“.
+func TestAnmeldungNachholen(t *testing.T) {
+	aus := "redirect_uri=http%3A%2F%2F127.0.0.1%3A27890%2Fcallback ... http://127.0.0.1:27890/callback"
+	got := anmeldungNachholen("Hermes", "hermes mcp login swarvex", aus, "192.168.1.20 51234 192.168.10.50 22", "gi4t")
+	if !strings.Contains(got, "ssh -N -L 27890:127.0.0.1:27890 gi4t@192.168.10.50") || !strings.Contains(got, "hermes mcp login swarvex") {
+		t.Errorf("over SSH:\n%s", got)
+	}
+	if got := anmeldungNachholen("Hermes", "hermes mcp login swarvex", "", "", "gi4t"); strings.Contains(got, "ssh -N") || !strings.Contains(got, "on this machine: hermes mcp login swarvex") {
+		t.Errorf("local:\n%s", got)
+	}
+}

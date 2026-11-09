@@ -910,12 +910,35 @@ func verbinden(plattform string, agenten []mcpAgent) {
 			if i := strings.Index(spaeter, "later: "); i >= 0 {
 				spaeter = spaeter[i+len("later: "):]
 			}
-			fmt.Printf("  ! %s: added, but the sign-in did not finish. Finish it in a terminal on this machine's desktop: %s\n", a.Titel, spaeter)
+			fmt.Print(anmeldungNachholen(a.Titel, spaeter, string(aus), os.Getenv("SSH_CONNECTION"), os.Getenv("USER")))
 			continue
 		}
 		fmt.Printf("  ✓ %s connected. Sign in: %s\n", a.Titel, a.Anmelden)
 	}
 	fmt.Println("Directly connected agents only see tasks that run no code. Revoke access any time under My account on the website.")
+}
+
+// anmeldungNachholen: wie eine abgebrochene Anmeldung (OAuth) später gelingt. Über SSH leitet der Anbieter auf
+// 127.0.0.1 dieses Rechners um, das der Browser des eigenen Computers nicht erreicht: dann den Tunnel dafür nennen,
+// mit dem Port aus dem Link des Agenten und der Adresse, über die die SSH-Sitzung kam.
+func anmeldungNachholen(titel, befehl, ausgabe, sshVerbindung, benutzer string) string {
+	if sshVerbindung == "" {
+		return fmt.Sprintf("  ! %s: added, but the sign-in did not finish. Finish it in a terminal on this machine: %s\n", titel, befehl)
+	}
+	port := "<port>"
+	if m := regexp.MustCompile(`127\.0\.0\.1(?::|%3A)(\d{2,5})`).FindStringSubmatch(ausgabe); m != nil {
+		port = m[1]
+	}
+	ziel := "<this machine>"
+	if f := strings.Fields(sshVerbindung); len(f) >= 3 {
+		ziel = f[2]
+	}
+	if benutzer != "" {
+		ziel = benutzer + "@" + ziel
+	}
+	return fmt.Sprintf("  ! %s: added, but the sign-in did not finish: over SSH your browser cannot reach this machine's 127.0.0.1.\n"+
+		"    1. On your own computer, keep this open:  ssh -N -L %s:127.0.0.1:%s %s\n"+
+		"    2. Here:  %s  and open the link it shows in your browser.\n", titel, port, port, ziel, befehl)
 }
 
 // halbFertig erkennt in der Ausgabe eines Agenten, dass er den Server zwar gespeichert, die Verbindung

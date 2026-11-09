@@ -13,6 +13,10 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   are told apart by a short hash of the key file (for Codex, the ChatGPT account, which stays the same when the token
   is renewed).
 - `swarvex status` shows that newest state, and "Latest messages" leaves out systemd's resource lines.
+- Setting up over SSH: when connecting an agent such as Hermes cannot finish its sign-in (the provider redirects to
+  127.0.0.1 of the server, which your browser cannot reach), the setup now prints the tunnel for it, with the port from
+  the agent's link and the address of your SSH session (`ssh -N -L 27890:127.0.0.1:27890 you@server`), then the
+  sign-in command. Before, it told you to finish on "this machine's desktop", which a server does not have.
 
 ## 0.13.3 (9 Nov 2026)
 
