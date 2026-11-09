@@ -322,10 +322,30 @@ func projektTesten(baum, slug string, geaendert []string) (zugErgebnis, string, 
 
 func (b *echteBahn) schieben(s *zugStand) error {
 	// Ohne --force: Hat sich main inzwischen bewegt, scheitert der Push, und der nächste Lauf baut den Zug neu.
-	if aus, err := befehl(s.dir, gitEnv(schreibKey, s.dabei[0]), "git", "push", "-q", "origin", "HEAD"); err != nil {
+	if aus, err := befehl(s.dir, gitEnv(schreibKey, frischesToken(s.dabei[0])), "git", "push", "-q", "origin", "HEAD"); err != nil {
 		return errors.New(strings.TrimSpace(aus))
 	}
 	return nil
+}
+
+// frischesToken: Ein Token der GitHub App gilt eine Stunde. Ein Zug mit langen Tests schöbe sonst mit einem
+// abgelaufenen („could not read Username“) und finge danach von vorn an; also vor dem Push ein neues holen.
+func frischesToken(e einreichung) einreichung {
+	if e.GitToken == "" {
+		return e
+	}
+	var liste []einreichung
+	if err := signiert("GET", "/pipeline/accepted", nil, &liste); err != nil {
+		fmt.Fprintln(os.Stderr, "fresh git token:", err)
+		return e
+	}
+	for _, x := range liste {
+		if x.Slug == e.Slug && x.GitToken != "" {
+			e.GitToken = x.GitToken
+			return e
+		}
+	}
+	return e
 }
 
 func (b *echteBahn) gemerged(e einreichung, commit string) {

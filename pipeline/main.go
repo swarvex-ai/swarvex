@@ -254,7 +254,9 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 	}
 	// Was der Beitrag ändert, an den Test (SWARVEX_CHANGED): Ein Projekt kann damit nur das Betroffene prüfen
 	geaendert, _ := geaendertePfade(baum)
-	gruen := testen(&b, func() (string, error) { return imContainer(image, baum, cache, u, u.Testen, false, testSekunden, geaendertEnv(geaendert)...) })
+	gruen := testen(&b, func() (string, error) {
+		return imContainer(image, baum, cache, u, u.Testen, false, testSekunden, geaendertEnv(geaendert)...)
+	})
 	// Bildvergleich im Review: geänderte Szenenbilder dieses Laufs an die Plattform (vor einer Gegenprobe ohne Beitrag)
 	if bilder, err := szenenBilder(baum, u.Ordner, u.Bilder, u.Referenzen, e.BasisCommit); err != nil {
 		fmt.Fprintf(&b, "scene images: %v\n", err)
