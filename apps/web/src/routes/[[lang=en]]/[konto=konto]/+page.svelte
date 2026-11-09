@@ -4,6 +4,7 @@
   import Seo from "$lib/components/Seo.svelte";
   import RepoVerbinden from "$lib/components/RepoVerbinden.svelte";
   import LeadStart from "$lib/components/LeadStart.svelte";
+  import Einzeiler from "$lib/components/Einzeiler.svelte";
   import TeilenLink from "$lib/components/TeilenLink.svelte";
   import { pfad, sprache, tx, type Hinweis } from "$lib/texte";
 
@@ -48,9 +49,34 @@
   let frage = $state<number | null>(null);
   let arbeitet = $state(false);
   let hinweis = $state("");
-  // Projekte, die du leitest (Lead oder Visionär) und für die noch kein Lead-Dienst angemeldet ist
-  const ohneDienst = $derived(konto ? [...new Map(konto.roles.filter((r) => (r.role === "lead" || r.role === "visionary")
-    && !konto!.lead_services?.some((l) => l.project === r.project)).map((r) => [r.project, r])).values()] : []);
+  // Überblick oben: je Projekt deine Rollen, sein Lead-Dienst (der Rechner steht im Namen der Geräte-Anmeldung,
+  // „swarvex project lead: <projekt> (<rechner>)“), der Stand der Aufgaben (Wochenbericht) und wartende Freigaben
+  type Karte = { project: string; name: string; rollen: string[]; draft: boolean; repo: boolean; leitet: boolean;
+                 dienst: LeadDienst | null; rechner: string | null; jetzt: Woche["now"] | null; freigaben: number };
+  const rechnerAus = (name: string) => /\(([^()]+)\)\s*$/.exec(name)?.[1] ?? null;
+  const karten = $derived.by(() => {
+    if (!konto) return [] as Karte[];
+    const je = new Map<string, Karte>();
+    for (const r of konto.roles) {
+      const k = je.get(r.project) ?? { project: r.project, name: r.name, rollen: [], draft: false, repo: r.repo_connected, leitet: false, dienst: null, rechner: null, jetzt: null, freigaben: 0 };
+      k.rollen.push(r.role);
+      k.draft ||= r.draft && r.role === "visionary";
+      k.leitet ||= r.role === "lead" || r.role === "visionary";
+      je.set(r.project, k);
+    }
+    for (const k of je.values()) {
+      k.dienst = konto.lead_services?.find((l) => l.project === k.project) ?? null;
+      const geraet = konto.agents.find((a) => a.lead_project === k.project && a.signed_in);
+      k.rechner = geraet ? rechnerAus(geraet.name) : null;
+      k.jetzt = konto.weekly_reports?.find((w) => w.project === k.project)?.now ?? null;
+      k.freigaben = konto.approvals.filter((f) => f.project === k.project).length;
+    }
+    // Laufende Projekte mit Lead-Dienst zuerst, dann die übrigen geleiteten, Entwürfe zuletzt
+    const rang = (k: Karte) => (k.draft ? 3 : k.dienst ? 0 : k.leitet ? 1 : 2);
+    return [...je.values()].sort((a, b) => rang(a) - rang(b) || a.name.localeCompare(b.name));
+  });
+  // Agenten, die als Mitstreiter arbeiten (Runner, Sitzungen); Lead-Dienste stehen bei ihrem Projekt
+  const mitarbeit = $derived(konto ? konto.agents.filter((a) => !a.lead_project && a.signed_in) : []);
   let offen = $state<Record<string, boolean>>({});
 
   async function laden() {
@@ -264,6 +290,92 @@
       <a class="knopf primaer" href={`/api/account/login?lang=${s}`} data-sveltekit-reload>{t.anmelden}</a>
     </div>
   {:else if konto}
+    {@const u = t.ueberblick}
+    {#if karten.length}
+      <section aria-labelledby="t-projekte">
+        <h2 id="t-projekte">{u.projekteH2}</h2>
+        <ul class="projektkarten">
+          {#each karten as k (k.project)}
+            <li class="projektkarte">
+              <div class="karte-kopf">
+                <h3><a href={pfad(s, `${projektPfad}/${k.project}`)}>{k.name}</a></h3>
+                <span class="marken">{#each k.rollen as r}<span class="marke">{t.rolle[r] ?? r}</span>{/each}{#if k.draft}<span class="marke">{t.entwurf}</span>{/if}</span>
+              </div>
+              {#if k.leitet && k.dienst}
+                <p class="dienst" class:still={!k.dienst.active}><i aria-hidden="true"></i>{k.dienst.active
+                  ? u.laeuft(k.rechner, k.dienst.last_cycle ? zeit(k.dienst.last_cycle) : null)
+                  : u.still(k.rechner, zeit(k.dienst.seen))}</p>
+                {#if k.dienst.active}
+                  <div class="sprechen">
+                    <p class="klein">{u.sprechen}</p>
+                    <Einzeiler befehl={`swarvex project lead attach ${k.project}`} />
+                    <p class="klein leise">{u.sprechenHinweis}</p>
+                  </div>
+                {:else}
+                  <p class="leise klein">{t.leadDienst.hilfe} <code>swarvex project lead status {k.project}</code></p>
+                {/if}
+              {:else if k.leitet}
+                {#if k.rollen.includes("visionary") && !k.repo}
+                  <div class="ohne-repo">
+                    <h4>{t.repoVerbinden(k.name)}</h4>
+                    <RepoVerbinden slug={k.project} von="konto" />
+                  </div>
+                {/if}
+                <!-- Ohne Lead-Dienst: der eine Befehl, eingeklappt (wer als Sitzung leitet, braucht ihn nicht) -->
+                <details class="dienst-starten" bind:open={offen[k.project]}>
+                  <summary>{t.leadDienst.starten(k.name)}</summary>
+                  {#if offen[k.project]}<LeadStart slug={k.project} />{/if}
+                </details>
+              {/if}
+              {#if k.jetzt}<p class="stand klein">{u.stand(k.jetzt)}</p>{/if}
+              {#if k.freigaben}<p class="klein"><a href="#t-freigaben">{u.freigaben(k.freigaben)}</a></p>{/if}
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
+    <section aria-labelledby="t-mitarbeit">
+      <h2 id="t-mitarbeit">{u.agentenH2}</h2>
+      <p class="leise einleitung">{u.agentenText}</p>
+      {#if mitarbeit.length === 0}
+        <p>{t.keineAgenten} <a href={anschliessen}>{t.anschliessen}</a></p>
+      {:else}
+        <ul class="kurzliste">
+          {#each mitarbeit as a (a.id)}
+            <li><strong>{a.name}</strong> <span class="leise">{a.reservations ? u.arbeitet(a.reservations) : u.frei} · {t.agent.zuletzt} {zeit(a.last)}</span></li>
+          {/each}
+        </ul>
+      {/if}
+      <p class="klein"><a href="#t-agenten">{u.alleAnmeldungen}</a></p>
+    </section>
+
+    {#if konto.approvals?.length}
+      <section aria-labelledby="t-freigaben">
+        <h2 id="t-freigaben">{t.freigabe.h2}</h2>
+        <p class="leise einleitung">{t.freigabe.text}</p>
+        {#if konto.approvals.length > 1}
+          <p class="aktion"><button class="knopf primaer" disabled={arbeitet} onclick={alleFreigeben}>{t.freigabe.alle(konto.approvals.length)}</button></p>
+        {/if}
+        <ul class="freigaben">
+          {#each konto.approvals as f (f.message_id)}
+            <li class="freigabe">
+              <h3>{f.subject}</h3>
+              <p class="leise klein"><a href={pfad(s, `${projektPfad}/${f.project}`)}>{f.project_name}</a> · {t.freigabe.von} {f.from} · {zeit(f.created)}{#if f.tasks.length} · {t.freigabe.aufgaben} {f.tasks.map((x) => `#${x}`).join(", ")}{/if}</p>
+              <p class="inhalt">{f.text}</p>
+              <label>{t.freigabe.begruendung}
+                <textarea rows="2" bind:value={begruendung[f.message_id]} maxlength="8000"></textarea>
+              </label>
+              <div class="aktion">
+                <button class="knopf primaer" disabled={arbeitet} onclick={() => entscheiden(f, "approve")}>{t.freigabe.ja}</button>
+                <button class="knopf" disabled={arbeitet} onclick={() => entscheiden(f, "decline")}>{t.freigabe.nein}</button>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+
     {#if konto.area_lead_appointments?.invitations.length}
       <section aria-labelledby="t-einladung">
         <h2 id="t-einladung">{t.bereichsLead.einladungH2}</h2>
@@ -373,47 +485,6 @@
       </section>
     {/if}
 
-    {#if konto.lead_services?.length}
-      <section aria-labelledby="t-leaddienst">
-        <h2 id="t-leaddienst">{t.leadDienst.h2}</h2>
-        <p class="leise einleitung">{t.leadDienst.text}</p>
-        <ul class="leaddienste">
-          {#each konto.lead_services as l (l.project)}
-            <li class:still={!l.active}>
-              <a href={pfad(s, `${projektPfad}/${l.project}`)}>{l.name}</a>
-              <span>{l.active ? t.leadDienst.aktiv(l.last_cycle ? zeit(l.last_cycle) : null) : t.leadDienst.still(zeit(l.seen))}</span>
-              {#if !l.active}<p class="leise klein">{t.leadDienst.hilfe} <code>swarvex project lead status {l.project}</code></p>{/if}
-            </li>
-          {/each}
-        </ul>
-      </section>
-    {/if}
-
-    {#if konto.approvals?.length}
-      <section aria-labelledby="t-freigaben">
-        <h2 id="t-freigaben">{t.freigabe.h2}</h2>
-        <p class="leise einleitung">{t.freigabe.text}</p>
-        {#if konto.approvals.length > 1}
-          <p class="aktion"><button class="knopf primaer" disabled={arbeitet} onclick={alleFreigeben}>{t.freigabe.alle(konto.approvals.length)}</button></p>
-        {/if}
-        <ul class="freigaben">
-          {#each konto.approvals as f (f.message_id)}
-            <li class="freigabe">
-              <h3>{f.subject}</h3>
-              <p class="leise klein"><a href={pfad(s, `${projektPfad}/${f.project}`)}>{f.project_name}</a> · {t.freigabe.von} {f.from} · {zeit(f.created)}{#if f.tasks.length} · {t.freigabe.aufgaben} {f.tasks.map((x) => `#${x}`).join(", ")}{/if}</p>
-              <p class="inhalt">{f.text}</p>
-              <label>{t.freigabe.begruendung}
-                <textarea rows="2" bind:value={begruendung[f.message_id]} maxlength="8000"></textarea>
-              </label>
-              <div class="aktion">
-                <button class="knopf primaer" disabled={arbeitet} onclick={() => entscheiden(f, "approve")}>{t.freigabe.ja}</button>
-                <button class="knopf" disabled={arbeitet} onclick={() => entscheiden(f, "decline")}>{t.freigabe.nein}</button>
-              </div>
-            </li>
-          {/each}
-        </ul>
-      </section>
-    {/if}
 
     {#if konto.weekly_reports?.length}
       <section aria-labelledby="t-woche">
@@ -494,30 +565,6 @@
         </ul>
       {/if}
     </section>
-
-    {#if konto.roles.length}
-      <section aria-labelledby="t-rollen">
-        <h2 id="t-rollen">{t.rollen}</h2>
-        <ul class="rollen">
-          {#each konto.roles as r}
-            <li><a href={pfad(s, `${projektPfad}/${r.project}`)}>{r.name}</a> <span class="marke">{t.rolle[r.role] ?? r.role}</span>{#if r.draft && r.role === "visionary"} <span class="marke">{t.entwurf}</span>{/if}</li>
-          {/each}
-        </ul>
-        {#each konto.roles.filter((r) => r.role === "visionary" && !r.repo_connected) as r (r.project)}
-          <div class="ohne-repo">
-            <h3>{t.repoVerbinden(r.name)}</h3>
-            <RepoVerbinden slug={r.project} von="konto" />
-          </div>
-        {/each}
-        <!-- Projekte, die du leitest, ohne Lead-Dienst: der eine Befehl, eingeklappt (wer als Sitzung leitet, braucht ihn nicht) -->
-        {#each ohneDienst as r (r.project)}
-          <details class="dienst-starten" bind:open={offen[r.project]}>
-            <summary>{t.leadDienst.starten(r.name)}</summary>
-            {#if offen[r.project]}<LeadStart slug={r.project} />{/if}
-          </details>
-        {/each}
-      </section>
-    {/if}
 
     <section aria-labelledby="t-profil">
       <h2 id="t-profil">{t.profil.h2}</h2>
@@ -672,11 +719,25 @@
   .hinweis { margin: 0 0 12px; color: var(--akzent); }
   .hinweis:empty { display: none; }
   .ohne-repo { border: 1px solid var(--linie); border-radius: var(--radius); padding: 16px 18px; margin-top: 16px; display: grid; gap: 10px; }
-  .ohne-repo h3 { margin: 0; font-size: 1.05rem; }
+  .ohne-repo h4 { margin: 0; font-size: 1.05rem; }
   .dienst-starten { border: 1px solid var(--linie); border-radius: var(--radius); padding: 12px 18px; margin-top: 16px; }
   .dienst-starten summary { cursor: pointer; font-weight: 600; }
   .dienst-starten[open] summary { margin-bottom: 12px; }
-  .rollen { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 10px 24px; }
+  .projektkarten { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); }
+  .projektkarte { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: 18px 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-content: start; min-width: 0; }
+  .karte-kopf { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 12px; }
+  .karte-kopf h3 { margin: 0; font-size: 1.15rem; }
+  .projektkarte h4 { margin: 0; font-size: 1rem; }
+  .projektkarte p { margin: 0; }
+  .projektkarte .dienst { display: flex; align-items: center; gap: 8px; color: var(--akzent); }
+  .projektkarte .dienst i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--akzent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--akzent) 25%, transparent); }
+  .projektkarte .dienst.still { color: var(--bernstein); }
+  .projektkarte .dienst.still i { background: var(--bernstein); box-shadow: none; }
+  .projektkarte .sprechen { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .projektkarte .stand { color: var(--stahl); }
+  .projektkarte .ohne-repo, .projektkarte .dienst-starten { margin-top: 0; }
+  .kurzliste { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; }
+  .kurzliste li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--linie); border-radius: var(--radius-klein); }
   .marke { font: 500 .78rem var(--mono); border: 1px solid var(--linie-hell); border-radius: 5px; padding: 2px 6px; margin-left: 6px; color: var(--stahl); }
   .agenten { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
   .agent { border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); padding: 20px; display: grid; gap: 10px; align-content: start; min-width: 0; }
@@ -784,7 +845,4 @@
   .kraft form.gesuch input, .kraft form.gesuch textarea { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--linie-hell); background: var(--graphit-2); color: var(--text); font: 400 .95rem var(--schrift); }
   .kraft code { overflow-wrap: anywhere; }
   .leaddienste li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--linie); border-radius: var(--radius-klein); }
-  .leaddienste li.still { border-color: var(--bernstein); }
-  .leaddienste li.still span { color: var(--bernstein); }
-  .leaddienste p { flex-basis: 100%; margin: 0; }
 </style>
