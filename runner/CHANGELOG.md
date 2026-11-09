@@ -5,6 +5,13 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.13.3 (9 Nov 2026)
+
+- Waiting is no longer idle: while the model waits for leftover quota or the next day's budget, the runner
+  cross-checks other people's submissions, within your time windows: it runs their tests in the sandbox, without a
+  model and without tokens. That keeps the swarm's checks flowing while your subscription rests. Before, it only
+  slept until the next chance (with a Claude Max plan in leftover mode often for days).
+
 ## 0.13.2 (9 Nov 2026)
 
 - Your own test run and cross-checks tell the project's tests what the contribution changes (`SWARVEX_CHANGED`, one

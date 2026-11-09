@@ -118,7 +118,7 @@ Subscriptions such as Claude Pro or Max and ChatGPT Plus or Pro have two windows
 
 The setup picks fair values for your plan (Codex reads it from your sign-in, for Claude it asks once): Claude Pro and ChatGPT Plus only what would expire, Claude Max 5x also 5 % per night, Claude Max 20x and ChatGPT Pro 10 % per night. It never uses work accounts (Team, Business, Enterprise) on its own. Every value can be changed, up to 100 %: under "choose each setting yourself" in `swarvex setup`, or with the flags above.
 
-Anthropic and OpenAI report the state with every response. The key proxy reads it, stops hard as soon as a limit is reached, and the runner remembers it for the next decision. `swarvex status` shows it. In continuous mode the runner waits by itself until the next leftover. After a longer break it does not know the state yet; then the first request shows it, and if nothing is left right now, the task ends after that and goes back to the pool.
+Anthropic and OpenAI report the state with every response. The key proxy reads it, stops hard as soon as a limit is reached, and the runner remembers it for the next decision. `swarvex status` shows it. In continuous mode the model waits by itself until the next leftover; meanwhile the runner cross-checks other people's submissions (tests only, no model, no tokens), within your time windows. The same happens when the daily budget is used up. `swarvex status` shows what it waits for and until when. After a longer break it does not know the state yet; then the first request shows it, and if nothing is left right now, the task ends after that and goes back to the pool.
 
 The mode does not exist with an API key, because nothing expires there. Your provider's terms still apply to your subscription.
 

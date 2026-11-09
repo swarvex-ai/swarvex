@@ -79,6 +79,7 @@ func arbeitenBefehl(args []string) {
 	autoAktualisieren := fs.Bool("auto-update", false, "with --continuous: install new runner versions by itself, at most once a day and only between tasks")
 	pause := fs.Duration("pause", 5*time.Minute, "wait time in continuous mode when no matching task is open")
 	nurPruefen := fs.Bool("check-only", false, "only check the options, reserve nothing (used by `swarvex service`)")
+	nurGegen := fs.Bool("cross-checks-only", false, "only cross-check other people's submissions, no task and no model (the continuous mode does this while it waits for leftover quota or the daily budget)")
 	rest := fs.Bool("leftover", false, "beta, subscriptions only: work only with what your subscription would let expire, shortly before its weekly reset")
 	restReserve := fs.Float64("leftover-reserve", 10, "with --leftover: percent of the weekly window that always stays yours")
 	restVor := fs.Duration("leftover-before-reset", 24*time.Hour, "with --leftover: start this long before the weekly window resets")
@@ -143,7 +144,8 @@ func arbeitenBefehl(args []string) {
 		os.Exit(4)
 	}
 	// Restkontingent: nur kurz vor dem Wochen-Reset und nur bis zur Reserve (Exit-Code 7, kontingent.go).
-	if restModus != nil {
+	// Reine Gegenprüfungen brauchen kein Modell: für sie gelten Restkontingent und Tagesbudget nicht.
+	if restModus != nil && !*nurGegen {
 		if k, ok := kontingentLesen(kontingentDatei()); ok {
 			if erlaubt, grund, ab := restModus.fuer(k, time.Now()).pruefen(k.fortgeschrieben(time.Now()), time.Now()); !erlaubt {
 				fmt.Printf("Leftover mode: %s. Next chance from %s.\n", grund, zeitpunkt(ab))
@@ -154,7 +156,7 @@ func arbeitenBefehl(args []string) {
 		}
 	}
 	// Tagesbudget: keine Aufgabe mehr, wenn es verbraucht ist (Exit-Code 6); sonst Aufgabenbudget auf den Rest kürzen.
-	if *tagesbudget > 0 {
+	if *tagesbudget > 0 && !*nurGegen {
 		rest := *tagesbudget - verbrauchAmTag(verbrauchsDatei(), time.Now())
 		grenze := *tagesbudget
 		if *budget > 0 {
@@ -203,6 +205,9 @@ func arbeitenBefehl(args []string) {
 				return
 			}
 		}
+	}
+	if *nurGegen {
+		os.Exit(3) // keine Gegenprüfung offen
 	}
 
 	// 0b. Medien-Aufträge (Zusage über den Runner, medien.go): Zusagen abgleichen; wartet ein Auftrag, kommt er vor den
@@ -836,6 +841,29 @@ func einruecken(text string) string {
 // Kindprozess („work“ ohne --continuous), damit ein Fehler nicht den ganzen Runner beendet.
 // Exit-Codes des Kindes: 0 erledigt, 3 keine passende Aufgabe, 4 außerhalb bzw. zu kurz vor Fensterende,
 // 5 gestoppt vor der Reservierung, 6 Tagesbudget verbraucht, 7 Restkontingent: gerade nichts übrig.
+// nurGegenpruefen: Bis n (Restkontingent, Tagesbudget) arbeitet kein Modell. Der Runner prüft in der Zeit fremde
+// Einreichungen gegen (Tests, kein Modell, keine Tokens), nur in den Zeitfenstern; nach einer Gegenprüfung fragt er
+// gleich nach der nächsten, sonst nach der Pause wieder.
+func nurGegenpruefen(basis context.Context, fenster zeitfenster, n time.Time, pause time.Duration, args []string, schlafen func(time.Duration)) {
+	gegenpruefenBis(basis, fenster, n, pause, func() bool {
+		kind := exec.CommandContext(basis, os.Args[0], append(append([]string{"work"}, args...), "--cross-checks-only")...)
+		kind.Stdout, kind.Stderr = os.Stdout, os.Stderr
+		kind.Cancel = func() error { return kind.Process.Signal(syscall.SIGTERM) } // die Gegenprüfung räumt selbst auf
+		kind.WaitDelay = time.Minute
+		return kind.Run() == nil
+	}, schlafen)
+}
+
+// gegenpruefenBis: die Schleife dazu; pruefen liefert true, wenn eine Gegenprüfung lief.
+func gegenpruefenBis(basis context.Context, fenster zeitfenster, n time.Time, pause time.Duration, pruefen func() bool, schlafen func(time.Duration)) {
+	for time.Now().Before(n) && basis.Err() == nil {
+		if fenster.offen(time.Now()) && pruefen() && basis.Err() == nil {
+			continue
+		}
+		schlafen(min(time.Until(n), pause))
+	}
+}
+
 func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoAktualisieren bool) {
 	fmt.Println("Continuous mode started. Stop with Ctrl+C or `swarvex stop`.")
 	if t := offeneTitel(); t != "" {
@@ -934,11 +962,9 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 			// Fenster zu oder zu kurz: die Schleife wartet oben auf das nächste
 		case 6:
 			n := mitternacht(time.Now())
-			fmt.Printf("Daily budget used up. Waiting until %s.\n", zeitpunkt(n))
-			wartenMerken("daily budget used up", n)
-			for time.Now().Before(n) && basis.Err() == nil {
-				schlafen(min(time.Until(n), 10*time.Minute))
-			}
+			fmt.Printf("Daily budget used up. Until %s only cross-checks of other people's submissions (no model, no tokens).\n", zeitpunkt(n))
+			wartenMerken("daily budget used up; meanwhile cross-checks (no model)", n)
+			nurGegenpruefen(basis, fenster, n, pause, args, schlafen)
 			continue
 		case 7:
 			// Das Kind hat Grund und Zeitpunkt schon genannt; aus dem gemerkten Stand ergibt sich, wie lange.
@@ -952,11 +978,9 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 					}
 				}
 			}
-			fmt.Printf("Leftover mode: waiting until %s.\n", zeitpunkt(n))
-			wartenMerken(grund, n)
-			for time.Now().Before(n) && basis.Err() == nil {
-				schlafen(min(time.Until(n), 10*time.Minute))
-			}
+			fmt.Printf("Leftover mode: the model waits until %s; meanwhile cross-checks of other people's submissions (no model, no tokens).\n", zeitpunkt(n))
+			wartenMerken(grund+"; meanwhile cross-checks (no model)", n)
+			nurGegenpruefen(basis, fenster, n, pause, args, schlafen)
 			continue
 		default:
 			fmt.Printf("Task ended with an error (code %d). Next attempt in %s.\n", code, pause)
