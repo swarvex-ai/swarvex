@@ -769,7 +769,8 @@ func anpassen(f *frager, z *zugangsdaten, w modellWahl, abo bool, plan aboPlan, 
 		if fenster != "" {
 			dienstArgs = append(dienstArgs, "--schedule", fenster)
 		}
-		if grafischeSitzung() && f.jaNein("Only while you are not using this computer (screen locked or idle)?", false) {
+		// nur bei einem Modell auf diesem Rechner: mit einem Modell in der Cloud kostete der Leerlauf nur Agentenzeit
+		if w.Lokal && grafischeSitzung() && f.jaNein("Your model runs on this computer. Only while you are not using it (screen locked or idle)?", false) {
 			dienstArgs = append(dienstArgs, "--only-when-idle")
 		}
 		if abo {

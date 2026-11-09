@@ -131,6 +131,31 @@ func TestRechnerFrei(t *testing.T) {
 }
 
 // Anliegen: Projekte nach Art, unbekannte Namen abgewiesen, Auswahl im Setup per Nummern.
+func TestModellHier(t *testing.T) {
+	for _, f := range []struct {
+		adresse string
+		hier    bool
+	}{
+		{"http://host.containers.internal:8080", true},
+		{"http://127.0.0.1:11434", true},
+		{"http://localhost:1234", true},
+		{"https://openrouter.ai/api", false},
+		{"http://192.0.2.10:8080", false}, // anderes Gerät im Netz
+		{"", false},
+	} {
+		args := []string{"--agent", "opencode", "--model", "m"}
+		if f.adresse != "" {
+			args = append(args, "--model-url", f.adresse)
+		}
+		if got := modellHier(args); got != f.hier {
+			t.Errorf("modellHier(%q) = %v, want %v", f.adresse, got, f.hier)
+		}
+	}
+	if modellHier([]string{"--agent", "claude", "--model", "claude-opus-5-5"}) {
+		t.Error("an Abo/Claude Code model without an address runs in the cloud")
+	}
+}
+
 func TestAnliegen(t *testing.T) {
 	a, err := anliegenLesen("Games, research, games")
 	if err != nil || !slices.Equal(a, []string{"games", "research"}) {

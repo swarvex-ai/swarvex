@@ -13,10 +13,13 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   are told apart by a short hash of the key file (for Codex, the ChatGPT account, which stays the same when the token
   is renewed).
 - `swarvex status` shows that newest state, and "Latest messages" leaves out systemd's resource lines.
-- **Only when idle** (`--only-when-idle`, `swarvex budget --when-idle on`): the service starts new work only while
-  nobody uses this computer, that is while every desktop session of yours is locked or idle (as your desktop reports
-  it to systemd-logind). A running task finishes; `swarvex status` says it waits for you. A computer without a desktop
-  (a server) always counts as free. The setup offers it on desktops under "choose each setting yourself".
+- **Only when idle** (`--only-when-idle`, `swarvex budget --when-idle on`), for models that run on this computer
+  (Ollama, llama.cpp, LM Studio …): the service starts new work only while nobody uses this computer, that is while
+  every desktop session of yours is locked or idle (as your desktop reports it to systemd-logind). A running task
+  finishes; `swarvex status` says it waits for you. A computer without a desktop (a server) always counts as free. The
+  setup offers it under "choose each setting yourself" only for a model on this computer: with a model in the cloud
+  (API, OpenRouter, subscription) only the sandbox, builds and tests run here, and idle mode would mostly pause your
+  agent; `swarvex budget --when-idle on` says so there.
 - **Choose what you support** (`--kinds`, `swarvex budget --kinds games,research`): with "any project", only projects
   of these kinds: games, apps (apps, websites, services, tools, plugins), libraries (libraries and asset catalogues
   such as Formwerk), research, other. The setup offers it next to "any project"; `--kinds all` goes back to any.

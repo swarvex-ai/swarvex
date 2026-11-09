@@ -274,6 +274,10 @@ func budgetBefehl(args []string) {
 				dienst = append(dienst, "--only-when-idle")
 			}
 			fmt.Println("Idle mode on: new work starts only while nobody uses this computer (screen locked or idle).")
+			if !modellHier(quelle) {
+				fmt.Println("Note: your model runs in the cloud, so this computer only runs the sandbox with builds and tests.")
+				fmt.Println("Idle mode then mainly pauses your agent while you work here (`swarvex budget --when-idle off` undoes it).")
+			}
 		case "off":
 			dienst = argEntfernen(dienst, "only-when-idle", false)
 			fmt.Println("Idle mode off.")

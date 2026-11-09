@@ -6,11 +6,15 @@ package main
 // Erkannt über systemd-logind: jede grafische Sitzung dieses Benutzers ist gesperrt (LockedHint) oder untätig
 // (IdleHint, setzt die Arbeitsumgebung nach ihrer eigenen Leerlaufzeit). Ein Rechner ohne grafische Sitzung (Server)
 // gilt als frei, ebenso einer ohne logind. Eine laufende Aufgabe wird fertig; neue warten.
+// Sinnvoll nur, wenn das Modell auf diesem Rechner rechnet (neVs 09.11.): Bei einem Modell in der Cloud (API,
+// OpenRouter, Abo) laufen hier nur Sandbox, Builds und Tests; der Leerlauf kostete dann vor allem Agentenzeit. Das Setup
+// fragt deshalb nur bei einem Modell auf diesem Rechner, `swarvex budget --when-idle on` sagt es sonst dazu.
 //
 // Anliegen (--kinds): Bei „irgendein Projekt“ nur Projekte dieser Arten, etwa Spiele oder Forschung.
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"strconv"
@@ -51,6 +55,24 @@ func rechnerFrei() bool {
 		}
 	}
 	return true
+}
+
+// modellHier: rechnet das Modell auf diesem Rechner (Ollama, llama.cpp, LM Studio …, auch unter Windows neben WSL)?
+// args: gespeicherte Angaben mit --model-url. Ohne Adresse (Abo, Claude Code, Codex) rechnet es in der Cloud.
+func modellHier(args []string) bool {
+	adresse, ok := argWert(args, "model-url")
+	if !ok || adresse == "" {
+		return false
+	}
+	u, err := url.Parse(adresse)
+	if err != nil {
+		return false
+	}
+	if h := u.Hostname(); h == "host.containers.internal" || enthaelt(windowsAdressen(), h) {
+		return true
+	}
+	_, hier := sandboxAdresse(adresse)
+	return hier
 }
 
 // grafischeSitzung: läuft auf diesem Rechner ein Desktop dieses Benutzers? (Nur dann fragt das Setup nach dem Leerlauf.)
