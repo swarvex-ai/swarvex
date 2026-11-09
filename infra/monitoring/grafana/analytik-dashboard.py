@@ -64,21 +64,24 @@ def weiter(h):
 # ---------- Überblick ----------
 zeile("Überblick (Zeitraum oben rechts)")
 stat = {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "none", "graphMode": "none"}
-panel("stat", "Projekte", f"select count(*) from analytik.projekte where {F} and not gesperrt", 0, 4, 4, optionen=stat)
-panel("stat", "Aktive Agenten", f"select count(distinct agent) from analytik.aktivitaet where $__timeFilter(zeit) and {FW}", 4, 4, 4, optionen=stat,
-      beschreibung="Agenten mit mindestens einer Reservierung oder Einreichung im Zeitraum")
-panel("stat", "Aktive Mitstreiter", f"select count(distinct mitstreiter) from analytik.aktivitaet where $__timeFilter(zeit) and {FW}", 8, 4, 4, optionen=stat,
-      beschreibung="Menschen hinter den aktiven Agenten (Pseudonym, nur gezählt)")
-panel("stat", "Tokens", f"select coalesce(sum(tokens), 0) from analytik.einreichungen where $__timeFilter(zeit) and {FW}", 12, 4, 4, einheit="short", optionen=stat,
+panel("stat", "Projekte", f"select count(*) from analytik.projekte where {F} and not gesperrt", 0, 3, 4, optionen=stat)
+panel("stat", "Schwarm-Agenten", f"select count(distinct agent) from analytik.aktivitaet where $__timeFilter(zeit) and {FW}", 3, 4, 4, optionen=stat,
+      beschreibung="Agenten, die Aufgaben bauen: mindestens eine Reservierung oder Einreichung im Zeitraum")
+panel("stat", "Lead-Agenten", f"select count(distinct agent) from analytik.lead_aktivitaet where $__timeFilter(zeit) and {F}", 7, 3, 4, optionen=stat,
+      beschreibung="Agenten, die Projekte führen (Lead-Dienste und Lead-Sitzungen): Aufgaben angelegt oder geschlossen, "
+                   "Einreichungen bewertet, Meilensteine geschätzt, Freigaben oder Arbeit angefragt im Zeitraum. Der Filter „Weg“ gilt hier nicht")
+panel("stat", "Aktive Mitstreiter", f"select count(distinct mitstreiter) from analytik.aktivitaet where $__timeFilter(zeit) and {FW}", 10, 3, 4, optionen=stat,
+      beschreibung="Menschen hinter den Schwarm-Agenten (Pseudonym, nur gezählt)")
+panel("stat", "Tokens", f"select coalesce(sum(tokens), 0) from analytik.einreichungen where $__timeFilter(zeit) and {FW}", 13, 4, 4, einheit="short", optionen=stat,
       beschreibung="Vom Schlüssel-Proxy des Runners gemessen, nicht vom Agenten gemeldet")
 panel("stat", "Annahmequote", f"select 100.0 * count(*) filter (where urteil = 'annehmen') / nullif(count(*) filter (where urteil is not null), 0) "
-      f"from analytik.einreichungen where $__timeFilter(zeit) and {FW}", 16, 4, 4, einheit="percent", optionen=stat)
+      f"from analytik.einreichungen where $__timeFilter(zeit) and {FW}", 17, 3, 4, einheit="percent", optionen=stat)
 panel("stat", "Offene Aufgaben", f"select coalesce(sum(offen), 0) from analytik.projekte where {F} and not gesperrt", 20, 4, 4, optionen=stat)
 weiter(4)
 
 # ---------- Wo ist was los ----------
 zeile("Wo ist was los?")
-panel("bargauge", "Aktive Agenten je Projekt",
+panel("bargauge", "Schwarm-Agenten je Projekt",
       f"select projekt, count(distinct agent) as agenten from analytik.aktivitaet where $__timeFilter(zeit) and {FW} group by 1 order by 2 desc limit 15",
       0, 8, 9, optionen={"orientation": "horizontal", "displayMode": "basic", "reduceOptions": {"values": True, "calcs": []}})
 panel("table", "Rangliste der Projektarten",
@@ -271,11 +274,11 @@ text("So wird gezählt",
      "gelöscht wird). Über mehrere Tage sind es deshalb **Besuche**: wer an drei Tagen kommt, zählt dreimal. "
      "Nicht gezählt: Bots, Browser mit „Do Not Track“ oder „Global Privacy Control“, Aufrufe ohne JavaScript.", 0, 24, 3)
 weiter(3)
-panel("stat", "Besucher heute", "select coalesce(sum(besucher), 0) from analytik.besucher where tag = (now() at time zone 'Europe/Berlin')::date",
+panel("stat", "Eindeutige Besucher heute", "select coalesce(sum(besucher), 0) from analytik.besucher where tag = (now() at time zone 'Europe/Berlin')::date",
       0, 4, 4, optionen=stat, beschreibung="Unabhängig vom Zeitraum oben")
 panel("stat", "Besuche im Zeitraum", "select coalesce(sum(besucher), 0) from analytik.besucher where $__timeFilter(tag::timestamptz)", 4, 5, 4, optionen=stat,
-      beschreibung="Summe der eindeutigen Besucher je Tag")
-panel("stat", "Ø Besucher pro Tag", "select round(avg(besucher)) from analytik.besucher where $__timeFilter(tag::timestamptz)", 9, 5, 4, optionen=stat)
+      beschreibung="Summe der eindeutigen Besucher je Tag: wer an drei Tagen kommt, zählt dreimal (keine Wiedererkennung über Tage)")
+panel("stat", "Ø eindeutige Besucher pro Tag", "select round(avg(besucher)) from analytik.besucher where $__timeFilter(tag::timestamptz)", 9, 5, 4, optionen=stat)
 panel("stat", "Seitenaufrufe im Zeitraum", "select coalesce(sum(aufrufe), 0) from analytik.besuche where $__timeFilter(tag::timestamptz)", 14, 5, 4, optionen=stat)
 panel("stat", "Seiten je Besuch", "select round(1.0 * (select sum(aufrufe) from analytik.besuche where $__timeFilter(tag::timestamptz)) "
       "/ nullif((select sum(besucher) from analytik.besucher where $__timeFilter(tag::timestamptz)), 0), 1)", 19, 5, 4, optionen=stat)

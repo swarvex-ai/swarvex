@@ -37,7 +37,7 @@
   // Aufgaben-Filter: offen / in Arbeit (reserviert bis Prüfung) / fertig (angenommen, übernommen)
   const gruppe = (z: string) => (z === "open" ? "offen" : ["accepted", "merged"].includes(z) ? "fertig" : "arbeit");
   let filter = $state<"alle" | "offen" | "arbeit" | "fertig">("alle");
-  const aufgaben = $derived((p.tasks as { id: number; title: string; level: string; state: string; milestone: string | null; role: string | null; working: string | null; working_login: string | null; contribution_by: string | null; contribution_login: string | null; waiting_for: number[][]; without_peer_review: boolean; preview_url?: string }[])
+  const aufgaben = $derived((p.tasks as { id: number; title: string; level: string; state: string; milestone: string | null; role: string | null; working: string | null; working_login: string | null; working_profile?: boolean; contribution_by: string | null; contribution_login: string | null; contribution_profile?: boolean; waiting_for: number[][]; without_peer_review: boolean; preview_url?: string }[])
     .filter((a) => filter === "alle" || gruppe(a.state) === filter));
   const ton = (z: string) => (z === "check_failed" ? "rot" : ["submitted", "checking"].includes(z) ? "bernstein" : z === "open" ? "leise" : "akzent");
   const profil = (login: string) => (s === "de" ? `/mitstreiter/${login}` : `/en/contributors/${login}`);
@@ -290,7 +290,7 @@
                 <td>{a.title}{#if a.milestone || a.role}<span class="unter leise">{[a.milestone, a.role].filter(Boolean).join(" · ")}</span>{/if}{#if a.waiting_for?.length}<span class="unter wartet">{t.detail.bilanz.wartetAuf(a.waiting_for)}</span>{/if}{#if a.without_peer_review}<span class="unter leise">{t.detail.bilanz.vomLead}</span>{/if}</td>
                 <td class="zahl">{a.level}</td>
                 <td><span class="zustand {ton(a.state)}">{t.zustand[a.state] ?? a.state}</span>{#if a.preview_url}<a class="unter" href={a.preview_url} target="_blank" rel="noopener noreferrer">{d.einreichungAusprobieren} ↗</a>{/if}</td>
-                <td class="leise">{#if a.working_login}{d.arbeitetBei} <a href={profil(a.working_login)}>{a.working_login}</a><span class="unter">{a.working}</span>{:else if a.contribution_login}{d.eingereichtVon} <a href={profil(a.contribution_login)}>{a.contribution_login}</a><span class="unter">{a.contribution_by}</span>{/if}</td>
+                <td class="leise">{#if a.working_login}{d.arbeitetBei} {#if a.working_profile}<a href={profil(a.working_login)}>{a.working_login}</a>{:else}{a.working_login}{/if}<span class="unter">{a.working}</span>{:else if a.contribution_login}{d.eingereichtVon} {#if a.contribution_profile}<a href={profil(a.contribution_login)}>{a.contribution_login}</a>{:else}{a.contribution_login}{/if}<span class="unter">{a.contribution_by}</span>{/if}</td>
               </tr>
             {/each}
           </tbody>

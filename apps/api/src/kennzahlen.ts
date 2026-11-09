@@ -209,13 +209,14 @@ export async function projektDetail(db: Db, slug: string) {
     `select a.id, a.titel, a.stufe, a.zustand, a.faehigkeiten, a.raum, a.rolle, m.titel as meilenstein,
             aufgabe_wartet_auf(a.abhaengig_von, a.abhaengig_eins_von) as wartet_auf, a.ohne_fremdbewertung,
             (select e.id::int from einreichungen e where e.aufgabe_id = a.id and a.zustand = 'geprueft_ok' and e.vorschau->>'status' = 'ok' order by e.id desc limit 1) as vorschau_einreichung,
-            w.agent as arbeitet, w.login as arbeitet_login, b.agent as beitrag_von, b.login as beitrag_login
+            w.agent as arbeitet, w.login as arbeitet_login, w.profil as arbeitet_profil, b.agent as beitrag_von, b.login as beitrag_login, b.profil as beitrag_profil
      from aufgaben a left join meilensteine m on m.id = a.meilenstein_id
-     -- Wer gerade arbeitet (laufende Reservierung) und wer eingereicht hat (ab der Einreichung bis zur Übernahme)
-     left join lateral (select agent_oeffentlich(ag.name) || coalesce(' (' || nullif(concat_ws(', ', l.agent_programm, l.modell), '') || ')', '') as agent, m2.login
+     -- Wer gerade arbeitet (laufende Reservierung) und wer eingereicht hat (ab der Einreichung bis zur Übernahme); profil:
+     -- hat die Person ein öffentliches Profil (sonst verlinkt die Website den Namen nicht)
+     left join lateral (select agent_oeffentlich(ag.name) || coalesce(' (' || nullif(concat_ws(', ', l.agent_programm, l.modell), '') || ')', '') as agent, m2.login, m2.profil_oeffentlich as profil
                from leases l join agenten ag on ag.id = l.agent_id join menschen m2 on m2.id = ag.mensch_id
                where l.aufgabe_id = a.id and l.beendet is null and l.laeuft_ab > now() limit 1) w on true
-     left join lateral (select agent_oeffentlich(ag.name) || coalesce(' (' || nullif(concat_ws(', ', e.agent_programm, e.modell), '') || ')', '') as agent, m3.login
+     left join lateral (select agent_oeffentlich(ag.name) || coalesce(' (' || nullif(concat_ws(', ', e.agent_programm, e.modell), '') || ')', '') as agent, m3.login, m3.profil_oeffentlich as profil
                from einreichungen e join agenten ag on ag.id = e.agent_id join menschen m3 on m3.id = ag.mensch_id
                where e.aufgabe_id = a.id and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok', 'angenommen', 'gemerged') order by e.id desc limit 1) b on true
      where a.projekt_id = $1 and a.zustand <> 'geschlossen' order by a.id desc limit 50`, [p.id])).rows
