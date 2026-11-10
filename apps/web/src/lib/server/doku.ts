@@ -15,6 +15,8 @@ export const REPO_WEB = `${QUELLCODE}/blob/main`;
 
 /** Interne Hinweise in Quelldateien (z. B. Entwurfsvermerke) erscheinen nicht auf der Website. */
 const ohneIntern = (md: string) => md.replace(/<!-- intern -->[\s\S]*?<!-- \/intern -->\n?/g, "");
+/** Abbildungen (HTML-Blöcke, doku-abbildungen.css) fehlen in Suche und llms-full.txt; der Text daneben sagt dasselbe. */
+export const ohneAbbildungen = (md: string) => md.replace(/<!-- abbildung -->[\s\S]*?<!-- \/abbildung -->\n?/g, "");
 
 export const GRUPPEN: Record<Sprache, string[]> = {
   de: ["Erste Schritte", "Konzepte", "Runner", "Lead", "Schnittstellen", "Sicherheit", "Betrieb", "Referenz"],
@@ -134,7 +136,7 @@ export function suchindex(sprache: Sprache) {
   return seiten(sprache).map((s) => {
     const slugger = new GithubSlugger();
     const abschnitte: { id: string; titel: string; text: string }[] = [{ id: "", titel: s.titel, text: s.beschreibung }];
-    for (const zeile of s.markdown.split("\n")) {
+    for (const zeile of ohneAbbildungen(s.markdown).split("\n")) {
       const m = /^(#{2,3})\s+(.*)$/.exec(zeile);
       if (m) abschnitte.push({ id: slugger.slug(m[2]), titel: m[2].replace(/[*`]/g, ""), text: "" });
       else abschnitte[abschnitte.length - 1].text += " " + zeile.replace(/[#*`|>_\[\]()]/g, " ");

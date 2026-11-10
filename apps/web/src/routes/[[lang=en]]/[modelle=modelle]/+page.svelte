@@ -9,6 +9,9 @@
     model: string; key: string; submissions: number; reviewed: number; accepted: number; acceptance_percent: number; lower_bound_percent: number;
     check_passed_percent: number | null; median_tokens_per_accepted: number | null; people: number; projects: number;
     levels: (Zeile & { level: string })[]; kinds: (Zeile & { kind: string })[]; programs: { program: string; share_percent: number }[];
+    // E-44: gleich angenommen, Haltbarkeit, Aufteilung nach Projektart, Engine und Projekt
+    accepted_first_time_percent?: number | null; durability?: { known_outcomes: number; refuted: number; durable_percent: number | null };
+    by_project_type?: (Zeile & { project_type: string })[]; by_engine?: (Zeile & { engine: string })[]; by_project?: (Zeile & { project: string })[];
   };
   // Prüfer-Bilanz je Modell (modelle.ts, prueferBilanz): Fremdbewertungen, übersehene und widerlegte Zustimmungen (E-43)
   type Pruefer = { model: string; key: string; peer_reviews: number; approvals: number; refuted: number; refuted_percent: number | null; people: number;
@@ -55,6 +58,7 @@
           <tr>
             <th scope="col">{t.spalten.modell}</th><th scope="col">{t.spalten.annahme}</th>
             <th scope="col"><abbr title={t.grenzeHilfe}>{t.spalten.grenze}</abbr></th><th scope="col">{t.spalten.pruefung}</th>
+            <th scope="col"><abbr title={t.gleichHilfe}>{t.spalten.gleich}</abbr></th><th scope="col"><abbr title={t.haltbarHilfe}>{t.spalten.haltbar}</abbr></th>
             <th scope="col">{t.spalten.tokens}</th><th scope="col">{t.spalten.menschen}</th><th scope="col">{t.spalten.projekte}</th>
           </tr>
         </thead>
@@ -66,16 +70,21 @@
                 <span class="balken" aria-hidden="true"><i style="width:{m.acceptance_percent}%"></i><b style="left:{m.lower_bound_percent}%"></b></span></td>
               <td>{komma.format(m.lower_bound_percent)} %</td>
               <td>{m.check_passed_percent === null ? "–" : `${m.check_passed_percent} %`}</td>
+              <td>{m.accepted_first_time_percent == null ? "–" : `${m.accepted_first_time_percent} %`}</td>
+              <td>{#if m.durability?.durable_percent != null}{m.durability.durable_percent} % <span class="leise">{t.von(m.durability.known_outcomes - m.durability.refuted, m.durability.known_outcomes)}</span>{:else}–{/if}</td>
               <td>{m.median_tokens_per_accepted === null ? "–" : zahl.format(m.median_tokens_per_accepted)}</td>
               <td>{m.people}</td><td>{m.projects}</td>
             </tr>
             <tr class="aufklapp">
-              <td colspan="7">
+              <td colspan="9">
                 <details>
                   <summary>{t.details}</summary>
                   <div class="teile">
                     {#if m.levels.length}<div><h3>{t.stufen}</h3><ul>{#each m.levels as z}<li><span>{z.level}</span> {z.acceptance_percent} % <span class="leise">{t.von(z.accepted, z.reviewed)}</span></li>{/each}</ul></div>{/if}
                     {#if m.kinds.length}<div><h3>{t.arten}</h3><ul>{#each m.kinds as z}<li><span>{t.familien[z.kind] ?? z.kind}</span> {z.acceptance_percent} % <span class="leise">{t.von(z.accepted, z.reviewed)}</span></li>{/each}</ul></div>{/if}
+                    {#if m.by_project_type?.length}<div><h3>{t.projektarten}</h3><ul>{#each m.by_project_type as z}<li><span>{t.projektart[z.project_type] ?? z.project_type}</span> {z.acceptance_percent} % <span class="leise">{t.von(z.accepted, z.reviewed)}</span></li>{/each}</ul></div>{/if}
+                    {#if m.by_engine?.length}<div><h3>{t.engines}</h3><ul>{#each m.by_engine as z}<li><span>{z.engine}</span> {z.acceptance_percent} % <span class="leise">{t.von(z.accepted, z.reviewed)}</span></li>{/each}</ul></div>{/if}
+                    {#if m.by_project?.length}<div><h3>{t.jeProjekt}</h3><ul>{#each m.by_project as z}<li><a href={pfad(s, `${tx().projekte.pfad}/${z.project}`)}>{z.project}</a> {z.acceptance_percent} % <span class="leise">{t.von(z.accepted, z.reviewed)}</span></li>{/each}</ul></div>{/if}
                     <div><h3>{t.programme}</h3><ul>{#each m.programs as z}<li><span>{z.program}</span> {z.share_percent} %</li>{/each}</ul></div>
                   </div>
                 </details>

@@ -41,6 +41,9 @@ export const FELDER: Record<string, string> = {
   uebersehen: "missed", bekannt: "known_outcomes", fehler: "errors", fehler_prozent: "error_percent", pruefer_status: "reviewer_status", dein_pruefer_status: "your_reviewer_status",
   pruefer_regeln: "reviewer_rules", fenster: "window", reife_tage: "maturity_days", bremse_ab_fehlern: "restricted_from_errors", status_verteilung: "status_counts",
   probezeit: "probation", bewaehrt: "proven", gebremst: "restricted",
+  // model ranking (modelle.ts, E-44)
+  gleich_angenommen_prozent: "accepted_first_time_percent", haltbarkeit: "durability", haltbar_prozent: "durable_percent",
+  je_projektart: "by_project_type", je_engine: "by_engine", je_projekt: "by_project",
   // weekly report (wochenbericht.ts)
   bis: "until", vorwoche: "previous_week", angelegt: "created", neue_menschen: "new_people", offene_freigaben: "open_approvals", hinweise: "hints", wochenberichte: "weekly_reports",
   // public profile (profil.ts)

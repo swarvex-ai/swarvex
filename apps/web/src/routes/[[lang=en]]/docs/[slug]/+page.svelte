@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Seo from "$lib/components/Seo.svelte";
+  import "$lib/doku-abbildungen.css";
   import { SEITE, STAND } from "$lib/seo";
   import { pfad, sprache, tx } from "$lib/texte";
   const t = $derived(tx().doku);

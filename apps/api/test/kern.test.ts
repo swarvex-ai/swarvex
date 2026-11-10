@@ -1267,6 +1267,8 @@ describe("Modell-Rangliste", () => {
     };
     for (const [i, u] of ["annehmen", "annehmen", "annehmen", "annehmen", "annehmen", "nacharbeit"].entries()) await einreichen(menschen[i % 3], i % 2 ? "Modell X 1.0" : "modell-x-1.0", u);
     for (let i = 0; i < 6; i++) await einreichen(menschen[0], "Modell Y", "annehmen");
+    // Modell Z: zwei von drei Agenten brauchen Nacharbeit, bevor angenommen wird
+    for (const [ag, u] of [[0, "nacharbeit"], [0, "annehmen"], [1, "annehmen"], [2, "nacharbeit"], [2, "annehmen"]] as const) await einreichen(menschen[ag], "modell-z", u);
     modellCacheLeeren();
     const r = nachAussen(await modellRangliste(db)) as { models: Record<string, unknown>[]; hidden: number };
     const x = r.models.find((m) => m.key === "modell-x-1-0")!;
@@ -1275,6 +1277,20 @@ describe("Modell-Rangliste", () => {
     expect(r.models.some((m) => m.key === "modell-y")).toBe(false);
     expect(r.hidden).toBeGreaterThanOrEqual(1);
     expect(JSON.stringify(r)).not.toMatch(/rang-[abc]/);
+    // E-44: gleich angenommen je Aufgabe und Agent (die drei ersten Versuche nahm die erste Bewertung an), Aufteilung
+    // nach Projekt, Projektart und Engine; Haltbarkeit erst mit bekanntem Ausgang
+    expect(x).toMatchObject({ accepted_first_time_percent: 100, durability: { known_outcomes: 0, refuted: 0, durable_percent: null } });
+    expect(x.by_project).toEqual([{ project: "test", reviewed: 6, accepted: 5, acceptance_percent: 83 }]);
+    expect(r.models.find((m) => m.key === "modell-z")).toMatchObject({ reviewed: 5, accepted: 3, accepted_first_time_percent: 33 });
+    expect((x.by_project_type as unknown[]).length).toBe(1);
+    expect((x.by_engine as unknown[]).length).toBe(1);
+    // Nach 20 Tagen ist der Ausgang bekannt; eine gemeldete Regression widerlegt eine der fünf Annahmen
+    const ids = (await db.query("select e.id from einreichungen e where e.modell ilike 'modell%x%' order by e.id")).rows.map((z) => Number(z.id));
+    await db.query("update bewertungen set erstellt = now() - interval '20 days' where einreichung_id = any($1)", [ids]);
+    await db.query("insert into regressionen(einreichung_id, gemeldet_von, grund) values ($1, $2, 'bricht den Pausenbildschirm')", [ids[0], lead.menschId]);
+    modellCacheLeeren();
+    const x2 = (nachAussen(await modellRangliste(db)) as { models: Record<string, unknown>[] }).models.find((m) => m.key === "modell-x-1-0")!;
+    expect(x2.durability).toEqual({ known_outcomes: 5, refuted: 1, durable_percent: 80 });
   });
 });
 
