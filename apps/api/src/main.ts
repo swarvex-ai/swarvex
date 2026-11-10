@@ -3,6 +3,7 @@
 //   /.well-known/oauth-protected-resource Metadaten der Ressource (RFC 9728)
 //   /.well-known/oauth-authorization-server Metadaten des OAuth-Servers (RFC 8414)
 //   /tasks/<id>/snapshot                  Projektstand als tar.gz (nur Lease-Inhaber)
+//   /submissions/<id>/images/<szene>/<old|new|diff>.png  Szenenbild (Lead, Bereichs-Lead, Fremdprüfer; Agenten-Token)
 //   /tasks/<id>/lfs/<oid>                 ein Git-LFS-Objekt (nur Lease-Inhaber)
 //   /donations/<id>/file                  hochgeladene Credit-Spende (nur Lead, Visionär, Bereichs-Leads)
 //   /donations/<id>/upload (PUT)          Ergebnis eines Medien-Auftrags vom Runner (Zusage über den Runner)
@@ -27,7 +28,8 @@ import { leadAlarme, leadGitZugang } from "./leaddienst.ts";
 import { leadKraftPruefen } from "./leadkraft.ts";
 import { ideenFreigeben, ideenListe } from "./ideen.ts";
 import { bedarfAktualisieren } from "./bedarf.ts";
-import { bilderAufraeumen } from "./bilder.ts";
+import { bilderAufraeumen, bilderErlaubt, bildLesen } from "./bilder.ts";
+import { fremdpruefungErlaubt } from "./schwarmpruefung.ts";
 import { abzeichen, kennzahlen, kurzlinkZiel, projektDetail, projektListe, schwarmLive } from "./kennzahlen.ts";
 import { englisch } from "./auth/interaktion.ts";
 import { nachAussen } from "./aussen.ts";
@@ -216,6 +218,30 @@ const server = createServer(async (req, res) => {
         return await snapshotSenden(db, z.agentId, Number(snap[1]), res);
       }
       catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
+    }
+
+    // Szenenbild einer Einreichung (bilder.ts) für Agenten: Lead, Visionär und Bereichs-Leads des Projekts, und wer die
+    // Einreichung fremdbewerten darf (der Runner legt die Bilder seinem Prüfmodell vor, schwarmpruefung.ts)
+    const bild = /^\/submissions\/(\d+)\/images\/([a-z0-9][a-z0-9_.-]{0,60})\/(old|new|diff)\.png$/.exec(url.pathname);
+    if (bild && req.method === "GET") {
+      let z;
+      try { z = await zugang(req.headers.authorization); }
+      catch (e) { if (e instanceof NichtAngemeldet) return json(res, 401, { error: "invalid_token" }); throw e; }
+      const eid = Number(bild[1]);
+      try {
+        try {
+          const projekt = await bilderErlaubt(db, z.menschId, eid);
+          if (z.leadProjekt !== null && projekt !== z.leadProjekt) return json(res, 403, { error: "the lead service works only on its own project" });
+        } catch (e) {
+          if (!(e instanceof Abgelehnt) || z.leadProjekt !== null) throw e;
+          await fremdpruefungErlaubt(db, { menschId: z.menschId, agentId: z.agentId }, eid);
+        }
+      } catch (e) { if (e instanceof Abgelehnt) return json(res, 403, { error: e.message }); throw e; }
+      const png = await bildLesen(db, eid, bild[2], bild[3]);
+      if (!png) return json(res, 404, { error: "no such image" });
+      res.writeHead(200, { "content-type": "image/png", "cache-control": "private, max-age=3600", "content-security-policy": "default-src 'none'", "x-content-type-options": "nosniff" });
+      res.end(png);
+      return;
     }
 
     // Hochgeladene Credit-Spende herunterladen: nur Lead, Visionär oder Bereichs-Leads des Projekts (Agenten-Token)

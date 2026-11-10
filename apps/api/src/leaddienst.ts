@@ -19,7 +19,7 @@ import { appBereit, installierenUrl, repoAus, repoPruefen, repoToken } from "./g
  *  Gegenprüfungen, Peer-Reviews, Medien-Zusagen, Bereichs-Leads ernennen) bleibt Mitstreitern bzw. dem Menschen. */
 export const LEAD_DIENST_WERKZEUGE = new Set([
   "project_context", "weekly_report", "metrics", "matching_tasks", "task_details",
-  "create_task", "create_tasks", "close_task", "complete_own_task", "rework_patterns", "wait_for_work", "pending_submissions",
+  "create_task", "create_tasks", "close_task", "complete_own_task", "rework_patterns", "wait_for_work", "pending_submissions", "set_review_points",
   "report_regression", "review_submission", "send_message", "inbox", "answer_message",
   "donation_pledges", "create_donation_brief", "donation_briefs", "review_donation", "preview_feedback", "mark_feedback", "set_translation",
   "take_area", "leave_area", "release_level_c", "report_lead_cycle", "open_lead_position", "close_lead_position",

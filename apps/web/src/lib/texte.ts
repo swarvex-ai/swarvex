@@ -357,6 +357,10 @@ const de = {
     ausgeblendet: (n: number) => `${n === 1 ? "Ein weiteres Modell hat" : `${n} weitere Modelle haben`} noch zu wenige Bewertungen.`,
     fehler: "Die Rangliste ist gerade nicht erreichbar.",
     mitmachen: "Dein Modell mitmessen lassen", stand: "Stand",
+    prueferH2: "Als Prüfer",
+    prueferText: "Seit dem 10.11.2026 bewerten auch Runner die Einreichungen anderer Menschen, immer mit einem Modell einer anderen Familie als dem der Einreichung. Gezählt wird, wie oft ein Modell zugestimmt hat und wie viele dieser Zustimmungen sich später als falsch erwiesen haben: Für die angenommene Einreichung wurde eine Regression gemeldet, oder eine neue Aufgabe behebt sie. Folgen hat das noch keine; erst wird gemessen.",
+    prueferSpalten: { modell: "Modell", bewertungen: "Fremdbewertungen", zustimmungen: "Zustimmungen", widerlegt: "davon widerlegt", menschen: "Menschen" },
+    prueferLeer: "Noch hat kein Modell 5 Fremdbewertungen.",
     methodeH2: "So rechnen wir",
     methode: [
       "Gezählt werden die Einreichungen der letzten 90 Tage in allen öffentlichen Projekten. Bewertet heißt: Ein Lead oder Bereichs-Lead hat entschieden, oder zwei Mitstreiter haben eine Aufgabe der Stufe A unabhängig geprüft.",
@@ -946,6 +950,10 @@ const en: typeof de = {
     ausgeblendet: (n: number) => `${n === 1 ? "One more model has" : `${n} more models have`} too few reviews so far.`,
     fehler: "The ranking cannot be reached right now.",
     mitmachen: "Have your model measured", stand: "As of",
+    prueferH2: "As reviewers",
+    prueferText: "Since 10 Nov 2026 runners review other people's submissions too, always with a model of another family than the submission's. We count how often a model approved and how many of those approvals later turned out wrong: a regression was reported for the accepted submission, or a new task fixes it. Nothing follows from it yet; first we measure.",
+    prueferSpalten: { modell: "Model", bewertungen: "Peer reviews", zustimmungen: "Approvals", widerlegt: "of which refuted", menschen: "People" },
+    prueferLeer: "No model has 5 peer reviews yet.",
     methodeH2: "How we count",
     methode: [
       "We count the submissions of the last 90 days in all public projects. Reviewed means: a lead or area lead decided, or two contributors independently checked a level A task.",

@@ -6,13 +6,17 @@
 // schickt in die Nacharbeit; ab Stufe C braucht es einen anderen Menschen, der das Projekt führt.
 // Wer prüft: nicht der Einreicher, nicht Lead oder Visionär des Projekts, Vertrauensstufe ab 1, in Clean-Room-Projekten nur von
 // derselben Seite der Trennwand wie die Aufgabe. Jede Fremdprüfung steht mit Urteil im öffentlichen Protokoll.
-// Nennt der Prüfer sein Modell, kommen Einreichungen eines anderen Modells zuerst: Ein zweites Modell findet andere Fehler.
+// Fremdbewertung durch den Runner (neVs 10.11.2026), vier Leitplanken: Der Prüfer nennt sein Modell, und es muss aus einer
+// anderen Familie stammen als das der Einreichung (ein zweites Modell findet andere Fehler, eines derselben Familie oft
+// dieselben nicht). Hat die Prüfstraße Szenenbilder geliefert, stimmt nur zu, wer sie mit einem Modell mit Bildverständnis
+// angesehen hat. Prüfpunkte des Leads (Fragen, kein Urteil) beantwortet der Prüfer einzeln. Und widerlegte Zustimmungen
+// (Regression gemeldet, oder eine Aufgabe behebt die angenommene) zählen je Modell (pruefer_bilanz in modelle.ts).
 import type { Db, Tx } from "./db.ts";
 import { transaktion } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
-import { Abgelehnt, rollenVon, variantenSchliessen, VOM_LEAD, wechseln, type Wer } from "./aufgaben.ts";
+import { Abgelehnt, mussLeadOderOfficerSein, rollenVon, variantenSchliessen, VOM_LEAD, wechseln, type Wer } from "./aufgaben.ts";
 import { raeumeVon, trennwand } from "./cleanroom.ts";
-import { modellSchluessel } from "./modelle.ts";
+import { modellFamilie, modellSchluessel, siehtBilder } from "./modelle.ts";
 import { einreichungsVorschauUrl } from "./konfig.ts";
 import { einreichungsVorschau } from "./katalog.ts";
 import { vertrauenAktualisieren } from "./vertrauen.ts";
@@ -44,7 +48,8 @@ export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: stri
   const r = (await db.query(
     `select e.id::int as einreichung_id, a.id::int as aufgabe_id, p.slug as projekt, a.titel, a.beschreibung, a.akzeptanz, a.pfade, a.stufe, a.raum,
        a.projekt_id, ag.mensch_id::int as autor, e.modell as autor_modell, e.zusammenfassung, e.patch, pr.bericht, e.vorschau->>'status' as vorschau_status,
-       ${VOM_LEAD("e", "a.projekt_id")} as vom_lead,
+       ${VOM_LEAD("e", "a.projekt_id")} as vom_lead, e.pruefpunkte,
+       (select coalesce(array_agg(distinct b.name order by b.name), '{}') from einreichung_bilder b where b.einreichung_id = e.id) as bilder,
        (select count(*)::int from fremdpruefungen f where f.einreichung_id = e.id and f.urteil = 'zustimmen') as zustimmungen
      from aufgaben a join projekte p on p.id = a.projekt_id
      join lateral (select * from einreichungen where aufgabe_id = a.id order by id desc limit 1) e on true
@@ -54,16 +59,25 @@ export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: stri
        and not exists (select 1 from fremdpruefungen f where f.einreichung_id = e.id and f.mensch_id = $1)
      order by e.id limit 50`, [wer.menschId, projektSlug ?? null])).rows;
   const erlaubt = [];
-  for (const z of r) if (!(await darfPruefen(db, wer, z, z.autor))) erlaubt.push(z);
-  // eigene Beiträge eines Leads zuerst (nur der Schwarm kann sie annehmen), dann ein anderes Modell (stabil sortiert,
-  // sonst in der Reihenfolge des Eingangs)
-  const eigenes = modell?.trim() ? modellSchluessel(modell) : null;
-  const gleich = (z: { autor_modell: string | null }) => (eigenes && z.autor_modell && modellSchluessel(z.autor_modell) === eigenes ? 1 : 0);
-  erlaubt.sort((x, y) => Number(y.vom_lead) - Number(x.vom_lead) || gleich(x) - gleich(y));
-  return Promise.all(erlaubt.slice(0, 20).map(async ({ projekt_id, autor, raum, vorschau_status, ...z }) => ({
+  // Nennt der Prüfer sein Modell, fallen Einreichungen derselben Modellfamilie weg: die darf er nicht bewerten
+  const familie = modell?.trim() ? modellFamilie(modell) : null;
+  for (const z of r) {
+    if (familie && z.autor_modell && modellFamilie(z.autor_modell) === familie) continue;
+    if (!(await darfPruefen(db, wer, z, z.autor))) erlaubt.push(z);
+  }
+  // eigene Beiträge eines Leads zuerst (nur der Schwarm kann sie annehmen), dann die, denen dieses Modell zustimmen darf
+  // (stabil sortiert, sonst in der Reihenfolge des Eingangs)
+  const zustimmbar = (z: { bilder: string[] }) => !z.bilder.length || (modell?.trim() ? siehtBilder(modell) : true);
+  erlaubt.sort((x, y) => Number(y.vom_lead) - Number(x.vom_lead) || Number(zustimmbar(y)) - Number(zustimmbar(x)));
+  return Promise.all(erlaubt.slice(0, 20).map(async ({ projekt_id, autor, raum, vorschau_status, pruefpunkte, bilder, ...z }) => ({
     ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: await einreichungsVorschau(db, z.projekt, Number(z.einreichung_id)) } : {}),
     ...z, bericht: String(z.bericht ?? "").slice(-4000),
     automatisch_ab: automatischAb(z.stufe, z.vom_lead),
+    ...(pruefpunkte?.length ? { pruefpunkte } : {}),
+    ...(bilder.length ? { bilder, bild_adresse: `/submissions/${z.einreichung_id}/images/<scene>/<old|new|diff>.png` } : {}),
+    zustimmen_moeglich: zustimmbar({ bilder }),
+    ...(!modell?.trim() ? { hinweis: "name your model (model): only a model of another family than the submission's may review it" }
+      : !zustimmbar({ bilder }) ? { hinweis: "this submission changes what you see (images) and your model does not read images: you may request changes, not approve" } : {}),
   })));
 }
 
@@ -71,8 +85,11 @@ export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: stri
  * Fremdprüfung abgeben; bei Stufe A und genug Zustimmungen wird die Aufgabe automatisch angenommen. Bei eigenen
  * Beiträgen des Leads (Stufe A und B) nimmt schon eine Zustimmung an, und „Änderungen“ schickt in die Nacharbeit.
  */
-export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urteil: "zustimmen" | "aenderungen", begruendung: string, modell?: string) {
+export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urteil: "zustimmen" | "aenderungen", begruendung: string, modell?: string,
+  zusatz: { antworten?: string[]; bilderGesehen?: boolean } = {}) {
   if (begruendung.trim().length < 20) throw new Abgelehnt("reason: at least one concrete sentence (20 characters)");
+  if (!modell?.trim()) throw new Abgelehnt("model: name the model that did this review; it must be of another family than the submission's");
+  const antworten = (zusatz.antworten ?? []).map((x) => String(x).trim());
   return transaktion(db, async (tx) => {
     const e = (await tx.query("select e.*, ag.mensch_id::int as autor from einreichungen e join agenten ag on ag.id = e.agent_id where e.id = $1", [einreichungId])).rows[0];
     if (!e) throw new Abgelehnt("unknown submission");
@@ -82,16 +99,28 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
     if (letzte !== einreichungId) throw new Abgelehnt("this submission was replaced by a newer one");
     const nein = await darfPruefen(tx, wer, a, e.autor);
     if (nein) throw new Abgelehnt(nein);
+    if (e.modell && modellFamilie(modell) === modellFamilie(e.modell))
+      throw new Abgelehnt(`the submission was written by ${e.modell}; a peer review needs a model of another family (yours: ${modellFamilie(modell)})`);
+    const bilder = Number((await tx.query("select count(*) from einreichung_bilder where einreichung_id = $1", [einreichungId])).rows[0].count);
+    if (bilder && urteil === "zustimmen") {
+      if (!siehtBilder(modell)) throw new Abgelehnt("this submission changes what you see (scene images); only a model that reads images may approve it: request changes or leave it to another reviewer");
+      if (!zusatz.bilderGesehen) throw new Abgelehnt("look at the scene images first (old, new, diff), then approve with images_seen: true");
+    }
+    const punkte: string[] = e.pruefpunkte ?? [];
+    if (punkte.length && (antworten.length !== punkte.length || antworten.some((x) => x.length < 10)))
+      throw new Abgelehnt(`answer each of the ${punkte.length} review points of the lead, in order, with what you found (answers, at least 10 characters each)`);
     try {
-      await tx.query("insert into fremdpruefungen(einreichung_id, agent_id, mensch_id, urteil, begruendung, modell) values ($1,$2,$3,$4,$5,$6)",
-        [einreichungId, wer.agentId, wer.menschId, urteil, begruendung.trim().slice(0, 4000), modell?.trim().slice(0, 120) || null]);
+      await tx.query("insert into fremdpruefungen(einreichung_id, agent_id, mensch_id, urteil, begruendung, modell, antworten, bilder_gesehen) values ($1,$2,$3,$4,$5,$6,$7,$8)",
+        [einreichungId, wer.agentId, wer.menschId, urteil, begruendung.trim().slice(0, 4000), modell.trim().slice(0, 120), punkte.length ? antworten.map((x) => x.slice(0, 1000)) : null,
+         Boolean(bilder && zusatz.bilderGesehen)]);
     } catch (err) {
       if ((err as { code?: string }).code === "23505") throw new Abgelehnt("you already reviewed this submission");
       throw err;
     }
     await vertrauenAktualisieren(tx, wer.menschId, "peer review");
     await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: `agent:${wer.agentId}`, art: "fremdpruefung", bezug: `aufgabe:${a.id}`,
-      daten: { einreichung: einreichungId, urteil, anderes_modell: modell?.trim() && e.modell ? modellSchluessel(modell) !== modellSchluessel(e.modell) : null } });
+      daten: { einreichung: einreichungId, urteil, modell: modell.trim().slice(0, 120), anderes_modell: e.modell ? modellSchluessel(modell) !== modellSchluessel(e.modell) : null,
+        ...(bilder ? { bilder_gesehen: Boolean(zusatz.bilderGesehen) } : {}), ...(punkte.length ? { pruefpunkte: punkte.length } : {}) } });
     const alle = (await tx.query(
       "select f.urteil, f.begruendung, f.agent_id, m.login from fremdpruefungen f join menschen m on m.id = f.mensch_id where f.einreichung_id = $1 order by f.id", [einreichungId])).rows;
     const zu = alle.filter((f) => f.urteil === "zustimmen");
@@ -122,4 +151,42 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
 export async function fremdpruefungenZu(db: Db, einreichungId: number) {
   return (await db.query(
     "select f.urteil, f.begruendung, m.login as von, f.erstellt from fremdpruefungen f join menschen m on m.id = f.mensch_id where f.einreichung_id = $1 order by f.id", [einreichungId])).rows;
+}
+
+/**
+ * Prüfpunkte des Leads (neVs 10.11.2026): Zu einer Einreichung, die in die Fremdbewertung geht (vor allem eigene), gibt der
+ * Lead bis zu fünf konkrete Fragen mit, damit auch ein schwächeres Prüfmodell das Entscheidende prüft. Fragen, kein Urteil:
+ * „sieht gut aus“ würde ein Prüfmodell nur abnicken. Nur solange noch keine Fremdbewertung vorliegt; öffentlich protokolliert.
+ */
+export async function pruefpunkteSetzen(db: Db, wer: Wer, einreichungId: number, punkteRoh: string[]) {
+  const punkte = [...new Set(punkteRoh.map((x) => String(x).trim().replace(/\s+/g, " ")))].filter(Boolean);
+  if (punkte.length < 1 || punkte.length > 5) throw new Abgelehnt("points: 1 to 5 review points");
+  if (punkte.some((x) => x.length < 15 || x.length > 300 || !x.endsWith("?")))
+    throw new Abgelehnt("points: each a concrete question the reviewer can check (15 to 300 characters, ending with ?), not a verdict");
+  return transaktion(db, async (tx) => {
+    const e = (await tx.query("select e.id, e.aufgabe_id from einreichungen e where e.id = $1", [einreichungId])).rows[0];
+    if (!e) throw new Abgelehnt("unknown submission");
+    const a = (await tx.query("select * from aufgaben where id = $1 for update", [e.aufgabe_id])).rows[0];
+    await mussLeadOderOfficerSein(tx, wer.menschId, Number(a.projekt_id), a);
+    if (!["eingereicht", "pruefung", "geprueft_ok"].includes(a.zustand)) throw new Abgelehnt("review points only while the submission waits for its check or its review");
+    const letzte = (await tx.query("select max(id)::int as id from einreichungen where aufgabe_id = $1", [a.id])).rows[0].id;
+    if (letzte !== einreichungId) throw new Abgelehnt("this submission was replaced by a newer one");
+    if (Number((await tx.query("select count(*) from fremdpruefungen where einreichung_id = $1", [einreichungId])).rows[0].count))
+      throw new Abgelehnt("peer reviews of this submission have started; review points can no longer change");
+    await tx.query("update einreichungen set pruefpunkte = $2 where id = $1", [einreichungId, punkte]);
+    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: `agent:${wer.agentId}`, art: "pruefpunkte_gesetzt", bezug: `aufgabe:${a.id}`,
+      daten: { einreichung: einreichungId, punkte } });
+    return { einreichung: einreichungId, pruefpunkte: punkte };
+  });
+}
+
+/** Dürfte diese Person die Einreichung fremdbewerten? Für den Abruf der Szenenbilder (main.ts). */
+export async function fremdpruefungErlaubt(db: Db, wer: Wer, einreichungId: number) {
+  const z = (await db.query(
+    `select a.projekt_id, a.raum, a.zustand, ag.mensch_id::int as autor from einreichungen e join aufgaben a on a.id = e.aufgabe_id join agenten ag on ag.id = e.agent_id
+     where e.id = $1`, [einreichungId])).rows[0];
+  if (!z) throw new Abgelehnt(`no submission #${einreichungId}`);
+  if (z.zustand !== "geprueft_ok") throw new Abgelehnt("images for peer reviewers only while the submission waits for review");
+  const nein = await darfPruefen(db, wer, z, z.autor);
+  if (nein) throw new Abgelehnt(nein);
 }

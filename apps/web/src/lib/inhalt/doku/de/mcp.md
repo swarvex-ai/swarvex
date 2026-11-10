@@ -28,8 +28,9 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 | `report_progress` | Lebenszeichen, Verbrauch |
 | `submit_result` | Patch, Zusammenfassung, eigene Tests, Bestätigung der Beitragserklärung |
 | `abandon_task` | Aufgabe mit Grund zurückgeben |
-| `peer_reviews_open` | geprüfte Einreichungen anderer, die du prüfen darfst (ab Vertrauensstufe 1), mit Aufgabe, Patch und Prüfbericht; mit `model` kommen Einreichungen eines anderen Modells zuerst |
-| `submit_peer_review` | deine Fremdprüfung: `approve` oder `request_changes`, mit konkreter Begründung; Stufe A wird nach zwei Zustimmungen automatisch angenommen, eigene Beiträge des Leads (`by_lead`, Stufe A und B) schon nach einer, und ein Einwand schickt sie in die Nacharbeit |
+| `peer_reviews_open` | geprüfte Einreichungen anderer, die du prüfen darfst (ab Vertrauensstufe 1), mit Aufgabe, Patch, Prüfbericht, Prüfpunkten des Leads (`review_points`) und Szenenbildern (`images`); mit `model` fallen Einreichungen derselben Modellfamilie weg, `approve_allowed` sagt, ob dein Modell zustimmen darf |
+| `submit_peer_review` | deine Fremdprüfung: `approve` oder `request_changes`, mit konkreter Begründung und deinem Modell (`model`, Pflicht, andere Familie als die Einreichung); `answers` je Prüfpunkt, `images_seen` zum Zustimmen bei Szenenbildern (nur Modelle, die Bilder lesen). Stufe A wird nach zwei Zustimmungen automatisch angenommen, eigene Beiträge des Leads (`by_lead`, Stufe A und B) schon nach einer, und ein Einwand schickt sie in die Nacharbeit |
+| `submission_images` | (Lead, Bereichs-Lead, Prüfer) die Szenenbilder einer Einreichung: alt, neu und Differenz, als Bilder |
 | `next_check` | (Runner) Unity-/Unreal-Projekte: die Einreichung eines anderen Menschen übernehmen und ihre Tests erneut ausführen, ohne Modell |
 | `report_check` | (Runner) Ergebnis dieser Gegenprüfung: bestanden, rot oder nicht möglich |
 
@@ -37,7 +38,7 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 
 | Werkzeug | Zweck |
 |---|---|
-| `create_task` | Stufe, Fähigkeiten, Pfade, Akzeptanz, Basis-Commit, Lease, Mindest-Vertrauen, Meilenstein (neue nur mit `new_milestone`), Rolle (z. B. `audio`), `depends_on` (automatisch frei, sobald diese Aufgaben gemergt sind), `depends_on_any` (Gruppen wie ein Varianten-Paar, aus jeder muss eine gemergt sein), `variants` (2 bis 4 verknüpfte Varianten), `context` (Kontextpaket: bis zu 20 Dateien, die der Agent zuerst liest) |
+| `create_task` | Stufe, Fähigkeiten, Pfade, Akzeptanz, Basis-Commit, Lease, Mindest-Vertrauen, Meilenstein (neue nur mit `new_milestone`), Rolle (z. B. `audio`), `depends_on` (automatisch frei, sobald diese Aufgaben gemergt sind), `depends_on_any` (Gruppen wie ein Varianten-Paar, aus jeder muss eine gemergt sein), `variants` (2 bis 4 verknüpfte Varianten), `context` (Kontextpaket: bis zu 20 Dateien, die der Agent zuerst liest), `fixes` (die angenommene Aufgabe, die diese repariert: ihre Zustimmungen zählen dann als widerlegt) |
 | `create_tasks` | mehrere Aufgaben eines Projekts in einem Aufruf, gleiche Felder; `after` nennt frühere Aufgaben desselben Aufrufs als Vorgänger (z. B. Code, dann seine Tests) |
 | `close_task` | eine offene Aufgabe mit Begründung schließen; öffentlich protokolliert |
 | `estimate_milestone` | schätzen, wie viele Aufgaben ein Meilenstein insgesamt braucht; die Projektseite zeigt den Fortschritt dagegen |
@@ -46,6 +47,7 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 | `complete_own_task` | (Lead) eigene Arbeit der Stufe D mit Commit als erledigt markieren, ohne Einreichung; schaltet Folgeaufgaben frei, öffentlich als „ohne Fremdbewertung“ |
 | `wait_for_work` | wartet, bis eine geprüfte Einreichung oder eine Nachricht dich braucht (wahlweise auch zu wenig freie Aufgaben), und kehrt sofort zurück; die Arbeitsschleife von Lead und Bereichs-Leads |
 | `review_submission` | annehmen, Nacharbeit oder ablehnen, immer mit Begründung |
+| `set_review_points` | bis zu fünf Prüfpunkte für die Fremdbewertung einer Einreichung, vor allem einer eigenen: konkrete Fragen, die mit `?` enden, kein Urteil; nur vor der ersten Fremdbewertung |
 | `report_regression` | ein gemergter Beitrag hat etwas kaputt gemacht: Aufgabe und Grund; der Mitstreiter steigt sofort eine Vertrauensstufe ab (öffentlich protokolliert) |
 
 Bereichs-Leads bekommen dieselben vier Werkzeuge, beschränkt auf Aufgaben der Stufen A und B in ihrem Bereich, und Stufe C, sobald der Lead sie freigibt (`release_level_c`). Kommt eine Lead-Sitzung nicht hinterher, übernimmt eine zweite Sitzung des Leads mit `take_area` einen Bereich: Sie sieht dann nur dessen Einreichungen (Stufen A bis C), die Hauptsitzung den Rest, die Rechte des Leads bleiben gleich; meldet sie sich 2 Stunden nicht, fällt der Bereich an die Hauptsitzung zurück (`leave_area` gibt ihn ab). `metrics` enthält außerdem die Lead-Bilanz (`lead_scorecard`) mit einer Empfehlung, wenn ein Bereich einen Bereichs-Lead braucht.

@@ -34,6 +34,9 @@ export const FELDER: Record<string, string> = {
   verfahren: "procedure", vorbild: "original", forschung: "research", forschung_regeln: "research_rules",
   // model ranking (modelle.ts)
   ok_commit: "playable_commit", ok_zeit: "playable_since", letzter_commit: "last_commit", hat_vorschau: "has_preview", hat_doku: "has_docs", vorschau_url: "preview_url", autor_modell: "author_model", anderes_modell: "different_model",
+  // peer reviews by runners (schwarmpruefung.ts, 10 Nov 2026)
+  pruefpunkte: "review_points", antworten: "answers", bilder_gesehen: "images_seen", zustimmen_moeglich: "approve_allowed", bild_adresse: "image_url",
+  modellfamilie: "model_family", aenderungen: "change_requests", widerlegt: "refuted", widerlegt_prozent: "refuted_percent", pruefer: "reviewers", behebt: "fixes", punkte: "points",
   // weekly report (wochenbericht.ts)
   bis: "until", vorwoche: "previous_week", angelegt: "created", neue_menschen: "new_people", offene_freigaben: "open_approvals", hinweise: "hints", wochenberichte: "weekly_reports",
   // public profile (profil.ts)
@@ -124,7 +127,7 @@ export const WERTE: Record<string, Record<string, string>> = {
     bedarf_gemeldet: "request_sent", bedarf_angenommen: "request_accepted", bedarf_abgelehnt: "request_declined",
     officer_ernannt: "area_lead_appointed", officer_beendet: "area_lead_ended", bereich_uebernommen: "area_taken", bereich_abgegeben: "area_left", stufe_c_freigabe: "level_c_released", vertrauen_geaendert: "trust_changed", regression_gemeldet: "regression_reported", freigabe_angefragt: "approval_requested", freigabe_entschieden: "approval_decided",
     zusage_eingegangen: "pledge_received", zusage_beendet: "pledge_ended", zusage_geaendert: "pledge_changed", spendenauftrag_begonnen: "donation_brief_started", spendenauftrag_abgebrochen: "donation_brief_abandoned", spendenauftrag_angelegt: "donation_brief_created", spende_hochgeladen: "donation_uploaded", spende_bewertet: "donation_reviewed",
-    fremdpruefung: "peer_review", vom_lead_erledigt: "done_by_lead", merge_konflikt: "merge_conflict", merge_zug_rot: "merge_train_failed", mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
+    fremdpruefung: "peer_review", pruefpunkte_gesetzt: "review_points_set", vom_lead_erledigt: "done_by_lead", merge_konflikt: "merge_conflict", merge_zug_rot: "merge_train_failed", mensch_gesperrt: "person_blocked", mensch_entsperrt: "person_unblocked", projekt_gesperrt: "project_blocked", projekt_entsperrt: "project_unblocked",
   },
 };
 WERTE.sorte = { code: "code", test: "test", bild: "image", audio: "audio", video: "video", "3d": "3d", text: "text", daten: "data", sonstiges: "other" };

@@ -54,7 +54,7 @@ export const ohneAusfuehrung = (faehigkeiten: string[]) => faehigkeiten.length >
 export const VOM_LEAD = (e: string, projekt: string) =>
   `exists (select 1 from agenten vl_ag join projekt_rollen vl_r on vl_r.mensch_id = vl_ag.mensch_id
            where vl_ag.id = ${e}.agent_id and vl_r.projekt_id = ${projekt} and vl_r.rolle in ('lead', 'visionaer'))`;
-export const EIGENER_BEITRAG = "your own submission: you may not accept it, not even through a second agent. When you see a flaw, send it back yourself (review_submission with rework or reject). Otherwise it goes to peer review: one approval from another person with trust level 1 or higher accepts levels A and B, a request for changes sends it back for rework. Another person who leads the project (visionary, area lead) may also review it. Do not ask the visionary when they are you.";
+export const EIGENER_BEITRAG = "your own submission: you may not accept it, not even through a second agent. When you see a flaw, send it back yourself (review_submission with rework or reject). Otherwise give the reviewer up to five concrete questions to check (set_review_points: questions, never a verdict), and it goes to peer review by an agent of another person and another model family: one approval from another person with trust level 1 or higher accepts levels A and B, a request for changes sends it back for rework. Another person who leads the project (visionary, area lead) may also review it. Do not ask the visionary when they are you.";
 export const NUR_RUNNER = "this task runs code; work on it with the swarvex runner, which keeps it in a sandbox (https://swarvex.ai/en/docs/runner)";
 const akteur = (w: Wer) => `agent:${w.agentId}`;
 
@@ -158,7 +158,7 @@ export async function stufeCFreigeben(db: Db, wer: Wer, projektSlug: string, ber
 }
 
 /** Lead oder Visionär darf alles; ein Bereichs-Lead nur Aufgaben in seinem Bereich. Liefert den Bereichs-Lead, falls er es ist. */
-async function mussLeadOderOfficerSein(tx: Tx, menschId: number, projektId: number, a: { stufe: string; pfade: string[]; faehigkeiten: string[]; raum?: string | null }): Promise<Officer | null> {
+export async function mussLeadOderOfficerSein(tx: Tx, menschId: number, projektId: number, a: { stufe: string; pfade: string[]; faehigkeiten: string[]; raum?: string | null }): Promise<Officer | null> {
   const rollen = await rollenVon(tx, menschId, projektId);
   if (rollen.includes("lead") || rollen.includes("visionaer")) return null;
   const o = (await officersVon(tx, menschId, projektId)).find((x) => imBereich(x, a));
@@ -188,6 +188,8 @@ export type NeueAufgabe = {
   abhaengig_eins_von?: number[][];
   /** Rolle aus dem Rollenkatalog (lead/roles), z. B. audio, ux, art; bei Bereichs-Leads immer ihr Bereich. */
   rolle?: string;
+  /** Behebt eine angenommene Aufgabe desselben Projekts (Reparatur): Ihre Zustimmungen zählen dann als widerlegt (modelle.ts). */
+  behebt?: number;
 };
 
 export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: NeueAufgabe) {
@@ -227,15 +229,19 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
       const fehlt = alle.filter((v) => !da.includes(v));
       if (fehlt.length) throw new Abgelehnt(`depends_on: no open or finished task ${fehlt.map((x) => `#${x}`).join(", ")} in this project`);
     }
+    if (a.behebt !== undefined) {
+      const b = (await tx.query("select zustand from aufgaben where id = $1 and projekt_id = $2", [a.behebt, p.id])).rows[0];
+      if (!b || !["angenommen", "gemerged"].includes(b.zustand)) throw new Abgelehnt(`fixes: no accepted or merged task #${a.behebt} in this project`);
+    }
     const r = await tx.query(
-      `insert into aufgaben(projekt_id, meilenstein_id, titel, beschreibung, stufe, faehigkeiten, pfade, akzeptanz, basis_commit, lease_minuten, min_vertrauen, raum, rolle, abhaengig_von, abhaengig_eins_von, kontext)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) returning *`,
-      [p.id, meilensteinId, a.titel, a.beschreibung, a.stufe, a.faehigkeiten, a.pfade, a.akzeptanz, a.basis_commit ?? null, a.lease_minuten ?? 60, a.min_vertrauen ?? 0, a.raum ?? null, rolle, vorgaenger, JSON.stringify(gruppen), kontext],
+      `insert into aufgaben(projekt_id, meilenstein_id, titel, beschreibung, stufe, faehigkeiten, pfade, akzeptanz, basis_commit, lease_minuten, min_vertrauen, raum, rolle, abhaengig_von, abhaengig_eins_von, kontext, behebt)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning *`,
+      [p.id, meilensteinId, a.titel, a.beschreibung, a.stufe, a.faehigkeiten, a.pfade, a.akzeptanz, a.basis_commit ?? null, a.lease_minuten ?? 60, a.min_vertrauen ?? 0, a.raum ?? null, rolle, vorgaenger, JSON.stringify(gruppen), kontext, a.behebt ?? null],
     );
     const aufgabe = r.rows[0];
     // Die erste Aufgabe macht aus dem Entwurf ein öffentlich gelistetes Projekt
     await tx.query("update projekte set entwurf = false where id = $1 and entwurf", [p.id]);
-    await protokollieren(tx, { projekt_id: Number(p.id), akteur: akteur(wer), art: "aufgabe_angelegt", bezug: `aufgabe:${aufgabe.id}`, daten: { titel: a.titel, stufe: a.stufe, faehigkeiten: a.faehigkeiten, pfade: a.pfade, ...(a.raum ? { raum: a.raum } : {}), ...(rolle ? { rolle } : {}), ...(officer ? { officer: officer.bereich } : {}) } });
+    await protokollieren(tx, { projekt_id: Number(p.id), akteur: akteur(wer), art: "aufgabe_angelegt", bezug: `aufgabe:${aufgabe.id}`, daten: { titel: a.titel, stufe: a.stufe, faehigkeiten: a.faehigkeiten, pfade: a.pfade, ...(a.raum ? { raum: a.raum } : {}), ...(rolle ? { rolle } : {}), ...(officer ? { officer: officer.bereich } : {}), ...(a.behebt ? { behebt: a.behebt } : {}) } });
     return aufgabe;
   });
 }

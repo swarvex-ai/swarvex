@@ -7,6 +7,9 @@ const LEAD = join(resolve(process.cwd(), "../.."), "lead");
 const lies = (pfad: string) => readFileSync(join(LEAD, pfad), "utf8");
 const ROH = "https://raw.githubusercontent.com/swarvex-ai/swarvex/main/lead";
 
+/** Prüfer-Handbuch für Fremdbewertungen, auch für den Runner (/lead/reviewer.md). */
+export const prueferHandbuch = () => lies("REVIEWER.md");
+
 export const ARTEN = ["game", "app", "website", "service", "tool", "library", "plugin", "research", "other"] as const;
 export type Art = (typeof ARTEN)[number];
 /** Paket-Namen: Projektart, optional mit Verfahren Clean Room („tool-cleanroom“) oder Weiterführen („game-continuation“);

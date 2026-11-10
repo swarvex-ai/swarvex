@@ -10,11 +10,13 @@
     check_passed_percent: number | null; median_tokens_per_accepted: number | null; people: number; projects: number;
     levels: (Zeile & { level: string })[]; kinds: (Zeile & { kind: string })[]; programs: { program: string; share_percent: number }[];
   };
+  // Prüfer-Bilanz je Modell (modelle.ts, prueferBilanz): Fremdbewertungen und widerlegte Zustimmungen
+  type Pruefer = { model: string; key: string; peer_reviews: number; approvals: number; refuted: number; refuted_percent: number | null; people: number };
 
   let { data } = $props();
   const s = $derived(sprache());
   const t = $derived(tx().modelle);
-  const r = $derived(data.rangliste as { as_of: string; models: Modell[]; hidden: number } | null);
+  const r = $derived(data.rangliste as { as_of: string; models: Modell[]; hidden: number; reviewers?: Pruefer[] } | null);
   const zahl = $derived(new Intl.NumberFormat(s === "de" ? "de-DE" : "en-US"));
   const komma = $derived(new Intl.NumberFormat(s === "de" ? "de-DE" : "en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
   const datum = $derived(r ? new Date(r.as_of).toLocaleString(s === "de" ? "de-DE" : "en-US", { dateStyle: "medium", timeStyle: "short" }) : "");
@@ -84,6 +86,30 @@
     <p class="leise klein">{r.hidden ? `${t.ausgeblendet(r.hidden)} ` : ""}{t.stand}: {datum}</p>
   {/if}
 
+  {#if r}
+    <div class="pruefer">
+      <h2>{t.prueferH2}</h2>
+      <p class="leise">{t.prueferText}</p>
+      {#if r.reviewers?.length}
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div class="tabelle" role="region" aria-label={t.prueferH2} tabindex="0">
+          <table class="schmal">
+            <thead><tr><th scope="col">{t.prueferSpalten.modell}</th><th scope="col">{t.prueferSpalten.bewertungen}</th><th scope="col">{t.prueferSpalten.zustimmungen}</th>
+              <th scope="col">{t.prueferSpalten.widerlegt}</th><th scope="col">{t.prueferSpalten.menschen}</th></tr></thead>
+            <tbody>
+              {#each r.reviewers as p (p.key)}
+                <tr><th scope="row">{p.model}</th><td>{p.peer_reviews}</td><td>{p.approvals}</td>
+                  <td>{p.refuted}{#if p.refuted_percent !== null} <span class="leise">({p.refuted_percent} %)</span>{/if}</td><td>{p.people}</td></tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {:else}
+        <p class="leise klein">{t.prueferLeer}</p>
+      {/if}
+    </div>
+  {/if}
+
   <div class="text">
     <h2>{t.methodeH2}</h2>
     <ul>{#each t.methode as z}<li>{z}</li>{/each}</ul>
@@ -120,6 +146,9 @@
   .teile li span:first-child { display: inline-block; min-width: 72px; }
   abbr { text-decoration: underline dotted; cursor: help; }
   .text { max-width: 72ch; }
+  .pruefer { display: grid; gap: 12px; }
+  .pruefer h2, .pruefer p { margin: 0; max-width: 72ch; }
+  table.schmal { min-width: 520px; }
   .text ul { padding-left: 20px; display: grid; gap: 8px; color: var(--stahl); }
   code { font: .85rem var(--mono); overflow-wrap: anywhere; }
 </style>

@@ -548,20 +548,21 @@ describe("Bewertung durch den Schwarm", () => {
     const p1 = await pruefer("pruefer-1"), p2 = await pruefer("pruefer-2"), neu = await pruefer("neuling", 0);
     expect((await offeneFremdpruefungen(db, p1, "test")).map((x) => x.einreichung_id)).toContain(eid);
     expect((await offeneFremdpruefungen(db, mit, "test")).map((x) => x.einreichung_id)).not.toContain(eid);
-    await expect(fremdPruefen(db, mit, eid, "zustimmen", "ich finde meine Arbeit gut genug")).rejects.toThrow(/own submission/);
-    await expect(fremdPruefen(db, lead, eid, "zustimmen", "als Lead prüfe ich anders, nicht so")).rejects.toThrow(/review_submission/);
-    await expect(fremdPruefen(db, neu, eid, "zustimmen", "sieht für mich vollkommen gut aus")).rejects.toThrow(/trust level/);
-    // Nennt der Prüfer sein Modell, kommen Einreichungen eines anderen Modells zuerst
+    await expect(fremdPruefen(db, mit, eid, "zustimmen", "ich finde meine Arbeit gut genug", "claude-sonnet-5-5")).rejects.toThrow(/own submission/);
+    await expect(fremdPruefen(db, lead, eid, "zustimmen", "als Lead prüfe ich anders, nicht so", "claude-sonnet-5-5")).rejects.toThrow(/review_submission/);
+    await expect(fremdPruefen(db, neu, eid, "zustimmen", "sieht für mich vollkommen gut aus", "claude-sonnet-5-5")).rejects.toThrow(/trust level/);
+    // Ohne Modell keine Fremdbewertung; Einreichungen derselben Modellfamilie bekommt der Prüfer nicht und darf sie nicht bewerten
+    await expect(fremdPruefen(db, p1, eid, "zustimmen", "Akzeptanz erfüllt, Pfade passen, Tests grün")).rejects.toThrow(/model/);
     const { eid: eid2 } = await geprueft("Fremd geprüft, anderes Modell", "A");
-    await db.query("update einreichungen set modell = 'Modell Eins' where id = $1", [eid]);
-    await db.query("update einreichungen set modell = 'modell-zwei' where id = $1", [eid2]);
-    const reihe = (await offeneFremdpruefungen(db, p1, "test", "Modell Zwei")).map((x) => x.einreichung_id);
-    expect(reihe.indexOf(eid)).toBeLessThan(reihe.indexOf(eid2));
-    expect((await offeneFremdpruefungen(db, p1, "test", "modell-eins")).map((x) => x.einreichung_id).indexOf(eid2)).toBeLessThan(
-      (await offeneFremdpruefungen(db, p1, "test", "modell-eins")).map((x) => x.einreichung_id).indexOf(eid));
-    expect(await fremdPruefen(db, p1, eid, "zustimmen", "Akzeptanz erfüllt, Pfade passen, Tests grün", "Modell Zwei")).toMatchObject({ zustimmungen: 1, automatisch_angenommen: false });
-    await expect(fremdPruefen(db, p1, eid, "zustimmen", "noch einmal dieselbe Zustimmung")).rejects.toThrow(/already reviewed/);
-    expect(await fremdPruefen(db, p2, eid, "zustimmen", "Geprüft: Effekt korrekt, keine Nebenwirkungen")).toMatchObject({ zustimmungen: 2, automatisch_angenommen: true });
+    await db.query("update einreichungen set modell = 'Qwen3.8 Flash Next' where id = $1", [eid]);
+    await db.query("update einreichungen set modell = 'deepseek-v4' where id = $1", [eid2]);
+    const fuerDeepseek = (await offeneFremdpruefungen(db, p1, "test", "deepseek/deepseek-v4.1-flash-1017")).map((x) => x.einreichung_id);
+    expect(fuerDeepseek).toContain(eid);
+    expect(fuerDeepseek).not.toContain(eid2);
+    await expect(fremdPruefen(db, p1, eid2, "zustimmen", "Akzeptanz erfüllt, Pfade passen, Tests grün", "deepseek-v4.1-flash")).rejects.toThrow(/another family/);
+    expect(await fremdPruefen(db, p1, eid, "zustimmen", "Akzeptanz erfüllt, Pfade passen, Tests grün", "deepseek-v4.1-flash")).toMatchObject({ zustimmungen: 1, automatisch_angenommen: false });
+    await expect(fremdPruefen(db, p1, eid, "zustimmen", "noch einmal dieselbe Zustimmung", "deepseek-v4.1-flash")).rejects.toThrow(/already reviewed/);
+    expect(await fremdPruefen(db, p2, eid, "zustimmen", "Geprüft: Effekt korrekt, keine Nebenwirkungen", "claude-sonnet-5-5")).toMatchObject({ zustimmungen: 2, automatisch_angenommen: true });
     expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("angenommen");
     const b = (await db.query("select b.urteil, ag.mensch_id::int as m from bewertungen b join agenten ag on ag.id = b.agent_id where b.einreichung_id = $1", [eid])).rows[0];
     expect(b).toEqual({ urteil: "annehmen", m: p2.menschId });   // vier Augen: ein anderer Mensch als der Einreicher
@@ -570,8 +571,8 @@ describe("Bewertung durch den Schwarm", () => {
     const { fremdPruefen } = await import("../src/schwarmpruefung.ts");
     const { a, eid } = await geprueft("Stufe B", "B");
     const p3 = await pruefer("pruefer-3"), p4 = await pruefer("pruefer-4");
-    await fremdPruefen(db, p3, eid, "zustimmen", "Akzeptanz erfüllt und sauber umgesetzt");
-    expect(await fremdPruefen(db, p4, eid, "zustimmen", "Auch von mir: passt genau zur Aufgabe")).toMatchObject({ automatisch_angenommen: false });
+    await fremdPruefen(db, p3, eid, "zustimmen", "Akzeptanz erfüllt und sauber umgesetzt", "claude-sonnet-5-5");
+    expect(await fremdPruefen(db, p4, eid, "zustimmen", "Auch von mir: passt genau zur Aufgabe", "gpt-5")).toMatchObject({ automatisch_angenommen: false });
     const wartend = (await k.wartendeEinreichungen(db, lead, "test")).find((x) => Number(x.einreichung_id) === eid);
     expect(wartend.fremdpruefungen.map((f: { von: string }) => f.von)).toEqual(["pruefer-3", "pruefer-4"]);
     await k.bewerten(db, lead, eid, "annehmen", "mit den Fremdprüfungen bestätigt");
@@ -613,13 +614,13 @@ describe("Bewertung durch den Schwarm", () => {
     const offen = (await offeneFremdpruefungen(db, p5, "test")).find((x) => x.einreichung_id === eid);
     expect(offen).toMatchObject({ vom_lead: true, automatisch_ab: 1 });
     expect((await offeneFremdpruefungen(db, p5, "test"))[0].einreichung_id).toBe(eid);   // zuerst
-    expect(await fremdPruefen(db, p5, eid, "zustimmen", "Akzeptanz erfüllt, Tests grün, sauber")).toMatchObject({ zustimmungen: 1, automatisch_angenommen: true });
+    expect(await fremdPruefen(db, p5, eid, "zustimmen", "Akzeptanz erfüllt, Tests grün, sauber", "claude-sonnet-5-5")).toMatchObject({ zustimmungen: 1, automatisch_angenommen: true });
     expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("angenommen");
     const b = (await db.query("select b.urteil, ag.mensch_id::int as m from bewertungen b join agenten ag on ag.id = b.agent_id where b.einreichung_id = $1", [eid])).rows[0];
     expect(b).toEqual({ urteil: "annehmen", m: p5.menschId });   // vier Augen: ein anderer Mensch
     // ein Einwand schickt in die Nacharbeit
     const { a: a2, eid: eid2 } = await eigen("Vom Lead selbst, mit Einwand");
-    expect(await fremdPruefen(db, p6, eid2, "aenderungen", "Das Rad geht durch die Wanne, bitte nach vorn")).toMatchObject({ automatisch_angenommen: false, zurueckgegeben: true });
+    expect(await fremdPruefen(db, p6, eid2, "aenderungen", "Das Rad geht durch die Wanne, bitte nach vorn", "qwen3-coder")).toMatchObject({ automatisch_angenommen: false, zurueckgegeben: true });
     expect((await db.query("select zustand from aufgaben where id = $1", [a2.id])).rows[0].zustand).toBe("offen");
     expect((await db.query("select urteil from bewertungen where einreichung_id = $1", [eid2])).rows[0].urteil).toBe("nacharbeit");
     await k.schliessen(db, lead, a2.id, "Test");
@@ -632,6 +633,42 @@ describe("Bewertung durch den Schwarm", () => {
     expect(ev3).toMatchObject({ urteil: "nacharbeit", selbst: true });
     expect((await offeneFremdpruefungen(db, p5, "test")).map((x) => x.einreichung_id)).not.toContain(eid3);
     await k.schliessen(db, lead, a3.id, "Test");
+  });
+  it("Prüfpunkte und Szenenbilder: Fragen statt Urteil, Antwort je Punkt, zustimmen nur mit Bildmodell nach Blick auf die Bilder; Reparatur widerlegt", async () => {
+    const { fremdPruefen, offeneFremdpruefungen, pruefpunkteSetzen } = await import("../src/schwarmpruefung.ts");
+    const { prueferBilanz } = await import("../src/modelle.ts");
+    const { a, eid } = await geprueft("Schubkarre", "A");
+    const frage = "Liegt die Radachse in der Seitenansicht unter der Wanne?";
+    await expect(pruefpunkteSetzen(db, lead, eid, ["sieht gut aus, bitte annehmen"])).rejects.toThrow(/question/);
+    await expect(pruefpunkteSetzen(db, mit, eid, [frage])).rejects.toThrow();
+    expect(await pruefpunkteSetzen(db, lead, eid, [frage])).toMatchObject({ pruefpunkte: [frage] });
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+    await db.query("insert into einreichung_bilder(einreichung_id, name, art, png) values ($1, 'side', 'neu', $2), ($1, 'side', 'alt', $2)", [eid, png]);
+    const p7 = await pruefer("pruefer-7"), p8 = await pruefer("pruefer-8");
+    const offen = (await offeneFremdpruefungen(db, p7, "test", "deepseek-v4.1-flash")).find((x) => x.einreichung_id === eid);
+    expect(offen).toMatchObject({ pruefpunkte: [frage], bilder: ["side"], zustimmen_moeglich: false });
+    const antwort = ["Ja: im Bild side neu liegt die Achse unter der Wanne, alt hatte kein Rad"];
+    await expect(fremdPruefen(db, p7, eid, "zustimmen", "Akzeptanz erfüllt, Bild passt zur Aufgabe", "deepseek-v4.1-flash", { antworten: antwort, bilderGesehen: true })).rejects.toThrow(/reads images/);
+    await expect(fremdPruefen(db, p7, eid, "zustimmen", "Akzeptanz erfüllt, Bild passt zur Aufgabe", "claude-sonnet-5-5", { antworten: antwort })).rejects.toThrow(/images_seen/);
+    await expect(fremdPruefen(db, p7, eid, "zustimmen", "Akzeptanz erfüllt, Bild passt zur Aufgabe", "claude-sonnet-5-5", { bilderGesehen: true })).rejects.toThrow(/review points/);
+    expect(await fremdPruefen(db, p7, eid, "zustimmen", "Akzeptanz erfüllt, Bild passt zur Aufgabe", "claude-sonnet-5-5", { antworten: antwort, bilderGesehen: true })).toMatchObject({ zustimmungen: 1 });
+    await expect(pruefpunkteSetzen(db, lead, eid, [frage])).rejects.toThrow(/started/);
+    // ohne Bildverständnis: Änderungen verlangen geht
+    const { eid: eid3 } = await geprueft("Schubkarre, Variante", "A");
+    await db.query("insert into einreichung_bilder(einreichung_id, name, art, png) values ($1, 'side', 'neu', $2)", [eid3, png]);
+    expect(await fremdPruefen(db, p8, eid3, "aenderungen", "Der Code setzt das Rad in die Wanne, Zeile 12", "deepseek-v4.1-flash")).toMatchObject({ zustimmungen: 0 });
+    expect(await fremdPruefen(db, p8, eid, "zustimmen", "Akzeptanz erfüllt, im Bild geprüft", "gemini-3-pro", { antworten: antwort, bilderGesehen: true })).toMatchObject({ automatisch_angenommen: true });
+    const zeile = (await db.query("select antworten, bilder_gesehen from fremdpruefungen where einreichung_id = $1 and mensch_id = $2", [eid, p7.menschId])).rows[0];
+    expect(zeile).toEqual({ antworten: antwort, bilder_gesehen: true });
+    // eine Reparaturaufgabe widerlegt beide Zustimmungen
+    await expect(k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Fix: offen"), behebt: eid3 * 1000 })).rejects.toThrow(/fixes/);
+    const fix = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Fix: Rad sitzt in der Wanne"), behebt: a.id });
+    expect(Number(fix.behebt)).toBe(a.id);
+    const bilanz = await prueferBilanz(db, 1);
+    expect(bilanz.find((x) => x.schluessel === "claude-sonnet-5-5")).toMatchObject({ widerlegt: 1 });
+    expect(bilanz.find((x) => x.schluessel === "gemini-3-pro")).toMatchObject({ zustimmungen: 1, widerlegt: 1, widerlegt_prozent: 100 });
+    expect(bilanz.find((x) => x.schluessel === "deepseek-v4-1-flash")).toMatchObject({ aenderungen: 1 });
+    await k.schliessen(db, lead, fix.id, "Test");
   });
   it("Merge-Zug rot: zurück in den Pool mit neuem Stand, der nächste Versuch bekommt den Bericht", async () => {
     const { a, eid } = await geprueft("Zug rot", "A");
