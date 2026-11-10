@@ -58,6 +58,16 @@
 	# Website (apps/web): Startseite, Projekte, Doku, Assets
 	@web path / /en /en/* /projekte /projekte/* /join/* /modelle /mitstreiter /mitstreiter/* /starten /lead/* /open-source /melden /report /konto /kontakt /contact /datenschutz /nutzungsbedingungen /privacy /terms /docs /docs/* /_app/* /favicon.svg /llms-full.txt /robots.txt /sitemap.xml /og.png /og-en.png /og/* /bilder/* /logo-512.png
 	handle @web {
+		# Vorgerenderte Textdateien (llms-full.txt, Lead-Pakete .md, Starter .sh) liefert der Node-Server ohne
+		# Zeichensatz aus. Browser und manche Abrufwerkzeuge lesen sie dann als Windows-1252, aus „Prüfstraße“
+		# wird „PrÃ¼fstraÃŸe“. Die Dateien sind UTF-8; Fehlerseiten (text/html) bleiben unberührt.
+		@text path *.txt *.md
+		header @text >Content-Type "^text/(plain|markdown)$" "text/$1; charset=utf-8"
+		@shell path *.sh
+		header @shell {
+			?Content-Type "text/plain; charset=utf-8"
+			defer
+		}
 		reverse_proxy web:3000
 	}
 	handle {
