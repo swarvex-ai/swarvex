@@ -20,6 +20,8 @@ docker run -d --rm --name "$NAME" --network none -e POSTGRES_PASSWORD=probe -e P
 # Over TCP: during initialisation the image runs a temporary server on the socket only, then restarts it
 for i in $(seq 1 60); do docker exec "$NAME" pg_isready -h 127.0.0.1 -U swarvex -d swarvex >/dev/null 2>&1 && break; sleep 1; done
 docker cp "$DUMP" "$NAME:/tmp/swarvex.dump"
+# Roles belong to the cluster, not to the dump (migration 010 creates this one); without it every grant fails
+docker exec "$NAME" psql -U swarvex -d swarvex -qc "create role analytik_leser nologin"
 docker exec "$NAME" pg_restore -U swarvex -d swarvex --no-owner /tmp/swarvex.dump
 
 echo "== Check"
