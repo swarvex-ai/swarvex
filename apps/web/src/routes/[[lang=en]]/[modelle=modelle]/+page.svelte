@@ -10,13 +10,15 @@
     check_passed_percent: number | null; median_tokens_per_accepted: number | null; people: number; projects: number;
     levels: (Zeile & { level: string })[]; kinds: (Zeile & { kind: string })[]; programs: { program: string; share_percent: number }[];
   };
-  // Prüfer-Bilanz je Modell (modelle.ts, prueferBilanz): Fremdbewertungen und widerlegte Zustimmungen
-  type Pruefer = { model: string; key: string; peer_reviews: number; approvals: number; refuted: number; refuted_percent: number | null; people: number };
+  // Prüfer-Bilanz je Modell (modelle.ts, prueferBilanz): Fremdbewertungen, übersehene und widerlegte Zustimmungen (E-43)
+  type Pruefer = { model: string; key: string; peer_reviews: number; approvals: number; refuted: number; refuted_percent: number | null; people: number;
+    missed?: number; known_outcomes?: number; errors?: number; error_percent?: number | null; status_counts?: { probation: number; proven: number; restricted: number } };
+  type PrueferRegeln = { window: number; maturity_days: number; restricted_from_errors: number; window_days: number };
 
   let { data } = $props();
   const s = $derived(sprache());
   const t = $derived(tx().modelle);
-  const r = $derived(data.rangliste as { as_of: string; models: Modell[]; hidden: number; reviewers?: Pruefer[] } | null);
+  const r = $derived(data.rangliste as { as_of: string; models: Modell[]; hidden: number; reviewers?: Pruefer[]; reviewer_rules?: PrueferRegeln } | null);
   const zahl = $derived(new Intl.NumberFormat(s === "de" ? "de-DE" : "en-US"));
   const komma = $derived(new Intl.NumberFormat(s === "de" ? "de-DE" : "en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
   const datum = $derived(r ? new Date(r.as_of).toLocaleString(s === "de" ? "de-DE" : "en-US", { dateStyle: "medium", timeStyle: "short" }) : "");
@@ -90,16 +92,20 @@
     <div class="pruefer">
       <h2>{t.prueferH2}</h2>
       <p class="leise">{t.prueferText}</p>
+      {#if r.reviewer_rules}<p class="leise">{t.prueferStatusText(r.reviewer_rules)}</p>{/if}
       {#if r.reviewers?.length}
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
         <div class="tabelle" role="region" aria-label={t.prueferH2} tabindex="0">
           <table class="schmal">
             <thead><tr><th scope="col">{t.prueferSpalten.modell}</th><th scope="col">{t.prueferSpalten.bewertungen}</th><th scope="col">{t.prueferSpalten.zustimmungen}</th>
-              <th scope="col">{t.prueferSpalten.widerlegt}</th><th scope="col">{t.prueferSpalten.menschen}</th></tr></thead>
+              <th scope="col">{t.prueferSpalten.bekannt}</th><th scope="col">{t.prueferSpalten.uebersehen}</th><th scope="col">{t.prueferSpalten.widerlegt}</th>
+              <th scope="col">{t.prueferSpalten.fehler}</th><th scope="col">{t.prueferSpalten.menschen}</th><th scope="col">{t.prueferSpalten.status}</th></tr></thead>
             <tbody>
               {#each r.reviewers as p (p.key)}
                 <tr><th scope="row">{p.model}</th><td>{p.peer_reviews}</td><td>{p.approvals}</td>
-                  <td>{p.refuted}{#if p.refuted_percent !== null} <span class="leise">({p.refuted_percent} %)</span>{/if}</td><td>{p.people}</td></tr>
+                  <td>{p.known_outcomes ?? "–"}</td><td>{p.missed ?? "–"}</td><td>{p.refuted}</td>
+                  <td>{p.error_percent != null ? `${p.error_percent} %` : "–"}</td><td>{p.people}</td>
+                  <td class="status">{#if p.status_counts}{t.prueferStatus(p.status_counts)}{:else}–{/if}</td></tr>
               {/each}
             </tbody>
           </table>
@@ -148,6 +154,7 @@
   .text { max-width: 72ch; }
   .pruefer { display: grid; gap: 12px; }
   .pruefer h2, .pruefer p { margin: 0; max-width: 72ch; }
+  .pruefer td.status { white-space: nowrap; }
   table.schmal { min-width: 520px; }
   .text ul { padding-left: 20px; display: grid; gap: 8px; color: var(--stahl); }
   code { font: .85rem var(--mono); overflow-wrap: anywhere; }

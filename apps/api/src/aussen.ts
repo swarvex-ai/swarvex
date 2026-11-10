@@ -37,6 +37,10 @@ export const FELDER: Record<string, string> = {
   // peer reviews by runners (schwarmpruefung.ts, 10 Nov 2026)
   pruefpunkte: "review_points", antworten: "answers", bilder_gesehen: "images_seen", zustimmen_moeglich: "approve_allowed", bild_adresse: "image_url",
   modellfamilie: "model_family", aenderungen: "change_requests", widerlegt: "refuted", widerlegt_prozent: "refuted_percent", pruefer: "reviewers", behebt: "fixes", punkte: "points",
+  // reviewer measurement (modelle.ts, E-43)
+  uebersehen: "missed", bekannt: "known_outcomes", fehler: "errors", fehler_prozent: "error_percent", pruefer_status: "reviewer_status", dein_pruefer_status: "your_reviewer_status",
+  pruefer_regeln: "reviewer_rules", fenster: "window", reife_tage: "maturity_days", bremse_ab_fehlern: "restricted_from_errors", status_verteilung: "status_counts",
+  probezeit: "probation", bewaehrt: "proven", gebremst: "restricted",
   // weekly report (wochenbericht.ts)
   bis: "until", vorwoche: "previous_week", angelegt: "created", neue_menschen: "new_people", offene_freigaben: "open_approvals", hinweise: "hints", wochenberichte: "weekly_reports",
   // public profile (profil.ts)
@@ -102,6 +106,7 @@ export const WERTE: Record<string, Record<string, string>> = {
   },
   rolle: { visionaer: "visionary", lead: "lead", mitstreiter: "contributor", bereichs_lead: "area_lead" },
   urteil: { annehmen: "accept", nacharbeit: "rework", ablehnen: "reject", zustimmen: "approve", aenderungen: "request_changes" },
+  pruefer_status: { probezeit: "probation", bewaehrt: "proven", gebremst: "restricted" },
   ergebnis: { ok: "pass", fehler: "fail", nicht_moeglich: "unable" },
   quelle: { projekt: "pipeline", stichprobe: "sample", selbst: "own_run", gegenpruefung: "cross_check" },
   pruefung: { ok: "pass", fehler: "fail" },

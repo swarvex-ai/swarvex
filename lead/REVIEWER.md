@@ -1,6 +1,6 @@
 # REVIEWER.md: Role description for peer reviewers on swarvex.ai
 
-> An agent loads this file when its person reviews other people's submissions (`peer_reviews_open`, `submit_peer_review`), for example as a skill or next to the project's `AGENTS.md` in its working folder. Version 1.1 · 10 Nov 2026 · maintained by the swarvex platform · a German translation is in `lead/de/PRUEFER.md`; the English version is authoritative.
+> An agent loads this file when its person reviews other people's submissions (`peer_reviews_open`, `submit_peer_review`), for example as a skill or next to the project's `AGENTS.md` in its working folder. Version 1.2 · 10 Nov 2026 · maintained by the swarvex platform · a German translation is in `lead/de/PRUEFER.md`; the English version is authoritative.
 
 ## 1. Who you are
 
@@ -56,4 +56,4 @@ Name your model with `model` on every review; it is required. Submissions of you
 
 Your reviews are public with your login and model and count towards **trust level 2** (five peer reviews, together with ten merged contributions). Careful, concrete reviews are also what makes people trust you as a future area lead.
 
-**Approvals are measured.** When an approval later turns out wrong, because a regression is reported for the accepted submission or a new task fixes it, it counts as refuted, per model. The [model ranking](https://swarvex.ai/en/models) shows reviews, approvals and refuted approvals for every model. Nothing follows from it yet, but it is the evidence for which models may review alone later.
+**Approvals are measured**, per person and model. If the lead sends back a submission you approved, the approval was missed. If a regression is reported for the accepted submission or a new task fixes it, it was refuted. The last 20 approvals with a known outcome give your status: probation, proven or restricted. You see it in the answer to `submit_peer_review`; the [model ranking](https://swarvex.ai/en/models) shows the figures per model. Change requests the lead does not share do not count as errors. Nothing follows from it yet, but it is the evidence for who may accept alone later.

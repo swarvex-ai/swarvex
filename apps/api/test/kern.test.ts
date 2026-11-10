@@ -670,6 +670,40 @@ describe("Bewertung durch den Schwarm", () => {
     expect(bilanz.find((x) => x.schluessel === "deepseek-v4-1-flash")).toMatchObject({ aenderungen: 1 });
     await k.schliessen(db, lead, fix.id, "Test");
   });
+  it("Prüfer-Messung (E-43): übersehen, wenn der Lead zurückschickt; Status je Mensch und Modell im gleitenden Fenster", async () => {
+    const { fremdPruefen } = await import("../src/schwarmpruefung.ts");
+    const { prueferBilanz, prueferStatus, statusAus, ausgangVon } = await import("../src/modelle.ts");
+    const { nachAussen } = await import("../src/aussen.ts");
+    const p9 = await pruefer("pruefer-9");
+    // Der Prüfer stimmt zu, der Lead schickt zurück: übersehen
+    const { eid } = await geprueft("Messung: übersehen", "B");
+    const r = await fremdPruefen(db, p9, eid, "zustimmen", "Akzeptanz erfüllt, sauber umgesetzt", "kimi-k3");
+    expect(r.dein_pruefer_status).toMatchObject({ pruefer_status: "probezeit", bekannt: 0, offen: 1, fenster: 20 });
+    expect(nachAussen({ dein_pruefer_status: r.dein_pruefer_status })).toMatchObject({ your_reviewer_status: { reviewer_status: "probation", known_outcomes: 0, open: 1 } });
+    await k.bewerten(db, lead, eid, "nacharbeit", "Kriterium 2 fehlt: der Rand wird nicht getestet");
+    expect(await prueferStatus(db, p9.menschId, "Kimi K3")).toMatchObject({ bekannt: 1, fehler: 1, offen: 0 });
+    // Der Lead nimmt an: gut, und sofort bekannt
+    const { eid: eid2 } = await geprueft("Messung: gut", "B");
+    await fremdPruefen(db, p9, eid2, "zustimmen", "Akzeptanz erfüllt, Tests decken den Rand ab", "kimi-k3");
+    await k.bewerten(db, lead, eid2, "annehmen", "passt, mit der Fremdbewertung bestätigt");
+    expect(await prueferStatus(db, p9.menschId, "kimi-k3")).toMatchObject({ pruefer_status: "probezeit", bekannt: 2, fehler: 1 });
+    // ein anderes Modell desselben Menschen beginnt neu
+    expect(await prueferStatus(db, p9.menschId, "gpt-5")).toMatchObject({ bekannt: 0, fehler: 0 });
+    const b = (await prueferBilanz(db, 1)).find((x) => x.schluessel === "kimi-k3");
+    expect(b).toMatchObject({ zustimmungen: 2, uebersehen: 1, bekannt: 2, fehler: 1, fehler_prozent: 50, status_verteilung: { probezeit: 1, bewaehrt: 0, gebremst: 0 } });
+    // Automatische Annahme: bekannt erst nach 14 Tagen ohne Widerlegung; widerlegt geht vor
+    const jetzt = Date.now(), tag = 86_400_000;
+    expect(ausgangVon({ lead_urteil: null, angenommen_am: new Date(jetzt - tag), widerlegt: false }, jetzt)).toBe("offen");
+    expect(ausgangVon({ lead_urteil: null, angenommen_am: new Date(jetzt - 15 * tag), widerlegt: false }, jetzt)).toBe("gut");
+    expect(ausgangVon({ lead_urteil: "annehmen", angenommen_am: new Date(jetzt), widerlegt: true }, jetzt)).toBe("widerlegt");
+    expect(ausgangVon({ lead_urteil: "ablehnen", angenommen_am: null, widerlegt: false }, jetzt)).toBe("uebersehen");
+    // Fenster: 20 bekannte Ausgänge, höchstens ein Fehler = bewährt; zwei Fehler = gebremst; ältere fallen heraus
+    const gut = (n: number) => Array<"gut">(n).fill("gut");
+    expect(statusAus(gut(19)).pruefer_status).toBe("probezeit");
+    expect(statusAus(["uebersehen", ...gut(19)]).pruefer_status).toBe("bewaehrt");
+    expect(statusAus(["uebersehen", "offen", "widerlegt", ...gut(18)])).toMatchObject({ pruefer_status: "gebremst", bekannt: 20, fehler: 2, offen: 1 });
+    expect(statusAus([...gut(20), "uebersehen", "widerlegt"]).pruefer_status).toBe("bewaehrt");
+  });
   it("Merge-Zug rot: zurück in den Pool mit neuem Stand, der nächste Versuch bekommt den Bericht", async () => {
     const { a, eid } = await geprueft("Zug rot", "A");
     await expect(k.zugRotMelden(db, eid, "b".repeat(40), "FAIL x", "sig")).rejects.toThrow(/task is/);   // noch nicht angenommen

@@ -11,12 +11,14 @@
 // dieselben nicht). Hat die Prüfstraße Szenenbilder geliefert, stimmt nur zu, wer sie mit einem Modell mit Bildverständnis
 // angesehen hat. Prüfpunkte des Leads (Fragen, kein Urteil) beantwortet der Prüfer einzeln. Und widerlegte Zustimmungen
 // (Regression gemeldet, oder eine Aufgabe behebt die angenommene) zählen je Modell (pruefer_bilanz in modelle.ts).
+// Messung je Mensch und Modell (E-43, neVs 10.11.2026, noch ohne Folgen): Zustimmungen, die der Lead danach zurückschickt
+// (übersehen) oder die widerlegt werden, ergeben im gleitenden Fenster Probezeit, bewährt oder gebremst (modelle.ts).
 import type { Db, Tx } from "./db.ts";
 import { transaktion } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, mussLeadOderOfficerSein, rollenVon, variantenSchliessen, VOM_LEAD, wechseln, type Wer } from "./aufgaben.ts";
 import { raeumeVon, trennwand } from "./cleanroom.ts";
-import { modellFamilie, modellSchluessel, siehtBilder } from "./modelle.ts";
+import { modellFamilie, modellSchluessel, prueferStatus, siehtBilder } from "./modelle.ts";
 import { einreichungsVorschauUrl } from "./konfig.ts";
 import { einreichungsVorschau } from "./katalog.ts";
 import { vertrauenAktualisieren } from "./vertrauen.ts";
@@ -90,7 +92,7 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
   if (begruendung.trim().length < 20) throw new Abgelehnt("reason: at least one concrete sentence (20 characters)");
   if (!modell?.trim()) throw new Abgelehnt("model: name the model that did this review; it must be of another family than the submission's");
   const antworten = (zusatz.antworten ?? []).map((x) => String(x).trim());
-  return transaktion(db, async (tx) => {
+  const ergebnis = await transaktion(db, async (tx) => {
     const e = (await tx.query("select e.*, ag.mensch_id::int as autor from einreichungen e join agenten ag on ag.id = e.agent_id where e.id = $1", [einreichungId])).rows[0];
     if (!e) throw new Abgelehnt("unknown submission");
     const a = (await tx.query("select * from aufgaben where id = $1 for update", [e.aufgabe_id])).rows[0];
@@ -145,6 +147,8 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
     }
     return { einreichung: einreichungId, zustimmungen: zu.length, automatisch_angenommen: automatisch };
   });
+  // Messung (E-43, noch ohne Folgen): Der Prüfer sieht seinen Stand mit diesem Modell
+  return { ...ergebnis, dein_pruefer_status: await prueferStatus(db, wer.menschId, modell) };
 }
 
 /** Fremdprüfungen zu einer Einreichung, für Lead und Bereichs-Lead in pending_submissions. */

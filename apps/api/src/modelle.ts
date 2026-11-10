@@ -97,7 +97,7 @@ export async function modellRangliste(db: Db) {
   }
   modelle.sort((a, b) => b.untere_grenze_prozent - a.untere_grenze_prozent || b.bewertet - a.bewertet);
   const daten = {
-    stand: new Date().toISOString(), regeln: R, modelle, ausgeblendet, pruefer: await prueferBilanz(db),
+    stand: new Date().toISOString(), regeln: R, modelle, ausgeblendet, pruefer: await prueferBilanz(db), pruefer_regeln: PRUEFER_REGELN,
     methode: "Accepted ÷ reviewed submissions per model over the last 90 days, from tasks of real projects. Ranked by the lower bound of the 95 % Wilson interval. " +
       "A model is listed from 5 reviewed submissions by at least 3 different people; breakdowns from 3 reviews. Tasks differ between models, so compare levels and kinds, not only the total.",
   };
@@ -107,29 +107,90 @@ export async function modellRangliste(db: Db) {
 
 /**
  * Prüfer-Bilanz je Modell (ToDo 0z, neVs 10.11.2026: erst messen, Folgen später): Fremdbewertungen der letzten 90 Tage,
- * davon Zustimmungen, und wie viele Zustimmungen zu einer angenommenen Einreichung sich später als falsch erwiesen haben:
- * Für sie wurde eine Regression gemeldet, oder eine spätere Aufgabe behebt die angenommene (create_task mit fixes).
+ * davon Zustimmungen, und wie viele Zustimmungen sich als falsch erwiesen haben. Zwei Signale (E-43):
+ * - übersehen: Ein Prüfer stimmt zu, danach schickt der Lead (oder Bereichs-Lead) die Einreichung zurück oder lehnt sie ab.
+ *   Schnell und häufig, aber nur, wo der Lead selbst entscheidet (ab Stufe B oder nach einem Einwand).
+ * - widerlegt: Für die angenommene Einreichung wurde eine Regression gemeldet, oder eine spätere Aufgabe behebt sie
+ *   (create_task mit fixes). Langsam und selten, dafür in jedem Fall.
+ * Bekannt ist der Ausgang einer Zustimmung, wenn der Lead entschieden hat oder die Annahme PRUEFER_REGELN.reife_tage ohne
+ * Widerlegung steht. Fehlalarme (Änderungen verlangt, der Lead nimmt trotzdem an) kosten nur Zeit und zählen nicht.
  * Ab PRUEFER_MINDESTENS Fremdbewertungen eines Modells.
  */
 export const PRUEFER_MINDESTENS = 5;
-export async function prueferBilanz(db: Db, mindestens = PRUEFER_MINDESTENS) {
-  const r = (await db.query(
-    `select f.modell as roh, f.urteil, f.mensch_id::int as mensch, f.bilder_gesehen,
-       exists (select 1 from bewertungen b where b.einreichung_id = f.einreichung_id and b.urteil = 'annehmen') as angenommen,
+
+/**
+ * Status eines Prüfers je Mensch und Modell (E-43): gleitendes Fenster der letzten `fenster` Zustimmungen mit bekanntem
+ * Ausgang aus `zeitraum_tage`. Gebremst ab `bremse_ab_fehlern` Fehlern darin, bewährt mit vollem Fenster und weniger
+ * Fehlern, sonst Probezeit. Je Mensch und Modell, weil der Prüfer sein Modell selbst nennt: Ein bewährter Modellname
+ * überträgt sich nicht auf jemand anderen. Noch ohne Folgen für die Annahme; die schaltet neVs nach den Zahlen ein.
+ */
+export const PRUEFER_REGELN = { fenster: 20, reife_tage: 14, bremse_ab_fehlern: 2, zeitraum_tage: MODELL_REGELN.zeitraum_tage };
+export type Ausgang = "gut" | "uebersehen" | "widerlegt" | "offen";
+export type PrueferStatus = "probezeit" | "bewaehrt" | "gebremst";
+
+type PrueferZeile = { roh: string; urteil: string; mensch: number; erstellt: Date; lead_urteil: string | null; angenommen_am: Date | null; widerlegt: boolean };
+
+async function prueferZeilen(db: Db, menschId?: number): Promise<PrueferZeile[]> {
+  // Entscheidung des Leads: die erste Bewertung nach der Fremdbewertung, die nicht ein Prüfer selbst ausgelöst hat (die
+  // automatische Annahme oder Nacharbeit trägt den Agenten des Prüfers, dessen Urteil sie auslöste)
+  return (await db.query(
+    `select f.modell as roh, f.urteil, f.mensch_id::int as mensch, f.erstellt,
+       (select b.urteil from bewertungen b where b.einreichung_id = f.einreichung_id and b.erstellt >= f.erstellt
+          and not exists (select 1 from fremdpruefungen f2 where f2.einreichung_id = b.einreichung_id and f2.agent_id = b.agent_id)
+          order by b.id limit 1) as lead_urteil,
+       (select min(b.erstellt) from bewertungen b where b.einreichung_id = f.einreichung_id and b.urteil = 'annehmen') as angenommen_am,
        (exists (select 1 from regressionen g where g.einreichung_id = f.einreichung_id)
-        or exists (select 1 from aufgaben x join einreichungen e on e.id = f.einreichung_id where x.behebt = e.aufgabe_id and x.erstellt > f.erstellt)) as widerlegt
+        or exists (select 1 from aufgaben x where x.behebt = e.aufgabe_id and x.erstellt > f.erstellt)) as widerlegt
      from fremdpruefungen f join einreichungen e on e.id = f.einreichung_id join aufgaben a on a.id = e.aufgabe_id
      join projekte p on p.id = a.projekt_id and not p.gesperrt and not p.entwurf
-     where nullif(trim(f.modell), '') is not null and f.erstellt > now() - make_interval(days => $1)`, [MODELL_REGELN.zeitraum_tage])).rows;
+     where nullif(trim(f.modell), '') is not null and f.erstellt > now() - make_interval(days => $1) and ($2::bigint is null or f.mensch_id = $2)
+     order by f.erstellt desc, f.id desc`, [PRUEFER_REGELN.zeitraum_tage, menschId ?? null])).rows;
+}
+
+/** Ausgang einer Zustimmung: Fehler (übersehen, widerlegt), gut, oder noch offen. */
+export function ausgangVon(z: Pick<PrueferZeile, "lead_urteil" | "angenommen_am" | "widerlegt">, jetzt = Date.now()): Ausgang {
+  if (z.angenommen_am && z.widerlegt) return "widerlegt";
+  if (z.lead_urteil === "nacharbeit" || z.lead_urteil === "ablehnen") return "uebersehen";
+  if (z.lead_urteil === "annehmen") return "gut";
+  if (z.angenommen_am && jetzt - new Date(z.angenommen_am).getTime() >= PRUEFER_REGELN.reife_tage * 86_400_000) return "gut";
+  return "offen";
+}
+
+/** Status aus den Ausgängen der Zustimmungen, neueste zuerst. */
+export function statusAus(ausgaenge: Ausgang[]) {
+  const R = PRUEFER_REGELN;
+  const bekannt = ausgaenge.filter((a) => a !== "offen").slice(0, R.fenster);
+  const fehler = bekannt.filter((a) => a !== "gut").length;
+  const status: PrueferStatus = fehler >= R.bremse_ab_fehlern ? "gebremst" : bekannt.length >= R.fenster ? "bewaehrt" : "probezeit";
+  return { pruefer_status: status, bekannt: bekannt.length, fehler, offen: ausgaenge.filter((a) => a === "offen").length, fenster: R.fenster };
+}
+
+/** Status eines Menschen mit einem Modell, etwa für die Antwort auf seine Fremdbewertung. */
+export async function prueferStatus(db: Db, menschId: number, modell: string) {
+  const k = modellSchluessel(modell);
+  return statusAus((await prueferZeilen(db, menschId)).filter((z) => z.urteil === "zustimmen" && modellSchluessel(z.roh) === k).map((z) => ausgangVon(z)));
+}
+
+export async function prueferBilanz(db: Db, mindestens = PRUEFER_MINDESTENS) {
+  const jetzt = Date.now();
+  const r = (await prueferZeilen(db)).map((z) => ({ ...z, ausgang: z.urteil === "zustimmen" ? ausgangVon(z, jetzt) : null }));
   const gruppen = new Map<string, typeof r>();
   for (const z of r) { const k = modellSchluessel(z.roh); gruppen.set(k, [...(gruppen.get(k) ?? []), z]); }
   const liste = [];
   for (const [schluessel, g] of gruppen) {
     if (g.length < mindestens) continue;
-    const zu = g.filter((z) => z.urteil === "zustimmen"), getragen = zu.filter((z) => z.angenommen);
+    const zu = g.filter((z) => z.urteil === "zustimmen"), getragen = zu.filter((z) => z.angenommen_am);
     const widerlegt = getragen.filter((z) => z.widerlegt).length;
+    const bekannt = zu.filter((z) => z.ausgang !== "offen"), fehler = bekannt.filter((z) => z.ausgang !== "gut");
+    // Status je Mensch mit diesem Modell, öffentlich nur als Anzahl
+    const jeMensch = new Map<number, Ausgang[]>();
+    for (const z of zu) jeMensch.set(z.mensch, [...(jeMensch.get(z.mensch) ?? []), z.ausgang!]);
+    const status_verteilung = { probezeit: 0, bewaehrt: 0, gebremst: 0 };
+    for (const a of jeMensch.values()) status_verteilung[statusAus(a).pruefer_status]++;
     liste.push({ modell: g[0].roh.trim(), schluessel, modellfamilie: modellFamilie(g[0].roh), fremdpruefungen: g.length, zustimmungen: zu.length,
-      aenderungen: g.length - zu.length, widerlegt, widerlegt_prozent: prozent(widerlegt, getragen.length), menschen: new Set(g.map((z) => z.mensch)).size });
+      aenderungen: g.length - zu.length, widerlegt, widerlegt_prozent: prozent(widerlegt, getragen.length),
+      uebersehen: zu.filter((z) => z.ausgang === "uebersehen").length, bekannt: bekannt.length, fehler: fehler.length,
+      fehler_prozent: prozent(fehler.length, bekannt.length), menschen: new Set(g.map((z) => z.mensch)).size, status_verteilung });
   }
   return liste.sort((a, b) => b.fremdpruefungen - a.fremdpruefungen);
 }

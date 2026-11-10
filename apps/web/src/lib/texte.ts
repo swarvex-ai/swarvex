@@ -358,8 +358,11 @@ const de = {
     fehler: "Die Rangliste ist gerade nicht erreichbar.",
     mitmachen: "Dein Modell mitmessen lassen", stand: "Stand",
     prueferH2: "Als Prüfer",
-    prueferText: "Seit dem 10.11.2026 bewerten auch Runner die Einreichungen anderer Menschen, immer mit einem Modell einer anderen Familie als dem der Einreichung. Gezählt wird, wie oft ein Modell zugestimmt hat und wie viele dieser Zustimmungen sich später als falsch erwiesen haben: Für die angenommene Einreichung wurde eine Regression gemeldet, oder eine neue Aufgabe behebt sie. Folgen hat das noch keine; erst wird gemessen.",
-    prueferSpalten: { modell: "Modell", bewertungen: "Fremdbewertungen", zustimmungen: "Zustimmungen", widerlegt: "davon widerlegt", menschen: "Menschen" },
+    prueferText: "Seit dem 10.11.2026 bewerten auch Runner die Einreichungen anderer Menschen, immer mit einem Modell einer anderen Familie als dem der Einreichung. Gezählt wird, wie oft eine Zustimmung falsch war. Übersehen: Der Prüfer hat zugestimmt, danach schickt der Lead die Einreichung zurück. Widerlegt: Für die angenommene Einreichung wurde eine Regression gemeldet, oder eine neue Aufgabe behebt sie. Fehlalarme, also verlangte Änderungen, die der Lead nicht teilt, kosten nur Zeit und zählen nicht. Folgen hat das noch keine; erst wird gemessen.",
+    prueferStatusText: (r: { window: number; maturity_days: number; restricted_from_errors: number; window_days: number }) =>
+      `Bekannt ist der Ausgang einer Zustimmung, wenn der Lead entschieden hat oder die Annahme ${r.maturity_days} Tage ohne Widerlegung steht. Je Mensch und Modell zählen die letzten ${r.window} bekannten Ausgänge aus ${r.window_days} Tagen: Mit vollem Fenster und weniger als ${r.restricted_from_errors} Fehlern ist ein Prüfer bewährt, ab ${r.restricted_from_errors} Fehlern gebremst, sonst in der Probezeit. Hier steht nur, wie viele Menschen mit einem Modell in welchem Status sind.`,
+    prueferStatus: (v: { probation: number; proven: number; restricted: number }) => `${v.proven} bewährt · ${v.probation} Probe · ${v.restricted} gebremst`,
+    prueferSpalten: { modell: "Modell", bewertungen: "Fremdbewertungen", zustimmungen: "Zustimmungen", bekannt: "Ausgang bekannt", uebersehen: "übersehen", widerlegt: "widerlegt", fehler: "Fehlerquote", menschen: "Menschen", status: "Status der Menschen" },
     prueferLeer: "Noch hat kein Modell 5 Fremdbewertungen.",
     methodeH2: "So rechnen wir",
     methode: [
@@ -951,8 +954,11 @@ const en: typeof de = {
     fehler: "The ranking cannot be reached right now.",
     mitmachen: "Have your model measured", stand: "As of",
     prueferH2: "As reviewers",
-    prueferText: "Since 10 Nov 2026 runners review other people's submissions too, always with a model of another family than the submission's. We count how often a model approved and how many of those approvals later turned out wrong: a regression was reported for the accepted submission, or a new task fixes it. Nothing follows from it yet; first we measure.",
-    prueferSpalten: { modell: "Model", bewertungen: "Peer reviews", zustimmungen: "Approvals", widerlegt: "of which refuted", menschen: "People" },
+    prueferText: "Since 10 Nov 2026 runners review other people's submissions too, always with a model of another family than the submission's. We count how often an approval was wrong. Missed: the reviewer approved, then the lead sends the submission back. Refuted: a regression was reported for the accepted submission, or a new task fixes it. False alarms, change requests the lead does not share, only cost time and do not count. Nothing follows from it yet; first we measure.",
+    prueferStatusText: (r: { window: number; maturity_days: number; restricted_from_errors: number; window_days: number }) =>
+      `An approval's outcome is known once the lead has decided, or once the acceptance has stood for ${r.maturity_days} days without being refuted. Per person and model, the last ${r.window} known outcomes from ${r.window_days} days count: with a full window and fewer than ${r.restricted_from_errors} errors a reviewer is proven, from ${r.restricted_from_errors} errors restricted, otherwise on probation. This table only shows how many people with a model are in which status.`,
+    prueferStatus: (v: { probation: number; proven: number; restricted: number }) => `${v.proven} proven · ${v.probation} probation · ${v.restricted} restricted`,
+    prueferSpalten: { modell: "Model", bewertungen: "Peer reviews", zustimmungen: "Approvals", bekannt: "Outcome known", uebersehen: "missed", widerlegt: "refuted", fehler: "Error rate", menschen: "People", status: "Status of the people" },
     prueferLeer: "No model has 5 peer reviews yet.",
     methodeH2: "How we count",
     methode: [
