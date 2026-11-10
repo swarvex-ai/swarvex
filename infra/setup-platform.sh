@@ -109,7 +109,7 @@ systemctl enable --now swarvex-check.timer swarvex-merge.timer swarvex-preview.t
 echo "== 6. Backups (restic, nightly)"
 umask 077
 [ -f "$DATA/backup.pass" ] || head -c 32 /dev/urandom | base64 > "$DATA/backup.pass"
-[ -f "$DATA/backup.env" ] || printf '# Target at a second provider, e.g. sftp:<user>@<host>:swarvex (docs/self-hosting.md)\nRESTIC_REPOSITORY=\nRESTIC_PASSWORD_FILE=%s/backup.pass\n' "$DATA" > "$DATA/backup.env"
+[ -f "$DATA/backup.env" ] || printf '# Offsite target, e.g. sftp:<user>@<host>:swarvex or a rest-server (infra/backup.sh, docs/self-hosting.md)\nRESTIC_REPOSITORY=\nRESTIC_PASSWORD_FILE=%s/backup.pass\n' "$DATA" > "$DATA/backup.env"
 systemctl enable --now swarvex-backup.timer >/dev/null
 grep -q '^RESTIC_REPOSITORY=.' "$DATA/backup.env" && echo "   backup target set" || echo "   backup target still empty: set RESTIC_REPOSITORY in $DATA/backup.env"
 

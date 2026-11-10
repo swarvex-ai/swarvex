@@ -5,6 +5,7 @@
 set -eu
 DATA=/opt/swarvex-data
 set -a; . "$DATA/backup.env"; set +a
+if [ -n "${RESTIC_REST_PASSWORD_FILE:-}" ]; then RESTIC_REST_PASSWORD=$(cat "$RESTIC_REST_PASSWORD_FILE"); export RESTIC_REST_PASSWORD; fi
 ZIEL=$(mktemp -d)
 NAME=swarvex-restore-test
 trap 'docker rm -f "$NAME" >/dev/null 2>&1 || true; rm -rf "$ZIEL"' EXIT
