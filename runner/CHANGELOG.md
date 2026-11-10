@@ -5,6 +5,20 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.14.0 (10 Nov 2026)
+
+- **Peer reviews by the runner** (`--peer-reviews`, on by default; off with `--peer-reviews=false`). From trust level
+  1, before taking a new task, the runner reviews one checked submission of another person with your model, so that
+  a lead's own work no longer waits until someone reviews it by hand. It takes only submissions your model may
+  approve: of another model family than yours, and those with scene images only when your model reads images. The
+  agent works in a sandbox without network (only the model through the key proxy) on the task, the patch, the check
+  report, the scene images (old, new, diff), the lead's review points and the reviewer handbook, runs nothing and
+  writes `verdict.json`; the runner checks it like the platform does (a verdict, a concrete reason, one answer per
+  review point, images looked at before approving) and submits it with your model. At most 30 minutes per review,
+  tokens from the same budget as tasks; each submission is tried at most once a day (`peer-reviews.json`).
+  `swarvex history` lists reviews with their verdict.
+- opencode passes images to the model only for such a review (`attachment`), not for tasks.
+
 ## 0.13.4 (9 Nov 2026)
 
 - Runner and lead services on one machine share the state of a subscription they both use: whoever got the latest

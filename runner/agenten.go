@@ -60,6 +60,19 @@ func agentImageBereit(ctx context.Context, a agentArt) error {
 // ordner ist der Aufgabenordner außerhalb der Sandbox; dort entstehen Konfiguration und Skill-Kopie.
 // projektOrdner ist der Unterordner, in dem der Agent startet ("" = Wurzel).
 // zugang zeigt nur an, ob Codex mit ChatGPT-Abo läuft (Schlüssel bleiben im Proxy).
+// opencodeBilder: Bilder als Anhänge an das Modell weiterreichen (Fremdbewertung mit Szenenbildern, fremdbewertung.go);
+// sonst aus, weil ein Modell ohne Bildverständnis Anhänge mit einem Fehler beantworten kann.
+var opencodeBilder bool
+
+func opencodeModell(modell string) map[string]any {
+	m := map[string]any{"name": modell, "tool_call": true}
+	if opencodeBilder {
+		m["attachment"] = true
+		m["modalities"] = map[string]any{"input": []string{"text", "image"}, "output": []string{"text"}}
+	}
+	return m
+}
+
 func agentStart(a agentArt, ordner, proxyURL, token, modell, auftrag string, skills []string, baum, projektOrdner string, zugang modellZugang) ([]string, []string, error) {
 	args := []string{"-e", "HOME=/home/agent", "-e", "SWARVEX_TOKEN=" + token, "-e", "SWARVEX_PROXY=" + proxyURL}
 	// Eigene Skills, dazu Projekt-Skills, die der Agent nicht selbst findet: Claude Code liest
@@ -92,7 +105,7 @@ func agentStart(a agentArt, ordner, proxyURL, token, modell, auftrag string, ski
 			"provider": map[string]any{"swarvex": map[string]any{
 				"npm": "@ai-sdk/openai-compatible", "name": "swarvex proxy",
 				"options": map[string]any{"baseURL": proxyURL + "/v1", "apiKey": "{env:SWARVEX_TOKEN}"},
-				"models":  map[string]any{modell: map[string]any{"name": modell, "tool_call": true}},
+				"models":  map[string]any{modell: opencodeModell(modell)},
 			}},
 		}
 		pfad, err := konfigSchreiben(ordner, "opencode.json", konfig)

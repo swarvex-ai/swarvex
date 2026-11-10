@@ -15,16 +15,18 @@ import (
 )
 
 type verlaufEintrag struct {
-	Zeit     time.Time `json:"time"`
-	Aufgabe  int64     `json:"task"`
-	Brief    int64     `json:"brief,omitempty"` // Medien-Auftrag (dann ohne Aufgabe)
-	Projekt  string    `json:"project,omitempty"`
-	Titel    string    `json:"title,omitempty"`
-	Ergebnis string    `json:"outcome"` // submitted | returned | uploaded (Medien-Auftrag)
-	Grund    string    `json:"reason,omitempty"`
-	Tokens   int64     `json:"tokens,omitempty"`
-	Budget   int64     `json:"budget_tokens,omitempty"`
-	Sekunden int64     `json:"seconds,omitempty"`
+	Zeit    time.Time `json:"time"`
+	Aufgabe int64     `json:"task"`
+	Brief   int64     `json:"brief,omitempty"` // Medien-Auftrag (dann ohne Aufgabe)
+	// Fremdbewertung einer Einreichung (fremdbewertung.go): Aufgabe ist dann die bewertete Aufgabe
+	Einreichung int64  `json:"submission,omitempty"`
+	Projekt     string `json:"project,omitempty"`
+	Titel       string `json:"title,omitempty"`
+	Ergebnis    string `json:"outcome"` // submitted | returned | uploaded (Medien-Auftrag) | approved | changes_requested | review_not_sent
+	Grund       string `json:"reason,omitempty"`
+	Tokens      int64  `json:"tokens,omitempty"`
+	Budget      int64  `json:"budget_tokens,omitempty"`
+	Sekunden    int64  `json:"seconds,omitempty"`
 }
 
 func verlaufsDatei() string { return filepath.Join(datenOrdner(), "history.jsonl") }
@@ -87,9 +89,12 @@ func historyBefehl(args []string) {
 		nummer := fmt.Sprintf("#%-4d", e.Aufgabe)
 		if e.Brief > 0 {
 			nummer = fmt.Sprintf("media brief %d:", e.Brief)
+		} else if e.Einreichung > 0 {
+			nummer = fmt.Sprintf("#%-4d review of submission %d:", e.Aufgabe, e.Einreichung)
 		}
 		fmt.Printf("%s  %s %s\n", e.Zeit.Local().Format("2006-01-02 15:04"), nummer, titelKurz(e.Titel, 60))
-		was := map[string]string{"submitted": "✓ submitted", "uploaded": "✓ uploaded", "returned": "✗ handed back"}[e.Ergebnis]
+		was := map[string]string{"submitted": "✓ submitted", "uploaded": "✓ uploaded", "returned": "✗ handed back",
+			"approved": "✓ peer review: approved", "changes_requested": "✓ peer review: changes requested", "review_not_sent": "✗ peer review not sent"}[e.Ergebnis]
 		if was == "" {
 			was = e.Ergebnis
 		}

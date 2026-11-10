@@ -81,6 +81,7 @@ func arbeitenBefehl(args []string) {
 	nurPruefen := fs.Bool("check-only", false, "only check the options, reserve nothing (used by `swarvex service`)")
 	leerlauf := fs.Bool("only-when-idle", false, "continuous mode: start work only while nobody uses this computer (all your desktop sessions locked or idle); a running task finishes")
 	anliegenText := fs.String("kinds", "", "with --project auto: only projects of these kinds, comma-separated: "+anliegenNamen()+" (empty or all: any)")
+	fremd := fs.Bool("peer-reviews", true, "before taking a task, review a checked submission of another person with your model (trust level 1 or higher; only submissions of another model family, and with scene images only when your model reads images)")
 	nurGegen := fs.Bool("cross-checks-only", false, "only cross-check other people's submissions, no task and no model (the continuous mode does this while it waits for leftover quota or the daily budget)")
 	rest := fs.Bool("leftover", false, "beta, subscriptions only: work only with what your subscription would let expire, shortly before its weekly reset")
 	anteil := fs.Float64("subscription-share", 0, "subscriptions only: work evenly over the week up to this percent of the weekly quota (60 = recommended; pauses while you use more yourself), plus what would expire before the reset")
@@ -218,6 +219,14 @@ func arbeitenBefehl(args []string) {
 	}
 	if *nurGegen {
 		os.Exit(3) // keine Gegenprüfung offen
+	}
+
+	// 0a. Fremdbewertung (fremdbewertung.go): Wartet die geprüfte Einreichung eines anderen Menschen, der dieses Modell
+	// zustimmen dürfte, kommt sie vor neuer Arbeit; sonst bleibt etwa die eigene Arbeit eines Leads liegen. Braucht das
+	// Modell, deshalb nach Restkontingent und Tagesbudget.
+	if *nur == 0 && *fremd && fremdbewertungRunde(basis, m, z, fremdEinstellung{agent: agent, modell: *modell, upstream: *upstream,
+		keyDatei: *keyDatei, budget: *budget, zeit: min(*zeit, 30*time.Minute)}, *projekt) {
+		return
 	}
 
 	// 0b. Medien-Aufträge (Zusage über den Runner, medien.go): Zusagen abgleichen; wartet ein Auftrag, kommt er vor den
