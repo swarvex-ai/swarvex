@@ -250,7 +250,8 @@ export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: N
 // Agent bekommt A und B; darüber bis zu der Stufe, auf der er (oder sein Modell auf der ganzen Plattform, als Vorschuss)
 // in den letzten 30 Tagen mindestens ZUTEILUNG.annahmen Annahmen bei ZUTEILUNG.erfolg Erfolg hat. Eine Stufe darüber gibt
 // es als Probe, höchstens jeder ZUTEILUNG.probe_jeder-te Versuch, oder wenn sonst nichts anliegt: So steigen Agenten auf.
-// Lead und Visionär des Projekts sind ausgenommen.
+// Lead und Visionär des Projekts sind ausgenommen. Ein Versuch, den der Runner mit einer Ursache außerhalb des Modells
+// zurückgab (Ausgang 'umgebung', E-45), zählt hier nicht: weder als Misserfolg noch als Versuch für die Probe.
 export const STUFEN = ["A", "B", "C", "D"] as const;
 export const ZUTEILUNG = { annahmen: 3, erfolg: 0.6, tage: 30, probe_jeder: 5, probe_tage: 7 };
 
@@ -258,11 +259,11 @@ export async function stufenFreigabe(db: Db | Tx, agentId: number) {
   const r = (await db.query(
     `with ich as (select (select modell from einreichungen where agent_id = $1 and modell is not null order by id desc limit 1) as modell)
      select v.stufe,
-       count(*) filter (where v.agent_id = $1 and v.ausgang not in ('laeuft', 'offen'))::int as agent_entschieden,
+       count(*) filter (where v.agent_id = $1 and v.ausgang not in ('laeuft', 'offen', 'umgebung'))::int as agent_entschieden,
        count(*) filter (where v.agent_id = $1 and v.ausgang = 'angenommen')::int as agent_angenommen,
-       count(*) filter (where v.modell is not null and v.modell = ich.modell and v.ausgang not in ('laeuft', 'offen'))::int as modell_entschieden,
+       count(*) filter (where v.modell is not null and v.modell = ich.modell and v.ausgang not in ('laeuft', 'offen', 'umgebung'))::int as modell_entschieden,
        count(*) filter (where v.modell is not null and v.modell = ich.modell and v.ausgang = 'angenommen')::int as modell_angenommen,
-       count(*) filter (where v.agent_id = $1 and v.erstellt > now() - make_interval(days => $3))::int as agent_versuche_kurz
+       count(*) filter (where v.agent_id = $1 and v.ausgang <> 'umgebung' and v.erstellt > now() - make_interval(days => $3))::int as agent_versuche_kurz
      from leistung_versuche v, ich where v.erstellt > now() - make_interval(days => $2) group by v.stufe`,
     [agentId, ZUTEILUNG.tage, ZUTEILUNG.probe_tage])).rows;
   const je = new Map(r.map((z) => [z.stufe, z]));
@@ -488,12 +489,14 @@ export async function details(db: Db, wer: Wer, aufgabeId: number) {
   const letzte_bewertung = bw && bw.urteil !== "annehmen" && wieder ? { urteil: bw.urteil, begruendung: bw.begruendung, zeit: bw.erstellt } : null;
   // Gaben frühere Versuche die Aufgabe ohne Ergebnis zurück (Patch zu groß, nichts in den erlaubten Pfaden geändert,
   // Budget oder Zeit aufgebraucht …), bekommt der nächste die Gründe, damit er nicht in dieselbe Falle läuft. Ein bloßes
-  // Anhalten des Runners sagt nichts über die Aufgabe. Die Gründe kommen von fremden Rechnern: kurz, einzeilig, ohne
-  // Home-Ordner (Benutzernamen), und der Runner reicht sie dem Agenten als Information weiter, nicht als Anweisung.
+  // Anhalten des Runners sagt nichts über die Aufgabe, ebenso wenig eine Rückgabe mit einer Ursache außerhalb des Modells
+  // (Anbieter, Runner, Umgebung des Projekts, Plattform; E-45): daran kann der nächste Agent nichts ändern. Die Gründe
+  // kommen von fremden Rechnern: kurz, einzeilig, ohne Home-Ordner (Benutzernamen), und der Runner reicht sie dem Agenten
+  // als Information weiter, nicht als Anweisung.
   const fruehere_rueckgaben = wieder ? (await db.query(
     `select zeit, daten->>'grund' as grund from ereignisse
      where bezug = $1 and art = 'abgebrochen' and coalesce(daten->>'grund', '') not in ('', 'runner was stopped')
-       and zeit > now() - interval '30 days'
+       and daten->>'ursache' is null and zeit > now() - interval '30 days'
      order by seq desc limit ${FRUEHERE_RUECKGABEN}`, [`aufgabe:${aufgabeId}`])).rows
     .map((r) => ({ grund: rueckgabeGrund(String(r.grund)), zeit: r.zeit })) : [];
   return { ...a, projekt: p.slug, repo_url: p.repo_url, engine: p.engine, grenzen: GRENZEN, letzte_pruefung, letzte_bewertung, fruehere_rueckgaben };
@@ -674,12 +677,23 @@ export async function einreichen(db: Db, wer: Wer, aufgabeId: number, e: { patch
   });
 }
 
-export async function abbrechen(db: Db, wer: Wer, aufgabeId: number, grund: string) {
+/** Ursachen einer Rückgabe, die außerhalb des Modells liegen (E-45); nach außen englisch (aussen.ts, WERTE.ursache). */
+export const ABBRUCH_URSACHEN = ["anbieter", "runner", "projekt", "plattform", "gestoppt"] as const;
+export type AbbruchUrsache = (typeof ABBRUCH_URSACHEN)[number];
+
+/**
+ * Gibt eine reservierte Aufgabe zurück. Nennt ein Runner eine Ursache außerhalb des Modells (das Modell kam gar nicht
+ * zum Arbeiten oder wurde von außen abgeschnitten), zählt der Versuch nicht als Misserfolg des Modells (Ausgang
+ * 'umgebung' in leistung_versuche). Nur der Runner kann das beurteilen: Er sieht die Anfragen an das Modell; ein direkt
+ * angebundener Agent ist selbst das Modell. Die Plattform verlässt sich dabei auf seine Angabe, wie beim Modellnamen.
+ */
+export async function abbrechen(db: Db, wer: Wer, aufgabeId: number, grund: string, ursache?: AbbruchUrsache | null) {
+  const u = wer.runner === true && ursache && ABBRUCH_URSACHEN.includes(ursache) ? ursache : null;
   return transaktion(db, async (tx) => {
     const a = await aufgabeSperren(tx, aufgabeId);
     const l = await aktiveLeaseVon(tx, aufgabeId, wer.agentId);
-    await tx.query("update leases set beendet = now() where id = $1", [l.id]);
-    await wechseln(tx, a, "offen", akteur(wer), "abgebrochen", { grund });
+    await tx.query("update leases set beendet = now(), abbruch_ursache = $2 where id = $1", [l.id, u]);
+    await wechseln(tx, a, "offen", akteur(wer), "abgebrochen", { grund, ...(u ? { ursache: u } : {}) });
   });
 }
 

@@ -24,9 +24,12 @@ type verlaufEintrag struct {
 	Titel       string `json:"title,omitempty"`
 	Ergebnis    string `json:"outcome"` // submitted | returned | uploaded (Medien-Auftrag) | approved | changes_requested | review_not_sent
 	Grund       string `json:"reason,omitempty"`
-	Tokens      int64  `json:"tokens,omitempty"`
-	Budget      int64  `json:"budget_tokens,omitempty"`
-	Sekunden    int64  `json:"seconds,omitempty"`
+	// Ursache: Schlüssel eines Absturzes (ursache.go), über Aufgaben hinweg gleich; aus ihm liest der Dauerbetrieb, ob
+	// mehrere Runden in Folge auf dieselbe Art gescheitert sind. Leer: Ergebnis oder Rückgabe in der Sache.
+	Ursache  string `json:"cause,omitempty"`
+	Tokens   int64  `json:"tokens,omitempty"`
+	Budget   int64  `json:"budget_tokens,omitempty"`
+	Sekunden int64  `json:"seconds,omitempty"`
 }
 
 func verlaufsDatei() string { return filepath.Join(datenOrdner(), "history.jsonl") }

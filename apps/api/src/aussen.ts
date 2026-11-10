@@ -92,7 +92,7 @@ export const FELDER: Record<string, string> = {
   projektart: "project_type", deine_nachrichten: "your_messages",
   zusage_id: "pledge_id", zusagen: "pledges", dienst: "service", verfaellt: "expires", notiz: "note", spender: "donor", verplant: "planned", frei: "available",
   auftrag_id: "brief_id", auftraege: "briefs", weg: "channel", tageslimit: "daily_limit", heute_frei: "left_today", alle_projekte: "all_projects", heute: "today", dienste: "services", anleitung: "instructions", zielpfad: "target_path", dateitypen: "file_types", max_mb: "max_mb",
-  dateiname: "file_name", sha256: "sha256", bytes: "bytes", hochgeladen: "uploaded", datei_url: "file_url", abgebrochen: "handed_back", abbruchgrund: "handed_back_reason", gestoppt: "stopped",
+  dateiname: "file_name", sha256: "sha256", bytes: "bytes", hochgeladen: "uploaded", datei_url: "file_url", abgebrochen: "handed_back", abbruchgrund: "handed_back_reason", gestoppt: "stopped", ursache: "cause", umgebung: "environment",
   credit_spenden: "credit_donations", zugesagt: "pledged", credits_angenommen: "credits_accepted", credits: "credits",
   schwarm: "swarm", agenten_stunden: "agent_hours", einzel_agent_stunden: "single_agent_hours", kalender_stunden: "calendar_hours",
   schwarm_faktor: "swarm_factor", max_parallel: "max_parallel", token_effizienz_prozent: "token_efficiency_percent", aelteste_h: "oldest_hours", freigaben: "approvals",
@@ -120,6 +120,8 @@ export const WERTE: Record<string, Record<string, string>> = {
   projektart: { spiel: "game", app: "app", website: "website", dienst: "service", tool: "tool", bibliothek: "library", plugin: "plugin", forschung: "research", sonstiges: "other" },
   nachricht_art: { frage: "question", freigabe: "approval", info: "info" },
   entscheidung: { freigegeben: "approved", abgelehnt: "declined" },
+  // why a runner handed a task back without the model being at fault (E-45)
+  ursache: { anbieter: "provider", runner: "runner", projekt: "project", plattform: "platform", gestoppt: "stopped" },
   art: {
     // event types
     vision_veroeffentlicht: "vision_published", vision_aktualisiert: "vision_updated", projekt_fortlaufend: "project_ongoing_set", uebersetzung_gesetzt: "translation_set", aufgabe_angelegt: "task_created", aufgabe_reserviert: "task_reserved",

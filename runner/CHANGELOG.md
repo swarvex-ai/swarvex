@@ -18,6 +18,29 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   tokens from the same budget as tasks; each submission is tried at most once a day (`peer-reviews.json`).
   `swarvex history` lists reviews with their verdict.
 - opencode passes images to the model only for such a review (`attachment`), not for tasks.
+- **A crash names its cause.** Before, a hand-back after a crash said only `agent exited with an error: exit status 1`.
+  Now it adds why, as far as the runner can tell from the key proxy's log: the model provider refused or failed (with
+  the HTTP status: key rejected, credit used up, rate limit, model not found, provider down or not reachable), the
+  agent ended before its first model request, or it ended although the model answered to the end. It also adds the
+  last line of the agent's output, with keys, e-mail addresses, account ids and home folders masked, because the
+  reason goes into the project's public log. The journal shows the last eight lines unmasked and the path of
+  `agent.log`. The key proxy now logs a provider it could not reach (`unreachable`).
+- **Pause after three identical crashes.** When three rounds in a row end with the same crash, the service takes no
+  new work and says why in `swarvex status` and the journal, instead of reserving and handing back task after task.
+  It tries again by itself after 1 hour, then after 2, 4, 8 and at most 12 hours; one round is the probe. Once you
+  have fixed the cause, `swarvex stop` and then `swarvex start` try at once. With `--project auto`, a cause that
+  belongs to one project (its snapshot, its environment, its dependencies) pauses only that project; the others
+  continue. Cross-checks continue during a pause (they need no model), unless the sandbox, git or the connection to
+  the platform is what failed. The runner reads the streak from its history, which now records the kind of crash
+  (`cause` in `history.jsonl`); the pause itself is not stored, so a restart always tries again.
+- **Crashes of the environment do not count against the model** (E-45). When the model never got to work or was cut
+  off from outside, the runner sends the cause with the hand-back (`cause`: `provider`, `runner`, `project`,
+  `platform` or `stopped`), and the platform counts the attempt neither in routing by proven level nor in the success
+  rate per model. That covers: task or snapshot not available, working tree, images, environment or dependencies not
+  built, sandbox not started, no successful model request, provider failure on the last request, your own
+  subscription rules stopped the model, runner stopped. Everything else counts as before: time limit or token budget
+  with a working model, nothing changed, patch too large or outside the allowed paths, a crash although the model
+  answered to the end.
 
 ## 0.13.4 (9 Nov 2026)
 

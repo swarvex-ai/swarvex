@@ -21,6 +21,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -142,7 +143,7 @@ func arbeitenBefehl(args []string) {
 		return
 	}
 	if *dauer {
-		dauerbetrieb(fenster, *pause, ohneDauerbetrieb(args), *autoAktualisieren)
+		dauerbetrieb(fenster, *pause, ohneDauerbetrieb(args), *autoAktualisieren, *projekt)
 		return
 	}
 
@@ -245,7 +246,9 @@ func arbeitenBefehl(args []string) {
 		}
 	}
 
-	// 1. Aufgabe wählen und reservieren.
+	// 1. Aufgabe wählen und reservieren. Projekte, die der Dauerbetrieb auf diesem Runner ausgesetzt hat (ihre Umgebung
+	// kam hier mehrfach nicht zustande, ursache.go), bleiben dabei aus.
+	projekte, ausgesetzt := ohneAusgesetzte(projekte, os.Getenv("SWARVEX_SKIP_PROJECTS"))
 	id := *nur
 	var kandidaten []struct {
 		ID int64 `json:"id"`
@@ -267,6 +270,9 @@ func arbeitenBefehl(args []string) {
 		}
 		if len(antwort.Tasks) == 0 {
 			fmt.Println("No matching open task.")
+			if len(ausgesetzt) > 0 {
+				fmt.Printf("Paused on this runner after repeated failures of their environment: %s.\n", strings.Join(ausgesetzt, ", "))
+			}
 			if len(bevorzugteAnliegen) > 0 {
 				fmt.Printf("Only projects of these kinds: %s (any: swarvex budget --kinds all).\n", strings.Join(bevorzugteAnliegen, ", "))
 			}
@@ -310,9 +316,21 @@ func arbeitenBefehl(args []string) {
 	ordner := filepath.Join(datenOrdner(), "work", fmt.Sprint(id))
 	arbeitsbaum := filepath.Join(ordner, "tree")
 	gitDir := filepath.Join(ordner, "git") // außerhalb des Sandbox-Mounts
-	abbrechen := func(grund string) {
-		m.werkzeug("abandon_task", map[string]any{"task_id": id, "reason": grund}, nil)
-		verlaufMerken(verlaufsDatei(), verlaufEintragAus(id, a, "returned", grund, verbrauch))
+	// u: warum, wenn das Modell gar nicht zum Arbeiten kam oder die Runde abstürzte (ursache.go); ursache{} heißt, es
+	// lag an der Aufgabe oder am Ergebnis. Die Art geht an die Plattform (der Versuch zählt dann nicht als Misserfolg des
+	// Modells, E-45), der Schlüssel in den Verlauf (drei gleiche in Folge: Der Dauerbetrieb setzt aus).
+	abbrechen := func(u ursache, grund string) {
+		rueckgabe := map[string]any{"task_id": id, "reason": grund}
+		if u.Art != "" {
+			rueckgabe["cause"] = u.Art
+		}
+		m.werkzeug("abandon_task", rueckgabe, nil)
+		eintrag := verlaufEintragAus(id, a, "returned", grund, verbrauch)
+		eintrag.Ursache = u.Schluessel
+		if a.Projekt == "" {
+			eintrag.Projekt = *projekt // die Aufgabe ließ sich nicht lesen
+		}
+		verlaufMerken(verlaufsDatei(), eintrag)
 		// Arbeitsbaum (mit LFS-Kopien bis über 1 GB) auch bei einer Rückgabe löschen; die Protokolle bleiben für die Fehlersuche
 		wegraeumen(arbeitsbaum)
 		wegraeumen(gitDir)
@@ -320,11 +338,11 @@ func arbeitenBefehl(args []string) {
 	}
 	gestoppt := func() {
 		if basis.Err() != nil {
-			abbrechen("runner was stopped")
+			abbrechen(uGestoppt, "runner was stopped")
 		}
 	}
 	if err := m.werkzeug("task_details", map[string]any{"task_id": id}, &a); err != nil {
-		abbrechen("reading the task: " + err.Error())
+		abbrechen(uAufgabe, "reading the task: "+err.Error())
 	}
 	fmt.Printf("Task %d reserved: %s\n", a.ID, a.Titel)
 
@@ -333,38 +351,39 @@ func arbeitenBefehl(args []string) {
 	pruefen(os.MkdirAll(arbeitsbaum, 0o755))
 	amLeben(basis, ordner) // in Arbeit: das Aufräumen (auch `swarvex clean --all` daneben) lässt den Ordner stehen
 	if err := snapshotHolen(z, token, id, arbeitsbaum); err != nil {
-		abbrechen("snapshot: " + err.Error())
+		abbrechen(uSnapshot, "snapshot: "+err.Error())
 	}
 	// LFS-Dateien aufgelöst, aber nicht in Git aufgenommen: Patches ändern keine Binärassets
 	// (dafür gibt es Asset-Aufträge); so muss Git die großen Dateien auch nicht kopieren.
 	lfsPfade, err := lfsAufloesen(z, token, id, arbeitsbaum)
 	if err != nil {
-		abbrechen("LFS: " + err.Error())
+		abbrechen(uLFS, "LFS: "+err.Error())
 	}
 	if err := gitBasis(gitDir, arbeitsbaum, lfsPfade); err != nil {
-		abbrechen("base commit: " + err.Error())
+		abbrechen(uBasis, "base commit: "+err.Error())
 	}
 	gestoppt()
 
 	// 2b. Umgebung des Projekts: erkennen, Image bauen, Abhängigkeiten laden (mit Netz, ohne Agent und Schlüssel).
 	u, err := umgebungErmitteln(arbeitsbaum)
 	if err != nil {
-		abbrechen("environment: " + err.Error())
+		abbrechen(uUmgebung, "environment: "+err.Error())
 	}
 	fmt.Printf("Environment: %s (%s)\n", u.Vorlage, u.Quelle)
 	if err := agentImageBereit(basis, agent); err != nil {
-		abbrechen(err.Error())
+		gestoppt()
+		abbrechen(uAgentImage, err.Error())
 	}
 	image, err := umgebungsImage(basis, u, arbeitsbaum, agent.Image)
 	gestoppt()
 	if err != nil {
-		abbrechen(err.Error())
+		abbrechen(uProjektImage, err.Error())
 	}
 	cache := cacheOrdner(*projekt)
 	err = einrichten(basis, u, image, arbeitsbaum, cache, filepath.Join(ordner, "setup.log"))
 	gestoppt()
 	if err != nil {
-		abbrechen(err.Error())
+		abbrechen(uEinrichten, err.Error())
 	}
 
 	// 3. Lebenszeichen, solange gearbeitet wird.
@@ -392,7 +411,7 @@ func arbeitenBefehl(args []string) {
 	// 4. Sandbox mit Schlüssel-Proxy.
 	zugang, err := zugangLesen(agent, *keyDatei, *upstream, *zeit)
 	if err != nil {
-		abbrechen(err.Error())
+		abbrechen(uZugang, err.Error())
 	}
 	var protokoll string
 	verbrauch, protokoll, err = sandboxAusfuehren(ctx, a, u, image, arbeitsbaum, cache, ordner, agent, skills, zugang, *modell, *budget, nil)
@@ -407,7 +426,8 @@ func arbeitenBefehl(args []string) {
 	if amBudget {
 		fmt.Printf("Token budget reached (%d of %d, cache hits count a tenth). Submitting what the agent produced so far; raise the budget with `swarvex setup`.\n", budgetTokensAus(verbrauch), *budget)
 	} else if err != nil {
-		abbrechen("sandbox: " + err.Error())
+		// Mit der Ursache aus dem Protokoll des Schlüssel-Proxys und dem Ende der Agenten-Ausgabe (ursache.go)
+		abbrechen(rueckgabeNachSandbox(err, ordner))
 	}
 
 	// 5. Patch bilden (Git-Verzeichnis liegt außerhalb der Sandbox) und selbst prüfen.
@@ -417,22 +437,22 @@ func arbeitenBefehl(args []string) {
 	}
 	if err != nil || strings.TrimSpace(patch) == "" {
 		if amBudget {
-			abbrechen(fmt.Sprintf("token budget used up (%d of %d, cache hits count a tenth; %d tokens in all) before a result; raise it with `swarvex setup`", budgetTokensAus(verbrauch), *budget, tokensAus(verbrauch)))
+			abbrechen(ursache{}, fmt.Sprintf("token budget used up (%d of %d, cache hits count a tenth; %d tokens in all) before a result; raise it with `swarvex setup`", budgetTokensAus(verbrauch), *budget, tokensAus(verbrauch)))
 		}
 		switch {
 		case err != nil:
-			abbrechen("could not build the patch: " + kuerzen(err.Error(), 300))
+			abbrechen(ursache{}, "could not build the patch: "+kuerzen(err.Error(), 300))
 		case len(verworfen) > 0:
-			abbrechen(fmt.Sprintf("no change in the allowed paths (%s); %d changes elsewhere were discarded: %s", strings.Join(a.Pfade, ", "), len(verworfen), beispiele(verworfen)))
+			abbrechen(ursache{}, fmt.Sprintf("no change in the allowed paths (%s); %d changes elsewhere were discarded: %s", strings.Join(a.Pfade, ", "), len(verworfen), beispiele(verworfen)))
 		default:
-			abbrechen(fmt.Sprintf("the agent finished without changing the allowed paths (%s)", strings.Join(a.Pfade, ", ")))
+			abbrechen(ursache{}, fmt.Sprintf("the agent finished without changing the allowed paths (%s)", strings.Join(a.Pfade, ", ")))
 		}
 	}
 	if fehler := patchVorpruefen(patch, a.Pfade, u); len(fehler) > 0 {
-		abbrechen("patch violates the task: " + strings.Join(fehler, "; "))
+		abbrechen(ursache{}, "patch violates the task: "+strings.Join(fehler, "; "))
 	}
 	if zuGross := patchUmfang(patch, a.Grenzen.Zeilen, a.Grenzen.Dateien); zuGross != "" {
-		abbrechen("patch too large: " + zuGross + " (the lead may split the task)")
+		abbrechen(ursache{}, "patch too large: "+zuGross+" (the lead may split the task)")
 	}
 
 	// 5b. Eigener Testlauf (ohne Agent, ohne Netz). Bei Unity/Unreal ist das die erste Prüfung.
@@ -463,7 +483,7 @@ func arbeitenBefehl(args []string) {
 		for i, g := range abgewiesen {
 			gruende[i] = fmt.Sprint(g)
 		}
-		abbrechen("the platform rejected the submission: " + strings.Join(gruende, "; "))
+		abbrechen(ursache{}, "the platform rejected the submission: "+strings.Join(gruende, "; "))
 	}
 	fmt.Println("Submitted:", ergebnis)
 	verlaufMerken(verlaufsDatei(), verlaufEintragAus(id, a, "submitted", "", verbrauch))
@@ -754,11 +774,12 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	os.WriteFile(filepath.Join(ordner, "agent.log"), aus, 0o644)
 
 	verbrauch := proxyAuswerten(proxyName, ordner)
+	// agentEnde: Der Agent lief; alle Fehler davor heißen, die Sandbox kam nicht zustande (ursache.go).
 	if ctx.Err() != nil {
-		return verbrauch, string(aus), fmt.Errorf("time limit reached")
+		return verbrauch, string(aus), agentEnde{grund: "time limit reached", zeitlimit: true}
 	}
 	if err != nil {
-		return verbrauch, string(aus), fmt.Errorf("agent exited with an error: %v", err)
+		return verbrauch, string(aus), agentEnde{grund: fmt.Sprintf("agent exited with an error: %v", err)}
 	}
 	return verbrauch, string(aus), nil
 }
@@ -923,7 +944,7 @@ func gegenpruefenBis(basis context.Context, darf func() bool, n time.Time, pause
 	}
 }
 
-func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoAktualisieren bool) {
+func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoAktualisieren bool, projekt string) {
 	fmt.Println("Continuous mode started. Stop with Ctrl+C or `swarvex stop`.")
 	if t := offeneTitel(); t != "" {
 		fmt.Println("New settings to choose: " + t + " (the defaults apply until then; run: swarvex setup --new)")
@@ -947,6 +968,12 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 	// (Images aus der Zeit vor 0.13 tragen noch keinen Stempel und zählten sonst nach ihrem Bau-Datum).
 	zuletztAufgeraeumt := time.Now().Add(time.Hour - aufraeumTakt)
 	fehlerFolge := 0
+	// Nach drei Runden in Folge mit derselben Ursache (ursache.go) setzt der Runner aus; hängt sie an der Umgebung eines
+	// Projekts und bedient er mehrere, nur dieses Projekt. Beides steht nur im Speicher: Nach `swarvex stop` und
+	// `swarvex start`, einem Update oder geänderten Einstellungen versucht er es gleich wieder.
+	var ausgesetztBis time.Time
+	ausgesetztMitGegenpruefung := false
+	projektPausen := map[string]time.Time{}
 	wartetAufLeerlauf := false
 	for basis.Err() == nil {
 		if autoAktualisieren && time.Since(letzterUpdateCheck) > 24*time.Hour {
@@ -974,6 +1001,19 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 				programmBeimStart, _ = os.Stat(os.Args[0])
 			}
 		}
+		// Ausgesetzt: in Stücken, damit die Schleife oben ein Update oder geänderte Einstellungen bemerkt.
+		if time.Now().Before(ausgesetztBis) {
+			stueck := ausgesetztBis
+			if in10 := time.Now().Add(10 * time.Minute); in10.Before(stueck) {
+				stueck = in10
+			}
+			if ausgesetztMitGegenpruefung {
+				nurGegenpruefen(basis, fenster, stueck, pause, args, schlafen)
+			} else {
+				schlafen(time.Until(stueck))
+			}
+			continue
+		}
 		jetzt := time.Now()
 		if !fenster.offen(jetzt) {
 			n, ok := fenster.naechsterBeginn(jetzt)
@@ -999,8 +1039,12 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 		}
 		wartetAufLeerlauf = false
 		wartenMerken("", time.Time{}) // eine Runde läuft: nicht mehr „wartet“
+		rundeBeginn := time.Now()
 		kind := exec.Command(os.Args[0], append([]string{"work"}, args...)...)
 		kind.Stdout, kind.Stderr = os.Stdout, os.Stderr
+		if aus := nochAusgesetzt(projektPausen, rundeBeginn); len(aus) > 0 {
+			kind.Env = append(os.Environ(), "SWARVEX_SKIP_PROJECTS="+strings.Join(aus, ","))
+		}
 		code := 0
 		if err := kind.Start(); err != nil {
 			fehlerAus("starting the task: " + err.Error())
@@ -1058,6 +1102,29 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 			// Eine Rückgabe oder ein Fehler: gleich die nächste Aufgabe (die Plattform bietet dieselbe nach zwei Rückgaben
 			// nicht mehr an); erst bei Fehlern in Folge länger warten, damit ein kaputter Rechner nicht im Kreis läuft
 			fehlerFolge++
+			// Endete diese Runde zum dritten Mal in Folge mit derselben Ursache, setzt der Runner aus und sagt, warum
+			// (statt wie am 9. November 2026 eine Nacht lang jede Aufgabe zu reservieren und zurückzugeben). Ein Kind,
+			// das schon vor dem Reservieren scheitert, schreibt nichts in den Verlauf: Dann bleibt es bei der Fehlerpause.
+			if s := serieAus(verlaufLesen(verlaufsDatei(), 200)); s.pause() > 0 && !s.Zeit.Before(rundeBeginn) {
+				bis := time.Now().Add(s.pause())
+				fehlerFolge = 0
+				if s.Projekt != "" && projekt == "auto" {
+					projektPausen[s.Projekt] = bis
+					fmt.Printf("Project %s is paused on this runner until %s: %s. Other projects continue.\n", s.Projekt, zeitpunkt(bis), s.text())
+					fmt.Printf("Last hand-back: %s\n", s.Grund)
+					continue
+				}
+				ausgesetztBis, ausgesetztMitGegenpruefung = bis, gegenpruefenTrotzdem(s.Schluessel)
+				nebenher := ""
+				if ausgesetztMitGegenpruefung {
+					nebenher = "; meanwhile cross-checks (no model)"
+				}
+				fmt.Printf("Paused until %s: %s. This runner takes no new work until then%s.\n", zeitpunkt(bis), s.text(), nebenher)
+				fmt.Printf("Last hand-back: %s\n", s.Grund)
+				fmt.Println("After the pause one round tries again. Once you have fixed the cause, try at once with: swarvex stop, then swarvex start.")
+				wartenMerken("paused: "+s.text()+" (to try again at once: swarvex stop, then swarvex start)"+nebenher, bis)
+				continue
+			}
 			warte := fehlerPause(fehlerFolge)
 			fmt.Printf("Task ended with an error (code %d). Next attempt in %s.\n", code, warte)
 			schlafen(warte)
@@ -1071,6 +1138,34 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 		}
 	}
 	fmt.Println("Continuous mode ended.")
+}
+
+// nochAusgesetzt: die Projekte, deren Pause noch läuft (abgelaufene fallen aus der Liste), sortiert.
+func nochAusgesetzt(pausen map[string]time.Time, jetzt time.Time) []string {
+	var r []string
+	for p, bis := range pausen {
+		if !bis.After(jetzt) {
+			delete(pausen, p)
+			continue
+		}
+		r = append(r, p)
+	}
+	sort.Strings(r)
+	return r
+}
+
+// ohneAusgesetzte: die Projekte ohne die vom Dauerbetrieb ausgesetzten (SWARVEX_SKIP_PROJECTS, durch Komma getrennt),
+// und welche davon ausgelassen wurden.
+func ohneAusgesetzte(projekte []string, liste string) (bleiben, ausgelassen []string) {
+	aus := strings.Split(liste, ",")
+	for _, p := range projekte {
+		if enthaelt(aus, p) {
+			ausgelassen = append(ausgelassen, p)
+		} else {
+			bleiben = append(bleiben, p)
+		}
+	}
+	return bleiben, ausgelassen
 }
 
 // ohneDauerbetrieb entfernt --continuous aus den Argumenten für den Kindprozess.

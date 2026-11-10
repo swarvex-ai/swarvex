@@ -1653,6 +1653,46 @@ describe("Zuteilung nach nachgewiesener Stufe", () => {
     expect((await k.aufgabenPassend(db, lead, "test")).map((x) => Number(x.id))).toEqual(expect.arrayContaining([Number(b.id), Number(c.id), Number(d.id)]));
     for (const a of [b, c, d]) await k.schliessen(db, lead, a.id, "Test");
   });
+
+  it("Rückgaben mit einer Ursache außerhalb des Modells zählen nicht als Misserfolg (E-45)", async () => {
+    const r = await neuerAgent("zuteilung-umgebung");
+    for (let i = 0; i < 3; i++) await geschafft(r, "C", "modell-u");
+    expect((await k.stufenFreigabe(db, r.agentId)).bis).toBe("C");
+    const c = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Umgebung C"), stufe: "C" });
+    const ausgaenge = async () => (await db.query(
+      "select ausgang, count(*)::int as n from leistung_versuche where agent_id = $1 and aufgabe_id = $2 group by 1 order by 1", [r.agentId, c.id])).rows;
+    // Dreimal fällt der Anbieter aus: Der Runner nennt die Ursache, die Versuche zählen nicht
+    const anbieter = "sandbox: agent exited with an error: exit status 1; the model provider refused the request (HTTP 401)";
+    for (let i = 0; i < 3; i++) {
+      await k.reservieren(db, r, c.id);
+      await k.abbrechen(db, r, c.id, anbieter, "anbieter");
+    }
+    expect(await ausgaenge()).toEqual([{ ausgang: "umgebung", n: 3 }]);
+    expect(await k.stufenFreigabe(db, r.agentId)).toMatchObject({ bis: "C", probe_dran: true });   // auch kein Versuch für die Probe-Regel
+    const ereignis = (await db.query("select daten from ereignisse where bezug = $1 and art = 'abgebrochen' order by seq limit 1", [`aufgabe:${c.id}`])).rows[0].daten;
+    expect(ereignis).toMatchObject({ grund: anbieter, ursache: "anbieter" });
+    expect(nachAussen({ daten: ereignis })).toMatchObject({ data: { reason: anbieter, cause: "provider" } });
+    // Ein direkt angebundener Agent ist selbst das Modell: seine Angabe gilt nicht. Unbekannte Ursachen ebenso wenig.
+    await k.reservieren(db, r, c.id);
+    await k.abbrechen(db, { menschId: r.menschId, agentId: r.agentId }, c.id, "schaffe ich nicht", "anbieter");
+    await k.reservieren(db, r, c.id);
+    await k.abbrechen(db, r, c.id, "time limit reached", "wetter" as any);
+    expect(await ausgaenge()).toEqual([{ ausgang: "abgebrochen", n: 2 }, { ausgang: "umgebung", n: 3 }]);
+    expect((await k.stufenFreigabe(db, r.agentId)).bis).toBe("C");   // 3 von 5
+    await k.reservieren(db, r, c.id);
+    await k.abbrechen(db, r, c.id, "time limit reached");
+    expect((await k.stufenFreigabe(db, r.agentId)).bis).toBe("B");   // 3 von 6: ohne Ursache zählt es wie bisher
+    // Der nächste Versuch bekommt nur die Gründe, an denen er etwas ändern kann
+    expect((await k.details(db, r, c.id) as any).fruehere_rueckgaben.map((x: any) => x.grund)).toEqual(["time limit reached", "time limit reached", "schaffe ich nicht"]);
+    // Bilanz des Projekts: eigene Spalte, nicht in den Versuchen und nicht in der Erfolgsquote
+    const { schwarmBilanz } = await import("../src/bilanz.ts");
+    const pid = Number((await db.query("select id from projekte where slug = 'test'")).rows[0].id);
+    expect((await schwarmBilanz(db, pid)).leistung.find((x: any) => x.modell === "modell-u" && x.stufe === "C"))
+      .toMatchObject({ versuche: 6, angenommen: 3, abgebrochen: 3, umgebung: 3, erfolg_prozent: 50 });
+    expect((await db.query("select sum(versuche)::int as versuche, sum(umgebung)::int as umgebung from analytik.leistung where modell = 'modell-u' and stufe = 'C'")).rows[0])
+      .toEqual({ versuche: 6, umgebung: 3 });
+    await k.schliessen(db, lead, c.id, "Test");
+  });
 });
 
 describe("MCP: Fremdprüfung für Prüfer ohne Lead-Rolle", () => {
@@ -1688,10 +1728,21 @@ describe("MCP: Aufgaben gebündelt anlegen, Kontextpaket", () => {
     await Promise.all([server.connect(a), client.connect(b)]);
     return async (name: string, args: Record<string, unknown>) => {
       const r: any = await client.callTool({ name, arguments: args });
-      return JSON.parse(r.content[0].text);
+      const text: string = r.content[0].text;
+      try { return JSON.parse(text); } catch { return text; }   // einfache Bestätigungen kommen als Text
     };
   };
   const feld = { capabilities: ["code.gdscript"], paths: ["game/modules/vfx/**"], acceptance: ["tests green"] };
+  it("abandon_task: ein Runner nennt die Ursache; eine unbekannte Ursache hält die Rückgabe nicht auf (E-45)", async () => {
+    const rufen = await werkzeuge({ ...mit, runner: true });
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Rückgabe mit Ursache"), faehigkeiten: ["text.en"], pfade: ["docs/**"] });
+    for (const cause of ["project", "weather", undefined]) {
+      await k.reservieren(db, mit, a.id);
+      expect(await rufen("abandon_task", { task_id: Number(a.id), reason: "project image could not be built", ...(cause ? { cause } : {}) })).toBe("handed back");
+    }
+    expect((await db.query("select abbruch_ursache from leases where aufgabe_id = $1 order by id", [a.id])).rows.map((x) => x.abbruch_ursache)).toEqual(["projekt", null, null]);
+    await k.schliessen(db, lead, a.id, "Test");
+  });
   it("legt Code und Tests in einem Aufruf an, after wird zu depends_on; das Kontextpaket kommt im Auftrag an", async () => {
     const rufen = await werkzeuge(lead);
     const r = await rufen("create_tasks", { project: "test", tasks: [

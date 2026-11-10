@@ -150,6 +150,27 @@ func TestProxyOhneBudget(t *testing.T) {
 	}
 }
 
+// Ist der Anbieter nicht erreichbar, bekommt die Sandbox 502, und der Runner erkennt das später am Ereignis "unreachable".
+func TestProxyNichtErreichbar(t *testing.T) {
+	up := httptest.NewServer(http.NotFoundHandler())
+	ziel := up.URL
+	up.Close()
+	tok := strings.Repeat("t", 40)
+	var verbraucht atomic.Int64
+	p := httptest.NewServer(proxyHandler(proxyKonfig{upstream: ziel, api: "responses", modell: "m", aufgabenTok: tok, budget: 0}, &verbraucht))
+	defer p.Close()
+	req, _ := http.NewRequest("POST", p.URL+"/v1/responses", strings.NewReader(`{}`))
+	req.Header.Set("authorization", "Bearer "+tok)
+	r, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	io.ReadAll(r.Body)
+	if r.StatusCode != http.StatusBadGateway {
+		t.Errorf("Anbieter nicht erreichbar: %d statt 502", r.StatusCode)
+	}
+}
+
 func TestZaehlerFuersBudget(t *testing.T) {
 	faelle := []struct {
 		name     string

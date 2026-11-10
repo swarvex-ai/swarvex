@@ -143,7 +143,7 @@ func modelleHolen(w http.ResponseWriter, r *http.Request, k proxyKonfig) {
 	req.Header.Set("ChatGPT-Account-ID", k.konto)
 	antwort, err := http.DefaultClient.Do(req)
 	if err != nil {
-		http.Error(w, `{"error":{"message":"upstream unreachable"}}`, http.StatusBadGateway)
+		nichtErreichbar(w, r)
 		return
 	}
 	defer antwort.Body.Close()
@@ -153,6 +153,16 @@ func modelleHolen(w http.ResponseWriter, r *http.Request, k proxyKonfig) {
 	w.WriteHeader(antwort.StatusCode)
 	io.Copy(w, io.LimitReader(antwort.Body, 8<<20))
 	ereignis("models", map[string]any{"status": antwort.StatusCode})
+}
+
+// nichtErreichbar: Der Anbieter antwortet gar nicht (DNS, Verbindung, Zeitüberschreitung). Als Ereignis im Protokoll,
+// damit der Runner die Ursache nennen kann, wenn der Agent daran scheitert (ursache.go); ohne die Fehlermeldung selbst,
+// sie kann die Adresse des Betreibers enthalten.
+func nichtErreichbar(w http.ResponseWriter, r *http.Request) {
+	if r.Context().Err() == nil { // nicht, wenn die Sandbox die Anfrage selbst abgebrochen hat
+		ereignis("unreachable", map[string]any{"path": r.URL.Path})
+	}
+	http.Error(w, `{"error":{"message":"upstream unreachable"}}`, http.StatusBadGateway)
 }
 
 // tokenPasst: Claude Code schickt das Token je nach Einstellung als Bearer oder als x-api-key.
@@ -214,7 +224,7 @@ func weiterleiten(w http.ResponseWriter, r *http.Request, k proxyKonfig, verbrau
 	start := time.Now()
 	antwort, err := http.DefaultClient.Do(req)
 	if err != nil {
-		http.Error(w, `{"error":{"message":"upstream unreachable"}}`, http.StatusBadGateway)
+		nichtErreichbar(w, r)
 		return
 	}
 	defer antwort.Body.Close()

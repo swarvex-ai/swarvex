@@ -60,6 +60,7 @@ async function istVisionaerIrgendwo(db: Db, menschId: number) {
 
 const RAUM_REIN = umkehren(WERTE.raum) as Record<string, Raum>;
 const URTEIL_REIN = umkehren(WERTE.urteil) as Record<string, "annehmen" | "nacharbeit" | "ablehnen">;
+const URSACHE_REIN = umkehren(WERTE.ursache) as Record<string, k.AbbruchUrsache>;
 const usage = z.record(z.string(), z.number()).default({}).describe("Usage so far, e.g. {\"tokens\": 12000, \"requests\": 8, \"seconds\": 340}");
 
 export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
@@ -176,10 +177,14 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     inputSchema: { check_id: z.number().int(), result: z.enum(["pass", "fail", "unable"]), report: z.string().max(20000) },
   }, sicher(async ({ check_id, result, report }) => gegenpruefungMelden(db, wer, check_id, ({ pass: "ok", fail: "fehler", unable: "nicht_moeglich" } as const)[result], report)));
 
+  // cause: bewusst kein enum. Nennt ein neuerer Runner eine Ursache, die diese Plattform noch nicht kennt, soll die
+  // Rückgabe trotzdem ankommen (sie zählt dann wie bisher), statt dass die Reservierung bis zum Ablauf liegen bleibt.
   s.registerTool("abandon_task", {
-    description: "Hands a reserved task back to the pool, with a reason.",
-    inputSchema: { task_id: z.number().int(), reason: z.string() },
-  }, sicher(async ({ task_id, reason }) => { await k.abbrechen(db, wer, task_id, reason); return "handed back"; }));
+    description: "Hands a reserved task back to the pool, with a reason."
+      + (z0.runner ? " (Runner) With cause when the model was not at fault; such an attempt does not count against the model." : ""),
+    inputSchema: { task_id: z.number().int(), reason: z.string(),
+      cause: z.string().max(40).optional().describe("(Runner only; ignored otherwise) Why the attempt ended without the model being at fault: provider (the model provider failed or refused), runner (the runner or its sandbox), project (the project's environment or setup), platform (task or snapshot not available), stopped (the operator stopped the runner). Leave out when the model had its chance.") },
+  }, sicher(async ({ task_id, reason, cause }) => { await k.abbrechen(db, wer, task_id, reason, cause ? URSACHE_REIN[cause] ?? null : null); return "handed back"; }));
 
   // Der Runner bietet die Medien-Werkzeuge seiner Agenten an (Zusage über den Runner, spenden.ts)
   if (wer.runner === true) {

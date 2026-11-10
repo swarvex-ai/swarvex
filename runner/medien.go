@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -151,10 +152,11 @@ func medienRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e medienE
 	}
 	fmt.Printf("Media brief %d started (%s, %s): %s\n", b.ID, dienstTitel(b.Dienst), b.Projekt, b.Titel)
 	var verbrauch map[string]float64
-	var ordner string // ab dem Start des Auftrags
+	var ordner string  // ab dem Start des Auftrags
+	var absturz string // Schlüssel der Ursache, wenn der Agent am Modell scheiterte (ursache.go)
 	eintrag := func(ergebnis, grund string) {
 		verlaufMerken(verlaufsDatei(), verlaufEintrag{Zeit: time.Now(), Brief: b.ID, Projekt: b.Projekt, Titel: b.Titel,
-			Ergebnis: ergebnis, Grund: kuerzen(grund, 400), Tokens: tokensAus(verbrauch), Budget: budgetTokensAus(verbrauch), Sekunden: int64(verbrauch["seconds"])})
+			Ergebnis: ergebnis, Grund: kuerzen(grund, 400), Ursache: absturz, Tokens: tokensAus(verbrauch), Budget: budgetTokensAus(verbrauch), Sekunden: int64(verbrauch["seconds"])})
 	}
 	// Zurückgeben: Nach einem Fehlschlag pausiert die Plattform den Auftrag 24 Stunden (sonst verbrauchte ein Auftrag, der
 	// immer scheitert, bis zum Tageslimit Credits); nur angehalten (gestoppt) ist er gleich wieder frei.
@@ -192,10 +194,17 @@ func medienRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e medienE
 	verbrauch, _, err = medienSandbox(ctx, *b, server, e, ordner, aus, arbeit)
 	verbrauchMerken(verbrauchsDatei(), -b.ID, budgetTokensAus(verbrauch), time.Now())
 	if basis.Err() != nil {
+		absturz = uGestoppt.Schluessel
 		zurueck("runner was stopped", true)
 	}
 	if err != nil {
-		abbrechen("sandbox: " + err.Error())
+		// Lief der Agent, nennt die Rückgabe die Ursache; kam die Sandbox nicht zustande, hängt es hier meist am
+		// Medienwerkzeug: Das zählt nicht zu einer Serie, die den ganzen Runner aussetzen ließe.
+		warum, grund := rueckgabeNachSandbox(err, ordner)
+		if errors.As(err, new(agentEnde)) {
+			absturz = warum.Schluessel
+		}
+		abbrechen(grund)
 	}
 	datei, grund := medienEinsammeln(aus, arbeit, *b)
 	if datei == "" {
@@ -318,10 +327,10 @@ func medienSandbox(ctx context.Context, b medienBrief, server []medienServer, e 
 	os.WriteFile(filepath.Join(ordner, "agent.log"), ausgabe, 0o644)
 	verbrauch := proxyAuswerten(proxyName, ordner)
 	if ctx.Err() != nil {
-		return verbrauch, string(ausgabe), fmt.Errorf("time limit reached")
+		return verbrauch, string(ausgabe), agentEnde{grund: "time limit reached", zeitlimit: true}
 	}
 	if err != nil {
-		return verbrauch, string(ausgabe), fmt.Errorf("agent exited with an error: %v", err)
+		return verbrauch, string(ausgabe), agentEnde{grund: fmt.Sprintf("agent exited with an error: %v", err)}
 	}
 	return verbrauch, string(ausgabe), nil
 }

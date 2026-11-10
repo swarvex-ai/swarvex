@@ -75,14 +75,18 @@ function qualitaetVon(zeilen: Zeile[], fertig: Map<number, string>, jeAufgabe: J
   };
 }
 
-/** Erfolg je Modell und Stufe (leistung_versuche): entschiedene Versuche, angenommen und wie die anderen ausgingen. */
+/**
+ * Erfolg je Modell und Stufe (leistung_versuche): entschiedene Versuche, angenommen und wie die anderen ausgingen.
+ * Rückgaben mit einer Ursache außerhalb des Modells (umgebung, E-45) stehen daneben und zählen nicht als Versuch.
+ */
 async function leistung(db: Db, projektId: number) {
   return (await db.query(
-    `select coalesce(modell, 'unknown') as modell, stufe, count(*)::int as versuche,
+    `select coalesce(modell, 'unknown') as modell, stufe, count(*) filter (where ausgang <> 'umgebung')::int as versuche,
        count(*) filter (where ausgang = 'angenommen')::int as angenommen,
        count(*) filter (where ausgang = 'zurueck')::int as zurueck,
        count(*) filter (where ausgang in ('pruefung_rot', 'zug_rot'))::int as pruefung_rot,
-       count(*) filter (where ausgang = 'abgebrochen')::int as abgebrochen
+       count(*) filter (where ausgang = 'abgebrochen')::int as abgebrochen,
+       count(*) filter (where ausgang = 'umgebung')::int as umgebung
      from leistung_versuche where projekt_id = $1 and ausgang not in ('laeuft', 'offen')
      group by 1, 2 order by 1, 2`, [projektId])).rows
     .map((r) => ({ ...r, erfolg_prozent: r.versuche ? Math.round((100 * r.angenommen) / r.versuche) : null }));

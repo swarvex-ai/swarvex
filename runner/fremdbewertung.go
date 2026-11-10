@@ -121,9 +121,10 @@ func fremdbewertungRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e
 	fremdVersuchMerken(fremdVersucheDatei(), b.Einreichung, time.Now())
 	fmt.Printf("Peer review of submission %d (%s, task %d): %s\n", b.Einreichung, b.Projekt, b.Aufgabe, b.Titel)
 	var verbrauch map[string]float64
+	var absturz string // Schlüssel der Ursache, wenn Sandbox oder Modell scheiterten (ursache.go)
 	eintrag := func(ergebnis, grund string) {
 		verlaufMerken(verlaufsDatei(), verlaufEintrag{Zeit: time.Now(), Aufgabe: b.Aufgabe, Einreichung: b.Einreichung, Projekt: b.Projekt, Titel: b.Titel,
-			Ergebnis: ergebnis, Grund: kuerzen(grund, 400), Tokens: tokensAus(verbrauch), Budget: budgetTokensAus(verbrauch), Sekunden: int64(verbrauch["seconds"])})
+			Ergebnis: ergebnis, Grund: kuerzen(grund, 400), Ursache: absturz, Tokens: tokensAus(verbrauch), Budget: budgetTokensAus(verbrauch), Sekunden: int64(verbrauch["seconds"])})
 	}
 	ordner := filepath.Join(datenOrdner(), "review", fmt.Sprint(b.Einreichung))
 	arbeit := filepath.Join(ordner, "work")
@@ -151,10 +152,13 @@ func fremdbewertungRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e
 	verbrauch, err = fremdSandbox(ctx, b.Einreichung, e, ordner, arbeit, auftrag, len(bilder) > 0)
 	verbrauchMerken(verbrauchsDatei(), -1_000_000_000-b.Einreichung, budgetTokensAus(verbrauch), time.Now())
 	if basis.Err() != nil {
+		absturz = uGestoppt.Schluessel
 		abbrechen("runner was stopped")
 	}
 	if err != nil {
-		abbrechen("sandbox: " + err.Error())
+		warum, grund := rueckgabeNachSandbox(err, ordner)
+		absturz = warum.Schluessel
+		abbrechen(grund)
 	}
 	u, err := fremdUrteilLesen(filepath.Join(arbeit, "verdict.json"), *b)
 	if err != nil {
@@ -386,10 +390,10 @@ func fremdSandbox(ctx context.Context, id int64, e fremdEinstellung, ordner, arb
 	os.WriteFile(filepath.Join(ordner, "agent.log"), ausgabe, 0o644)
 	verbrauch := proxyAuswerten(proxyName, ordner)
 	if ctx.Err() != nil {
-		return verbrauch, fmt.Errorf("time limit reached")
+		return verbrauch, agentEnde{grund: "time limit reached", zeitlimit: true}
 	}
 	if err != nil {
-		return verbrauch, fmt.Errorf("agent exited with an error: %v", err)
+		return verbrauch, agentEnde{grund: fmt.Sprintf("agent exited with an error: %v", err)}
 	}
 	return verbrauch, nil
 }
