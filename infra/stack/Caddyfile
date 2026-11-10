@@ -64,6 +64,8 @@
 		@text path *.txt *.md
 		header @text >Content-Type "^text/(plain|markdown)$" "text/$1; charset=utf-8"
 		@shell path *.sh
+		# Für .sh kennt der Node-Server keinen Typ: Er sendet einen leeren Content-Type oder gar keinen
+		header @shell >Content-Type "^$" "text/plain; charset=utf-8"
 		header @shell {
 			?Content-Type "text/plain; charset=utf-8"
 			defer
