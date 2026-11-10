@@ -54,7 +54,7 @@
   type Laufend = { catalogue: { assets: number; kinds: number } | null; this_week: number; requests: { open: number; answered: number } };
   const laufend = $derived((p.ongoing ? p.ongoing_figures : null) as Laufend | null);
   const l = $derived(d.laufend);
-  type Jetzt = { available: number; blocked: number; active: number; waiting_for_check: number; oldest_check_hours: number | null; awaiting_review: number; oldest_review_hours: number | null; bottleneck: string | null };
+  type Jetzt = { available: number; blocked: number; active: number; waiting_for_check: number; oldest_check_hours: number | null; awaiting_review: number; oldest_review_hours: number | null; awaiting_peer_review?: number; oldest_peer_review_hours?: number | null; waiting_for_merge?: number; oldest_merge_hours?: number | null; bottleneck: string | null };
   const bilanz = $derived(p.swarm_balance as { time_flow: Record<string, number | null> | null; now: Jetzt; total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; units?: number; evidence?: string; units_per_day?: number; throughput_factor?: number } | null } | undefined);
   const paket = $derived((p.project_type ? data.pakete?.[`${p.project_type}${p.procedure === "clean_room" ? "-cleanroom" : p.procedure === "continuation" ? "-continuation" : ""}`] : undefined) as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
   const methode = $derived(pfad(s, s === "de" ? "/docs/warum-swarvex#wie-wir-den-vorteil-messen" : "/docs/why-swarvex#how-we-measure-the-advantage"));
@@ -277,7 +277,9 @@
       <p class="bremst klein" class:frei={!j.bottleneck}>
         <!-- Einen Bereichs-Lead nennt der Hinweis nur, wenn die Lead-Bilanz ihn empfiehlt (Rolle mit Last und Bewegung, apps/api/src/kennzahlen.ts) -->
         {#if j.bottleneck === "review"}{b.engpass.review(j.awaiting_review, j.oldest_review_hours ?? 0)}{#if p.lead_scorecard?.area_lead_recommendation?.length}{b.engpass.reviewBereich(p.lead_scorecard.area_lead_recommendation.map((e: { role: string }) => e.role).join(", "))}{/if}
+        {:else if j.bottleneck === "peer_review"}{b.engpass.peerReview(j.awaiting_peer_review ?? 0, j.oldest_peer_review_hours ?? 0)}
         {:else if j.bottleneck === "check"}{b.engpass.check(j.waiting_for_check, j.oldest_check_hours ?? 0)}
+        {:else if j.bottleneck === "merge"}{b.engpass.merge(j.waiting_for_merge ?? 0, j.oldest_merge_hours ?? 0)}
         {:else if j.bottleneck === "backlog"}{b.engpass.backlog(j.available, j.active)}
         {:else if j.bottleneck === "dependencies"}{b.engpass.dependencies(j.blocked)}
         {:else if j.bottleneck === "contributors"}{b.engpass.contributors(j.available)}

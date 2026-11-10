@@ -5,7 +5,7 @@
 // (Stufen-Gewichte wie beim Fortschritt), und die Einordnung dieses Stands muss öffentlich im Repo belegt sein.
 // Methode in der Doku: „Warum swarvex“, Abschnitt „Wie wir den Vorteil messen“.
 import type { Db } from "./db.ts";
-import { STUFEN_GEWICHT } from "./aufgaben.ts";
+import { STUFEN_GEWICHT, VOM_LEAD } from "./aufgaben.ts";
 import { angebot } from "./fluss.ts";
 
 type Zeile = {
@@ -114,30 +114,36 @@ async function zeitfluss(db: Db, projektId: number) {
   };
 }
 
-/** Wo es gerade bremst: Angebot, Prüfung und Bewertung jetzt; engpass benennt die Stufe, an der Arbeit am längsten steht. */
+/** Wo es gerade bremst: Angebot, Prüfung und Bewertung jetzt; engpass benennt die Stufe, an der Arbeit am längsten steht.
+ * Eigene Einreichungen von Lead oder Visionär warten nicht auf den Lead, sondern auf die Fremdbewertung (Vier-Augen-Regel). */
 async function jetzt(db: Db, projektId: number, fluss: Awaited<ReturnType<typeof zeitfluss>>) {
   const a = await angebot(db, projektId);
+  const eigen = VOM_LEAD("e", "a.projekt_id");
   const w = (await db.query(
     `select count(*) filter (where a.zustand in ('eingereicht', 'pruefung'))::int as warten_auf_pruefung,
        round(max(extract(epoch from now() - e.eingereicht)) filter (where a.zustand in ('eingereicht', 'pruefung')) / 3600, 1) as aelteste_pruefung_h,
-       count(*) filter (where a.zustand = 'geprueft_ok')::int as warten_auf_bewertung,
-       round(max(extract(epoch from now() - coalesce(pr.erstellt, e.eingereicht))) filter (where a.zustand = 'geprueft_ok') / 3600, 1) as aelteste_bewertung_h,
+       count(*) filter (where a.zustand = 'geprueft_ok' and not ${eigen})::int as warten_auf_bewertung,
+       round(max(extract(epoch from now() - coalesce(pr.erstellt, e.eingereicht))) filter (where a.zustand = 'geprueft_ok' and not ${eigen}) / 3600, 1) as aelteste_bewertung_h,
+       count(*) filter (where a.zustand = 'geprueft_ok' and ${eigen})::int as warten_auf_fremdbewertung,
+       round(max(extract(epoch from now() - coalesce(pr.erstellt, e.eingereicht))) filter (where a.zustand = 'geprueft_ok' and ${eigen}) / 3600, 1) as aelteste_fremdbewertung_h,
        count(*) filter (where a.zustand = 'angenommen')::int as warten_auf_merge,
        round(max(extract(epoch from now() - b.erstellt)) filter (where a.zustand = 'angenommen') / 3600, 1) as aelteste_merge_h
-     from aufgaben a join lateral (select id, eingereicht from einreichungen where aufgabe_id = a.id order by id desc limit 1) e on true
+     from aufgaben a join lateral (select id, eingereicht, agent_id from einreichungen where aufgabe_id = a.id order by id desc limit 1) e on true
      left join lateral (select erstellt from pruefungen where einreichung_id = e.id order by id desc limit 1) pr on true
      left join lateral (select erstellt from bewertungen where einreichung_id = e.id order by id desc limit 1) b on true
      where a.projekt_id = $1 and a.zustand in ('eingereicht', 'pruefung', 'geprueft_ok', 'angenommen')`, [projektId])).rows[0];
   const n = (x: unknown) => (x === null || x === undefined ? null : Number(x));
-  const bewertungH = n(w.aelteste_bewertung_h), pruefungH = n(w.aelteste_pruefung_h), mergeH = n(w.aelteste_merge_h);
-  const engpass = w.warten_auf_bewertung > 0 && (bewertungH ?? 0) >= Math.max(2, fluss?.bearbeitung ?? 0) ? "bewertung"
+  const bewertungH = n(w.aelteste_bewertung_h), fremdH = n(w.aelteste_fremdbewertung_h), pruefungH = n(w.aelteste_pruefung_h), mergeH = n(w.aelteste_merge_h);
+  const schwelle = Math.max(2, fluss?.bearbeitung ?? 0);
+  const engpass = w.warten_auf_bewertung > 0 && (bewertungH ?? 0) >= schwelle ? "bewertung"
+    : w.warten_auf_fremdbewertung > 0 && (fremdH ?? 0) >= schwelle ? "fremdbewertung"
     : w.warten_auf_pruefung > 0 && (pruefungH ?? 0) >= 1 ? "pruefung"
     : w.warten_auf_merge > 0 && (mergeH ?? 0) >= 1 ? "merge"
     : a.aktiv > 0 && a.frei < a.aktiv ? "nachschub"
     : a.frei === 0 && a.blockiert > 0 ? "abhaengigkeiten"
     : a.frei > 0 && a.aktiv === 0 ? "mitstreiter" : null;
   return { ...a, warten_auf_pruefung: w.warten_auf_pruefung, aelteste_pruefung_h: pruefungH, warten_auf_bewertung: w.warten_auf_bewertung,
-    aelteste_bewertung_h: bewertungH, warten_auf_merge: w.warten_auf_merge, aelteste_merge_h: mergeH, engpass };
+    aelteste_bewertung_h: bewertungH, warten_auf_fremdbewertung: w.warten_auf_fremdbewertung, aelteste_fremdbewertung_h: fremdH, warten_auf_merge: w.warten_auf_merge, aelteste_merge_h: mergeH, engpass };
 }
 
 export async function schwarmBilanz(db: Db, projektId: number) {

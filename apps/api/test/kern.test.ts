@@ -593,7 +593,17 @@ describe("Bewertung durch den Schwarm", () => {
       await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
       return { a, eid: Number(e.einreichung_id) };
     };
+    const { schwarmBilanz } = await import("../src/bilanz.ts");
+    const pid = Number((await db.query("select id from projekte where slug = 'test'")).rows[0].id);
+    const vorher = (await schwarmBilanz(db, pid)).jetzt;
     const { a, eid } = await eigen("Vom Lead selbst");
+    // „Wo bremst es?“ zählt sie nicht beim Lead, sondern als wartend auf die Fremdbewertung
+    await db.query("update pruefungen set erstellt = now() - interval '3 hours' where einreichung_id = $1", [eid]);
+    const nachher = (await schwarmBilanz(db, pid)).jetzt;
+    expect(nachher.warten_auf_bewertung).toBe(vorher.warten_auf_bewertung);
+    expect(nachher.warten_auf_fremdbewertung).toBe(vorher.warten_auf_fremdbewertung + 1);
+    expect(nachher.aelteste_fremdbewertung_h).toBeGreaterThanOrEqual(2.9);
+    if (!nachher.warten_auf_bewertung) expect(nachher.engpass).toBe("fremdbewertung");
     await expect(k.bewerten(db, lead, eid, "annehmen", "sieht gut aus")).rejects.toThrow(/peer review/);
     const w = (await k.wartendeEinreichungen(db, lead, "test")).find((x) => Number(x.einreichung_id) === eid);
     expect(w).toMatchObject({ eigener_beitrag: true, hinweis: expect.stringContaining("peer review") });
