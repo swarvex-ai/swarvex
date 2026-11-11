@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.15.1 (unreleased)
+## 0.15.1 (11 Nov 2026)
 
 - A peer review that fails from its sandbox step on is reported to the platform (`report_peer_review_failure`), with
   the cause when the model could not work. Three such failures in a row, or together with hand-backs of tasks, show
