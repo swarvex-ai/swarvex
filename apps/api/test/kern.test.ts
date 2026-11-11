@@ -1793,6 +1793,44 @@ describe("MCP: Aufgaben gebündelt anlegen, Kontextpaket", () => {
     await k.schliessen(db, lead, a.id, "Test");
   });
 
+  it("handbook: Dateien des Handbuchs, zugeschnitten auf Projektart und Verfahren, über die Website geholt (E-48)", async () => {
+    const { paketName } = await import("../src/handbuch.ts");
+    expect([paketName("spiel", "clean_room"), paketName("bibliothek", "continuation"), paketName("forschung", "clean_room"), paketName(null, "standard"), paketName("app", "standard")])
+      .toEqual(["game-cleanroom", "library-continuation", "research", "other", "app"]);
+    const http = await import("node:http");
+    let abrufe = 0;
+    const web = http.createServer((req, res) => {
+      abrufe++;
+      if (req.url !== "/lead/handbook.json") { res.writeHead(404).end(); return; }
+      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({
+        files: { "templates/task.md": "# Task template\n", "templates/interview-trees.md": "# All trees\n", "templates/skills/test-first/SKILL.md": "# Test first\n", "roles/game/art.md": "# Art\n" },
+        bundles: { other: { files: { "templates/interview-trees.md": "# Trees for other\n" }, load: [{ path: "templates/interview-trees.md", when: "phase 0" }] } },
+      }));
+    });
+    await new Promise<void>((r) => web.listen(0, "127.0.0.1", () => r()));
+    const vorher = process.env.WEB_INTERNAL;
+    process.env.WEB_INTERNAL = `http://127.0.0.1:${(web.address() as { port: number }).port}`;
+    try {
+      await db.query("update projekte set projektart = null, verfahren = 'standard' where slug = 'test'");
+      const leadRuft = await werkzeuge(lead);
+      const index = await leadRuft("handbook", { project: "test" });
+      expect(index).toMatch(/lead bundle other/);
+      expect(index).toMatch(/`templates\/interview-trees.md`: phase 0/);
+      expect(index).toMatch(/`roles\/game\/art.md`/);
+      expect(await leadRuft("handbook", { project: "test", path: "templates/interview-trees.md" })).toBe("# Trees for other\n"); // zugeschnitten
+      expect(await leadRuft("handbook", { project: "test", path: "./lead/templates/task.md" })).toBe("# Task template\n");
+      expect(await leadRuft("handbook", { project: "test", path: "templates/skills/" })).toMatch(/templates\/skills\/test-first\/SKILL.md/);
+      expect(await leadRuft("handbook", { project: "test", path: "task.md" })).toMatch(/Rejected: no handbook file task.md; did you mean templates\/task.md\?/);
+      expect(await leadRuft("handbook", { project: "test", path: "../../etc/passwd" })).toMatch(/Rejected: no handbook file/);
+      expect(abrufe).toBe(1); // zehn Minuten gehalten
+      expect(await (await werkzeuge(mit))("handbook", { project: "test" })).toMatch(/not found|Unknown tool|tool/i); // nur Leads
+    } finally {
+      process.env.WEB_INTERNAL = vorher;
+      if (vorher === undefined) delete process.env.WEB_INTERNAL;
+      web.close();
+    }
+  });
+
   it("Fundmeldungen: beim Einreichen und Zurückgeben gemeldet, der Lead macht mit einem Schritt eine Aufgabe daraus (E-46)", async () => {
     const runner = { ...mit, runner: true };
     const rufen = await werkzeuge(runner);
@@ -2242,12 +2280,22 @@ describe("Lead-Dienst (E-38): gebundene Anmeldung, nur ein Projekt, keine Freiga
     // Jedes registrierte Werkzeug, das die Liste erlaubt, sieht die gebundene Sitzung (neue Lead-Werkzeuge nicht vergessen)
     const { LEAD_DIENST_WERKZEUGE } = await ld();
     expect([...LEAD_DIENST_WERKZEUGE].filter((w) => !namen.includes(w))).toEqual([]);
+    // Und umgekehrt: Was der Lead in seiner eigenen Sitzung hat, hat auch sein Dienst, außer dem, was bewusst beim Menschen
+    // bleibt oder Arbeit als Mitstreiter ist (so fehlten findings & Co. dem Dienst einen Tag lang)
+    const NUR_MENSCH = ["reserve_task", "report_progress", "submit_result", "abandon_task", "peer_reviews_open", "submit_peer_review",
+      "set_media_pledges", "media_briefs", "start_media_brief", "abandon_media_brief", "appoint_area_lead", "end_area_lead", "appoint_officer", "end_officer"];
+    const selbst = await (await sitzung(lead, false, null)).namen();
+    expect(selbst.filter((w) => !LEAD_DIENST_WERKZEUGE.has(w) && !NUR_MENSCH.includes(w))).toEqual([]);
+    for (const neu of ["findings", "task_from_finding", "dismiss_finding", "handbook"]) expect(namen).toContain(neu);
     expect((await s.rufen("metrics", { project: "test" })).fehler).toBe(false);
     const fremdProjekt = await s.rufen("metrics", { project: "lead-anderes" });
     expect(fremdProjekt.fehler).toBe(true);
     expect(fremdProjekt.text).toMatch(/only on project test/);
     const andereAufgabe = await k.aufgabeAnlegen(db, lead, "lead-anderes", { ...neueAufgabe("Fremd"), meilenstein: "X", neuer_meilenstein: true });
     expect((await s.rufen("task_details", { task_id: Number(andereAufgabe.id) })).text).toMatch(/only on project test/);
+    const fremderFund = Number((await db.query("insert into funde(projekt_id, aufgabe_id, agent_id, titel, pfade) values ($1, $2, $3, 'Fund im anderen Projekt', '{docs/x.md}') returning id",
+      [anderes, andereAufgabe.id, dienst.agentId])).rows[0].id);
+    expect((await s.rufen("dismiss_finding", { finding_id: fremderFund, reason: "nicht unseres" })).text).toMatch(/only on project test/);
     // Binden: ungebunden für den Lead; gebunden noch einmal dasselbe Projekt (erneutes lead setup), nie ein anderes
     expect(await (await sitzung(lead, true, null)).namen()).toContain("bind_lead_service");
     const nochmal = await s.rufen("bind_lead_service", { project: "test" });

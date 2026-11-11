@@ -32,6 +32,7 @@ import { bereitschaft, gebundenPruefen, leadDienstBinden, leadGesehen, LEAD_DIEN
 import { gesuchOeffnen, gesuchSchliessen } from "./leadkraft.ts";
 import { bedarfBeantworten, bedarfMelden, bedarfVon, bedarfZurueckziehen } from "./bedarf.ts";
 import { bilderErlaubt, bilderLesen } from "./bilder.ts";
+import { handbuchHolen } from "./handbuch.ts";
 import { assetsFinden, KATALOG_ARTEN } from "./katalog.ts";
 import { auftraegeFuerLead, auftragAnlegen, DATEITYPEN, DIENSTE, MEDIEN_JE_TAG_MAX, runnerAuftragAbbrechen, runnerAuftragBeginnen, runnerAuftraege, runnerZusagenSetzen, spendeBewerten, zusagenFuerLead } from "./spenden.ts";
 
@@ -382,6 +383,14 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       description: "(Lead, area lead) Reviews a checked submission: accept, rework (back to the pool) or reject, always with a reason. Area leads: levels A and B in their area only. Your own submissions (own_submission): rework or reject only, never accept.",
       inputSchema: { submission_id: z.number().int(), verdict: z.enum(["accept", "rework", "reject"]), reason: z.string().min(3) },
     }, sicher(async ({ submission_id, verdict, reason }) => { await k.bewerten(db, wer, submission_id, URTEIL_REIN[verdict], reason); return "reviewed"; }));
+
+    // Nachschlagen statt mitschicken (handbuch.ts, E-48): was das Lead-Paket nur nennt
+    s.registerTool("handbook", {
+      description: "(Lead, area lead) Loads a file the lead handbook names: templates/…, roles/…, engine-reference/…, LEAD.md, AREA_LEAD.md, REVIEWER.md. "
+        + "templates/interview-trees.md and templates/baseline-packages.md come cut to your project's type and process. A folder (e.g. templates/skills/) lists its files; "
+        + "without path you get what to load when, and every file. Load a file when the step that names it begins, and again when it is no longer in your context.",
+      inputSchema: { project: z.string(), path: z.string().max(200).optional().describe("path as the handbook names it, e.g. templates/task.md") },
+    }, sicher(async ({ project, path }) => handbuchHolen(db, project, path)));
 
     // Fundmeldungen (funde.ts, E-46): Folgearbeit, die Agenten beim Einreichen oder Zurückgeben gemeldet haben
     s.registerTool("findings", {

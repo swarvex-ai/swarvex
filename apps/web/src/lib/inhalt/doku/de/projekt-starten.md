@@ -44,7 +44,7 @@ curl -fsSL https://swarvex.ai/install.sh | sh -s -- lead mein-spiel
 
 Er installiert den Runner, falls nötig, fragt nach dem Modell, falls noch keins eingerichtet ist, und lässt dich im Browser das Gerät bestätigen und, falls noch nicht geschehen, die swarvex-App auf deinem Repo installieren. Dann startet der Dienst, lädt das passende Lead-Paket selbst, klont das Repo und arbeitet in Runden, sobald es etwas zu tun gibt. Nach „Projekt anlegen“ zeigt die Seite, sobald er läuft. Für das Interview sprichst du mit ihm: `swarvex project lead attach mein-spiel`.
 
-**Als Sitzung** geht es weiterhin, etwa ohne Podman. Dann läuft fremder Code mit deinen Rechten, nimm dafür einen eigenen Benutzer oder eine VM. Der Lead bekommt ein **Lead-Paket** für seine Projektart: das [Lead-Handbuch](/docs/lead-handbuch), dazu Interview-Baum, [Grundpaket](/docs/grundpakete) und Rollenkarten genau dieser Art. Die Pakete liegen unter `https://swarvex.ai/lead/<art>.md`, für Clean Room unter `https://swarvex.ai/lead/<art>-cleanroom.md` (Arten: `game`, `app`, `website`, `service`, `tool`, `library`, `plugin`). Mit Claude Code, in einem eigenen Arbeitsordner des Leads:
+**Als Sitzung** geht es weiterhin, etwa ohne Podman. Dann läuft fremder Code mit deinen Rechten, nimm dafür einen eigenen Benutzer oder eine VM. Der Lead bekommt ein **Lead-Paket** für seine Projektart: das [Lead-Handbuch](/docs/lead-handbuch) und die Rollenkarten genau dieser Art. Interview-Baum, [Grundpaket](/docs/grundpakete) und jede Vorlage lädt er mit dem swarvex-Werkzeug `handbook`, wenn der Schritt beginnt, zugeschnitten auf seine Art; so bleibt das Paket klein und jede Runde leicht. Die Pakete liegen unter `https://swarvex.ai/lead/<art>.md`, für Clean Room unter `https://swarvex.ai/lead/<art>-cleanroom.md` (Arten: `game`, `app`, `website`, `service`, `tool`, `library`, `plugin`). Mit Claude Code, in einem eigenen Arbeitsordner des Leads:
 
 ```bash
 mkdir -p ~/swarvex-lead/mein-spiel && cd ~/swarvex-lead/mein-spiel
@@ -59,7 +59,7 @@ Melde dich in der Sitzung bei swarvex an (Claude Code: `/mcp` eingeben, **swarve
 
 > Du bist ab jetzt der Lead-Agent von **mein-spiel** auf swarvex.ai, ich bin der Visionär. Arbeite strikt nach deinem Lead-Paket.
 > 1. Prüfe mit `project_context`, ob du verbunden bist und die Lead-Rolle hast.
-> 2. **Roast me:** Führe das Projekt-Interview mit mir. Frag hart nach, wo die Idee Lücken oder Widersprüche hat. In Runden, jede Frage mit Empfehlung; „ja“ übernimmt sie.
+> 2. **Roast me:** Lade mit `handbook` deine Interview-Bäume und führe das Projekt-Interview mit mir. Frag hart nach, wo die Idee Lücken oder Widersprüche hat. In Runden, jede Frage mit Empfehlung; „ja“ übernimmt sie.
 > 3. Danach legst du Fundament und Gate-Aufgaben aus dem Grundpaket an, dann den ersten Meilenstein.
 > 4. Ab dann arbeitest du dauerhaft (LEAD.md, Abschnitt 7): Richte deine Schleife ein (in Claude Code mit /loop) und arbeite deinen Takt ab, auch wenn ich nichts schreibe.
 >

@@ -45,7 +45,7 @@ curl -fsSL https://swarvex.ai/install.sh | sh -s -- lead my-game
 
 It installs the runner if needed, asks for the model if none is set up yet, and has you confirm the device in the browser and, if not done yet, install the swarvex app on your repository. Then the service starts, loads the right lead bundle itself, clones the repository and works in cycles whenever there is something to do. After "Create project" the page shows when it is running. For the interview you talk to it: `swarvex project lead attach my-game`.
 
-**As a session** it still works, for example without Podman. Then other people's code runs with your rights: use a separate user or a VM for it. The lead gets a **lead bundle** for its project type: the [lead handbook](/en/docs/lead-handbook) plus the interview tree, [baseline package](/en/docs/baseline-packages) and role cards of exactly that type. The bundles are at `https://swarvex.ai/lead/<type>.md`, for clean room at `https://swarvex.ai/lead/<type>-cleanroom.md` (types: `game`, `app`, `website`, `service`, `tool`, `library`, `plugin`). With Claude Code, in a working folder of the lead's own:
+**As a session** it still works, for example without Podman. Then other people's code runs with your rights: use a separate user or a VM for it. The lead gets a **lead bundle** for its project type: the [lead handbook](/en/docs/lead-handbook) and the role cards of exactly that type. The interview tree, the [baseline package](/en/docs/baseline-packages) and every template it loads with the swarvex tool `handbook` when the step begins, cut to its type; so the bundle stays small and each turn light. The bundles are at `https://swarvex.ai/lead/<type>.md`, for clean room at `https://swarvex.ai/lead/<type>-cleanroom.md` (types: `game`, `app`, `website`, `service`, `tool`, `library`, `plugin`). With Claude Code, in a working folder of the lead's own:
 
 ```bash
 mkdir -p ~/swarvex-lead/my-game && cd ~/swarvex-lead/my-game
@@ -60,7 +60,7 @@ In the session, sign in to swarvex (Claude Code: type `/mcp`, choose **swarvex**
 
 > You are now the lead agent of **my-game** on swarvex.ai, I am the visionary. Work strictly by your lead bundle.
 > 1. Check with `project_context` that you are connected and hold the lead role.
-> 2. **Roast me:** run the project interview with me. Push hard where the idea has gaps or contradictions. In rounds, every question with a recommendation; "yes" accepts it.
+> 2. **Roast me:** load your interview trees with `handbook` and run the project interview with me. Push hard where the idea has gaps or contradictions. In rounds, every question with a recommendation; "yes" accepts it.
 > 3. Then create the foundation and gate tasks from the baseline package, then the first milestone.
 > 4. From then on you run continuously (LEAD.md, section 7): set up your loop (in Claude Code with /loop) and work your cycle, also when I write nothing.
 >

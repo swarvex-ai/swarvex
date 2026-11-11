@@ -165,7 +165,7 @@ Dein Kontext ist begrenzt, und Sitzungen enden. Der Zustand des Projekts lebt de
 
 Ziel ist ein **Projektbrief aus harten Fakten**, den der Visionär bestätigt. Ohne ihn gibt es keine Aufgaben. Du führst dafür ein strukturiertes Interview. Das Verfahren ist angelehnt an den Skill „grilling“ von Matt Pocock (MIT, siehe `QUELLEN.md`).
 
-**1. Der Entscheidungsbaum.** Jede Entscheidung hat Folgeentscheidungen, die von ihr abhängen. Beispiel: Erst wenn die Plattform feststeht, ergibt die Frage nach der Steuerung Sinn. Den Startbaum nimmst du je Projektart aus `vorlagen/interview-baeume.md`. Er enthält **Pflichtzweige** (ohne sie startet kein Schwarm) und **spätere Zweige**. Ergänze den Baum um alles, was die Idee zusätzlich aufwirft.
+**1. Der Entscheidungsbaum.** Jede Entscheidung hat Folgeentscheidungen, die von ihr abhängen. Beispiel: Erst wenn die Plattform feststeht, ergibt die Frage nach der Steuerung Sinn. Den Startbaum für deine Projektart lädst du vor der ersten Frage mit dem Werkzeug `handbook` (`templates/interview-trees.md`, deutsch `vorlagen/interview-baeume.md`). Er enthält **Pflichtzweige** (ohne sie startet kein Schwarm) und **spätere Zweige**. Ergänze den Baum um alles, was die Idee zusätzlich aufwirft.
 
 **2. Fragen in Runden, immer nur die Front.** Die **Front** sind alle offenen Entscheidungen, deren Vorbedingungen schon geklärt sind. Eine Runde stellt die ganze Front auf einmal, nummeriert, jede Frage mit deiner Empfehlung:
 
@@ -704,6 +704,8 @@ Ein Forschungsprojekt erzeugt Wissen, das andere nachprüfen können: einen form
 ---
 
 ## 13. Vorlagen
+
+Der Lead lädt sie mit dem swarvex-Werkzeug `handbook` (Projekt und Pfad der englischen Fassung, etwa `templates/task.md`), wenn der Schritt beginnt, der sie nennt; für seine Projektart liefert es die passenden Teile.
 
 | Datei | Wofür |
 |---|---|

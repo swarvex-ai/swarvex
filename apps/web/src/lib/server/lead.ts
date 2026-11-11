@@ -5,7 +5,6 @@ import { join, relative, resolve } from "node:path";
 
 const LEAD = join(resolve(process.cwd(), "../.."), "lead");
 const lies = (pfad: string) => readFileSync(join(LEAD, pfad), "utf8");
-const ROH = "https://raw.githubusercontent.com/swarvex-ai/swarvex/main/lead";
 
 /** Prüfer-Handbuch für Fremdbewertungen, auch für den Runner (/lead/reviewer.md). */
 export const prueferHandbuch = () => lies("REVIEWER.md");
@@ -102,7 +101,6 @@ export const KARTEN_ORDNER = [...new Set([...Object.values(ROLLEN), "cleanroom",
 export function paket(name: string): string {
   const { art, verfahren } = zerlegen(name);
   const cleanroom = verfahren === "cleanroom", weiter = verfahren === "continuation";
-  const baeume = lies("templates/interview-trees.md"), grund = lies("templates/baseline-packages.md");
   const ordner = ordnerFuer(art, verfahren);
   let leitfaden = lies("LEAD.md");
   if (!cleanroom) leitfaden = ohne(leitfaden, NUR_FUER.cleanroom);
@@ -113,32 +111,19 @@ export function paket(name: string): string {
     leitfaden,
     "---",
     `# Your project: ${art}${cleanroom ? ", clean-room rebuild" : weiter ? ", continuing abandoned software" : ""}`,
-    `This part of your instructions is specific to your project type. The handbook above refers to templates; they are in this bundle where you need them first, and all of them are at ${ROH}/templates/ (task.md, project-brief.md, asset-brief.md, review-report.md, decision.md, status-report.md, AGENTS.md, swarvex.yaml, skills/).`,
-    "## Project interview (phase 0): your starting trees",
-    abschnitt(baeume, "## Common trunk (all project types)").replace(/^## /, "### "),
-    abschnitt(baeume, BAUM[art]).replace(/^## /, "### "),
-    ...(cleanroom ? [abschnitt(baeume, "## Additional tree: clean-room rebuild").replace(/^## /, "### ")] : []),
-    ...(weiter ? [abschnitt(baeume, "## Additional tree: continuing abandoned software").replace(/^## /, "### ")] : []),
-    abschnitt(baeume, "## Closing").replace(/^## /, "### "),
-    "## Baseline package (phase 2, step 0)",
-    abschnitt(grund, "## How to use them").replace(/^## /, "### "),
-    abschnitt(grund, "## All projects").replace(/^## /, "### "),
-    abschnitt(grund, GRUNDPAKET[art]).replace(/^## /, "### "),
+    "This part of your instructions is specific to your project type.",
+    "## Reference on demand",
+    "Your bundle holds the handbook and the role overview. Every file the handbook names (`templates/…`, `roles/…`, `engine-reference/…`) you load with the swarvex tool `handbook` (your project and the path) when the step that names it begins; for your project type it returns the parts that apply. Work from the loaded text, not from memory, and load it again when it is no longer in your context. Without a path, `handbook` lists every file.",
+    `| Load | When |\n|---|---|\n${nachschlagen(name).map((n) => `| \`${n.pfad}\` | ${n.wann} |`).join("\n")}`,
     "## Roles, gates and area leads (section 9a)",
     tiefer(lies("roles/README.md").replace(/^# .*\n/, "")),
-    `### Your role cards\n\n${ordner.map((o) => karten(o).map((k) => `- \`${k}\` (${o}): ${ROH}/roles/${o}/${k}.md`).join("\n")).join("\n")}\n\nIn Claude Code they are installed as subagents with the setup script from the project wizard (\`.claude/agents/\`). Other agents read a card when they work on that role.`,
-    ...(cleanroom ? ["## Clean-room specification format", tiefer(lies("templates/clean-room-specification.md").replace(/^# .*\n/, "")),
-      // Werkzeuge je Art des Originals und Tiefe: der Lead braucht sie schon beim Schneiden der ersten Analyse-Aufgaben
-      "## Analysis toolkit", tiefer(karte("cleanroom", "toolkit").replace(/^---\n[\s\S]*?\n---\n/, "").replace(/^\s*# .*\n/, ""))] : []),
-    ...(weiter ? ["## First milestone of a continuation", tiefer(lies("templates/continuation.md").replace(/^# .*\n/, ""))] : []),
-    ...(art === "research" ? ["## Claims register format", tiefer(lies("templates/research-claims.md").replace(/^# .*\n/, ""))] : []),
+    `### Your role cards\n\n${ordner.map((o) => karten(o).map((k) => `- \`${k}\` (${o}): \`roles/${o}/${k}.md\``).join("\n")).join("\n")}\n\nIn Claude Code they are installed as subagents with the setup script from the project wizard (\`.claude/agents/\`). Otherwise load a card with \`handbook\` when you work on that role.`,
     ...(art === "other" ? ["## Choosing role cards for an unusual project", "Your project fits none of the usual types. The cards listed below are the software set (interface, core, platform, docs, quality, security, operations); take the ones that fit and borrow from the other sets in the overview above where your work resembles them: `website/content` for texts and documentation, `research/data` for datasets, `game/art` or `website/design` for visual work, `app/user-research` for work with people. Name each role you use in `docs/plan.md`, so contributors know which card a task follows."] : []),
-    // Websites und Apps: der Design- und Usability-Standard, bevor die ersten Design- und Seitenaufgaben geschnitten werden
-    ...(art === "website" || art === "app" ? ["## Design and usability standard", tiefer(lies("templates/design-quality.md").replace(/^# .*\n/, ""))] : []),
   ];
   const text = teile.join("\n\n") + "\n";
   // Der Assistent startet den Lead mit claude --append-system-prompt "$(curl …)": ein einzelnes Argument darf unter
   // Linux höchstens 128 KiB lang sein (MAX_ARG_STRLEN). Lieber hier beim Bauen scheitern als beim Start beim Visionär.
+  // Die Grenze ist zugleich das Budget: Was nur eine Phase braucht, gehört in nachschlagen(), nicht ins Paket (E-48).
   const bytes = Buffer.byteLength(text);
   if (bytes > PAKET_GRENZE) throw new Error(`lead bundle ${name} has ${bytes} bytes, more than ${PAKET_GRENZE}: shorten a section or move it out of the bundle`);
   return text;
@@ -146,6 +131,62 @@ export function paket(name: string): string {
 
 /** Obergrenze je Lead-Paket (Linux MAX_ARG_STRLEN 131072 Byte, mit Rand). */
 export const PAKET_GRENZE = 126_000;
+
+/**
+ * Nachschlagen statt mitschicken (E-48): Was der Lead nur in einer Phase braucht, steht nicht im Paket. Er lädt es mit
+ * dem swarvex-Werkzeug handbook (API), wenn der Schritt beginnt; das Paket nennt Datei und Zeitpunkt. So bleibt jede
+ * Runde schlank, und der Weg geht überall: im Assistenten, in der Sandbox des Lead-Dienstes, mit jedem Agenten.
+ */
+export function nachschlagen(name: string): { pfad: string; wann: string }[] {
+  const { art, verfahren } = zerlegen(name);
+  return [
+    { pfad: "templates/interview-trees.md", wann: "phase 0, before your first interview question: your starting trees" },
+    { pfad: "templates/baseline-packages.md", wann: "phase 2, step 0: the building blocks of your project type" },
+    { pfad: "templates/task.md", wann: "before you write your first tasks: the format, with complete examples" },
+    ...(verfahren === "cleanroom" ? [
+      { pfad: "templates/clean-room-specification.md", wann: "before the first analysis or specification task: layout and formats of the specification" },
+      { pfad: "roles/cleanroom/toolkit.md", wann: "before you cut analysis tasks: the tools per kind of original and depth" }] : []),
+    ...(verfahren === "continuation" ? [{ pfad: "templates/continuation.md", wann: "before you plan the first milestone" }] : []),
+    ...(art === "research" ? [{ pfad: "templates/research-claims.md", wann: "before the first task: the claims register comes first" }] : []),
+    ...(art === "website" || art === "app" ? [{ pfad: "templates/design-quality.md", wann: "before the first design or page task: the design and usability standard" }] : []),
+  ];
+}
+
+/** Dateien, die handbook für ein Paket zugeschnitten liefert: nur die Teile seiner Projektart und seines Verfahrens. */
+function zugeschnitten(name: string): Record<string, string> {
+  const { art, verfahren } = zerlegen(name);
+  const baeume = lies("templates/interview-trees.md"), grund = lies("templates/baseline-packages.md");
+  const zusatz = verfahren === "cleanroom" ? ["## Additional tree: clean-room rebuild"] : verfahren === "continuation" ? ["## Additional tree: continuing abandoned software"] : [];
+  return {
+    "templates/interview-trees.md": [
+      `# Project interview: your starting trees (bundle ${name})`,
+      `The parts of \`templates/interview-trees.md\` that apply to your project: the common trunk, the tree for your project type${zusatz.length ? ", the additional tree for your process" : ""} and the closing.`,
+      ...["## Common trunk (all project types)", BAUM[art], ...zusatz, "## Closing"].map((u) => abschnitt(baeume, u).trimEnd()),
+    ].join("\n\n") + "\n",
+    "templates/baseline-packages.md": [
+      `# Baseline package (bundle ${name})`,
+      "The parts of `templates/baseline-packages.md` that apply to your project: how to use them, the blocks for all projects and those of your project type.",
+      ...["## How to use them", "## All projects", GRUNDPAKET[art]].map((u) => abschnitt(grund, u).trimEnd()),
+    ].join("\n\n") + "\n",
+  };
+}
+
+/**
+ * Alles, was handbook ausliefert (/lead/handbook.json, beim Bauen erzeugt): jede Datei unter templates/ (ohne die
+ * Startvorlagen), roles/ und engine-reference/ sowie die Handbücher, Schlüssel ist der Pfad relativ zu lead/; je Paket
+ * die zugeschnittenen Dateien und die Liste, was wann zu laden ist.
+ */
+export function handbuch() {
+  const files: Record<string, string> = {};
+  for (const wurzel of ["templates", "roles", "engine-reference"])
+    for (const datei of dateienIn(join(LEAD, wurzel))) {
+      const pfad = relative(LEAD, datei);
+      if (!STARTER.some((s) => pfad.startsWith(`templates/${s}/`))) files[pfad] = readFileSync(datei, "utf8");
+    }
+  for (const d of ["LEAD.md", "AREA_LEAD.md", "REVIEWER.md"]) files[d] = lies(d);
+  const bundles = Object.fromEntries(PAKETE.map((p) => [p, { files: zugeschnitten(p), load: nachschlagen(p).map((n) => ({ path: n.pfad, when: n.wann })) }]));
+  return { files, bundles };
+}
 
 /** Shell-Skript: richtet die Rollenkarten des Pakets als Claude-Code-Unteragenten im aktuellen Ordner ein. */
 export function agentenSkript(name: string): string {
@@ -171,7 +212,10 @@ export function paketStatistik(name: string) {
   const grund = lies("templates/baseline-packages.md");
   const bausteine = [abschnitt(grund, "## All projects"), abschnitt(grund, GRUNDPAKET[art])].join("\n").split("\n").filter((z) => /^\| [A-Z]+-\d+ \|/.test(z)).length;
   const ordner = ordnerFuer(art, verfahren);
-  return { kb: Math.round(Buffer.byteLength(paket(name)) / 1024), rollenkarten: ordner.reduce((n, o) => n + karten(o).length, 0), bausteine, werkzeugkasten: cleanroom };
+  // Fachwissen, mit dem der Lead startet: das Paket und was er daraus nachschlägt (E-48)
+  const eigen = zugeschnitten(name);
+  const nach = nachschlagen(name).reduce((n, { pfad }) => n + Buffer.byteLength(eigen[pfad] ?? lies(pfad)), 0);
+  return { kb: Math.round((Buffer.byteLength(paket(name)) + nach) / 1024), rollenkarten: ordner.reduce((n, o) => n + karten(o).length, 0), bausteine, werkzeugkasten: cleanroom };
 }
 
 /** Startvorlagen je Stack (lead/templates/<name>/), etwa three.js. */

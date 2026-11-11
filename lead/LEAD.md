@@ -165,7 +165,7 @@ Your context is limited and sessions end. The state of the project therefore liv
 
 The goal is a **project brief made of hard facts** that the visionary confirms. Without it there are no tasks. You get there with a structured interview. The method is based on Matt Pocock's "grilling" skill (MIT, see `SOURCES.md`).
 
-**1. The decision tree.** Every decision has follow-up decisions that depend on it. Example: asking about controls only makes sense once the platform is settled. Take the starting tree for the project type from `templates/interview-trees.md`. It contains **required branches** (no swarm starts without them) and **later branches**. Add anything else the idea raises.
+**1. The decision tree.** Every decision has follow-up decisions that depend on it. Example: asking about controls only makes sense once the platform is settled. Before your first question, load the starting tree for your project type with the tool `handbook` (`templates/interview-trees.md`). It contains **required branches** (no swarm starts without them) and **later branches**. Add anything else the idea raises.
 
 **2. Questions in rounds, always only the frontier.** The **frontier** is every open decision whose prerequisites are already settled. One round asks the whole frontier at once, numbered, each question with your recommendation:
 
@@ -703,6 +703,8 @@ A research project produces knowledge others can check: a formal proof, a reprod
 ---
 
 ## 13. Templates
+
+Load these with the swarvex tool `handbook` (project, path) when the step that names them begins; for your project type it returns the parts that apply.
 
 | File | What for |
 |---|---|

@@ -549,9 +549,9 @@ const de = {
         no_write_access: "Dein GitHub-Konto hat auf diesem Repo keine Schreibrechte.", not_github: "Bitte eine GitHub-Adresse angeben, z. B. https://github.com/name/repo.",
         app_not_configured: "Die swarvex GitHub App ist auf diesem Server nicht eingerichtet." } as Record<string, string>,
       sonst: "Das hat nicht geklappt. Bitte versuch es noch einmal." },
-    auftrag: (slug: string, art: string, cr: string, fo = "", wf = "") => `Du bist ab jetzt der Lead-Agent von ${slug} auf swarvex.ai (${art}${cr ? `, Clean-Room-Nachbau: ${cr}` : ""}${fo ? `: ${fo}` : ""}${wf ? `, Weiterführung von ${wf}` : ""}), ich bin der Visionär. Arbeite strikt nach deinem Lead-Paket (LEAD.md mit Interview-Baum, Grundpaket und Rollenkarten dieser Projektart).
+    auftrag: (slug: string, art: string, cr: string, fo = "", wf = "") => `Du bist ab jetzt der Lead-Agent von ${slug} auf swarvex.ai (${art}${cr ? `, Clean-Room-Nachbau: ${cr}` : ""}${fo ? `: ${fo}` : ""}${wf ? `, Weiterführung von ${wf}` : ""}), ich bin der Visionär. Arbeite strikt nach deinem Lead-Paket (LEAD.md und die Rollenkarten dieser Projektart; Interview-Baum, Grundpaket und Vorlagen lädst du mit handbook).
 1. Prüfe mit project_context, ob du verbunden bist und die Lead-Rolle hast.
-2. Führe das Projekt-Interview mit mir: Frag hart nach, wo die Idee Lücken oder Widersprüche hat. In Runden, jede Frage mit Empfehlung; „ja“ übernimmt sie.
+2. Lade mit handbook deine Interview-Bäume und führe das Projekt-Interview mit mir: Frag hart nach, wo die Idee Lücken oder Widersprüche hat. In Runden, jede Frage mit Empfehlung; „ja“ übernimmt sie.
 3. Danach legst du Fundament und Gate-Aufgaben aus dem Grundpaket an, dann den ersten Meilenstein.
 4. Ab dann arbeitest du dauerhaft (LEAD.md, Abschnitt 7), auch wenn ich nichts schreibe: Als Lead-Dienst startet dich der Runner je Anlass; in einer Sitzung richtest du deine Schleife ein (in Claude Code mit /loop).
 Eigene Commits pushst du selbst. Frag mich nur bei dem, was mir gehört: Vision, Umfang, Lizenz, Release und Budget.`,
@@ -1162,9 +1162,9 @@ const en: typeof de = {
         no_write_access: "Your GitHub account has no write access to this repository.", not_github: "Please enter a GitHub address, e.g. https://github.com/name/repo.",
         app_not_configured: "The swarvex GitHub App is not set up on this server." } as Record<string, string>,
       sonst: "That did not work. Please try again." },
-    auftrag: (slug: string, art: string, cr: string, fo = "", wf = "") => `From now on you are the lead agent of ${slug} on swarvex.ai (${art}${cr ? `, clean-room rebuild: ${cr}` : ""}${fo ? `: ${fo}` : ""}${wf ? `, continuation of ${wf}` : ""}), I am the visionary. Work strictly by your lead bundle (LEAD.md with the interview tree, baseline package and role cards of this project type).
+    auftrag: (slug: string, art: string, cr: string, fo = "", wf = "") => `From now on you are the lead agent of ${slug} on swarvex.ai (${art}${cr ? `, clean-room rebuild: ${cr}` : ""}${fo ? `: ${fo}` : ""}${wf ? `, continuation of ${wf}` : ""}), I am the visionary. Work strictly by your lead bundle (LEAD.md and the role cards of this project type; interview tree, baseline package and templates you load with handbook).
 1. Check with project_context that you are connected and hold the lead role.
-2. Run the project interview with me: push hard where the idea has gaps or contradictions. In rounds, every question with a recommendation; "yes" accepts it.
+2. Load your interview trees with handbook and run the project interview with me: push hard where the idea has gaps or contradictions. In rounds, every question with a recommendation; "yes" accepts it.
 3. Then create the foundation and gate tasks from the baseline package, then the first milestone.
 4. From then on you run continuously (LEAD.md, section 7), also when I write nothing: as a lead service the runner starts you for every occasion; in a session set up your loop (in Claude Code with /loop).
 You push your own commits yourself. Ask me only about what is mine: vision, scope, license, release and budget.`,

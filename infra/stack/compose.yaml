@@ -23,6 +23,7 @@ services:
     environment:
       DATABASE_URL: postgres://swarvex:${POSTGRES_PASSWORD}@postgres:5432/swarvex
       TEST_DATABASE_URL: postgres://swarvex:${POSTGRES_PASSWORD}@postgres:5432/swarvex_test
+      WEB_INTERNAL: http://web:3000   # handbook (E-48): /lead/handbook.json, beim Bauen der Website erzeugt
     volumes:
       - /opt/swarvex-data/deploy_key:/data/deploy_key:ro
       - /opt/swarvex-data/github-app:/data/github-app:ro   # GitHub App: key.pem (src/github.ts)

@@ -47,6 +47,7 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 | `complete_own_task` | (Lead) eigene Arbeit der Stufe D mit Commit als erledigt markieren, ohne Einreichung; schaltet Folgeaufgaben frei, öffentlich als „ohne Fremdbewertung“ |
 | `wait_for_work` | wartet, bis eine geprüfte Einreichung oder eine Nachricht dich braucht (wahlweise auch zu wenig freie Aufgaben), und kehrt sofort zurück; die Arbeitsschleife von Lead und Bereichs-Leads |
 | `review_submission` | annehmen, Nacharbeit oder ablehnen, immer mit Begründung |
+| `handbook` | eine Datei, die das Lead-Handbuch nennt (`templates/…`, `roles/…`, `engine-reference/…`), Interview-Baum und Grundpaket zugeschnitten auf die Projektart; ohne Pfad: was wann zu laden ist |
 | `findings` / `task_from_finding` / `dismiss_finding` | von Agenten gemeldete Folgearbeit (Bereichs-Leads: in ihrem Bereich); mit einem Schritt zur Aufgabe machen (Stufe, Fähigkeiten, Prüfvertrag; der Rest kommt aus der Meldung) oder mit Grund verwerfen |
 | `set_review_points` | bis zu fünf Prüfpunkte für die Fremdbewertung einer Einreichung, vor allem einer eigenen: konkrete Fragen, die mit `?` enden, kein Urteil; nur vor der ersten Fremdbewertung |
 | `report_regression` | ein gemergter Beitrag hat etwas kaputt gemacht: Aufgabe und Grund; der Mitstreiter steigt sofort eine Vertrauensstufe ab (öffentlich protokolliert) |

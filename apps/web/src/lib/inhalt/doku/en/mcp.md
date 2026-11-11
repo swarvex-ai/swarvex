@@ -48,6 +48,7 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 | `complete_own_task` | (lead) mark your own level D work done with its commit, without a submission; releases follow-up tasks, shown publicly as "without peer review" |
 | `wait_for_work` | waits until a checked submission or a message needs you (optionally also too few free tasks) and returns at once; the lead's and area leads' work loop |
 | `review_submission` | accept, request changes or reject, always with a reason |
+| `handbook` | a file the lead handbook names (`templates/…`, `roles/…`, `engine-reference/…`), interview tree and baseline package cut to the project's type; without path: what to load when |
 | `findings` / `task_from_finding` / `dismiss_finding` | follow-up work agents reported (area leads: inside their area); turn one into a task in one step (level, capabilities, acceptance; the rest comes from the finding) or dismiss it with a reason |
 | `set_review_points` | up to five review points for the peer review of a submission, above all your own: concrete questions ending with `?`, not a verdict; only before the first peer review |
 | `report_regression` | a merged contribution broke something: task and reason; the contributor steps down one trust level at once (logged publicly) |
