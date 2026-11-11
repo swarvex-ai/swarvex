@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -283,8 +284,11 @@ func oeffentlicheZeile(zeile string, n int) string {
 
 // rueckgabeNachSandbox: Ursache und Rückgabegrund, wenn die Sandbox mit einem Fehler endete, aus proxy.log und
 // agent.log im Ordner der Runde. Dem Betreiber schreibt sie die Ursache und das Ende der Agenten-Ausgabe ins Journal
-// (unmaskiert, das bleibt auf seinem Rechner). In die Rückgabe kommt die letzte Zeile des Agenten nur maskiert, und gar
-// nicht, wenn der Anbieter oder das Abo die Ursache ist: Deren Fehlermeldungen nennen Konto, Organisation oder Tarif.
+// (unmaskiert, das bleibt auf seinem Rechner). In die Rückgabe, die unveränderlich im öffentlichen Projektprotokoll
+// steht, kommt die letzte Zeile des Agenten nur, wenn das Modell lief und der Agent trotzdem abstürzte (agent:…): Dann
+// kann sie dem Lead etwas über die Aufgabe sagen (etwa „prompt is too long“). Lag es am Anbieter, am Abo oder an der
+// Einrichtung des Runners, sagt die Zeile nur etwas über den Rechner des Betreibers (Konto, Tarif, Adressen im eigenen
+// Netz, Pfade), und die Masken sind Faustregeln: Dann steht dort nur die Ursache.
 func rueckgabeNachSandbox(err error, ordner string) (ursache, string) {
 	var ende agentEnde
 	if !errors.As(err, &ende) {
@@ -305,7 +309,7 @@ func rueckgabeNachSandbox(err error, ordner string) (ursache, string) {
 			fmt.Println("    | " + string([]rune(z)[:min(len([]rune(z)), 300)]))
 		}
 	}
-	if u.Schluessel != "" && u.Art != ursacheAnbieter {
+	if strings.HasPrefix(u.Schluessel, "agent:") {
 		if z := oeffentlicheZeile(letzteAusgabe(string(agentLog)), 160); z != "" {
 			grund += `; last output: "` + z + `"`
 		}
@@ -373,6 +377,48 @@ func (s serie) pause() time.Duration {
 		return 0
 	}
 	return min(time.Hour<<min(s.Anzahl-serieGrenze, 4), 12*time.Hour)
+}
+
+// projektPause: ein Projekt, das der Dauerbetrieb mit --project auto ausgesetzt hat. Der Dienst arbeitet dann mit den
+// anderen Projekten weiter; damit `swarvex status` die Pause trotzdem zeigt (nicht nur das Journal), schreibt er sie nach
+// paused-projects.json. Die Pausen selbst stehen nur in seinem Speicher: Beim Start löscht er die Datei.
+type projektPause struct {
+	Projekt string    `json:"project"`
+	Bis     time.Time `json:"until"`
+	Grund   string    `json:"reason"`
+}
+
+func projektPausenDatei() string { return filepath.Join(datenOrdner(), "paused-projects.json") }
+
+// projektPausenMerken schreibt die laufenden Pausen (ohne: löscht die Datei).
+func projektPausenMerken(pausen map[string]time.Time, gruende map[string]string) {
+	if len(pausen) == 0 {
+		os.Remove(projektPausenDatei())
+		return
+	}
+	l := []projektPause{}
+	for p, bis := range pausen {
+		l = append(l, projektPause{Projekt: p, Bis: bis, Grund: gruende[p]})
+	}
+	sort.Slice(l, func(i, j int) bool { return l[i].Projekt < l[j].Projekt })
+	roh, _ := json.Marshal(l)
+	os.MkdirAll(datenOrdner(), 0o755)
+	os.WriteFile(projektPausenDatei(), roh, 0o644)
+}
+
+// projektPausenLesen: die Pausen, die zu diesem Zeitpunkt noch laufen.
+func projektPausenLesen(jetzt time.Time) []projektPause {
+	roh, err := os.ReadFile(projektPausenDatei())
+	var l, r []projektPause
+	if err != nil || json.Unmarshal(roh, &l) != nil {
+		return nil
+	}
+	for _, p := range l {
+		if p.Bis.After(jetzt) {
+			r = append(r, p)
+		}
+	}
+	return r
 }
 
 // text: die Serie in einem Satz für Journal und `swarvex status`.

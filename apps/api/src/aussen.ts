@@ -92,7 +92,7 @@ export const FELDER: Record<string, string> = {
   projektart: "project_type", deine_nachrichten: "your_messages",
   zusage_id: "pledge_id", zusagen: "pledges", dienst: "service", verfaellt: "expires", notiz: "note", spender: "donor", verplant: "planned", frei: "available",
   auftrag_id: "brief_id", auftraege: "briefs", weg: "channel", tageslimit: "daily_limit", heute_frei: "left_today", alle_projekte: "all_projects", heute: "today", dienste: "services", anleitung: "instructions", zielpfad: "target_path", dateitypen: "file_types", max_mb: "max_mb",
-  dateiname: "file_name", sha256: "sha256", bytes: "bytes", hochgeladen: "uploaded", datei_url: "file_url", abgebrochen: "handed_back", abbruchgrund: "handed_back_reason", gestoppt: "stopped", ursache: "cause", umgebung: "environment",
+  dateiname: "file_name", sha256: "sha256", bytes: "bytes", hochgeladen: "uploaded", datei_url: "file_url", abgebrochen: "handed_back", abbruchgrund: "handed_back_reason", gestoppt: "stopped", ursache: "cause", umgebung: "environment", runner_stoerungen: "runner_problems", deine_runner_stoerungen: "your_runner_problems",
   credit_spenden: "credit_donations", zugesagt: "pledged", credits_angenommen: "credits_accepted", credits: "credits",
   schwarm: "swarm", agenten_stunden: "agent_hours", einzel_agent_stunden: "single_agent_hours", kalender_stunden: "calendar_hours",
   schwarm_faktor: "swarm_factor", max_parallel: "max_parallel", token_effizienz_prozent: "token_efficiency_percent", aelteste_h: "oldest_hours", freigaben: "approvals",

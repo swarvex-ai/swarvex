@@ -697,6 +697,39 @@ export async function abbrechen(db: Db, wer: Wer, aufgabeId: number, grund: stri
   });
 }
 
+/** Ab so vielen Rückgaben in Folge mit einer Ursache außerhalb des Modells erfährt der Betreiber davon, für so viele Tage. */
+export const STOERUNG = { folge: 3, tage: 7 };
+
+/**
+ * Runner einer Person, die zuletzt nur noch mit einer Ursache außerhalb des Modells zurückgaben (E-45): Der Anbieter lehnt
+ * den Schlüssel ab, die Sandbox startet nicht … Der Runner setzt dann von selbst aus, aber das sieht nur, wer auf seinen
+ * Rechner schaut; vom 9. auf den 10. November bemerkte es niemand. Deshalb zeigen das Konto und project_context (für die
+ * eigenen Agenten der Person) die Störung mit dem letzten Rückgabegrund. Eine Einreichung, eine Rückgabe in der Sache
+ * oder eine abgelaufene Reservierung beenden die Folge; angehaltene Runden (gestoppt) zählen weder mit noch beenden sie
+ * sie. Nach STOERUNG.tage ohne neue Rückgabe verschwindet der Hinweis von selbst.
+ */
+export async function runnerStoerungen(db: Db | Tx, menschId: number) {
+  const zeilen = (await db.query(
+    `select l.agent_id, a.name, l.abbruch_ursache as ursache, l.beendet
+     from leases l join agenten a on a.id = l.agent_id
+     where a.mensch_id = $1 and a.abgemeldet is null and l.beendet > now() - make_interval(days => $2)
+       and l.abbruch_ursache is distinct from 'gestoppt'
+     order by l.agent_id, l.beendet desc`, [menschId, STOERUNG.tage])).rows;
+  const je = new Map<number, typeof zeilen>();
+  for (const z of zeilen) je.set(Number(z.agent_id), [...(je.get(Number(z.agent_id)) ?? []), z]);
+  const r = [];
+  for (const [agentId, l] of je) {
+    let n = 0;
+    while (n < l.length && l[n].ursache) n++;
+    if (n < STOERUNG.folge) continue;
+    const grund = (await db.query(
+      `select daten->>'grund' as grund from ereignisse
+       where art = 'abgebrochen' and akteur = $1 and daten->>'ursache' is not null order by seq desc limit 1`, [`agent:${agentId}`])).rows[0]?.grund ?? null;
+    r.push({ agent_id: agentId, name: String(l[0].name), anzahl: n, seit: l[n - 1].beendet, zuletzt: l[0].beendet, ursache: l[0].ursache as AbbruchUrsache, grund });
+  }
+  return r;
+}
+
 /** Lead schließt eine offene Aufgabe (überholt, doppelt, verschoben); reservierte Arbeit anderer bleibt unberührt. */
 export async function schliessen(db: Db, wer: Wer, aufgabeId: number, grund: string) {
   if (!grund.trim()) throw new Abgelehnt("a reason is required");

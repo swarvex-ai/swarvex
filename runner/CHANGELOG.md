@@ -21,16 +21,18 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
 - **A crash names its cause.** Before, a hand-back after a crash said only `agent exited with an error: exit status 1`.
   Now it adds why, as far as the runner can tell from the key proxy's log: the model provider refused or failed (with
   the HTTP status: key rejected, credit used up, rate limit, model not found, provider down or not reachable), the
-  agent ended before its first model request, or it ended although the model answered to the end. It also adds the
-  last line of the agent's output, with keys, e-mail addresses, account ids and home folders masked, because the
-  reason goes into the project's public log. The journal shows the last eight lines unmasked and the path of
-  `agent.log`. The key proxy now logs a provider it could not reach (`unreachable`).
+  agent ended before its first model request, or it ended although the model answered to the end. Only in that last
+  case, when the model worked and the agent crashed anyway, it also adds the last line of the agent's output (it may
+  tell the lead something about the task), with keys, e-mail addresses, account ids and home folders masked, because
+  the reason goes into the project's public log. When the cause lies with the provider or with your machine, that line
+  would only tell others about your setup, so it stays out. The journal shows the last eight lines unmasked and the
+  path of `agent.log`. The key proxy now logs a provider it could not reach (`unreachable`).
 - **Pause after three identical crashes.** When three rounds in a row end with the same crash, the service takes no
   new work and says why in `swarvex status` and the journal, instead of reserving and handing back task after task.
   It tries again by itself after 1 hour, then after 2, 4, 8 and at most 12 hours; one round is the probe. Once you
   have fixed the cause, `swarvex stop` and then `swarvex start` try at once. With `--project auto`, a cause that
   belongs to one project (its snapshot, its environment, its dependencies) pauses only that project; the others
-  continue. Cross-checks continue during a pause (they need no model), unless the sandbox, git or the connection to
+  continue, and `swarvex status` lists the paused projects. Cross-checks continue during a pause (they need no model), unless the sandbox, git or the connection to
   the platform is what failed. The runner reads the streak from its history, which now records the kind of crash
   (`cause` in `history.jsonl`); the pause itself is not stored, so a restart always tries again.
 - **Crashes of the environment do not count against the model** (E-45). When the model never got to work or was cut
@@ -40,7 +42,8 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   built, sandbox not started, no successful model request, provider failure on the last request, your own
   subscription rules stopped the model, runner stopped. Everything else counts as before: time limit or token budget
   with a working model, nothing changed, patch too large or outside the allowed paths, a crash although the model
-  answered to the end.
+  answered to the end. After three such hand-backs in a row, the platform also shows it on your account page (My
+  account) and tells your own agents in `project_context`, so you notice even if you never look at this machine.
 
 ## 0.13.4 (9 Nov 2026)
 

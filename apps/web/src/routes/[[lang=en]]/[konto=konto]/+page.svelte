@@ -10,6 +10,7 @@
 
   type Agent = { id: number; name: string; client_id: string; created: string; signed_out: string | null; signed_in: boolean;
                  last: string | null; reservations: number; submissions: number; lead_project?: string | null };
+  type Stoerung = { agent_id: number; name: string; count: number; since: string; last: string; cause: string; reason: string | null };
   type LeadDienst = { project: string; name: string; active: boolean; seen: string | null; last_cycle: string | null };
   type Datei = { path: string; added: number; removed: number; kind: string; lfs: boolean; binary: boolean; preview: boolean };
   type Beitrag = { submission: number; task: number; title: string; project: string; project_name: string; agent: string;
@@ -20,7 +21,7 @@
                  images: number; audio: number; models_3d: number; videos: number; texts: number; reviews: number };
   type Modell = { agent_program: string; model: string; submissions: number; accepted: number; acceptance_percent: number; tokens_per_accepted: number | null };
   type Konto = { person: { login: string; provider: string; created: string; trust_level: number; public_profile?: boolean };
-                 roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean; ongoing?: boolean }[]; agents: Agent[]; contributions: Beitrag[];
+                 roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean; ongoing?: boolean }[]; agents: Agent[]; runner_problems?: Stoerung[]; contributions: Beitrag[];
                  total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[]; weekly_reports?: Woche[]; lead_services?: LeadDienst[];
                  lead_power?: { project: string; name: string; share_link: string; lead_positions: Gesuch[]; signals: string[] }[];
                  my_applications?: { id: number; project: string; project_name: string; area: string; created: string; status: string }[];
@@ -312,6 +313,22 @@
     </div>
   {:else if konto}
     {@const u = t.ueberblick}
+    {#if konto.runner_problems?.length}
+      <section class="stoerungen" aria-labelledby="t-stoerung">
+        <h2 id="t-stoerung">{t.stoerung.h2}</h2>
+        {#each konto.runner_problems as p (p.agent_id)}
+          <div class="stoerung">
+            <p><strong>{p.name}</strong> {t.stoerung.text(p.count, zeit(p.since), t.stoerung.ursachen[p.cause] ?? p.cause)}</p>
+            {#if p.reason}<p class="klein grund"><span class="leise">{t.stoerung.letzter} ({zeit(p.last)}):</span> {p.reason}</p>{/if}
+            <p class="klein">{t.stoerung.tun}</p>
+            <Einzeiler befehl="swarvex status" />
+            <p class="klein">{t.stoerung.danach}</p>
+            <Einzeiler befehl="swarvex stop; swarvex start" />
+            <p class="klein leise">{t.stoerung.weg}</p>
+          </div>
+        {/each}
+      </section>
+    {/if}
     {#if karten.length}
       <section aria-labelledby="t-projekte">
         <h2 id="t-projekte">{u.projekteH2}</h2>
@@ -767,6 +784,10 @@
   .schalter input { margin-top: 3px; }
   .kurzliste { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; }
   .alt { color: var(--bernstein); }
+  .stoerungen { display: grid; gap: 14px; }
+  .stoerung { border: 1px solid var(--bernstein); border-left-width: 4px; border-radius: var(--radius); background: var(--metall); padding: 16px 18px; display: grid; gap: 8px; }
+  .stoerung p { margin: 0; }
+  .stoerung .grund { font-family: var(--mono); overflow-wrap: anywhere; }
   p.alt { margin: 0; }
   .kurzliste li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--linie); border-radius: var(--radius-klein); }
   .marke { font: 500 .78rem var(--mono); border: 1px solid var(--linie-hell); border-radius: 5px; padding: 2px 6px; margin-left: 6px; color: var(--stahl); }

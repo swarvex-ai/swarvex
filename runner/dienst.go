@@ -271,6 +271,12 @@ func statusBefehl() {
 			fmt.Printf("Waiting: %s, until %s\n", w.Grund, zeitpunkt(w.Bis))
 		}
 	}
+	if zustand == "active" {
+		for _, p := range projektPausenLesen(time.Now()) {
+			fmt.Printf("Project %s paused on this runner until %s: %s (other projects continue; to try again at once: swarvex stop, then swarvex start)\n",
+				p.Projekt, zeitpunkt(p.Bis), p.Grund)
+		}
+	}
 	if aus, err := exec.Command("journalctl", "--user", "-u", "swarvex", "-n", "80", "--no-pager", "-o", "cat").Output(); err == nil {
 		if z := letzteMeldungen(string(aus), 5); len(z) > 0 {
 			fmt.Println("Latest messages:")

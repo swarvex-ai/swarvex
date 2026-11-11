@@ -121,7 +121,13 @@ func TestRueckgabeNachSandbox(t *testing.T) {
 	if u.Art != ursacheAnbieter || grund != "sandbox: agent exited with an error: exit status 1; the model never answered: the model provider refused the key or sign-in (HTTP 401)" {
 		t.Errorf("Anbieter: %q %q", u.Art, grund)
 	}
-	// Absturz des Agenten: mit der letzten Zeile, maskiert.
+	// Der Agent fragte das Modell nie: Die Zeile sagt nur etwas über den Rechner des Betreibers und bleibt draußen.
+	schreiben("", "Error: connect ECONNREFUSED 192.168.1.50:11434\n")
+	u, grund = rueckgabeNachSandbox(ende, ordner)
+	if u.Art != ursacheRunner || grund != "sandbox: agent exited with an error: exit status 1; the agent ended before its first model request" {
+		t.Errorf("ohne Anfrage: %q %q", u.Art, grund)
+	}
+	// Absturz des Agenten, obwohl das Modell antwortete: mit der letzten Zeile, maskiert.
 	schreiben(proxyZeilen(anfrage(200)), "working\nfatal: cannot write /home/anna/x for anna@example.org\n")
 	u, grund = rueckgabeNachSandbox(ende, ordner)
 	if u.Art != "" || u.Schluessel != "agent:exit" || !strings.HasSuffix(grund, `; the model answered until the end (the cause lies in the agent or the task); last output: "fatal: cannot write ~/x for [address]"`) {
@@ -220,5 +226,27 @@ func TestProjektPausen(t *testing.T) {
 	}
 	if bleiben, aus := ohneAusgesetzte([]string{"a"}, ""); len(bleiben) != 1 || aus != nil {
 		t.Errorf("ohne Liste: %q, %q", bleiben, aus)
+	}
+}
+
+// Ausgesetzte Projekte stehen für `swarvex status` in einer Datei; abgelaufene zeigt status nicht mehr.
+func TestProjektPausenDatei(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	jetzt := time.Now()
+	if l := projektPausenLesen(jetzt); l != nil {
+		t.Fatalf("ohne Datei: %+v", l)
+	}
+	projektPausenMerken(map[string]time.Time{"rend-and-run": jetzt.Add(time.Hour), "formwerk": jetzt.Add(2 * time.Hour)},
+		map[string]string{"rend-and-run": "3 rounds in a row ended the same way: the project's dependencies could not be installed"})
+	l := projektPausenLesen(jetzt)
+	if len(l) != 2 || l[0].Projekt != "formwerk" || l[1].Projekt != "rend-and-run" || !strings.HasSuffix(l[1].Grund, "could not be installed") {
+		t.Errorf("gelesen: %+v", l)
+	}
+	if l := projektPausenLesen(jetzt.Add(90 * time.Minute)); len(l) != 1 || l[0].Projekt != "formwerk" {
+		t.Errorf("nach 90 Minuten: %+v", l)
+	}
+	projektPausenMerken(nil, nil)
+	if l := projektPausenLesen(jetzt); l != nil {
+		t.Errorf("nach dem Löschen: %+v", l)
 	}
 }

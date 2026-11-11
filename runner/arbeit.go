@@ -973,7 +973,8 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 	// `swarvex start`, einem Update oder geänderten Einstellungen versucht er es gleich wieder.
 	var ausgesetztBis time.Time
 	ausgesetztMitGegenpruefung := false
-	projektPausen := map[string]time.Time{}
+	projektPausen, projektGruende := map[string]time.Time{}, map[string]string{}
+	projektPausenMerken(nil, nil) // Pausen eines früheren Laufs gelten nicht mehr
 	wartetAufLeerlauf := false
 	for basis.Err() == nil {
 		if autoAktualisieren && time.Since(letzterUpdateCheck) > 24*time.Hour {
@@ -1109,7 +1110,9 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 				bis := time.Now().Add(s.pause())
 				fehlerFolge = 0
 				if s.Projekt != "" && projekt == "auto" {
-					projektPausen[s.Projekt] = bis
+					projektPausen[s.Projekt], projektGruende[s.Projekt] = bis, s.text()
+					nochAusgesetzt(projektPausen, time.Now()) // abgelaufene fallen heraus
+					projektPausenMerken(projektPausen, projektGruende)
 					fmt.Printf("Project %s is paused on this runner until %s: %s. Other projects continue.\n", s.Projekt, zeitpunkt(bis), s.text())
 					fmt.Printf("Last hand-back: %s\n", s.Grund)
 					continue

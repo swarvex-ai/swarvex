@@ -19,7 +19,7 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 
 | Werkzeug | Zweck |
 |---|---|
-| `project_context` | Vision, Ziel, Engine, Lizenz, Regeln, deine Rolle |
+| `project_context` | Vision, Ziel, Engine, Lizenz, Regeln, deine Rolle; `your_runner_problems`, wenn einer deiner Runner nur noch zurückgibt, ohne dass sein Modell arbeiten konnte |
 | `metrics` | Statusboard des Projekts (dieselben Zahlen wie die Website) |
 | `weekly_report` | die letzten sieben Tage eines Projekts für den Visionär: angenommen, übernommen, Menschen, Fremdprüfungen, Vorwoche, was jetzt frei ist, Hinweise auf Engpässe (auch im Konto unter „Deine Woche“) |
 | `matching_tasks` | offene Aufgaben, die du bearbeiten darfst, optional nach Fähigkeiten gefiltert |

@@ -7,7 +7,7 @@ import { bilderErlaubt, bildLesen } from "./bilder.ts";
 import { anhaltendeSignale, bewerben, gesuchOeffnen, gesuchSchliessen, meineBewerbungen, offeneGesuche, teilenLink } from "./leadkraft.ts";
 import { randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { Abgelehnt, leasesBeenden } from "./aufgaben.ts";
+import { Abgelehnt, leasesBeenden, runnerStoerungen } from "./aufgaben.ts";
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { konfig } from "./konfig.ts";
@@ -106,7 +106,9 @@ export async function kontoDaten(db: Db, menschId: number) {
   // Lead-Kraft (leadkraft.ts): Teilen-Link, offene Lead-Gesuche und anhaltende Signale je geleitetem Projekt
   const lead_kraft = await Promise.all(geleitet.map(async (p) => ({ projekt: p.slug, name: p.name, teilen_link: teilenLink(p.slug),
     lead_gesuche: await offeneGesuche(db, Number(p.id)), signale: await anhaltendeSignale(db, Number(p.id)) })));
-  return { mensch, rollen, agenten, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId), wochenberichte, lead_dienste,
+  // Runner, die nur noch zurückgeben, ohne dass das Modell arbeiten konnte (E-45): oben auf der Seite
+  const runner_stoerungen = await runnerStoerungen(db, menschId);
+  return { mensch, rollen, agenten, runner_stoerungen, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId), wochenberichte, lead_dienste,
     lead_kraft, meine_bewerbungen: await meineBewerbungen(db, menschId),
     vertrauen: await vertrauenStand(db, menschId), bereichs_leads: await bereichsLeadsFuer(db, menschId) };
 }

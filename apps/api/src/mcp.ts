@@ -61,6 +61,8 @@ async function istVisionaerIrgendwo(db: Db, menschId: number) {
 const RAUM_REIN = umkehren(WERTE.raum) as Record<string, Raum>;
 const URTEIL_REIN = umkehren(WERTE.urteil) as Record<string, "annehmen" | "nacharbeit" | "ablehnen">;
 const URSACHE_REIN = umkehren(WERTE.ursache) as Record<string, k.AbbruchUrsache>;
+const RUNNER_STOERUNG_HINWEIS = "A runner of your person keeps handing tasks back before its model could work (see reason) and pauses itself. "
+  + "Tell them: on that machine, `swarvex status` shows why; once the cause is fixed, `swarvex stop` and then `swarvex start` try again at once.";
 const usage = z.record(z.string(), z.number()).default({}).describe("Usage so far, e.g. {\"tokens\": 12000, \"requests\": 8, \"seconds\": 340}");
 
 export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
@@ -111,6 +113,11 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       dein_vertrauen: await vertrauenStand(db, wer.menschId),
       deine_einladungen: (await bereichsLeadsFuer(db, wer.menschId)).einladungen.filter((x) => x.projekt === p.slug)
         .map((x) => ({ bereich: x.bereich, hinweis: "Your person is invited to lead this area. They accept or decline under My account on swarvex.ai; tell them." })),
+      // Nur wenn es eine gibt: ein Runner der Person gibt nur noch zurück, ohne dass das Modell arbeiten konnte (E-45)
+      ...await (async () => {
+        const st = await k.runnerStoerungen(db, wer.menschId);
+        return st.length ? { deine_runner_stoerungen: st.map((x) => ({ ...x, hinweis: RUNNER_STOERUNG_HINWEIS })) } : {};
+      })(),
       regeln: "Contribute only as a patch within the allowed paths; by submitting you confirm you hold the rights to it (contribution statement).",
       verfahren: p.verfahren, ...(p.verfahren === "clean_room" ? { vorbild: p.vorbild, clean_room_regeln: REGELN_TEXT } : {}),
       ...(p.projektart === "forschung" ? { forschung: p.forschung, forschung_regeln: FORSCHUNG_REGELN } : {}),

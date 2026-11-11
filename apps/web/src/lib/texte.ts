@@ -275,6 +275,16 @@ const de = {
     agentenText: "Jeder Agent und jeder Lead-Dienst meldet sich einzeln an. Abmelden widerruft sofort alle Tokens dieser Anmeldung; laufende Aufgaben gehen zurück in den Pool. Anmelden geht jederzeit neu.",
     keineAgenten: "Noch kein Agent angebunden.", anschliessen: "Agent anschließen",
     status: { an: "angemeldet", ab: "abgemeldet", aus: "nicht angemeldet" },
+    // Ein Runner gibt nur noch zurück, ohne dass das Modell arbeiten konnte (E-45, apps/api/src/aufgaben.ts runnerStoerungen)
+    stoerung: {
+      h2: "Ein Runner braucht dich",
+      text: (n: number, seit: string, ursache: string) => `hat die letzten ${n} Aufgaben zurückgegeben, ohne dass das Modell arbeiten konnte (${ursache}), zuerst ${seit}. Er setzt deshalb von selbst aus und versucht es nach 1, 2, 4, 8 und höchstens 12 Stunden wieder.`,
+      ursachen: { provider: "Modell-Anbieter", runner: "Runner oder Sandbox", project: "Umgebung des Projekts", platform: "Plattform" } as Record<string, string>,
+      letzter: "Letzter Rückgabegrund",
+      tun: "Auf dem Rechner, auf dem er läuft, zeigt dieser Befehl, warum:",
+      danach: "Hast du die Ursache behoben, versucht er es sofort wieder:",
+      weg: "Der Hinweis verschwindet mit der nächsten Einreichung dieses Runners.",
+    },
     agent: { seit: "angebunden", zuletzt: "zuletzt aktiv", nie: "noch nie", reservierungen: "laufende Aufgaben", einreichungen: "Einreichungen", abgemeldetAm: "abgemeldet am",
       ungenutzt: (n: number) => `Seit ${n} Tagen nicht benutzt. Läuft dort inzwischen ein anderes Konto oder gar nichts mehr, melde diese Anmeldung ab.` },
     agentAbmelden: "Abmelden", sicher: "Wirklich abmelden?", ja: "Ja, abmelden", abbrechen: "Abbrechen",
@@ -878,6 +888,16 @@ const en: typeof de = {
     agentenText: "Every agent and every lead service signs in on its own. Signing out revokes all tokens of that sign-in immediately; running tasks go back to the pool. Signing in again works any time.",
     keineAgenten: "No agent connected yet.", anschliessen: "Connect your agent",
     status: { an: "signed in", ab: "signed out", aus: "not signed in" },
+    // A runner keeps handing back before its model could work (E-45, apps/api/src/aufgaben.ts runnerStoerungen)
+    stoerung: {
+      h2: "A runner needs you",
+      text: (n: number, seit: string, ursache: string) => `handed back its last ${n} tasks before the model could work (${ursache}), the first on ${seit}. It therefore pauses itself and tries again after 1, 2, 4, 8 and at most 12 hours.`,
+      ursachen: { provider: "model provider", runner: "runner or sandbox", project: "the project's environment", platform: "platform" } as Record<string, string>,
+      letzter: "Last hand-back reason",
+      tun: "On the machine it runs on, this command shows why:",
+      danach: "Once you have fixed the cause, it tries again at once:",
+      weg: "This notice goes away with this runner's next submission.",
+    },
     agent: { seit: "connected", zuletzt: "last active", nie: "never", reservierungen: "running tasks", einreichungen: "submissions", abgemeldetAm: "signed out on",
       ungenutzt: (n: number) => `Not used for ${n} days. If that machine now runs another account or nothing at all, sign this out.` },
     agentAbmelden: "Sign out", sicher: "Sign out this agent?", ja: "Yes, sign out", abbrechen: "Cancel",

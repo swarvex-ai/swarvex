@@ -1693,6 +1693,43 @@ describe("Zuteilung nach nachgewiesener Stufe", () => {
       .toEqual({ versuche: 6, umgebung: 3 });
     await k.schliessen(db, lead, c.id, "Test");
   });
+
+  it("eine Folge solcher Rückgaben erfährt der Betreiber im Konto und über project_context (E-45)", async () => {
+    const r = await neuerAgent("stoerung");
+    const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Störung"));
+    const zurueck = async (grund: string, ursache?: k.AbbruchUrsache) => { await k.reservieren(db, r, a.id); await k.abbrechen(db, r, a.id, grund, ursache); };
+    const g401 = "sandbox: agent exited with an error: exit status 1; the model never answered: the model provider refused the key or sign-in (HTTP 401)";
+    await zurueck(g401, "anbieter");
+    await zurueck(g401, "anbieter");
+    expect(await k.runnerStoerungen(db, r.menschId)).toEqual([]);   // zwei sind noch keine Folge
+    await zurueck("runner was stopped", "gestoppt");                  // Anhalten zählt nicht mit und beendet die Folge nicht
+    await zurueck(g401, "anbieter");
+    expect(await k.runnerStoerungen(db, r.menschId)).toMatchObject([{ agent_id: r.agentId, name: "stoerung-runner", anzahl: 3, ursache: "anbieter", grund: g401 }]);
+    // Im Konto (nach außen englisch) und für die eigenen Agenten der Person in project_context, mit Hinweis
+    const { kontoDaten } = await import("../src/konto.ts");
+    expect((nachAussen(await kontoDaten(db, r.menschId)) as any).runner_problems).toMatchObject([{ agent_id: r.agentId, count: 3, cause: "provider", reason: g401 }]);
+    const kontext = async () => {
+      const { mcpServerFuer } = await import("../src/mcp.ts");
+      const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+      const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+      const server = await mcpServerFuer(db, { ...r, runner: false, leadProjekt: null, clientId: "test", token: "t", scopes: ["mcp"], ablauf: Date.now() + 60_000 });
+      const [x, y] = InMemoryTransport.createLinkedPair();
+      const client = new Client({ name: "test", version: "1" });
+      await Promise.all([server.connect(x), client.connect(y)]);
+      return JSON.parse(((await client.callTool({ name: "project_context", arguments: { project: "test" } })) as any).content[0].text);
+    };
+    expect((await kontext()).your_runner_problems).toMatchObject([{ count: 3, cause: "provider", hint: expect.stringContaining("swarvex status") }]);
+    // Eine Rückgabe in der Sache beendet die Folge; ohne Störung fehlt das Feld ganz
+    await zurueck("time limit reached");
+    expect(await k.runnerStoerungen(db, r.menschId)).toEqual([]);
+    expect(await kontext()).not.toHaveProperty("your_runner_problems");
+    // Nach einer Woche ohne neue Rückgabe verschwindet der Hinweis von selbst
+    for (let i = 0; i < 3; i++) await zurueck("sandbox: the sandbox could not be started", "runner");
+    expect(await k.runnerStoerungen(db, r.menschId)).toMatchObject([{ anzahl: 3, ursache: "runner" }]);
+    await db.query("update leases set beendet = beendet - interval '8 days' where agent_id = $1", [r.agentId]);
+    expect(await k.runnerStoerungen(db, r.menschId)).toEqual([]);
+    await k.schliessen(db, lead, a.id, "Test");
+  });
 });
 
 describe("MCP: Fremdprüfung für Prüfer ohne Lead-Rolle", () => {
