@@ -1742,6 +1742,58 @@ describe("Zuteilung nach nachgewiesener Stufe", () => {
     expect(await k.runnerStoerungen(db, r.menschId)).toEqual([]);
     await k.schliessen(db, lead, a.id, "Test");
   });
+
+  it("gescheiterte Fremdprüfungen zählen für den Hinweis mit, eine abgegebene beendet die Folge (E-45, Runner 0.15.1)", async () => {
+    // Am 11.11. gab es nur Prüfungen und keine Aufgaben: Ein erschöpfter Schlüssel fiel nur auf dem Rechner auf
+    const r = await neuerAgent("pruefstoerung");
+    await db.query("update menschen set vertrauensstufe = 1 where id = $1", [r.menschId]);
+    const autor = await neuerAgent("pruefstoerung-autor");
+    const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Fremdprüfung mit Störung"));
+    const l = Number((await db.query("insert into leases(aufgabe_id, agent_id, laeuft_ab, beendet) values ($1,$2, now() + interval '1 hour', now()) returning id", [a.id, autor.agentId])).rows[0].id);
+    const e = Number((await db.query("insert into einreichungen(aufgabe_id, lease_id, agent_id, patch, patch_sha256, zusammenfassung, eigene_tests, verbrauch, modell) values ($1,$2,$3,'x','x','z','t','{}','qwen3-coder') returning id", [a.id, l, autor.agentId])).rows[0].id);
+    const { fremdpruefungGescheitert } = await import("../src/schwarmpruefung.ts");
+    const g403 = "sandbox: agent exited with an error: exit status 1; the model never answered: the model provider refused the key or its spending limit is reached (HTTP 403)";
+    await expect(fremdpruefungGescheitert(db, { ...r, runner: false }, e, "anbieter", g403)).rejects.toThrow("only the swarvex runner");
+    await expect(fremdpruefungGescheitert(db, autor, e, "anbieter", g403)).rejects.toThrow("their own submission");
+    await fremdpruefungGescheitert(db, r, e, "anbieter", g403);
+    await fremdpruefungGescheitert(db, r, e, "anbieter", g403);
+    expect(await k.runnerStoerungen(db, r.menschId)).toEqual([]);   // zwei sind noch keine Folge
+    expect(await fremdpruefungGescheitert(db, r, e, "gestoppt", "runner was stopped")).toEqual({ recorded: false });
+    expect(await fremdpruefungGescheitert(db, r, e, "anbieter", g403)).toEqual({ recorded: true });
+    expect(await k.runnerStoerungen(db, r.menschId)).toMatchObject([{ agent_id: r.agentId, anzahl: 3, fremdpruefungen: 3, ursache: "anbieter", grund: g403 }]);
+    const { kontoDaten } = await import("../src/konto.ts");
+    expect((nachAussen(await kontoDaten(db, r.menschId)) as any).runner_problems).toMatchObject([{ count: 3, peer_reviews: 3, cause: "provider", reason: g403 }]);
+    // Eine abgegebene Fremdprüfung beendet die Folge
+    await db.query("insert into fremdpruefungen(einreichung_id, agent_id, mensch_id, urteil, begruendung, modell) values ($1,$2,$3,'aenderungen','Kriterium 2 fehlt: kein Test für den Rand','deepseek-v4')", [e, r.agentId, r.menschId]);
+    expect(await k.runnerStoerungen(db, r.menschId)).toEqual([]);
+    // Gemischt mit Rückgaben zählt beides; eine gescheiterte Prüfung, bei der das Modell lief (ohne Ursache), beendet sie
+    const t = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Rückgabe neben Prüfungen"));
+    await fremdpruefungGescheitert(db, r, e, "anbieter", g403);
+    await k.reservieren(db, r, t.id);
+    await k.abbrechen(db, r, t.id, "sandbox: the sandbox could not be started", "runner");
+    await fremdpruefungGescheitert(db, r, e, "anbieter", g403);
+    expect(await k.runnerStoerungen(db, r.menschId)).toMatchObject([{ anzahl: 3, fremdpruefungen: 2, grund: g403 }]);
+    await fremdpruefungGescheitert(db, r, e, null, "verdict.json is not valid JSON");
+    expect(await k.runnerStoerungen(db, r.menschId)).toEqual([]);
+    // Über MCP: nur für Runner, die Ursache auf Englisch
+    const { mcpServerFuer } = await import("../src/mcp.ts");
+    const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+    const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+    const verbinden = async (runner: boolean) => {
+      const server = await mcpServerFuer(db, { ...r, runner, leadProjekt: null, clientId: "test", token: "t", scopes: ["mcp"], ablauf: Date.now() + 60_000 });
+      const [x, y] = InMemoryTransport.createLinkedPair();
+      const client = new Client({ name: "test", version: "1" });
+      await Promise.all([server.connect(x), client.connect(y)]);
+      return client;
+    };
+    expect((await (await verbinden(false)).listTools()).tools.map((x) => x.name)).not.toContain("report_peer_review_failure");
+    const runner = await verbinden(true);
+    const antwort: any = await runner.callTool({ name: "report_peer_review_failure", arguments: { submission_id: e, reason: g403, cause: "provider" } });
+    expect(JSON.parse(antwort.content[0].text)).toEqual({ recorded: true });
+    expect((await db.query("select ursache from fremdpruefung_abbrueche where agent_id = $1 order by id desc limit 1", [r.agentId])).rows[0].ursache).toBe("anbieter");
+    await k.schliessen(db, lead, t.id, "Test");
+    await db.query("update aufgaben set zustand = 'geschlossen' where id = $1", [a.id]);
+  });
 });
 
 describe("MCP: Fremdprüfung für Prüfer ohne Lead-Rolle", () => {

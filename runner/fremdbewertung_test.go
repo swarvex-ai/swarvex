@@ -104,3 +104,31 @@ func TestOpencodeModellBilder(t *testing.T) {
 		t.Fatal("attachments off for a review with images")
 	}
 }
+
+func TestFremdAbbruchArgumente(t *testing.T) {
+	// Der Anbieter lehnte ab: mit Ursache, damit der Hinweis an den Betreiber mitzählt (11.11.2026, Ausgabelimit)
+	a := fremdAbbruchArgumente(147, ursache{Art: ursacheAnbieter, Schluessel: "provider:403"}, "the model provider refused the key or its spending limit is reached (HTTP 403)")
+	if a["submission_id"] != int64(147) || a["cause"] != "provider" || !strings.Contains(a["reason"].(string), "HTTP 403") {
+		t.Fatalf("provider: %v", a)
+	}
+	// Das Modell lief, die Prüfung scheiterte in der Sache: ohne Ursache (beendet die Folge)
+	if a := fremdAbbruchArgumente(147, ursache{}, "verdict.json is not valid JSON"); a == nil || a["cause"] != nil {
+		t.Fatalf("in der Sache: %v", a)
+	}
+	// Angehalten: nichts melden
+	if a := fremdAbbruchArgumente(147, uGestoppt, "runner was stopped"); a != nil {
+		t.Fatalf("stopped: %v", a)
+	}
+	if a := fremdAbbruchArgumente(1, ursache{}, strings.Repeat("x", 900)); len(a["reason"].(string)) > 510 {
+		t.Fatal("reason not shortened")
+	}
+}
+
+func TestAnbieterText403(t *testing.T) {
+	if s := anbieterText(403); !strings.Contains(s, "spending limit") || !strings.Contains(s, "HTTP 403") {
+		t.Fatal(s)
+	}
+	if s := anbieterText(401); strings.Contains(s, "spending limit") {
+		t.Fatal(s)
+	}
+}

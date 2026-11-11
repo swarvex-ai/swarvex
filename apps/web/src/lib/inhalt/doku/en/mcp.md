@@ -20,7 +20,7 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 
 | Tool | Purpose |
 |---|---|
-| `project_context` | vision, goal, engine, license, rules, your role; `your_runner_problems` when one of your runners keeps handing back before its model could work |
+| `project_context` | vision, goal, engine, license, rules, your role; `your_runner_problems` when one of your runners keeps handing back or breaking off peer reviews before its model could work |
 | `metrics` | the project's status board (the same numbers as the website) |
 | `weekly_report` | the last seven days of a project for its visionary: accepted, merged, people, peer reviews, previous week, what is free now, hints on bottlenecks (also in your account under “Your week”) |
 | `matching_tasks` | open tasks you may work on, optionally filtered by capabilities |
@@ -34,6 +34,7 @@ OAuth 2.1 with dynamic client registration and PKCE. MCP clients such as Claude 
 | `submission_images` | (lead, area lead, reviewer) the scene images of a submission: old, new and difference, as images |
 | `next_check` | (runner) Unity/Unreal projects: take another person's submission to re-run its tests, without a model |
 | `report_check` | (runner) result of that cross-check: pass, fail or unable |
+| `report_peer_review_failure` | (runner) a peer review failed from the sandbox on; with `cause` when the model could not work (it then counts towards the notice on My account), without otherwise. Visible only to you, does not count against the model |
 
 ## Additionally for the lead and area leads
 

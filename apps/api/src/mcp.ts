@@ -16,7 +16,7 @@ import { z } from "zod";
 import type { Db } from "./db.ts";
 import * as k from "./aufgaben.ts";
 import { nacharbeitMuster } from "./lernen.ts";
-import { fremdPruefen, fremdpruefungErlaubt, offeneFremdpruefungen, pruefpunkteSetzen } from "./schwarmpruefung.ts";
+import { fremdPruefen, fremdpruefungErlaubt, fremdpruefungGescheitert, offeneFremdpruefungen, pruefpunkteSetzen } from "./schwarmpruefung.ts";
 import { wochenbericht } from "./wochenbericht.ts";
 import { feedbackListe, feedbackMarkieren } from "./feedback.ts";
 import { uebersetzungSetzen } from "./projekte.ts";
@@ -67,7 +67,7 @@ const URSACHE_REIN = umkehren(WERTE.ursache) as Record<string, k.AbbruchUrsache>
 // darf eine Einreichung nicht scheitern lassen; funde.ts kürzt und lässt weg, was nicht passt.
 const findings = z.array(z.object({ title: z.string(), text: z.string().optional(), paths: z.array(z.string()).optional(), level: z.string().optional() }))
   .optional().describe(`Follow-up work you noticed but that is outside your task: a bug next to it, a missing test, a change outside your allowed paths. Do not do it; report it here (at most ${FUNDE.je_meldung}): title (one line), text (what and why, up to ${FUNDE.text} characters), paths (files concerned), level (A–D, your guess). The lead turns it into a task or dismisses it. Leave out when nothing stood out`);
-const RUNNER_STOERUNG_HINWEIS = "A runner of your person keeps handing tasks back before its model could work (see reason) and pauses itself. "
+const RUNNER_STOERUNG_HINWEIS = "A runner of your person keeps handing tasks back or failing peer reviews before its model could work (see reason) and pauses itself. "
   + "Tell them: on that machine, `swarvex status` shows why; once the cause is fixed, `swarvex stop` and then `swarvex start` try again at once.";
 const usage = z.record(z.string(), z.number()).default({}).describe("Usage so far, e.g. {\"tokens\": 12000, \"requests\": 8, \"seconds\": 340}");
 
@@ -255,6 +255,13 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
         images_seen: z.boolean().optional().describe("true when you looked at the scene images (old, new, diff); required to approve a submission with images") },
     }, sicher(async ({ submission_id, verdict, reason, model, answers, images_seen }) =>
       fremdPruefen(db, wer, submission_id, verdict === "approve" ? "zustimmen" : "aenderungen", reason, model, { antworten: answers, bilderGesehen: images_seen })));
+
+    // Gescheiterte Fremdprüfung (E-45, ab Runner 0.15.1): Sonst sieht der Hinweis „Ein Runner braucht dich“ nur Rückgaben
+    if (z0.runner) s.registerTool("report_peer_review_failure", {
+      description: "(Runner) A peer review failed from its sandbox step on. With cause when the model could not work (it then counts towards the notice to the operator that a runner needs them), without when the model ran. Private to the operator; does not count against the model.",
+      inputSchema: { submission_id: z.number().int(), reason: z.string().min(1).max(2000),
+        cause: z.string().max(40).optional().describe("why the model could not work: provider, runner, project, platform or stopped; leave out when the model ran") },
+    }, sicher(async ({ submission_id, reason, cause }) => fremdpruefungGescheitert(db, wer, submission_id, cause ? URSACHE_REIN[cause] ?? null : null, reason)));
 
     // Bildvergleich im Review (bilder.ts): Szenenbilder der Einreichung als Bilder, für Modelle, die sehen können
     s.registerTool("submission_images", {

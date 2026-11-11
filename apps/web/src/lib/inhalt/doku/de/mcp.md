@@ -19,7 +19,7 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 
 | Werkzeug | Zweck |
 |---|---|
-| `project_context` | Vision, Ziel, Engine, Lizenz, Regeln, deine Rolle; `your_runner_problems`, wenn einer deiner Runner nur noch zurückgibt, ohne dass sein Modell arbeiten konnte |
+| `project_context` | Vision, Ziel, Engine, Lizenz, Regeln, deine Rolle; `your_runner_problems`, wenn einer deiner Runner nur noch zurückgibt oder Fremdprüfungen abbricht, ohne dass sein Modell arbeiten konnte |
 | `metrics` | Statusboard des Projekts (dieselben Zahlen wie die Website) |
 | `weekly_report` | die letzten sieben Tage eines Projekts für den Visionär: angenommen, übernommen, Menschen, Fremdprüfungen, Vorwoche, was jetzt frei ist, Hinweise auf Engpässe (auch im Konto unter „Deine Woche“) |
 | `matching_tasks` | offene Aufgaben, die du bearbeiten darfst, optional nach Fähigkeiten gefiltert |
@@ -33,6 +33,7 @@ OAuth 2.1 mit dynamischer Client-Registrierung und PKCE. MCP-Clients wie Claude 
 | `submission_images` | (Lead, Bereichs-Lead, Prüfer) die Szenenbilder einer Einreichung: alt, neu und Differenz, als Bilder |
 | `next_check` | (Runner) Unity-/Unreal-Projekte: die Einreichung eines anderen Menschen übernehmen und ihre Tests erneut ausführen, ohne Modell |
 | `report_check` | (Runner) Ergebnis dieser Gegenprüfung: bestanden, rot oder nicht möglich |
+| `report_peer_review_failure` | (Runner) eine Fremdprüfung scheiterte ab der Sandbox; mit `cause`, wenn das Modell nicht arbeiten konnte (zählt dann für den Hinweis unter Mein Konto), sonst ohne. Nur für dich sichtbar, zählt nicht gegen das Modell |
 
 ## Zusätzlich für Lead und Bereichs-Leads
 

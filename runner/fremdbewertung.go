@@ -123,6 +123,9 @@ func fremdbewertungRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e
 	fmt.Printf("Peer review of submission %d (%s, task %d): %s\n", b.Einreichung, b.Projekt, b.Aufgabe, b.Titel)
 	var verbrauch map[string]float64
 	var absturz string // Schlüssel der Ursache, wenn Sandbox oder Modell scheiterten (ursache.go)
+	// Ab dem Sandbox-Schritt geht eine gescheiterte Prüfung an die Plattform (0.15.1): Sonst sieht der Hinweis „Ein Runner
+	// braucht dich“ einen erschöpften Schlüssel nicht, solange es nur Prüfungen und keine Aufgaben gibt (11.11.2026).
+	var melden *ursache
 	eintrag := func(ergebnis, grund string) {
 		verlaufMerken(verlaufsDatei(), verlaufEintrag{Zeit: time.Now(), Aufgabe: b.Aufgabe, Einreichung: b.Einreichung, Projekt: b.Projekt, Titel: b.Titel,
 			Ergebnis: ergebnis, Grund: kuerzen(grund, 400), Ursache: absturz, Tokens: tokensAus(verbrauch), Budget: budgetTokensAus(verbrauch), Sekunden: int64(verbrauch["seconds"])})
@@ -132,6 +135,14 @@ func fremdbewertungRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e
 	os.RemoveAll(ordner)
 	abbrechen := func(grund string) {
 		eintrag("review_not_sent", grund)
+		if melden != nil {
+			if argumente := fremdAbbruchArgumente(b.Einreichung, *melden, grund); argumente != nil {
+				if neu, err := zugriffstoken(z); err == nil {
+					m.token = neu // nach bis zu 30 Minuten Sandbox
+				}
+				m.werkzeug("report_peer_review_failure", argumente, nil) // eine ältere Plattform kennt es nicht: egal
+			}
+		}
 		wegraeumen(arbeit)
 		fehlerAus("Peer review not sent: " + grund)
 	}
@@ -150,15 +161,16 @@ func fremdbewertungRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e
 	os.WriteFile(filepath.Join(arbeit, "REVIEW.md"), []byte(auftrag), 0o644)
 	ctx, stopp := context.WithTimeout(basis, e.zeit)
 	defer stopp()
+	melden = &ursache{} // ohne Ursache: Das Modell lief, die Prüfung scheiterte in der Sache
 	verbrauch, err = fremdSandbox(ctx, b.Einreichung, e, ordner, arbeit, auftrag, len(bilder) > 0)
 	verbrauchMerken(verbrauchsDatei(), -1_000_000_000-b.Einreichung, budgetTokensAus(verbrauch), time.Now())
 	if basis.Err() != nil {
-		absturz = uGestoppt.Schluessel
+		absturz, melden = uGestoppt.Schluessel, &uGestoppt
 		abbrechen("runner was stopped")
 	}
 	if err != nil {
 		warum, grund := rueckgabeNachSandbox(err, ordner)
-		absturz = warum.Schluessel
+		absturz, melden = warum.Schluessel, &warum
 		abbrechen(grund)
 	}
 	u, err := fremdUrteilLesen(filepath.Join(arbeit, "verdict.json"), *b)
@@ -191,6 +203,20 @@ func fremdbewertungRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e
 	eintrag(was, kuerzen(u.Begruendung, 300))
 	wegraeumen(arbeit)
 	return true
+}
+
+// fremdAbbruchArgumente: die Meldung einer gescheiterten Fremdprüfung (report_peer_review_failure). Mit Ursache, wenn
+// das Modell nicht arbeiten konnte; ohne, wenn es lief (das beendet beim Betreiber die Folge). Angehalten: nichts melden.
+// Der Grund ist schon bereinigt wie bei einer Rückgabe (rueckgabeNachSandbox) und geht nur an den Betreiber selbst.
+func fremdAbbruchArgumente(einreichung int64, u ursache, grund string) map[string]any {
+	if u.Art == ursacheGestoppt {
+		return nil
+	}
+	argumente := map[string]any{"submission_id": einreichung, "reason": kuerzen(grund, 500)}
+	if u.Art != "" {
+		argumente["cause"] = u.Art
+	}
+	return argumente
 }
 
 // fremdUnterlagen: Patch, Prüfbericht und Szenenbilder in den Arbeitsordner; liefert die Bilddateien (relativ).

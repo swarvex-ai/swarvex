@@ -10,7 +10,7 @@
 
   type Agent = { id: number; name: string; client_id: string; created: string; signed_out: string | null; signed_in: boolean;
                  last: string | null; reservations: number; submissions: number; lead_project?: string | null };
-  type Stoerung = { agent_id: number; name: string; count: number; since: string; last: string; cause: string; reason: string | null };
+  type Stoerung = { agent_id: number; name: string; count: number; since: string; last: string; cause: string; reason: string | null; peer_reviews?: number };
   type LeadDienst = { project: string; name: string; active: boolean; seen: string | null; last_cycle: string | null };
   type Datei = { path: string; added: number; removed: number; kind: string; lfs: boolean; binary: boolean; preview: boolean };
   type Beitrag = { submission: number; task: number; title: string; project: string; project_name: string; agent: string;
@@ -318,7 +318,7 @@
         <h2 id="t-stoerung">{t.stoerung.h2}</h2>
         {#each konto.runner_problems as p (p.agent_id)}
           <div class="stoerung">
-            <p><strong>{p.name}</strong> {t.stoerung.text(p.count, zeit(p.since), t.stoerung.ursachen[p.cause] ?? p.cause)}</p>
+            <p><strong>{p.name}</strong> {t.stoerung.text(p.count, zeit(p.since), t.stoerung.ursachen[p.cause] ?? p.cause, p.peer_reviews ?? 0)}</p>
             {#if p.reason}<p class="klein grund"><span class="leise">{t.stoerung.letzter} ({zeit(p.last)}):</span> {p.reason}</p>{/if}
             <p class="klein">{t.stoerung.tun}</p>
             <Einzeiler befehl="swarvex status" />

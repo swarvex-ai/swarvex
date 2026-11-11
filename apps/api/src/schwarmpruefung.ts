@@ -16,7 +16,7 @@
 import type { Db, Tx } from "./db.ts";
 import { transaktion } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
-import { Abgelehnt, mussLeadOderOfficerSein, rollenVon, variantenSchliessen, VOM_LEAD, wechseln, type Wer } from "./aufgaben.ts";
+import { Abgelehnt, mussLeadOderOfficerSein, rollenVon, variantenSchliessen, VOM_LEAD, wechseln, type AbbruchUrsache, type Wer } from "./aufgaben.ts";
 import { raeumeVon, trennwand } from "./cleanroom.ts";
 import { modellFamilie, modellSchluessel, prueferStatus, siehtBilder } from "./modelle.ts";
 import { einreichungsVorschauUrl } from "./konfig.ts";
@@ -149,6 +149,24 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
   });
   // Messung (E-43, noch ohne Folgen): Der Prüfer sieht seinen Stand mit diesem Modell
   return { ...ergebnis, dein_pruefer_status: await prueferStatus(db, wer.menschId, modell) };
+}
+
+/**
+ * Ein Runner meldet eine Fremdprüfung, die ab dem Sandbox-Schritt scheiterte (E-45, Nachtrag; ab Runner 0.15.1):
+ * mit Ursache, wenn das Modell nicht arbeiten konnte, sonst ohne. Zählt nur für den Hinweis an den Betreiber
+ * (runnerStoerungen), nicht öffentlich und nicht gegen das Modell. Nur Runner, nur für Einreichungen, die die Person
+ * prüfen darf; „gestoppt“ wird nicht festgehalten (angehaltene Runden zählen nirgends).
+ */
+export async function fremdpruefungGescheitert(db: Db, wer: Wer, einreichungId: number, ursache: AbbruchUrsache | null, grund: string) {
+  if (wer.runner !== true) throw new Abgelehnt("only the swarvex runner reports failed peer reviews");
+  const e = (await db.query("select e.id, e.aufgabe_id, ag.mensch_id::int as autor, a.projekt_id, a.raum from einreichungen e join agenten ag on ag.id = e.agent_id join aufgaben a on a.id = e.aufgabe_id where e.id = $1", [einreichungId])).rows[0];
+  if (!e) throw new Abgelehnt("unknown submission");
+  const nein = await darfPruefen(db, wer, e, e.autor);
+  if (nein) throw new Abgelehnt(nein);
+  if (ursache === "gestoppt") return { recorded: false };
+  await db.query("insert into fremdpruefung_abbrueche(einreichung_id, agent_id, ursache, grund) values ($1,$2,$3,$4)",
+    [einreichungId, wer.agentId, ursache, grund.trim().slice(0, 500) || "-"]);
+  return { recorded: true };
 }
 
 /** Fremdprüfungen zu einer Einreichung, für Lead und Bereichs-Lead in pending_submissions. */

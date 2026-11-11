@@ -701,20 +701,29 @@ export async function abbrechen(db: Db, wer: Wer, aufgabeId: number, grund: stri
 export const STOERUNG = { folge: 3, tage: 7 };
 
 /**
- * Runner einer Person, die zuletzt nur noch mit einer Ursache außerhalb des Modells zurückgaben (E-45): Der Anbieter lehnt
- * den Schlüssel ab, die Sandbox startet nicht … Der Runner setzt dann von selbst aus, aber das sieht nur, wer auf seinen
- * Rechner schaut; vom 9. auf den 10. November bemerkte es niemand. Deshalb zeigen das Konto und project_context (für die
- * eigenen Agenten der Person) die Störung mit dem letzten Rückgabegrund. Eine Einreichung, eine Rückgabe in der Sache
- * oder eine abgelaufene Reservierung beenden die Folge; angehaltene Runden (gestoppt) zählen weder mit noch beenden sie
- * sie. Nach STOERUNG.tage ohne neue Rückgabe verschwindet der Hinweis von selbst.
+ * Runner einer Person, die zuletzt nur noch mit einer Ursache außerhalb des Modells zurückgaben oder Fremdprüfungen
+ * abbrachen (E-45): Der Anbieter lehnt den Schlüssel ab, die Sandbox startet nicht … Der Runner setzt dann von selbst aus,
+ * aber das sieht nur, wer auf seinen Rechner schaut; vom 9. auf den 10. November bemerkte es niemand. Deshalb zeigen das
+ * Konto und project_context (für die eigenen Agenten der Person) die Störung mit dem letzten Grund. Eine Einreichung, eine
+ * abgegebene Fremdprüfung, eine Rückgabe oder gescheiterte Prüfung in der Sache oder eine abgelaufene Reservierung beenden
+ * die Folge; angehaltene Runden (gestoppt) zählen weder mit noch beenden sie sie. Gescheiterte Fremdprüfungen meldet der
+ * Runner ab 0.15.1 (fremdpruefung_abbrueche); am 11.11. fiel ein Ausgabelimit nur dort auf, weil es keine Aufgaben gab.
+ * Nach STOERUNG.tage ohne neue Rückgabe verschwindet der Hinweis von selbst.
  */
 export async function runnerStoerungen(db: Db | Tx, menschId: number) {
   const zeilen = (await db.query(
-    `select l.agent_id, a.name, l.abbruch_ursache as ursache, l.beendet
-     from leases l join agenten a on a.id = l.agent_id
-     where a.mensch_id = $1 and a.abgemeldet is null and l.beendet > now() - make_interval(days => $2)
-       and l.abbruch_ursache is distinct from 'gestoppt'
-     order by l.agent_id, l.beendet desc`, [menschId, STOERUNG.tage])).rows;
+    `select e.agent_id, a.name, e.ursache, e.zeit, e.art, e.grund, e.bezug from (
+       select l.agent_id, l.abbruch_ursache as ursache, l.beendet as zeit, 'aufgabe' as art, null::text as grund, l.id as bezug from leases l
+         where l.beendet > now() - make_interval(days => $2)
+       union all
+       select f.agent_id, f.ursache, f.erstellt, 'fremdpruefung', f.grund, f.id from fremdpruefung_abbrueche f
+         where f.erstellt > now() - make_interval(days => $2)
+       union all
+       select f.agent_id, null, f.erstellt, 'fremdpruefung', null, f.id from fremdpruefungen f
+         where f.agent_id is not null and f.erstellt > now() - make_interval(days => $2)
+     ) e join agenten a on a.id = e.agent_id
+     where a.mensch_id = $1 and a.abgemeldet is null and e.ursache is distinct from 'gestoppt'
+     order by e.agent_id, e.zeit desc, e.bezug desc`, [menschId, STOERUNG.tage])).rows;
   const je = new Map<number, typeof zeilen>();
   for (const z of zeilen) je.set(Number(z.agent_id), [...(je.get(Number(z.agent_id)) ?? []), z]);
   const r = [];
@@ -722,10 +731,11 @@ export async function runnerStoerungen(db: Db | Tx, menschId: number) {
     let n = 0;
     while (n < l.length && l[n].ursache) n++;
     if (n < STOERUNG.folge) continue;
-    const grund = (await db.query(
+    const grund = l[0].art === "fremdpruefung" ? l[0].grund : (await db.query(
       `select daten->>'grund' as grund from ereignisse
        where art = 'abgebrochen' and akteur = $1 and daten->>'ursache' is not null order by seq desc limit 1`, [`agent:${agentId}`])).rows[0]?.grund ?? null;
-    r.push({ agent_id: agentId, name: String(l[0].name), anzahl: n, seit: l[n - 1].beendet, zuletzt: l[0].beendet, ursache: l[0].ursache as AbbruchUrsache, grund });
+    r.push({ agent_id: agentId, name: String(l[0].name), anzahl: n, fremdpruefungen: l.slice(0, n).filter((x) => x.art === "fremdpruefung").length,
+      seit: l[n - 1].zeit, zuletzt: l[0].zeit, ursache: l[0].ursache as AbbruchUrsache, grund });
   }
   return r;
 }

@@ -174,8 +174,11 @@ func anbieterText(status int) string {
 	switch {
 	case status == 0:
 		return "the model provider was unreachable"
-	case status == 401 || status == 403:
-		return fmt.Sprintf("the model provider refused the key or sign-in (HTTP %d)", status)
+	case status == 401:
+		return "the model provider refused the key or sign-in (HTTP 401)"
+	case status == 403:
+		// 403 heißt auch: Ausgabelimit des Schlüssels erreicht (OpenRouter „Key limit exceeded“, 11.11.2026)
+		return "the model provider refused the key or its spending limit is reached (HTTP 403)"
 	case status == 402:
 		return "the model provider reports no credit (HTTP 402)"
 	case status == 404:
