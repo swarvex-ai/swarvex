@@ -174,9 +174,11 @@ export async function einreichungsVorschau(db: Db, slug: string, einreichungId: 
   const url = einreichungsVorschauUrl(einreichungId);
   if (!url || slug !== KATALOG_PROJEKT) return url;
   // sprungziel (ab 09.11. abends; der erste Stand unter „ziel“ verwechselte Registerdateien mit Assets und wird ersetzt)
-  const e = (await db.query("select patch, vorschau->>'sprungziel' as ziel from einreichungen where id = $1", [einreichungId])).rows[0];
-  if (!e) return url;
-  if (typeof e.ziel === "string") return url + e.ziel;
+  // Erst nur das gemerkte Ziel: den Patch (bis zu einigen hundert KB mit Bildern) braucht es nur beim ersten Mal
+  const gemerkt = (await db.query("select vorschau->>'sprungziel' as ziel from einreichungen where id = $1", [einreichungId])).rows[0];
+  if (!gemerkt) return url;
+  if (typeof gemerkt.ziel === "string") return url + gemerkt.ziel;
+  const e = (await db.query("select patch from einreichungen where id = $1", [einreichungId])).rows[0];
   let vorschau: { id: string; ordner: string }[];
   try { vorschau = katalogAssets(await quelle.holen(`${url}catalog.json`)); } catch { return url; }
   const main = await katalogLaden(db);

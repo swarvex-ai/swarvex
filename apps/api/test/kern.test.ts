@@ -1149,6 +1149,24 @@ describe("Mein Konto (#25)", () => {
 });
 
 describe("Ereignisprotokoll (S9)", () => {
+  it("die laufende Prüfung für die Projektseiten liest nur Neues und prüft einmal die Stunde alles (11.11.2026)", async () => {
+    const { ketteVerifizierenLaufend, ketteStandVergessen, protokollieren, KETTE_VOLL_MS } = await import("../src/ereignisse.ts");
+    const { transaktion } = await import("../src/db.ts");
+    ketteStandVergessen();
+    expect(await ketteVerifizierenLaufend(db)).toEqual(await ketteVerifizieren(db));
+    await transaktion(db, (tx) => protokollieren(tx, { projekt_id: null, akteur: "system", art: "test_kette", bezug: "test", daten: { n: 1 } }));
+    const gelesen: string[] = [];
+    const spion = { query: (s: string, p?: unknown[]) => { gelesen.push(s); return db.query(s, p); } } as unknown as Db;
+    expect(await ketteVerifizierenLaufend(spion)).toEqual(await ketteVerifizieren(db));   // ein Ereignis mehr, neuer Kopf
+    expect(gelesen).toEqual(["select * from ereignisse where seq > $1 order by seq"]);
+    // Nach einer Stunde wieder die ganze Kette, damit eine Änderung an alten Ereignissen auffällt
+    const jetzt = Date.now();
+    const uhr = vi.spyOn(Date, "now").mockReturnValue(jetzt + KETTE_VOLL_MS + 1);
+    await ketteVerifizierenLaufend(spion);
+    uhr.mockRestore();
+    expect(gelesen.at(-1)).toBe("select * from ereignisse order by seq");
+  });
+
   it("ist unveränderlich und erkennt Manipulation", async () => {
     expect((await ketteVerifizieren(db)).ok).toBe(true);
     await expect(db.query("update ereignisse set daten = '{}' where seq = 1")).rejects.toThrow(/unveränderlich/);

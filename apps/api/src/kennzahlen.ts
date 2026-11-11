@@ -7,7 +7,7 @@ import { nachweis } from "./cleanroom.ts";
 import type { Db } from "./db.ts";
 import { schwarmBilanz } from "./bilanz.ts";
 import { folgeaufgaben, projektPerSlug } from "./aufgaben.ts";
-import { ketteVerifizieren } from "./ereignisse.ts";
+import { ketteVerifizierenLaufend } from "./ereignisse.ts";
 import { creditSpenden } from "./spenden.ts";
 import { einreichungsVorschauUrl, konfig, vorschauUrl } from "./konfig.ts";
 import { feedbackZahlen } from "./feedback.ts";
@@ -243,7 +243,7 @@ export async function projektDetail(db: Db, slug: string) {
     if ((folge.get(Number(a.id)) ?? 0) > 0) gesperrt.set(Number(a.min_vertrauen), (gesperrt.get(Number(a.min_vertrauen)) ?? 0) + 1);
   }
   const kritisch_vertrauen = [...gesperrt].sort((x, y) => x[0] - y[0]).map(([stufe, anzahl]) => ({ vertrauensstufe: stufe, anzahl }));
-  const kette = await ketteVerifizieren(db);
+  const kette = await ketteVerifizierenLaufend(db);   // nur Neues, voll einmal die Stunde
   const kopf = (await db.query("select seq, zeit from koepfe order by seq desc limit 1")).rows[0];
   const clean_room = p.verfahren === "clean_room" ? { vorbild: p.vorbild, ...(await nachweis(db, Number(p.id))) } : null;
   // Spielbare Vorschau: die zuletzt gelungene, dazu der Stand des letzten Baus (z. B. fehlgeschlagen)

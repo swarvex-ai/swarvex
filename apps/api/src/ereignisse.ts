@@ -53,19 +53,53 @@ export type Pruefergebnis = { ok: boolean; anzahl: number; kopf: string; fehler?
 /** Prüft die gesamte Kette neu: Verkettung und Hash jedes Ereignisses. */
 export async function ketteVerifizieren(db: Db): Promise<Pruefergebnis> {
   const zeilen = (await db.query("select * from ereignisse order by seq")).rows;
-  let vorgaenger = START_HASH;
+  const r = kettePruefen(zeilen, START_HASH);
+  return { ok: r.ok, anzahl: zeilen.length, kopf: r.kopf, ...(r.fehler ? { fehler: r.fehler } : {}) };
+}
+
+/** Prüft Ereignisse der Reihe nach ab einem bekannten Vorgänger-Hash; liefert den letzten geprüften Hash und seq. */
+function kettePruefen(zeilen: Record<string, any>[], start: string): { ok: boolean; kopf: string; seq: number | null; fehler?: string } {
+  let vorgaenger = start, seq: number | null = null;
   for (const z of zeilen) {
     const zeit = new Date(z.zeit).toISOString();
-    if (z.vorgaenger_hash !== vorgaenger) {
-      return { ok: false, anzahl: zeilen.length, kopf: vorgaenger, fehler: `Ereignis ${z.seq}: Verkettung gebrochen` };
-    }
+    if (z.vorgaenger_hash !== vorgaenger) return { ok: false, kopf: vorgaenger, seq, fehler: `Ereignis ${z.seq}: Verkettung gebrochen` };
     const erwartet = ereignisHash(vorgaenger, Number(z.seq), zeit, {
       projekt_id: z.projekt_id === null ? null : Number(z.projekt_id), akteur: z.akteur, art: z.art, bezug: z.bezug, daten: z.daten,
     });
-    if (erwartet !== z.hash) {
-      return { ok: false, anzahl: zeilen.length, kopf: vorgaenger, fehler: `Ereignis ${z.seq}: Inhalt verändert` };
-    }
+    if (erwartet !== z.hash) return { ok: false, kopf: vorgaenger, seq, fehler: `Ereignis ${z.seq}: Inhalt verändert` };
     vorgaenger = z.hash;
+    seq = Number(z.seq);
   }
-  return { ok: true, anzahl: zeilen.length, kopf: vorgaenger };
+  return { ok: true, kopf: vorgaenger, seq };
 }
+
+/** So lange gilt eine volle Prüfung der Kette; danach prüft der nächste Aufruf wieder alles. */
+export const KETTE_VOLL_MS = 60 * 60_000;
+let ketteStand: { ergebnis: Pruefergebnis; seq: number | null; voll: number } | null = null;
+
+/**
+ * Prüfergebnis der Kette für die Projektseiten: Eine volle Prüfung liest jedes Ereignis und wuchs mit dem Protokoll
+ * (11.11.2026: 70–160 ms bei 2.600 Ereignissen, bei jedem Seitenaufruf). Hier prüft ein Aufruf nur die Ereignisse seit
+ * der letzten Prüfung, ab deren Kopf-Hash; alle KETTE_VOLL_MS (und nach jedem Fehler) wieder die ganze Kette. Eine
+ * Änderung an alten Ereignissen fällt so spätestens nach einer Stunde auf; die tägliche Signatur (koepfe.ts) und
+ * check-log prüfen weiter vollständig.
+ */
+export async function ketteVerifizierenLaufend(db: Db): Promise<Pruefergebnis> {
+  const s = ketteStand;
+  if (!s || !s.ergebnis.ok || Date.now() - s.voll > KETTE_VOLL_MS) {
+    const zeilen = (await db.query("select * from ereignisse order by seq")).rows;
+    const r = kettePruefen(zeilen, START_HASH);
+    const ergebnis = { ok: r.ok, anzahl: zeilen.length, kopf: r.kopf, ...(r.fehler ? { fehler: r.fehler } : {}) };
+    ketteStand = { ergebnis, seq: r.seq, voll: Date.now() };
+    return ergebnis;
+  }
+  const neu = (await db.query("select * from ereignisse where seq > $1 order by seq", [s.seq ?? 0])).rows;
+  if (!neu.length) return s.ergebnis;
+  const r = kettePruefen(neu, s.ergebnis.kopf);
+  const ergebnis = { ok: r.ok, anzahl: s.ergebnis.anzahl + neu.length, kopf: r.kopf, ...(r.fehler ? { fehler: r.fehler } : {}) };
+  ketteStand = { ergebnis, seq: r.seq ?? s.seq, voll: s.voll };
+  return ergebnis;
+}
+
+/** Für Tests: den Zwischenstand vergessen. */
+export function ketteStandVergessen() { ketteStand = null; }
