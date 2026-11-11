@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.14.0 (10 Nov 2026)
+## 0.14.0 (11 Nov 2026)
 
 - **Peer reviews by the runner** (`--peer-reviews`, on by default; off with `--peer-reviews=false`). From trust level
   1, before taking a new task, the runner reviews one checked submission of another person with your model, so that
