@@ -5,6 +5,10 @@
 //   - Alle anderen Projekte (Runner ab 0.11): Zwei grüne Läufe (eigener + Gegenprüfung) ersetzen die Prüfstraße.
 //     Rot in der Gegenprüfung, kein eigener grüner Lauf oder niemand da: Die Prüfstraße prüft wie bisher und
 //     entscheidet. Eine Gegenprüfung allein lehnt also nie ab; was durchkommt, testet der Merge-Zug noch einmal.
+//   - Ändert eine Einreichung Referenzbilder (SZENENBILDER), prüft immer die Prüfstraße: Nur sie liefert die Szenenbilder
+//     (alt, neu, Differenz) für Lead und Prüfer. Bis 11.11.2026 ersetzte die Gegenprüfung sie auch hier; Formwerk-Modelle
+//     kamen dann ohne Bilder in die Fremdprüfung, ein Prüfer ohne Bildmodell durfte zustimmen, ohne dass jemand das
+//     Ergebnis gesehen hatte (so rutschte am 9.11. die Schubkarre durch).
 import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, projektPerSlug, type Wer } from "./aufgaben.ts";
@@ -33,9 +37,16 @@ export async function eigenenLaufFesthalten(tx: Tx, einreichungId: number, eigen
     [einreichungId, eigenesErgebnis, bericht, akteur(wer)]);
 }
 
+/**
+ * Regulärer Ausdruck (PostgreSQL) auf den Patch: ändert er ein Referenzbild, also eine PNG-Datei in einem Ordner
+ * baseline oder baselines (bei three.js tests/scene/baseline, sonst nach swarvex.yaml images_baseline benannt)?
+ */
+export const SZENENBILDER = String.raw`(^|\n)diff --git a/(\S+/)?baselines?/\S+\.png `;
+
 /** SQL-Bedingung (Einreichung e, Agent des Einreichers ag): Wartet die Einreichung gerade auf eine Gegenprüfung statt auf die Prüfstraße? */
 export const WARTET_AUF_GEGENPRUEFUNG = `(
-  exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'selbst' and x.ergebnis = 'ok')
+  e.patch !~ '${SZENENBILDER}'
+  and exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'selbst' and x.ergebnis = 'ok')
   and not exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'gegenpruefung' and x.ergebnis = 'fehler')
   and (exists (select 1 from gegenpruefungen g where g.einreichung_id = e.id and g.beendet is null and g.laeuft_ab > now())
        or (e.eingereicht > now() - interval '${GEGENPRUEFUNG_WARTEN_MINUTEN} minutes'
@@ -115,6 +126,7 @@ async function allgemeineGegenpruefung(db: Db, wer: Wer, p: any) {
          and e.id = (select max(id) from einreichungen where aufgabe_id = a.id)
          and ag.mensch_id <> $2
          and exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'selbst' and x.ergebnis = 'ok')
+         and e.patch !~ '${SZENENBILDER}'   -- Referenzbilder geändert: die Prüfstraße liefert die Szenenbilder
          and not exists (select 1 from pruefungen x where x.einreichung_id = e.id and (x.quelle = 'projekt' or (x.quelle = 'gegenpruefung' and x.ergebnis = 'fehler')))
          and not exists (select 1 from gegenpruefungen g where g.einreichung_id = e.id and g.beendet is null and g.laeuft_ab > now())
          and not exists (select 1 from gegenpruefungen g join agenten x on x.id = g.agent_id where g.einreichung_id = e.id and x.mensch_id = $2)

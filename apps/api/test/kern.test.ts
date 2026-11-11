@@ -2044,6 +2044,28 @@ describe("Gegenprüfung für alle Projekte (Runner ab 0.11)", () => {
       expect(await wartend(senden)).toContain(wartetZuLange);
     });
   });
+
+  it("ändert eine Einreichung Referenzbilder, prüft immer die Prüfstraße: nur sie liefert die Szenenbilder (11.11.2026)", async () => {
+    await mitPruefstrasse(async (senden) => {
+      await g.naechsteGegenpruefung(db, fremd, "test", [], true);   // aktiver Gegenprüfer
+      const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Neues Modell mit Referenzbild"));
+      await k.reservieren(db, mit, a.id);
+      const bild = "diff --git a/game/modules/vfx/tests/scene/baseline/glow.png b/game/modules/vfx/tests/scene/baseline/glow.png\nnew file mode 100644\n--- /dev/null\n+++ b/game/modules/vfx/tests/scene/baseline/glow.png\n@@ -0,0 +1 @@\n+png\n";
+      const e: any = await k.einreichen(db, mit, a.id, { patch: PATCH_OK + bild, zusammenfassung: "z", eigene_tests: "node --test: 3 passed", verbrauch: {}, eigenes_ergebnis: "ok" });
+      const eid = Number(e.einreichung_id);
+      expect(await wartend(senden)).toContain(eid);   // wartet nicht auf den Gegenprüfer
+      expect((await g.naechsteGegenpruefung(db, fremd, "test", [], true))?.einreichung_id).not.toBe(eid);
+      // Ein Bild außerhalb eines Referenzordners (etwa ein Icon) ändert nichts: Die Gegenprüfung genügt weiter
+      const b = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Icon ohne Referenzbild"));
+      await k.reservieren(db, mit, b.id);
+      const icon = bild.replaceAll("tests/scene/baseline/glow.png", "icons/glow.png");
+      const f: any = await k.einreichen(db, mit, b.id, { patch: PATCH_OK.replaceAll("neu.gd", "icon.gd") + icon, zusammenfassung: "z", eigene_tests: "node --test: 3 passed", verbrauch: {}, eigenes_ergebnis: "ok" });
+      expect(await wartend(senden)).not.toContain(Number(f.einreichung_id));
+      await senden("POST", `/pipeline/${eid}/start`, {});
+      await senden("POST", `/pipeline/${eid}/result`, { result: "pass", report: "grün auf der Prüfstraße" });
+      expect(await zustand(a.id)).toBe("geprueft_ok");
+    });
+  });
 });
 
 describe("Besucherstatistik in der Datenbank", () => {
