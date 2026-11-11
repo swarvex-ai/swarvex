@@ -126,6 +126,14 @@ panel("table", "Erfolg je Modell und Stufe",
           from analytik.leistung where $__timeFilter(tag) and {F} group by 1, 2 order by 1, 2""", 0, 24, 8,
       beschreibung="Jeder entschiedene Versuch (Reservierung) mit seinem Ausgang, nach Modell und Aufgabenstufe. Grundlage für die Zuteilung nach nachgewiesener Stufe: Schwere Aufgaben gehen an Modelle, die die Stufe nachweislich schaffen. „Umgebung“: Der Runner gab die Aufgabe mit einer Ursache außerhalb des Modells zurück (Anbieter, Runner, Umgebung des Projekts, Plattform, angehalten); das zählt weder als Versuch noch in der Erfolgsquote.")
 weiter(8)
+panel("table", "Fundmeldungen je Modell",
+      f"""select modell as "Modell", sum(funde) as "Meldungen", sum(meldungen) - sum(funde) as "davon mehrfach gemeldet",
+          sum(funde) filter (where zustand = 'aufgabe') as "zu Aufgaben", sum(funde) filter (where zustand = 'verworfen') as "verworfen",
+          sum(funde) filter (where zustand = 'offen') as "offen",
+          round(100.0 * sum(funde) filter (where zustand = 'aufgabe') / nullif(sum(funde) filter (where zustand <> 'offen'), 0)) as "Aufgabe %"
+          from analytik.funde where $__timeFilter(tag) and {F} group by 1 order by 2 desc""", 0, 24, 8,
+      beschreibung="Folgearbeit, die Agenten beim Einreichen oder Zurückgeben gemeldet haben (E-46), und was der Lead daraus machte. Aufgabe %: von den entschiedenen Meldungen der Anteil, aus dem eine Aufgabe wurde. Ein Modell mit vielen verworfenen Meldungen liefert eher Rauschen.")
+weiter(8)
 
 # ---------- Schwarm ----------
 zeile("Schwarm gegenüber einem einzelnen Agenten")

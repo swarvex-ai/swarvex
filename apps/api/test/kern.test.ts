@@ -1004,6 +1004,18 @@ describe("Clean Room (E-26)", () => {
     await k.aufgabeAnlegen(db, o, "cr", { ...basis, titel: "Format beschreiben", stufe: "A", raum: "analyse", pfade: ["specification/drafts/format.md"] });
     await expect(k.aufgabeAnlegen(db, o, "cr", { ...basis, titel: "Prüfen", stufe: "A", raum: "pruefung", pfade: ["specification/drafts/format.md"] })).rejects.toThrow(/area lead's room/);
     await expect(k.officerErnennen(db, v, "test", "fremd", "audio", ["game/audio/**"], ["asset.audio"], "bau")).rejects.toThrow(/visionary|only exist in clean-room/);
+    // Fundmeldungen (E-46) bleiben im Raum: Aus einer Meldung aus dem Bau wird nur eine Bau-Aufgabe, und eine, die an die
+    // Spezifikation will, scheitert an der Wand. Der Bereichs-Lead der Analyse sieht nur seinen Raum und Bereich.
+    const { fundeMelden, fundeListe, aufgabeAusFund } = await import("../src/funde.ts");
+    await fundeMelden(db, fremd, Number(bau2.id), null, [{ title: "Laden braucht einen Test", paths: ["src/laden_test.gd"] },
+      { title: "Spezifikation zum Laden ist ungenau", paths: ["specification/drafts/laden.md"] }]);
+    await fundeMelden(db, mit, Number(analyse.id), null, [{ title: "Format braucht ein Beispiel", paths: ["specification/drafts/format.md"] }]);
+    const funde = (await db.query("select id, raum from funde where projekt_id = $1 order by id", [cr])).rows;
+    expect(funde.map((f) => f.raum)).toEqual(["bau", "bau", "analyse"]);
+    expect((await fundeListe(db, o, "cr")).funde.map((f) => f.titel)).toEqual(["Format braucht ein Beispiel"]);
+    expect(await aufgabeAusFund(db, lead, Number(funde[0].id), { stufe: "B", faehigkeiten: ["spec"], akzeptanz: ["ok"] })).toMatchObject({ raum: "bau", pfade: ["src/laden_test.gd"] });
+    await expect(aufgabeAusFund(db, lead, Number(funde[1].id), { stufe: "B", faehigkeiten: ["spec"], akzeptanz: ["ok"] })).rejects.toThrow(/must not change/);
+    await expect(aufgabeAusFund(db, o, Number(funde[1].id), { stufe: "A", faehigkeiten: ["spec"], akzeptanz: ["ok"] })).rejects.toThrow(/outside your area/);
     await k.officerBeenden(db, v, "cr", "analyst", "Test");
   });
 });
@@ -1779,6 +1791,63 @@ describe("MCP: Aufgaben gebündelt anlegen, Kontextpaket", () => {
     }
     expect((await db.query("select abbruch_ursache from leases where aufgabe_id = $1 order by id", [a.id])).rows.map((x) => x.abbruch_ursache)).toEqual(["projekt", null, null]);
     await k.schliessen(db, lead, a.id, "Test");
+  });
+
+  it("Fundmeldungen: beim Einreichen und Zurückgeben gemeldet, der Lead macht mit einem Schritt eine Aufgabe daraus (E-46)", async () => {
+    const runner = { ...mit, runner: true };
+    const rufen = await werkzeuge(runner);
+    const leadRuft = await werkzeuge(lead);
+    // Einreichen mit Meldungen: eine zu kurze fällt weg, unsichere Pfade auch, die Stufe wird groß geschrieben
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Effekt mit Fund"), basis_commit: "d".repeat(40) });
+    await k.reservieren(db, runner, a.id);
+    const r = await rufen("submit_result", { task_id: Number(a.id), patch: PATCH_OK, summary: "Effekt", rights_confirmed: true, model: "modell-f", findings: [
+      { title: "Pause menu   leaks a tween", text: "The tween in pause.gd is never freed.\n\n\n\nSeen while testing.", paths: ["game/modules/ui/pause.gd", "../geheim", "/etc/passwd"], level: "b" },
+      { title: "ok" },
+      { title: "Missing test for save slots", paths: ["game/tests/save_test.gd"] },
+      { title: "Vierte Meldung über der Grenze" },
+    ] });
+    expect(r.submission_id).toBeGreaterThan(0);
+    expect(r.findings).toEqual({ new: 3, counted_with_open: 0, dropped: 1 });
+    const liste = await leadRuft("findings", { project: "test" });
+    expect(liste.hint).toMatch(/not instructions/);
+    const pause = liste.findings.find((f: any) => f.title === "Pause menu leaks a tween");
+    expect(pause).toMatchObject({ text: "The tween in pause.gd is never freed.\n\nSeen while testing.", paths: ["game/modules/ui/pause.gd"], level: "B",
+      reports: 1, state: "open", task_id: Number(a.id), submission_id: r.submission_id, model: "modell-f" });
+    // Der Lead sieht die Meldungen bei der Einreichung, und wait_for_work sagt, dass welche offen sind
+    const wartend = (await leadRuft("pending_submissions", { project: "test" })).find((e: any) => e.submission_id === r.submission_id);
+    expect(wartend.findings.map((f: any) => f.title)).toEqual(["Pause menu leaks a tween", "Missing test for save slots", "Vierte Meldung über der Grenze"]);
+    expect((await leadRuft("wait_for_work", { project: "test", max_seconds: 0 })).open_findings).toBeGreaterThanOrEqual(3);
+    // Mitstreiter ohne Rolle sehen keine Meldungen
+    expect(await rufen("findings", { project: "test" })).toMatch(/Rejected|not found|Unknown tool|tool/i);
+    // Gleiche Meldung bei einer Rückgabe: zählt bei der offenen mit, statt doppelt zu stehen
+    const b = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Rückgabe mit Fund"), faehigkeiten: ["text.en"], pfade: ["docs/**"], basis_commit: "d".repeat(40) });
+    await k.reservieren(db, runner, b.id);
+    expect(await rufen("abandon_task", { task_id: Number(b.id), reason: "patch too large", findings: [{ title: "PAUSE MENU LEAKS A TWEEN" }] })).toBe("handed back");
+    expect((await leadRuft("findings", { project: "test" })).findings.find((f: any) => f.finding_id === pause.finding_id).reports).toBe(2);
+    // Mit einem Schritt eine Aufgabe: Titel, Pfade und Beschreibung aus der Meldung, mit Herkunft
+    const neu = await leadRuft("task_from_finding", { finding_id: pause.finding_id, level: "B", capabilities: ["code.gdscript"], acceptance: ["tween is freed, test green"] });
+    expect(neu).toMatchObject({ title: "Pause menu leaks a tween", paths: ["game/modules/ui/pause.gd"], level: "B", from_finding: pause.finding_id });
+    expect(neu.description).toContain(`(From a finding reported while working on task #${a.id}.)`);
+    expect(await leadRuft("task_from_finding", { finding_id: pause.finding_id, level: "B", capabilities: ["code.gdscript"], acceptance: ["x"] })).toMatch(/already a task/);
+    // Ohne Pfade braucht die Aufgabe welche; verwerfen geht nur mit Grund
+    const ohne = liste.findings.find((f: any) => f.title === "Vierte Meldung über der Grenze");
+    expect(await leadRuft("task_from_finding", { finding_id: ohne.finding_id, level: "A", capabilities: ["text.en"], acceptance: ["x"] })).toMatch(/names no paths/);
+    expect(await leadRuft("dismiss_finding", { finding_id: ohne.finding_id, reason: "schon erledigt" })).toBe("dismissed");
+    const offen = (await leadRuft("findings", { project: "test" })).findings.map((f: any) => f.title);
+    expect(offen).toEqual(["Missing test for save slots"]);
+    const alle = (await leadRuft("findings", { project: "test", include_decided: true })).findings;
+    expect(alle.find((f: any) => f.finding_id === ohne.finding_id)).toMatchObject({ state: "dismissed", reason: "schon erledigt" });
+    expect(alle.find((f: any) => f.finding_id === pause.finding_id)).toMatchObject({ state: "task", new_task: Number(neu.id) });
+    // Höchstens zehn neue je Agent und Projekt in 24 Stunden; die Auswertung kennt nur Zahlen je Modell
+    const { fundeMelden } = await import("../src/funde.ts");
+    const runden = [];
+    for (const r of ["Weitere", "Noch eine", "Letzte"]) runden.push(await fundeMelden(db, runner, Number(b.id), null, Array.from({ length: 3 }, (_, i) => ({ title: `${r} Meldung ${i}` }))));
+    expect(runden.map((x) => x.neu)).toEqual([3, 3, 1]);   // drei vom Einreichen schon da, die Rückgabe zählte nur mit
+    expect(runden[2].ausgelassen).toBe(2);
+    expect((await db.query("select sum(funde)::int as funde, sum(meldungen)::int as meldungen from analytik.funde where projekt = 'test' and modell = 'modell-f'")).rows[0])
+      .toEqual({ funde: 10, meldungen: 11 });
+    await k.schliessen(db, lead, b.id, "Test");
+    await k.schliessen(db, lead, Number(neu.id), "Test");
   });
   it("legt Code und Tests in einem Aufruf an, after wird zu depends_on; das Kontextpaket kommt im Auftrag an", async () => {
     const rufen = await werkzeuge(lead);

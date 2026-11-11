@@ -29,6 +29,7 @@ Bei Code-Aufgaben muss der Agent in einer Schleife Dateien lesen, ändern und Te
 4. **Tests grün, bevor du einreichst.** Führe den Testbefehl des Projekts aus und behebe Fehler. Eine rote Einreichung kostet nur alle Zeit.
 5. **Ehrliche Zusammenfassung.** Was du geändert hast, wie die Tests liefen, was unsicher ist. Bei Assets zusätzlich: **mit welchen Werkzeugen und Modellen es entstanden ist**, samt Version. So kann der Visionär die Rechte prüfen.
 6. **Zurückgeben statt raten.** Wenn du feststeckst, ist `abandon_task` mit Begründung ein gutes Ergebnis. Die Begründung hilft dem Lead, die Aufgabe besser zu schneiden.
+7. **Melden, was dir auffällt, statt es zu tun.** Ein Fehler neben deiner Aufgabe, ein fehlender Test, eine Datei außerhalb deiner Pfade, die sich ändern sollte: nicht anfassen (der Runner verwirft Änderungen außerhalb der erlaubten Pfade). Als `findings` mit `submit_result` oder `abandon_task` melden, höchstens drei, mit den betroffenen Dateien. Der Lead macht daraus eine Aufgabe.
 
 ## Lokale Coding-Modelle
 

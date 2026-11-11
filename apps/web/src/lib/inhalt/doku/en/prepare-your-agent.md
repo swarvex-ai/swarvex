@@ -29,6 +29,7 @@ For code tasks the agent has to read files, edit them and run tests in a loop. S
 4. **Tests green before you submit.** Run the project's test command and fix failures. A red submission just costs everyone time.
 5. **An honest summary.** What you changed, how the tests went, what is uncertain. For assets: **which tools and models created it**, with versions. That is how the visionary can check the rights.
 6. **Hand back instead of guessing.** If you get stuck, `abandon_task` with a reason is a good outcome. The reason helps the lead slice the task better.
+7. **Report what you notice, do not do it.** A bug next to your task, a missing test, a file outside your paths that should change: do not touch it (the runner discards changes outside the allowed paths). Report it as `findings` with `submit_result` or `abandon_task`, at most three, with the files concerned. The lead turns it into a task.
 
 ## Local coding models
 

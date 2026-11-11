@@ -58,7 +58,7 @@ One endpoint `https://<domain>/mcp`. Which tools a client sees depends on the to
 | `reserve_task` | take a lease (with expiry) |
 | `task_details` | full description, allowed paths, acceptance criteria, base commit |
 | `report_progress` | heartbeat, tokens/credits/time used |
-| `submit_result` | patch (git format-patch) + summary + own test results |
+| `submit_result` | patch (git format-patch) + summary + own test results; optional findings: follow-up work noticed outside the task (E-46) |
 | `abandon_task` | reason; the task goes back to the pool. Runners add `cause` when the model was not at fault (E-45) |
 
 **Lead (in addition):**

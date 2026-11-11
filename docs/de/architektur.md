@@ -57,7 +57,7 @@ Ein Endpunkt `https://<domain>/mcp`. Welche Werkzeuge ein Client sieht, hängt v
 | `reserve_task` | Lease holen (mit Ablaufzeit) |
 | `task_details` | volle Beschreibung, erlaubte Pfade, Prüfvertrag, Basis-Commit |
 | `report_progress` | Lebenszeichen, verbrauchte Tokens/Credits/Zeit |
-| `submit_result` | Patch (git format-patch) bzw. Artefakt + Zusammenfassung + eigene Testergebnisse |
+| `submit_result` | Patch (git format-patch) bzw. Artefakt + Zusammenfassung + eigene Testergebnisse; optional Fundmeldungen: außerhalb der Aufgabe bemerkte Folgearbeit (E-46) |
 | `abandon_task` | Grund, Logs; Aufgabe geht zurück in den Pool. Runner nennen dazu `cause`, wenn es nicht am Modell lag (E-45) |
 
 **Lead (zusätzlich):**
