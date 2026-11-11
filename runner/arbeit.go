@@ -319,10 +319,16 @@ func arbeitenBefehl(args []string) {
 	// u: warum, wenn das Modell gar nicht zum Arbeiten kam oder die Runde abstürzte (ursache.go); ursache{} heißt, es
 	// lag an der Aufgabe oder am Ergebnis. Die Art geht an die Plattform (der Versuch zählt dann nicht als Misserfolg des
 	// Modells, E-45), der Schlüssel in den Verlauf (drei gleiche in Folge: Der Dauerbetrieb setzt aus).
+	// funde: Folgearbeit für den Lead (funde.go, E-46), gesammelt nach der Sandbox; geht mit Rückgabe oder Einreichung mit.
+	var funde []fund
 	abbrechen := func(u ursache, grund string) {
 		rueckgabe := map[string]any{"task_id": id, "reason": grund}
 		if u.Art != "" {
 			rueckgabe["cause"] = u.Art
+		}
+		if len(funde) > 0 {
+			rueckgabe["findings"] = funde
+			fundeNennen(funde)
 		}
 		m.werkzeug("abandon_task", rueckgabe, nil)
 		eintrag := verlaufEintragAus(id, a, "returned", grund, verbrauch)
@@ -420,6 +426,8 @@ func arbeitenBefehl(args []string) {
 		fmt.Fprintln(os.Stderr, "recording usage:", err)
 	}
 	gestoppt()
+	// Was der Agent für den Lead gemeldet hat (funde.go): lesen und aus dem Arbeitsbaum nehmen, bevor der Patch entsteht
+	funde = fundeLesen(gitDir, arbeitsbaum)
 	// Token-Budget erreicht: was der Agent bis dahin erarbeitet hat, geht als Einreichung weiter (Prüfung und Bewertung
 	// entscheiden), statt verworfen zu werden; ohne Ergebnis wird die Aufgabe mit klarem Grund zurückgegeben.
 	amBudget := *budget > 0 && budgetTokensAus(verbrauch) >= int64(*budget)
@@ -433,7 +441,9 @@ func arbeitenBefehl(args []string) {
 	// 5. Patch bilden (Git-Verzeichnis liegt außerhalb der Sandbox) und selbst prüfen.
 	patch, verworfen, err := patchBilden(gitDir, arbeitsbaum, a.Pfade, u)
 	if len(verworfen) > 0 {
-		fmt.Printf("Discarded %d side changes outside the allowed paths (e.g. dependencies, build or import files); they never leave this machine: %s\n", len(verworfen), beispiele(verworfen))
+		fmt.Printf("Discarded %d side changes outside the allowed paths (e.g. dependencies, build or import files); their content never leaves this machine: %s\n", len(verworfen), beispiele(verworfen))
+		// Was davon nicht von selbst entsteht, geht als Meldung (nur die Pfade) an den Lead, statt verloren zu gehen
+		funde = fundeZusammen(funde, verworfenFund(id, a.Titel, verworfen))
 	}
 	if err != nil || strings.TrimSpace(patch) == "" {
 		if amBudget {
@@ -474,6 +484,10 @@ func arbeitenBefehl(args []string) {
 	}
 	if testErgebnis != "" {
 		einreichung["own_test_result"] = testErgebnis
+	}
+	if len(funde) > 0 {
+		einreichung["findings"] = funde
+		fundeNennen(funde)
 	}
 	var ergebnis map[string]any
 	pruefen(m.werkzeug("submit_result", einreichung, &ergebnis))
@@ -880,7 +894,7 @@ func auftragstext(a aufgabe, u umgebung.Umgebung) string {
 		volle[i] = "/work/" + strings.TrimPrefix(p, "/")
 	}
 	b.WriteString("\nRULES:\n- Change or create ONLY these paths (full paths; all task paths are relative to /work, not to your start folder): " + strings.Join(volle, ", ") + "\n")
-	b.WriteString("- Do not create or change any other files (no notes, logs or helper scripts in the project either).\n")
+	b.WriteString("- Do not create or change any other files (no notes, logs or helper scripts in the project either). The one exception is /work/" + fundDatei + ", see below.\n")
 	if a.Grenzen.Zeilen > 0 && a.Grenzen.Dateien > 0 {
 		fmt.Fprintf(&b, "- Keep the change within %d changed lines (added plus removed) and %d files; the platform rejects larger patches. Do the core of the task compactly rather than everything at length.\n", a.Grenzen.Zeilen, a.Grenzen.Dateien)
 	}
@@ -890,6 +904,11 @@ func auftragstext(a aufgabe, u umgebung.Umgebung) string {
 		b.WriteString("- Run the checks from the acceptance criteria yourself and fix failures.\n")
 	}
 	b.WriteString("- There is no internet; all dependencies are already installed. Finish with a short summary of what you did and how the tests went.\n")
+	// Fundmeldungen (funde.go, E-46): melden statt außerhalb der Pfade ändern
+	fmt.Fprintf(&b, "\nFINDINGS: if you notice work outside this task (a bug next to it, a missing test, a file outside your paths that should change), do not do it. "+
+		"Write it to /work/%s instead, at most %d, as a JSON list:\n"+
+		"    [{\"title\": \"one line\", \"text\": \"what and why\", \"paths\": [\"files concerned\"], \"level\": \"A, B, C or D\"}]\n"+
+		"The project's lead decides whether it becomes a task. Leave the file out when nothing stood out.\n", fundDatei, fundeMax)
 	return b.String()
 }
 

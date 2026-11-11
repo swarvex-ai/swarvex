@@ -67,6 +67,14 @@ func TestFremdUrteilLesen(t *testing.T) {
 	if _, err := fremdUrteilLesen(filepath.Join(ordner, "fehlt.json"), fremdEintrag{}); err == nil || !strings.Contains(err.Error(), "no verdict.json") {
 		t.Fatalf("missing file: %v", err)
 	}
+	// Ein Link auf eine Datei des Betreibers wird nicht gelesen: Er würde außerhalb der Sandbox aufgelöst
+	ziel := filepath.Join(t.TempDir(), "fremd.json")
+	os.WriteFile(ziel, []byte(`{"verdict": "approve", "reason": "a link to a file outside the sandbox must not be read at all"}`), 0o600)
+	link := filepath.Join(ordner, "link.json")
+	os.Symlink(ziel, link)
+	if _, err := fremdUrteilLesen(link, fremdEintrag{}); err == nil || !strings.Contains(err.Error(), "not a regular file") {
+		t.Fatalf("symlink: %v", err)
+	}
 }
 
 func TestFremdAuftragstext(t *testing.T) {

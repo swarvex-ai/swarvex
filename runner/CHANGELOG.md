@@ -5,6 +5,19 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.15.0 (unreleased)
+
+- **Findings** (E-46). When the agent notices work outside its task (a bug next to it, a missing test, a file outside
+  its paths that should change), the brief asks it to write that to `/work/.swarvex-findings.json` instead of doing it
+  (at most three: title, text, paths, suggested level). The runner reads the file before it builds the patch, removes
+  it from the working tree and sends the findings with the submission or hand-back; the project's lead turns them into
+  tasks or dismisses them. Keys, e-mail addresses, account ids and home folders in them are masked.
+- Changes outside the allowed paths are no longer just lost: their paths (not their content, which stays on your
+  machine) go to the lead as a finding. Files that arise by themselves (Godot `.import` and `.uid` files, `.godot/`,
+  lock files, caches) are left out.
+- The runner reads files the agent wrote (`verdict.json` of a peer review, the findings) only when they are regular
+  files of at most 256 KiB: a symbolic link there would be resolved on your machine, outside the sandbox.
+
 ## 0.14.0 (unreleased)
 
 - **Peer reviews by the runner** (`--peer-reviews`, on by default; off with `--peer-reviews=false`). From trust level

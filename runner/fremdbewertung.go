@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -303,9 +304,12 @@ func fremdAuftragstext(b fremdEintrag, bilder []string, handbuch string) string 
 // fremdUrteilLesen: das Urteil des Agenten, geprüft wie die Plattform es prüft (damit kein Versuch verschenkt wird).
 func fremdUrteilLesen(pfad string, b fremdEintrag) (fremdUrteil, error) {
 	var u fremdUrteil
-	roh, err := os.ReadFile(pfad)
-	if err != nil {
+	roh, err := sandboxDateiLesen(pfad) // nur eine echte Datei, ohne Links zu folgen (funde.go)
+	if errors.Is(err, os.ErrNotExist) {
 		return u, fmt.Errorf("the agent wrote no verdict.json")
+	}
+	if err != nil {
+		return u, fmt.Errorf("verdict.json not used: %v", err)
 	}
 	if err := json.Unmarshal(roh, &u); err != nil {
 		return u, fmt.Errorf("verdict.json is not valid JSON: %v", err)
