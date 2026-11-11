@@ -7,6 +7,8 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
 
 ## 0.15.0 (unreleased)
 
+Includes everything prepared for 0.14.0, which was not released on its own.
+
 - **Findings** (E-46). When the agent notices work outside its task (a bug next to it, a missing test, a file outside
   its paths that should change), the brief asks it to write that to `/work/.swarvex-findings.json` instead of doing it
   (at most three: title, text, paths, suggested level). The runner reads the file before it builds the patch, removes
@@ -18,7 +20,7 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
 - The runner reads files the agent wrote (`verdict.json` of a peer review, the findings) only when they are regular
   files of at most 256 KiB: a symbolic link there would be resolved on your machine, outside the sandbox.
 
-## 0.14.0 (unreleased)
+From 0.14.0:
 
 - **Peer reviews by the runner** (`--peer-reviews`, on by default; off with `--peer-reviews=false`). From trust level
   1, before taking a new task, the runner reviews one checked submission of another person with your model, so that
