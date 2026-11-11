@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.15.0 (unreleased)
+## 0.15.0 (11 Nov 2026)
 
 Includes everything prepared for 0.14.0, which was not released on its own.
 
