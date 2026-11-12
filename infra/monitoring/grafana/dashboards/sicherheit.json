@@ -595,11 +595,640 @@
   },
   {
    "type": "row",
-   "title": "Anmeldung und Agenten",
+   "title": "Softwarestände und Updates",
    "collapsed": false,
    "gridPos": {
     "x": 0,
     "y": 14,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "Neustart nötig",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 15,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "label_replace(label_replace(max by (job) (swarvex_os_reboot_required), \"server\", \"Plattform\", \"job\", \"integrations/unix\"), \"server\", \"Prüfserver\", \"job\", \"pruefserver\")",
+     "legendFormat": "{{server}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "nein",
+         "color": "green"
+        },
+        "1": {
+         "text": "ja",
+         "color": "orange"
+        }
+       }
+      }
+     ],
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "value": null,
+        "color": "green"
+       },
+       {
+        "value": 1,
+        "color": "orange"
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "description": "Ein neuer Kernel (oder eine Systembibliothek) ist installiert, läuft aber erst nach einem Neustart. Sicherheitsupdates des Kernels wirken vorher nicht.",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value_and_name"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Sicherheitsupdates offen",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 5,
+    "y": 15,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "label_replace(label_replace(max by (job) (swarvex_os_updates_pending{kind=\"security\"}), \"server\", \"Plattform\", \"job\", \"integrations/unix\"), \"server\", \"Prüfserver\", \"job\", \"pruefserver\")",
+     "legendFormat": "{{server}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "value": null,
+        "color": "green"
+       },
+       {
+        "value": 1,
+        "color": "red"
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "description": "Pakete aus dem Debian-Sicherheitsarchiv, die noch nicht installiert sind. Die automatischen Updates spielen sie nachts ein; über einen Tag hinaus ist das ein Alarm.",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value_and_name"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Automatische Updates zuletzt",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 10,
+    "y": 15,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "label_replace(label_replace((time() - max by (job) (swarvex_os_unattended_upgrades_last_run_timestamp_seconds > 0)) / 3600, \"server\", \"Plattform\", \"job\", \"integrations/unix\"), \"server\", \"Prüfserver\", \"job\", \"pruefserver\")",
+     "legendFormat": "{{server}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "h",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "value": null,
+        "color": "green"
+       },
+       {
+        "value": 30,
+        "color": "orange"
+       },
+       {
+        "value": 50,
+        "color": "red"
+       }
+      ]
+     },
+     "decimals": 0,
+     "noValue": "noch nie"
+    },
+    "overrides": []
+   },
+   "description": "Stunden seit dem letzten Lauf von unattended-upgrades (täglich, auch wenn es nichts zu tun gab).",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value_and_name"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Images mit Update",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 15,
+    "y": 15,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "label_replace(label_replace(count by (job) (swarvex_image_created_timestamp_seconds{update=~\"yes|rebuild\"}), \"server\", \"Plattform\", \"job\", \"integrations/unix\"), \"server\", \"Prüfserver\", \"job\", \"pruefserver\")",
+     "legendFormat": "{{server}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "value": null,
+        "color": "green"
+       },
+       {
+        "value": 1,
+        "color": "orange"
+       }
+      ]
+     },
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "description": "Images, für die es eine neuere Version gibt (Tabelle unten). Einspielen nach dem Update-Zyklus.",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value_and_name"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Stand erfasst vor",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 20,
+    "y": 15,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "label_replace(label_replace((time() - max by (job) (swarvex_software_check_timestamp_seconds)) / 3600, \"server\", \"Plattform\", \"job\", \"integrations/unix\"), \"server\", \"Prüfserver\", \"job\", \"pruefserver\")",
+     "legendFormat": "{{server}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "h",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "value": null,
+        "color": "green"
+       },
+       {
+        "value": 30,
+        "color": "red"
+       }
+      ]
+     },
+     "decimals": 0,
+     "noValue": "nie"
+    },
+    "overrides": []
+   },
+   "description": "Wann infra/software-stand.py zuletzt lief (täglich gegen 07:15 und nach jedem Start). Über 30 Stunden: der Timer swarvex-software läuft nicht.",
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value_and_name"
+   }
+  },
+  {
+   "type": "table",
+   "title": "Images",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 19,
+    "w": 24,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "label_replace(label_replace((time() - swarvex_image_created_timestamp_seconds) / 86400, \"server\", \"Plattform\", \"job\", \"integrations/unix\"), \"server\", \"Prüfserver\", \"job\", \"pruefserver\")",
+     "format": "table",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Update"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "yes": {
+            "text": "neuere Version da",
+            "color": "orange"
+           },
+           "rebuild": {
+            "text": "Neubau fällig",
+            "color": "orange"
+           },
+           "no": {
+            "text": "aktuell",
+            "color": "green"
+           },
+           "unknown": {
+            "text": "unbekannt",
+            "color": "text"
+           },
+           "built here": {
+            "text": "hier gebaut",
+            "color": "text"
+           }
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Alter (Tage)"
+      },
+      "properties": [
+       {
+        "id": "decimals",
+        "value": 0
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-text"
+        }
+       },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "value": null,
+           "color": "text"
+          },
+          {
+           "value": 90,
+           "color": "orange"
+          },
+          {
+           "value": 180,
+           "color": "red"
+          }
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "transformations": [
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true,
+       "__name__": true,
+       "instance": true,
+       "job": true
+      },
+      "indexByName": {
+       "server": 0,
+       "image": 1,
+       "version": 2,
+       "newest": 3,
+       "update": 4,
+       "containers": 5,
+       "Value": 6
+      },
+      "renameByName": {
+       "server": "Server",
+       "image": "Image",
+       "version": "Version",
+       "newest": "Neueste",
+       "update": "Update",
+       "containers": "Container",
+       "Value": "Alter (Tage)"
+      }
+     }
+    }
+   ],
+   "description": "Jedes Image auf dem Server mit Version, Alter, den Containern, die es nutzen, und ob es eine neuere gibt. Feste Versionen (grafana:12.1.0): neueste veröffentlichte Version bei Docker Hub. Mitwandernde Tags (postgres:18): neuerer Stand unter demselben Tag. Hier gebaute Images auf Node: neuere Node-Version derselben Hauptversion, dann ist ein Neubau fällig (deploy.sh zieht das Basis-Image frisch)."
+  },
+  {
+   "type": "table",
+   "title": "Betriebssystem und Kernel",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 28,
+    "w": 16,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "label_replace(label_replace(swarvex_os_info, \"server\", \"Plattform\", \"job\", \"integrations/unix\"), \"server\", \"Prüfserver\", \"job\", \"pruefserver\")",
+     "format": "table",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Value"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "transformations": [
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true,
+       "__name__": true,
+       "instance": true,
+       "job": true
+      },
+      "indexByName": {
+       "server": 0,
+       "os": 1,
+       "kernel_running": 2,
+       "kernel_installed": 3
+      },
+      "renameByName": {
+       "server": "Server",
+       "os": "System",
+       "kernel_running": "Kernel läuft",
+       "kernel_installed": "Kernel installiert"
+      }
+     }
+    }
+   ],
+   "description": "Weichen „läuft“ und „installiert“ ab, wartet ein Kernel-Update auf den Neustart."
+  },
+  {
+   "type": "table",
+   "title": "Docker und gVisor",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 28,
+    "w": 8,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "label_replace(label_replace(swarvex_software_info, \"server\", \"Plattform\", \"job\", \"integrations/unix\"), \"server\", \"Prüfserver\", \"job\", \"pruefserver\")",
+     "format": "table",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Value"
+      },
+      "properties": [
+       {
+        "id": "custom.hidden",
+        "value": true
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "transformations": [
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true,
+       "__name__": true,
+       "instance": true,
+       "job": true
+      },
+      "indexByName": {
+       "server": 0,
+       "software": 1,
+       "version": 2
+      },
+      "renameByName": {
+       "server": "Server",
+       "software": "Software",
+       "version": "Version"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "type": "text",
+   "title": "Update-Zyklus",
+   "gridPos": {
+    "x": 0,
+    "y": 32,
+    "w": 24,
+    "h": 5
+   },
+   "options": {
+    "mode": "markdown",
+    "content": "**Täglich, automatisch:** Debian-Sicherheitsupdates (unattended-upgrades) auf beiden Servern, danach wird der Stand hier erfasst.\n**Bei jedem Deploy:** Basis-Images für api, web (Node) und die Prüfstraße (Go) werden frisch gezogen.\n**Wöchentlich (Claude, Wochenbeginn):** diese Tabelle durchgehen: neuere Patch- und Minor-Versionen einspielen (Postgres, Caddy, Monitoring),\nfällige Neubauten anstoßen, Kernel-Neustarts nach Plan. **Hauptversionen** (Grafana 12 → 13, Postgres 18 → 19) mit Ankündigung und Probe vorher.\n**Sofort:** bei Sicherheitsmeldungen zu Grafana, Caddy, Postgres, Docker, gVisor oder dem Kernel.\n\n**Alarm:** Sicherheitsupdates länger als einen Tag offen · automatische Updates über 50 Stunden nicht gelaufen · Stand über 30 Stunden nicht erfasst ·\nein Neustart, der länger als eine Woche wartet."
+   }
+  },
+  {
+   "type": "row",
+   "title": "Anmeldung und Agenten",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 37,
     "w": 24,
     "h": 1
    },
@@ -614,7 +1243,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 15,
+    "y": 38,
     "w": 12,
     "h": 8
    },
@@ -663,7 +1292,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 15,
+    "y": 38,
     "w": 12,
     "h": 8
    },
@@ -712,7 +1341,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 23,
+    "y": 46,
     "w": 12,
     "h": 7
    },
@@ -760,7 +1389,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 23,
+    "y": 46,
     "w": 12,
     "h": 7
    },
@@ -805,7 +1434,7 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 30,
+    "y": 53,
     "w": 24,
     "h": 1
    },
@@ -820,7 +1449,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 31,
+    "y": 54,
     "w": 12,
     "h": 8
    },
@@ -869,7 +1498,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 31,
+    "y": 54,
     "w": 12,
     "h": 8
    },
@@ -917,7 +1546,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 39,
+    "y": 62,
     "w": 12,
     "h": 7
    },
@@ -985,7 +1614,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 39,
+    "y": 62,
     "w": 12,
     "h": 7
    },
@@ -1016,7 +1645,7 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 46,
+    "y": 69,
     "w": 24,
     "h": 1
    },
@@ -1031,7 +1660,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 47,
+    "y": 70,
     "w": 16,
     "h": 8
    },
@@ -1079,7 +1708,7 @@
    },
    "gridPos": {
     "x": 16,
-    "y": 47,
+    "y": 70,
     "w": 8,
     "h": 8
    },
@@ -1116,7 +1745,7 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 55,
+    "y": 78,
     "w": 24,
     "h": 1
    },
@@ -1131,7 +1760,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 56,
+    "y": 79,
     "w": 12,
     "h": 7
    },
@@ -1189,7 +1818,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 56,
+    "y": 79,
     "w": 12,
     "h": 7
    },
@@ -1246,7 +1875,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 63,
+    "y": 86,
     "w": 12,
     "h": 7
    },
@@ -1281,7 +1910,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 63,
+    "y": 86,
     "w": 12,
     "h": 7
    },

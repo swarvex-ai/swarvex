@@ -1,0 +1,9 @@
+[Unit]
+Description=swarvex: software versions and pending updates for the monitoring
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Nice=10
+ExecStart=/usr/bin/python3 -I /opt/swarvex/infra/software-stand.py

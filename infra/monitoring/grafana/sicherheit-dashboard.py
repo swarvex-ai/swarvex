@@ -104,6 +104,82 @@ ein **Sprung bei neuen OAuth-Clients** (Web-Clients) · Zertifikat unter 14 Tage
 viele **abgelehnte Zustimmungen** (jemand verteilt Anmelde-Links).""", 0, 24, 5)
 weiter(5)
 
+# ---------- Softwarestände und Updates ----------
+# infra/software-stand.py schreibt täglich und nach jedem Start, auf der Plattform und auf dem Prüfserver (dessen Werte
+# kommen über den SSH-Tunnel des Monitorings, job="pruefserver"). Versionen stehen nur hier, nie öffentlich.
+def server(expr):
+    return (f'label_replace(label_replace({expr}, "server", "Plattform", "job", "integrations/unix"), '
+            f'"server", "Prüfserver", "job", "pruefserver")')
+
+
+JA_NEIN = [{"type": "value", "options": {"0": {"text": "nein", "color": "green"}, "1": {"text": "ja", "color": "orange"}}}]
+JE_SERVER = {**STAT, "textMode": "value_and_name"}
+
+
+def tabelle(titel, expr, x, w, h, spalten, beschreibung=None, overrides=None):
+    """Prometheus als Tabelle (instant): Labels werden Spalten; spalten: Label → Überschrift, in dieser Reihenfolge."""
+    p = {"type": "table", "title": titel, "datasource": PROM, "gridPos": {"x": x, "y": y, "w": w, "h": h},
+         "targets": [{"refId": "A", "datasource": PROM, "expr": expr, "format": "table", "instant": True, "range": False}],
+         "fieldConfig": {"defaults": {"custom": {"align": "auto"}}, "overrides": overrides or []},
+         "options": {"showHeader": True, "cellHeight": "sm"},
+         "transformations": [{"id": "organize", "options": {
+             "excludeByName": {"Time": True, "__name__": True, "instance": True, "job": True},
+             "indexByName": {k: i for i, k in enumerate(spalten)}, "renameByName": spalten}}]}
+    if beschreibung:
+        p["description"] = beschreibung
+    panels.append(p)
+
+
+zeile("Softwarestände und Updates")
+panel("stat", "Neustart nötig", server("max by (job) (swarvex_os_reboot_required)"), 0, 5, 4, quelle=PROM, legende="{{server}}",
+      optionen=JE_SERVER, felder={"mappings": JA_NEIN, "thresholds": schwellen((0, "green"), (1, "orange"))},
+      beschreibung="Ein neuer Kernel (oder eine Systembibliothek) ist installiert, läuft aber erst nach einem Neustart. Sicherheitsupdates des Kernels wirken vorher nicht.")
+panel("stat", "Sicherheitsupdates offen", server('max by (job) (swarvex_os_updates_pending{kind="security"})'), 5, 5, 4, quelle=PROM,
+      legende="{{server}}", optionen=JE_SERVER, felder={"thresholds": schwellen((0, "green"), (1, "red"))},
+      beschreibung="Pakete aus dem Debian-Sicherheitsarchiv, die noch nicht installiert sind. Die automatischen Updates spielen sie nachts ein; über einen Tag hinaus ist das ein Alarm.")
+panel("stat", "Automatische Updates zuletzt", server("(time() - max by (job) (swarvex_os_unattended_upgrades_last_run_timestamp_seconds > 0)) / 3600"),
+      10, 5, 4, quelle=PROM, legende="{{server}}", einheit="h", optionen=JE_SERVER,
+      felder={"thresholds": schwellen((0, "green"), (30, "orange"), (50, "red")), "decimals": 0, "noValue": "noch nie"},
+      beschreibung="Stunden seit dem letzten Lauf von unattended-upgrades (täglich, auch wenn es nichts zu tun gab).")
+panel("stat", "Images mit Update", server('count by (job) (swarvex_image_created_timestamp_seconds{update=~"yes|rebuild"})'), 15, 5, 4, quelle=PROM,
+      legende="{{server}}", optionen=JE_SERVER, felder={"thresholds": schwellen((0, "green"), (1, "orange")), "noValue": "0"},
+      beschreibung="Images, für die es eine neuere Version gibt (Tabelle unten). Einspielen nach dem Update-Zyklus.")
+panel("stat", "Stand erfasst vor", server("(time() - max by (job) (swarvex_software_check_timestamp_seconds)) / 3600"), 20, 4, 4, quelle=PROM,
+      legende="{{server}}", einheit="h", optionen=JE_SERVER, felder={"thresholds": schwellen((0, "green"), (30, "red")), "decimals": 0, "noValue": "nie"},
+      beschreibung="Wann infra/software-stand.py zuletzt lief (täglich gegen 07:15 und nach jedem Start). Über 30 Stunden: der Timer swarvex-software läuft nicht.")
+weiter(4)
+UPDATE_FARBEN = [{"matcher": {"id": "byName", "options": "Update"}, "properties": [
+    {"id": "custom.cellOptions", "value": {"type": "color-text"}},
+    {"id": "mappings", "value": [{"type": "value", "options": {
+        "yes": {"text": "neuere Version da", "color": "orange"}, "rebuild": {"text": "Neubau fällig", "color": "orange"},
+        "no": {"text": "aktuell", "color": "green"}, "unknown": {"text": "unbekannt", "color": "text"}, "built here": {"text": "hier gebaut", "color": "text"}}}]}]},
+    {"matcher": {"id": "byName", "options": "Alter (Tage)"}, "properties": [{"id": "decimals", "value": 0},
+        {"id": "custom.cellOptions", "value": {"type": "color-text"}}, {"id": "thresholds", "value": schwellen((0, "text"), (90, "orange"), (180, "red"))}]}]
+tabelle("Images", server("(time() - swarvex_image_created_timestamp_seconds) / 86400"), 0, 24, 9,
+        {"server": "Server", "image": "Image", "version": "Version", "newest": "Neueste", "update": "Update", "containers": "Container", "Value": "Alter (Tage)"},
+        beschreibung="Jedes Image auf dem Server mit Version, Alter, den Containern, die es nutzen, und ob es eine neuere gibt. Feste Versionen (grafana:12.1.0): "
+                     "neueste veröffentlichte Version bei Docker Hub. Mitwandernde Tags (postgres:18): neuerer Stand unter demselben Tag. Hier gebaute Images auf Node: "
+                     "neuere Node-Version derselben Hauptversion, dann ist ein Neubau fällig (deploy.sh zieht das Basis-Image frisch).",
+        overrides=UPDATE_FARBEN)
+weiter(9)
+tabelle("Betriebssystem und Kernel", server("swarvex_os_info"), 0, 16, 4,
+        {"server": "Server", "os": "System", "kernel_running": "Kernel läuft", "kernel_installed": "Kernel installiert"},
+        beschreibung="Weichen „läuft“ und „installiert“ ab, wartet ein Kernel-Update auf den Neustart.",
+        overrides=[{"matcher": {"id": "byName", "options": "Value"}, "properties": [{"id": "custom.hidden", "value": True}]}])
+tabelle("Docker und gVisor", server("swarvex_software_info"), 16, 8, 4, {"server": "Server", "software": "Software", "version": "Version"},
+        overrides=[{"matcher": {"id": "byName", "options": "Value"}, "properties": [{"id": "custom.hidden", "value": True}]}])
+weiter(4)
+text("Update-Zyklus", """\
+**Täglich, automatisch:** Debian-Sicherheitsupdates (unattended-upgrades) auf beiden Servern, danach wird der Stand hier erfasst.
+**Bei jedem Deploy:** Basis-Images für api, web (Node) und die Prüfstraße (Go) werden frisch gezogen.
+**Wöchentlich (Claude, Wochenbeginn):** diese Tabelle durchgehen: neuere Patch- und Minor-Versionen einspielen (Postgres, Caddy, Monitoring),
+fällige Neubauten anstoßen, Kernel-Neustarts nach Plan. **Hauptversionen** (Grafana 12 → 13, Postgres 18 → 19) mit Ankündigung und Probe vorher.
+**Sofort:** bei Sicherheitsmeldungen zu Grafana, Caddy, Postgres, Docker, gVisor oder dem Kernel.
+
+**Alarm:** Sicherheitsupdates länger als einen Tag offen · automatische Updates über 50 Stunden nicht gelaufen · Stand über 30 Stunden nicht erfasst ·
+ein Neustart, der länger als eine Woche wartet.""", 0, 24, 5)
+weiter(5)
+
 # ---------- Anmeldung und Agenten ----------
 zeile("Anmeldung und Agenten")
 panel("timeseries", "Menschen und Agenten je Tag",

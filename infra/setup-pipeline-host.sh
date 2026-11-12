@@ -77,11 +77,13 @@ if [ -f "$ENVF" ]; then
   chmod 600 "$ENVF"
   if [ -d /opt/swarvex/pipeline ]; then
     cd /opt/swarvex
-    docker run --rm -v "$PWD:/src" -w /src/pipeline -e CGO_ENABLED=0 -e GOCACHE=/tmp/gc docker.io/library/golang:1 go build -trimpath -ldflags="-s -w" -o swarvex-pipeline .
+    docker run --rm --pull=always -v "$PWD:/src" -w /src/pipeline -e CGO_ENABLED=0 -e GOCACHE=/tmp/gc docker.io/library/golang:1 go build -trimpath -ldflags="-s -w" -o swarvex-pipeline .
     install -m 755 pipeline/swarvex-pipeline /usr/local/bin/ && rm -f pipeline/swarvex-pipeline
-    install -m 644 infra/systemd/swarvex-check.service infra/systemd/swarvex-check.timer infra/systemd/swarvex-preview.service infra/systemd/swarvex-preview.timer /etc/systemd/system/
+    install -m 644 infra/systemd/swarvex-check.service infra/systemd/swarvex-check.timer infra/systemd/swarvex-preview.service infra/systemd/swarvex-preview.timer \
+      infra/systemd/swarvex-software.service infra/systemd/swarvex-software.timer /etc/systemd/system/
     systemctl daemon-reload
-    systemctl enable --now swarvex-check.timer swarvex-preview.timer >/dev/null
+    # swarvex-software: software versions and pending updates for the monitoring (infra/software-stand.py)
+    systemctl enable --now swarvex-check.timer swarvex-preview.timer swarvex-software.timer >/dev/null
     echo "   pipeline: check and preview timers on"
   else
     echo "   pipeline: no code in /opt/swarvex yet (infra/deploy-pipeline-host.sh)"
