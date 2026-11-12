@@ -289,13 +289,15 @@ func zugTesten(sp string, e einreichung, kopf, spitze string, anzahl int, bekann
 	}
 	ordner, _ := os.MkdirTemp(arbeit, "train-")
 	defer os.RemoveAll(ordner)
+	vonMain := &mainVorlage{sp: sp, stand: kopf, e: e}
+	defer vonMain.aufraeumen()
 	lauf := func(commit string) (zugErgebnis, string, string) {
 		baum := filepath.Join(ordner, commit[:12])
 		if aus, err := befehl(sp, gitEnv(leseKey, e), "git", "worktree", "add", "--detach", "--force", baum, commit); err != nil {
 			return zugFehler, "checkout: " + aus, ""
 		}
 		defer befehl(sp, nil, "git", "worktree", "remove", "--force", baum)
-		return projektTesten(baum, e.Slug, geaendert)
+		return projektTesten(baum, e.Slug, geaendert, vonMain.baum)
 	}
 	var bericht strings.Builder
 	fmt.Fprintf(&bericht, "Merge train: %d accepted contributions on main at %s\n", anzahl, kurz(kopf))
@@ -327,9 +329,9 @@ func zugTesten(sp string, e einreichung, kopf, spitze string, anzahl int, bekann
 	return zugGruen, bericht.String(), bekannt
 }
 
-// projektTesten: Umgebung, Einrichten (mit Netz), Bauen und Testen (ohne Netz, zweiter Lauf bei Rot) in baum.
-// Liefert das Ergebnis, den Bericht und die Ausgabe des letzten Testlaufs.
-func projektTesten(baum, slug string, geaendert []string) (zugErgebnis, string, string) {
+// projektTesten: Umgebung, Einrichten (mit Netz), Bauen und Testen (ohne Netz, zweiter Lauf bei Rot) in baum; ein
+// eigenes Dockerfile kommt aus main (pruefImage). Liefert das Ergebnis, den Bericht und die Ausgabe des letzten Testlaufs.
+func projektTesten(baum, slug string, geaendert []string, vonMain func() (string, error)) (zugErgebnis, string, string) {
 	var b strings.Builder
 	exec.Command("chmod", "-R", "a+rwX", baum).Run()
 	u, err := umgebung.Ermitteln(baum)
@@ -337,7 +339,7 @@ func projektTesten(baum, slug string, geaendert []string) (zugErgebnis, string, 
 		return zugFehler, "environment: " + err.Error(), ""
 	}
 	fmt.Fprintf(&b, "Environment: %s (%s)\n", u.Vorlage, u.Quelle)
-	image, err := pruefImage(u, baum)
+	image, err := pruefImage(u, baum, vonMain)
 	if err != nil {
 		return zugFehler, b.String() + err.Error(), ""
 	}

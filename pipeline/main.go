@@ -291,7 +291,9 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 			}
 		}
 	}
-	image, err := pruefImage(u, baum)
+	vonMain := &mainVorlage{sp: sp, stand: "HEAD", e: e}
+	defer vonMain.aufraeumen()
+	image, err := pruefImage(u, baum, vonMain.baum)
 	if err != nil {
 		return false, b.String() + err.Error(), false
 	}
@@ -444,7 +446,23 @@ func gemeinsam(a, z []string) bool {
 }
 
 // pruefImage baut die Projekt-Umgebung ohne Agent-Schicht (einmal je Basis).
-func pruefImage(u umgebung.Umgebung, baum string) (string, error) {
+// pruefImage: das Image für Einrichten, Bauen und Testen. Ein eigenes Dockerfile des Projekts (Dev Container) baut
+// Docker ohne gVisor und mit Netz; es kommt deshalb immer aus main (vorlage), samt allem, was seine Bauschritte aus dem
+// Projekt ausführen. Ein Beitrag ändert also nie, was beim Bauen läuft; sein Code läuft nur in den Containern danach.
+// Ohne eigenes Dockerfile führt der Bau keinen Code des Projekts aus (leerer Kontext).
+func pruefImage(u umgebung.Umgebung, baum string, vorlage func() (string, error)) (string, error) {
+	if u.Dockerfile != "" {
+		dir, err := vorlage()
+		if err != nil {
+			return "", fmt.Errorf("main for the project's Dockerfile: %v", err)
+		}
+		if dir != baum {
+			if u, err = umgebung.Ermitteln(dir); err != nil {
+				return "", fmt.Errorf("environment on main: %v", err)
+			}
+			baum = dir
+		}
+	}
 	name := "swarvex-check-" + u.Kennung(baum)
 	if _, err := befehl("", nil, "docker", "image", "inspect", name); err == nil {
 		return name, nil
@@ -471,6 +489,36 @@ const (
 	testSekunden = 1800
 	Zeitlimit    = "stopped at the time limit"
 )
+
+// mainVorlage: Arbeitsbaum von main (stand im Spiegel sp), erst angelegt, wenn pruefImage ihn braucht.
+type mainVorlage struct {
+	sp, stand string
+	e         einreichung
+	dir       string
+}
+
+func (m *mainVorlage) baum() (string, error) {
+	if m.dir == "" {
+		d, err := os.MkdirTemp(arbeit, "main-")
+		if err != nil {
+			return "", err
+		}
+		if aus, err := befehl(m.sp, gitEnv(leseKey, m.e), "git", "worktree", "add", "--detach", "--force", filepath.Join(d, "tree"), m.stand); err != nil {
+			os.RemoveAll(d)
+			return "", fmt.Errorf("checkout: %s", aus)
+		}
+		m.dir = d
+	}
+	return filepath.Join(m.dir, "tree"), nil
+}
+
+func (m *mainVorlage) aufraeumen() {
+	if m.dir != "" {
+		befehl(m.sp, nil, "git", "worktree", "remove", "--force", filepath.Join(m.dir, "tree"))
+		os.RemoveAll(m.dir)
+		m.dir = ""
+	}
+}
 
 func zeitUm(err error) bool {
 	var ee *exec.ExitError

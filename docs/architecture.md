@@ -111,7 +111,7 @@ Contributors need **no** write access and no Git credentials:
 Projects are not tied to any language or engine (E-28). Runner and test pipeline determine the environment with the same package (`runner/umgebung`):
 
 1. `swarvex.yaml` in the project (template or own image, setup, build, test, working folder, project-specific protected paths),
-2. otherwise a dev container (`.devcontainer/devcontainer.json`: image or Dockerfile, setup commands),
+2. otherwise a dev container (`.devcontainer/devcontainer.json`: image or Dockerfile, setup commands; the test pipeline always builds such a Dockerfile from main, because its build steps run outside gVisor and with network, so a contribution never changes what runs while the image is built),
 3. otherwise the project type from typical files (Godot, Node, Python, Rust, Go, .NET, Java),
 4. otherwise a general Linux environment.
 

@@ -111,7 +111,7 @@ Mitstreiter brauchen **keine** Schreibrechte und keine Git-Zugangsdaten:
 Projekte sind an keine Sprache und keine Engine gebunden (E-28). Runner und Prüfstraße ermitteln die Umgebung mit demselben Paket (`runner/umgebung`):
 
 1. `swarvex.yaml` im Projekt (Vorlage oder eigenes Image, Einrichten, Bauen, Testen, Arbeitsordner, projekteigene geschützte Pfade),
-2. sonst ein Dev Container (`.devcontainer/devcontainer.json`: Image oder Dockerfile, Einrichtungsbefehle),
+2. sonst ein Dev Container (`.devcontainer/devcontainer.json`: Image oder Dockerfile, Einrichtungsbefehle; ein solches Dockerfile baut die Prüfstraße immer aus main, weil seine Bauschritte ohne gVisor und mit Netz laufen; ein Beitrag ändert also nie, was beim Bauen des Images läuft),
 3. sonst die Projektart an typischen Dateien (Godot, Node, Python, Rust, Go, .NET, Java),
 4. sonst eine allgemeine Linux-Umgebung.
 

@@ -114,11 +114,13 @@ func eineVorschau(e einreichung, sp, kopf string) vorschauStand {
 	if err != nil {
 		return vorschauStand{status: "failed", bericht: err.Error()}
 	}
-	return vorschauBauen(e, baum, filepath.Join(arbeit, "vorschau", e.Slug), true)
+	// Der Stand von main ist selbst die Vorlage für ein eigenes Dockerfile
+	return vorschauBauen(e, baum, filepath.Join(arbeit, "vorschau", e.Slug), true, func() (string, error) { return baum, nil })
 }
 
-// vorschauBauen baut im ausgecheckten Baum die Vorschau und, wenn gewünscht, die Doku und tauscht sie unter ziel ein.
-func vorschauBauen(e einreichung, baum, ziel string, mitDoku bool) vorschauStand {
+// vorschauBauen baut im ausgecheckten Baum die Vorschau und, wenn gewünscht, die Doku und tauscht sie unter ziel ein;
+// ein eigenes Dockerfile kommt aus main (pruefImage).
+func vorschauBauen(e einreichung, baum, ziel string, mitDoku bool, vonMain func() (string, error)) vorschauStand {
 	os.Chmod(baum, 0o777)
 	befehl("", nil, "chmod", "-R", "a+rwX", baum)
 	u, err := umgebung.Ermitteln(baum)
@@ -133,7 +135,7 @@ func vorschauBauen(e einreichung, baum, ziel string, mitDoku bool) vorschauStand
 	case u.Vorschau == "" && u.Doku == "":
 		return vorschauStand{status: "none"}
 	}
-	image, err := pruefImage(u, baum)
+	image, err := pruefImage(u, baum, vonMain)
 	if err != nil {
 		return vorschauStand{status: "failed", bericht: err.Error()}
 	}
@@ -278,7 +280,9 @@ func eineEinreichungsVorschau(e einreichung) vorschauStand {
 	if p, err := geschuetztGeaendert(baum); err != nil || p != "" {
 		return vorschauStand{status: "failed", bericht: fmt.Sprintf("no preview: the contribution changes a protected file %q (%v)", p, err)}
 	}
-	return vorschauBauen(e, baum, filepath.Join(arbeit, "vorschau", "review", fmt.Sprint(e.EinreichungID)), false)
+	vonMain := &mainVorlage{sp: sp, stand: "HEAD", e: e}
+	defer vonMain.aufraeumen()
+	return vorschauBauen(e, baum, filepath.Join(arbeit, "vorschau", "review", fmt.Sprint(e.EinreichungID)), false, vonMain.baum)
 }
 
 // vorschauKopieren übernimmt nur gewöhnliche Dateien und Ordner (keine Links, die aus der Vorschau hinauszeigen könnten)
