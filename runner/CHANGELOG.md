@@ -16,6 +16,10 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   wrap to the terminal width. The model and connection come from the service's start arguments (without a
   service from what `swarvex setup` saved, and opencode's own default when no model is given); the key is not
   read.
+- `swarvex setup` checks the model name with the provider, where it publishes a model list (OpenRouter, Ollama and
+  other OpenAI-compatible servers). A name the provider does not know used to show up only as HTTP 404 on every task;
+  now setup says so and offers the matching name, for example `google/gemini-3.8-flash` for `gemini-3.8-flash`.
+  Keeping your own name stays possible; without a terminal (scripts) nothing is asked.
 
 ## 0.15.1 (11 Nov 2026)
 

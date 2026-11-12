@@ -631,6 +631,7 @@ func modellWaehlen(f *frager, frage string) (w modellWahl, abo bool) {
 			}
 		}
 	}
+	w.Modell = modellPruefen(f, w)
 	return w, abo
 }
 
@@ -727,6 +728,7 @@ func anpassen(f *frager, z *zugangsdaten, w modellWahl, abo bool, plan aboPlan, 
 	for w.Modell == "" {
 		w.Modell = f.frage("Model name (required)", "")
 	}
+	w.Modell = modellPruefen(f, w)
 
 	fmt.Println("\n-- Project")
 	projekte := projekteLaden(z.Plattform, z.CAPfad)
@@ -1141,6 +1143,79 @@ func opencodeStandardModell() string {
 	}
 	json.Unmarshal(roh, &k)
 	return k.Model
+}
+
+// modellPruefen: Kennt der Anbieter das Modell? Am 12.11.2026 bekam ein Runner nach dem Wechsel auf Gemini nur HTTP 404
+// („the model provider does not know this model“), weil vor dem Namen „google/“ fehlte. Liefert der Anbieter eine
+// Modellliste (OpenAI-kompatibel: GET /v1/models, bei OpenRouter öffentlich, bei Ollama lokal), prüft setup den Namen
+// und schlägt den passenden vor. Ohne Liste (Anbieter ohne sie, nicht erreichbar) bleibt es beim eingegebenen Namen,
+// ebenso ohne Terminal (niemand, der antworten könnte: Skripte, Tests).
+func modellPruefen(f *frager, w modellWahl) string {
+	if w.Agent != "opencode" || w.URL == "" || f.tty == nil {
+		return w.Modell
+	}
+	key := ""
+	if roh, err := os.ReadFile(w.Key); w.Key != "" && err == nil {
+		key = strings.TrimSpace(string(roh))
+	}
+	liste := anbieterModelle(w.URL, key)
+	if len(liste) == 0 {
+		return w.Modell
+	}
+	for versuch := 0; versuch < 3; versuch++ {
+		if enthaelt(liste, w.Modell) {
+			return w.Modell
+		}
+		fmt.Printf("  The provider does not know the model %q; your agent would only get errors (HTTP 404).\n", w.Modell)
+		switch v := modellVorschlaege(liste, w.Modell); {
+		case len(v) == 1:
+			if f.jaNein("Use "+v[0]+"?", true) {
+				return v[0]
+			}
+		case len(v) > 1:
+			if i := f.wahl("Did you mean one of these?", append(v, "none of these")); i < len(v) {
+				return v[i]
+			}
+		}
+		if f.jaNein("Keep "+w.Modell+" anyway?", false) {
+			return w.Modell
+		}
+		neu := f.frage("Model name, as the provider lists it (e.g. google/gemini-3.8-flash; Enter keeps "+w.Modell+")", "")
+		if neu == "" {
+			return w.Modell
+		}
+		w.Modell = neu
+	}
+	return w.Modell
+}
+
+// modellVorschlaege: Modelle der Liste, die zum Namen passen. Zuerst die mit gleichem letztem Teil (ohne Anbieter wie
+// „google/“ oder „openrouter/“), sonst die, die ihn enthalten; Groß- und Kleinschreibung und Leerzeichen zählen nicht.
+// Höchstens acht.
+func modellVorschlaege(liste []string, name string) []string {
+	norm := func(s string) string {
+		if i := strings.LastIndex(s, "/"); i >= 0 {
+			s = s[i+1:]
+		}
+		return strings.NewReplacer(" ", "-", "_", "-").Replace(strings.ToLower(strings.TrimSpace(s)))
+	}
+	n := norm(name)
+	var gleich, enthalten []string
+	for _, m := range liste {
+		switch l := norm(m); {
+		case l == n:
+			gleich = append(gleich, m)
+		case n != "" && strings.Contains(l, n):
+			enthalten = append(enthalten, m)
+		}
+	}
+	if len(gleich) == 0 {
+		gleich = enthalten
+	}
+	if len(gleich) > 8 {
+		gleich = gleich[:8]
+	}
+	return gleich
 }
 
 // anbieterModelle fragt die Modellliste einer OpenAI-kompatiblen Schnittstelle ab (GET /v1/models).
