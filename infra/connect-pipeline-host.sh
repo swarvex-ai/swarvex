@@ -76,7 +76,7 @@ ssh "$P" "cd /opt/swarvex/infra/monitoring && docker compose --env-file ../stack
 echo "== 7. Platform: merge trains tested on the pipeline server (building and pushing stay here)"
 ssh "$P" sh -s <<EOF
 set -eu
-A=\$(printf '{"probe":true}\n' | ssh -i $DATA/pruefserver_zug -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$DATA/pruefserver_zug.known_hosts root@$ADR 2>&1 || true)
+A=\$(printf '{"probe":true}\n' | ssh -T -i $DATA/pruefserver_zug -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$DATA/pruefserver_zug.known_hosts root@$ADR 2>&1 || true)
 if printf '%s' "\$A" | grep -q '"result":0.*ready'; then
   f=$DATA/pipeline.env
   sed -i '/^SWARVEX_TRAIN_TESTS_ON=/d;/^SWARVEX_TRAIN_TESTS_KEY=/d' \$f

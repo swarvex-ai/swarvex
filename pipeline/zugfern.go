@@ -69,7 +69,7 @@ func sshZugTest(a zugAuftrag, bundle string) (zugAntwort, error) {
 		return zugAntwort{}, err
 	}
 	defer ein.Close()
-	cmd := exec.Command("ssh", "-i", zugTestsKey, "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes",
+	cmd := exec.Command("ssh", "-T", "-i", zugTestsKey, "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes",
 		"-o", "UserKnownHostsFile="+zugTestsKey+".known_hosts", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=10", zugTestsAuf)
 	cmd.Stdin = ein
 	aus := &begrenzt{max: zugAntwortMax}
