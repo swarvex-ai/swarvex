@@ -10,6 +10,7 @@ import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { aufgabePruefen, raeumeVon, trennwand, type Raum } from "./cleanroom.ts";
 import { WERTE } from "./aussen.ts";
+import { siehtBilder } from "./modelle.ts";
 import { eigenenLaufFesthalten, nachEinreichen, proprietaer } from "./gegenpruefung.ts";
 import { einreichungsVorschauUrl } from "./konfig.ts";
 import { einreichungsVorschau } from "./katalog.ts";
@@ -278,10 +279,54 @@ export async function stufenFreigabe(db: Db | Tx, agentId: number) {
   return { bis: STUFEN[bis], probe: bis < STUFEN.length - 1 ? STUFEN[bis + 1] : null, probe_dran: probenKurz * ZUTEILUNG.probe_jeder <= versucheKurz };
 }
 
+// Bildaufgaben (E-49, 12.11.2026): Ändert eine Aufgabe ein Szenenbild (ein erlaubter Pfad liegt in einem Ordner
+// baseline/baselines, wie SZENENBILDER in gegenpruefung.ts), muss man sehen, was entsteht. Ein Modell, das Bilder liest
+// (siehtBilder), bekommt solche Aufgaben immer; eines ohne Bildverständnis, wenn es sie nachweislich schafft: die Schwellen
+// der Stufen (ZUTEILUNG, gemessen am Modell auf der ganzen Plattform), aber nur bewertete Ergebnisse (angenommen gegen
+// zurückgeschickt oder rot). Rückgaben und abgelaufene Reservierungen sagen nichts darüber, ob das Bild stimmt (bei einem
+// Modell zählten 20 davon, viele aus dem Ausfall seines Schlüssels am 9./10.11.); in den Stufen zählen sie weiter. Sonst
+// nur als Probe, höchstens jeder ZUTEILUNG.probe_jeder-te Versuch dieses Agenten. Anders als bei den Stufen nicht auch dann, wenn sonst nichts anliegt:
+// Am 11./12.11. reichte ein Modell ohne Bildverständnis über Nacht Szenenbild um Szenenbild ein, die es nie gesehen hatte.
+// Gilt auch für Lead und Visionär. Hat ein Agent noch nie ein Modell genannt, gibt es nichts zu messen: keine Einschränkung.
+export const SZENENBILD_PFAD = String.raw`(^|/)baselines?/\S*(\.png|\*)$`;
+const szenenbildPfad = new RegExp(SZENENBILD_PFAD, "i");
+export const bildaufgabe = (pfade: string[]) => pfade.some((p) => szenenbildPfad.test(p));
+
+/** Das Modell, mit dem dieser Agent arbeitet: wie angegeben (matching_tasks, reserve_task), sonst das zuletzt gemeldete. */
+export async function agentModell(db: Db | Tx, agentId: number, angegeben?: string): Promise<string | null> {
+  if (angegeben?.trim()) return angegeben.trim().slice(0, 120);
+  return (await db.query(
+    `select modell from (
+       select modell, erstellt as zeit from leases where agent_id = $1 and modell is not null
+       union all select modell, eingereicht from einreichungen where agent_id = $1 and modell is not null
+       union all select modell, erstellt from fremdpruefungen where agent_id = $1 and modell is not null) x
+     order by zeit desc limit 1`, [agentId])).rows[0]?.modell ?? null;
+}
+
+export async function bildFreigabe(db: Db | Tx, agentId: number, modell: string | null) {
+  if (!modell || siehtBilder(modell)) return { frei: true, modell, sieht_bilder: Boolean(modell), angenommen: 0, entschieden: 0, probe_dran: true };
+  const z = (await db.query(
+    `select count(*) filter (where v.modell = $2 and b.bild and v.ausgang in ('angenommen', 'zurueck', 'pruefung_rot', 'zug_rot'))::int as entschieden,
+       count(*) filter (where v.modell = $2 and b.bild and v.ausgang = 'angenommen')::int as angenommen,
+       count(*) filter (where v.agent_id = $1 and v.ausgang <> 'umgebung' and v.erstellt > now() - make_interval(days => $4))::int as versuche_kurz,
+       count(*) filter (where v.agent_id = $1 and b.bild and v.ausgang <> 'umgebung' and v.erstellt > now() - make_interval(days => $4))::int as bild_kurz
+     from leistung_versuche v join aufgaben a on a.id = v.aufgabe_id
+     cross join lateral (select exists (select 1 from unnest(a.pfade) p where p ~* $5) as bild) b
+     where v.erstellt > now() - make_interval(days => $3) and (v.agent_id = $1 or v.modell = $2)`,
+    [agentId, modell, ZUTEILUNG.tage, ZUTEILUNG.probe_tage, SZENENBILD_PFAD])).rows[0];
+  return { frei: z.angenommen >= ZUTEILUNG.annahmen && z.angenommen >= ZUTEILUNG.erfolg * z.entschieden, modell, sieht_bilder: false,
+    angenommen: z.angenommen, entschieden: z.entschieden, probe_dran: z.bild_kurz * ZUTEILUNG.probe_jeder <= z.versuche_kurz };
+}
+
+const bildGrund = (b: { modell: string | null; angenommen: number; entschieden: number }) =>
+  `this task changes a scene image and your model (${b.modell}) does not read images; it gets such tasks once it has shown it handles them ` +
+  `(${b.angenommen} of ${b.entschieden} reviewed results accepted in ${ZUTEILUNG.tage} days, needs ${ZUTEILUNG.annahmen} at ${ZUTEILUNG.erfolg * 100}%), ` +
+  `until then as a trial at most every ${ZUTEILUNG.probe_jeder}th attempt`;
+
 const KOPF_FEHLT = "the platform has not read the repository's main branch yet (it does every five minutes after connecting)";
 
 /** Offene Aufgaben, die der Mensch nach Vertrauensstufe bearbeiten darf (optional nach Fähigkeiten gefiltert). */
-export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, faehigkeiten?: string[]) {
+export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, faehigkeiten?: string[], modell?: string) {
   const p = await projektPerSlug(db, projektSlug);
   // Ohne verbundenes Repo gibt es keinen Snapshot: dem Runner nichts anbieten, statt ihn reservieren und scheitern zu lassen.
   if (wer.runner === true && !p.repo_git) return [];
@@ -308,8 +353,13 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
   // Nach nachgewiesener Stufe (stufenFreigabe): bis zur Freigabe normal, eine Stufe darüber nur als Probe
   const rollen = await rollenVon(db, wer.menschId, p.id);
   const frei = rollen.includes("lead") || rollen.includes("visionaer") ? null : await stufenFreigabe(db, wer.agentId);
-  const normal = frei ? passend.filter((a) => STUFEN.indexOf(a.stufe) <= STUFEN.indexOf(frei.bis)) : passend;
-  const proben = frei ? passend.filter((a) => a.stufe === frei.probe) : [];
+  const stufeOk = frei ? passend.filter((a) => STUFEN.indexOf(a.stufe) <= STUFEN.indexOf(frei.bis)) : passend;
+  // Bildaufgaben (E-49): ohne Bildverständnis und ohne Nachweis nur als fällige Probe, auf einer nachgewiesenen Stufe
+  const bild = passend.some((a) => bildaufgabe(a.pfade)) ? await bildFreigabe(db, wer.agentId, await agentModell(db, wer.agentId, modell)) : null;
+  const ohneBild = (l: typeof passend) => bild && !bild.frei ? l.filter((a) => !bildaufgabe(a.pfade)) : l;
+  const normal = ohneBild(stufeOk);
+  const bildProben = bild && !bild.frei && bild.probe_dran ? stufeOk.filter((a) => bildaufgabe(a.pfade)) : [];
+  const proben = frei ? ohneBild(passend.filter((a) => a.stufe === frei.probe)) : [];
   const probeVorn = proben.length > 0 && (frei!.probe_dran || normal.length === 0);
   // Eigene Nacharbeit zuerst (der Runner nimmt die erste), dann eine fällige Probe, dann der kritische Pfad: was die
   // meisten Folgeaufgaben (auch über mehrere Stufen) freischaltet, dann die schwerere Stufe (starke Agenten an schwere Arbeit)
@@ -318,7 +368,7 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
   const reihe = (x: any, y: any) => Number(!!y.nacharbeit_bis) - Number(!!x.nacharbeit_bis) || y.folgeaufgaben - x.folgeaufgaben
     || STUFEN.indexOf(y.stufe) - STUFEN.indexOf(x.stufe) || Number(x.id) - Number(y.id);
   const n = normal.map((a) => zeile(a, false)).sort(reihe);
-  const pr = probeVorn ? proben.map((a) => zeile(a, true)).sort(reihe) : [];
+  const pr = [...(probeVorn ? proben.map((a) => zeile(a, true)).sort(reihe) : []), ...bildProben.map((a) => zeile(a, true)).sort(reihe)];
   // Eigene Nacharbeit bleibt vorn, auch vor einer Probe
   const eigene = n.filter((a) => a.nacharbeit_bis);
   return [...eigene, ...pr, ...n.filter((a) => !a.nacharbeit_bis)];
@@ -328,13 +378,13 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
  * matching_tasks mit `explain`: die passenden Aufgaben wie oben und je übrige offene Aufgabe, warum sie gerade nicht
  * angeboten wird. Sonst sieht ein Runner nur „keine Aufgabe“, obwohl die Projektseite offene zeigt.
  */
-export async function aufgabenErklaert(db: Db, wer: Wer, projektSlug: string, faehigkeiten?: string[]) {
-  const aufgaben = await aufgabenPassend(db, wer, projektSlug, faehigkeiten);
+export async function aufgabenErklaert(db: Db, wer: Wer, projektSlug: string, faehigkeiten?: string[], modell?: string) {
+  const aufgaben = await aufgabenPassend(db, wer, projektSlug, faehigkeiten, modell);
   const angeboten = new Set(aufgaben.map((a) => Number(a.id)));
   const p = await projektPerSlug(db, projektSlug);
   const m = (await db.query("select vertrauensstufe from menschen where id = $1", [wer.menschId])).rows[0];
   const r = await db.query(
-    `select a.id, a.titel, a.stufe, a.faehigkeiten, a.min_vertrauen, a.raum, a.basis_commit, v.mensch_id as vorrang_mensch, v.bis as vorrang_bis,
+    `select a.id, a.titel, a.stufe, a.faehigkeiten, a.pfade, a.min_vertrauen, a.raum, a.basis_commit, v.mensch_id as vorrang_mensch, v.bis as vorrang_bis,
        aufgabe_wartet_auf(a.abhaengig_von, a.abhaengig_eins_von) as wartet,
        array(select ev.zeit from ereignisse ev where ev.bezug = 'aufgabe:' || a.id and ev.art = 'abgebrochen' and ev.akteur = $2
                and ev.zeit > now() - interval '24 hours' order by ev.zeit desc) as abbrueche
@@ -343,6 +393,7 @@ export async function aufgabenErklaert(db: Db, wer: Wer, projektSlug: string, fa
   const bisher = p.verfahren === "clean_room" ? await raeumeVon(db, wer.menschId, p.id) : [];
   const rollen = await rollenVon(db, wer.menschId, p.id);
   const frei = rollen.includes("lead") || rollen.includes("visionaer") ? null : await stufenFreigabe(db, wer.agentId);
+  const bild = r.rows.some((a) => !angeboten.has(Number(a.id)) && bildaufgabe(a.pfade)) ? await bildFreigabe(db, wer.agentId, await agentModell(db, wer.agentId, modell)) : null;
   // In derselben Reihenfolge wie die Filter in aufgabenPassend; der erste zutreffende Grund zählt.
   const grund = (a: any): string => {
     if (wer.runner === true && !p.repo_git) return "the project has no connected repository yet";
@@ -362,6 +413,7 @@ export async function aufgabenErklaert(db: Db, wer: Wer, projektSlug: string, fa
       if (stufe > bis + 1) return `level ${a.stufe} needs an agent that has shown level ${STUFEN[stufe - 1]} (yours: up to ${frei.bis})`;
       if (stufe === bis + 1) return `level ${a.stufe} is a trial for you; trials come at most every ${ZUTEILUNG.probe_jeder}th attempt while other tasks are open`;
     }
+    if (bild && !bild.frei && bildaufgabe(a.pfade)) return bildGrund(bild);
     return "not offered right now";
   };
   return {
@@ -380,9 +432,9 @@ class TrennwandVerletzt extends Abgelehnt {
   }
 }
 
-export async function reservieren(db: Db, wer: Wer, aufgabeId: number) {
+export async function reservieren(db: Db, wer: Wer, aufgabeId: number, modell?: string) {
   try {
-    return await reservierenIntern(db, wer, aufgabeId);
+    return await reservierenIntern(db, wer, aufgabeId, modell);
   } catch (e) {
     // Der Versuch bleibt im Protokoll (eigene Transaktion, weil die Reservierung zurückgerollt wurde).
     if (e instanceof TrennwandVerletzt) {
@@ -414,7 +466,7 @@ export async function wartetAuf(db: Db | Tx, a: { abhaengig_von?: (number | stri
 }
 export const wartetText = (w: number[][]) => w.map((g) => g.map((x) => `#${x}`).join(" or ")).join(", ");
 
-async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
+async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number, modell?: string) {
   return transaktion(db, async (tx) => {
     const a = await aufgabeSperren(tx, aufgabeId);
     const m = (await tx.query("select vertrauensstufe, gesperrt from menschen where id = $1", [wer.menschId])).rows[0];
@@ -433,6 +485,10 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number) {
         throw new Abgelehnt(stufe > bis + 1
           ? `level ${a.stufe} needs an agent that has shown level ${STUFEN[stufe - 1]}: at least ${ZUTEILUNG.annahmen} accepted with ${ZUTEILUNG.erfolg * 100}% success in ${ZUTEILUNG.tage} days (yours: up to ${frei.bis})`
           : `level ${a.stufe} is a trial for this agent (proven up to ${frei.bis}); trials come at most every ${ZUTEILUNG.probe_jeder}th attempt while other tasks are open`);
+    }
+    if (bildaufgabe(a.pfade)) {
+      const bild = await bildFreigabe(tx, wer.agentId, await agentModell(tx, wer.agentId, modell));
+      if (!bild.frei && !bild.probe_dran) throw new Abgelehnt(bildGrund(bild));
     }
     const vorrang = (await tx.query("select mensch_id, bis from nacharbeit_vorrang($1)", [a.id])).rows[0];
     if (vorrang && Number(vorrang.mensch_id) !== wer.menschId)

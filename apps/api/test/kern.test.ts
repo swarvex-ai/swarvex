@@ -1645,8 +1645,8 @@ describe("Zuteilung nach nachgewiesener Stufe", () => {
     return { menschId: m, agentId: ag, runner: true };
   };
   // Ein angenommener Versuch auf Stufe s, ohne die ganze Strecke (Lease, Einreichung, Bewertung direkt)
-  const geschafft = async (wer: { menschId: number; agentId: number }, stufe: string, modell: string, urteil = "annehmen") => {
-    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe(`Nachweis ${stufe}`), stufe: stufe as "A" });
+  const geschafft = async (wer: { menschId: number; agentId: number }, stufe: string, modell: string, urteil = "annehmen", pfade?: string[]) => {
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe(`Nachweis ${stufe}`), stufe: stufe as "A", ...(pfade ? { pfade } : {}) });
     const l = Number((await db.query("insert into leases(aufgabe_id, agent_id, laeuft_ab, beendet) values ($1,$2, now() + interval '1 hour', now()) returning id", [a.id, wer.agentId])).rows[0].id);
     const e = Number((await db.query("insert into einreichungen(aufgabe_id, lease_id, agent_id, patch, patch_sha256, zusammenfassung, eigene_tests, verbrauch, modell) values ($1,$2,$3,'x','x','z','t','{}',$4) returning id", [a.id, l, wer.agentId, modell])).rows[0].id);
     await db.query("insert into bewertungen(einreichung_id, agent_id, urteil, begruendung) values ($1,$2,$3,'Test')", [e, lead.agentId, urteil]);
@@ -1682,6 +1682,51 @@ describe("Zuteilung nach nachgewiesener Stufe", () => {
     // Der Lead ist ausgenommen und sieht alles
     expect((await k.aufgabenPassend(db, lead, "test")).map((x) => Number(x.id))).toEqual(expect.arrayContaining([Number(b.id), Number(c.id), Number(d.id)]));
     for (const a of [b, c, d]) await k.schliessen(db, lead, a.id, "Test");
+  });
+
+  it("Bildaufgaben (E-49): Modelle, die Bilder lesen, immer; andere nach Nachweis, sonst als Probe; auch Lead und Visionär", async () => {
+    const SZENE = ["src/sprites/x.ts", "tests/scene/baseline/x.png"];
+    expect([k.bildaufgabe(SZENE), k.bildaufgabe(["tests/scene/baselines/**"]), k.bildaufgabe(["src/baseline.ts", "game/**"])]).toEqual([true, true, false]);
+    const blind = await neuerAgent("bild-blind");
+    const sehend = await neuerAgent("bild-sehend");
+    const v = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Bild V"), stufe: "A", pfade: SZENE });
+    const o = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Ohne Bild"), stufe: "A" });
+    const liste = async (wer: { menschId: number; agentId: number }, modell?: string) =>
+      (await k.aufgabenPassend(db, wer, "test", undefined, modell)).map((x: any) => [Number(x.id), !!x.probe]);
+    const stelle = (l: unknown[][], id: number) => l.findIndex(([x]) => x === id);
+    // Noch nie ein Modell genannt: nichts zu messen, keine Einschränkung
+    expect(await liste(blind)).toContainEqual([Number(v.id), false]);
+    // Ein Modell, das Bilder liest, bekommt sie immer
+    expect(await liste(sehend, "claude-sonnet-5-5")).toContainEqual([Number(v.id), false]);
+    // Ohne Bildverständnis, ohne Nachweis: als fällige Probe vor den übrigen Aufgaben
+    let l = await liste(blind, "modell-blind");
+    expect(l).toContainEqual([Number(v.id), true]);
+    expect(stelle(l, Number(v.id))).toBeLessThan(stelle(l, Number(o.id)));
+    // Nach einer Probe (zurückgeschickt) erst wieder nach vier weiteren Versuchen; das zuletzt gemeldete Modell gilt
+    await geschafft(blind, "A", "modell-blind", "nacharbeit", SZENE);
+    l = await liste(blind);
+    expect(l.map(([id]) => id)).not.toContain(Number(v.id));
+    expect(l.map(([id]) => id)).toContain(Number(o.id));
+    await expect(k.reservieren(db, blind, v.id)).rejects.toThrow(/scene image and your model \(modell-blind\) does not read images.*0 of 1 reviewed results accepted/);
+    const erklaert = await k.aufgabenErklaert(db, blind, "test");
+    expect(erklaert.zurueckgehalten.find((x) => x.id === Number(v.id))?.grund).toMatch(/does not read images/);
+    // Wer ein Modell mit Bildverständnis nennt, bekommt sie sofort
+    expect(await liste(blind, "gpt-5")).toContainEqual([Number(v.id), false]);
+    for (let i = 0; i < 4; i++) await geschafft(blind, "A", "modell-blind");
+    expect(await liste(blind)).toContainEqual([Number(v.id), true]);
+    // Nachweis über das Modell (wie der Vorschuss bei den Stufen): 3 von 4 angenommen, ab dann ganz normal
+    const zweiter = await neuerAgent("bild-blind-zwei");
+    for (let i = 0; i < 3; i++) await geschafft(zweiter, "A", "modell-blind", "annehmen", SZENE);
+    expect(await k.bildFreigabe(db, blind.agentId, "modell-blind")).toMatchObject({ frei: true, angenommen: 3, entschieden: 4 });
+    // Eine Rückgabe zählt hier nicht (in den Stufen schon): Ob das Bild stimmt, zeigen nur bewertete Ergebnisse
+    await k.reservieren(db, zweiter, v.id);
+    await k.abbrechen(db, zweiter, v.id, "time limit reached");
+    expect(await k.bildFreigabe(db, blind.agentId, "modell-blind")).toMatchObject({ frei: true, angenommen: 3, entschieden: 4 });
+    expect(await liste(blind)).toContainEqual([Number(v.id), false]);
+    // Lead und Visionär sind bei den Stufen ausgenommen, hier nicht
+    expect(await liste(lead, "modell-lead-blind")).toContainEqual([Number(v.id), true]);
+    expect(await liste(lead, "claude-opus-5-5")).toContainEqual([Number(v.id), false]);
+    for (const a of [v, o]) await k.schliessen(db, lead, a.id, "Test");
   });
 
   it("Rückgaben mit einer Ursache außerhalb des Modells zählen nicht als Misserfolg (E-45)", async () => {
