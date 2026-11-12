@@ -32,6 +32,9 @@ DOCKER_VORHER=$(cat /etc/docker/daemon.json 2>/dev/null || true)
 echo "== 2. Hardening"
 # Automatic security updates (Debian security archive only)
 printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' > /etc/apt/apt.conf.d/20auto-upgrades
+# A kernel update reboots this server by itself at night: nobody waits on it, and a check or merge train test cut off by
+# the reboot simply runs again. The platform is rebooted only after asking (its visitors would notice).
+printf 'Unattended-Upgrade::Automatic-Reboot "true";\nUnattended-Upgrade::Automatic-Reboot-WithUsers "true";\nUnattended-Upgrade::Automatic-Reboot-Time "04:00";\n' > /etc/apt/apt.conf.d/52swarvex-reboot
 systemctl enable --now unattended-upgrades >/dev/null 2>&1 || true
 # Firewall: only SSH comes in. The pipeline only connects out (platform API, git hosts, package registries).
 ufw default deny incoming >/dev/null

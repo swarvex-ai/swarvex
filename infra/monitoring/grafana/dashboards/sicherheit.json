@@ -676,7 +676,7 @@
   },
   {
    "type": "stat",
-   "title": "Sicherheitsupdates offen",
+   "title": "Sicherheitsupdates",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -730,7 +730,7 @@
   },
   {
    "type": "stat",
-   "title": "Automatische Updates zuletzt",
+   "title": "Auto-Updates vor",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -846,7 +846,7 @@
   },
   {
    "type": "stat",
-   "title": "Stand erfasst vor",
+   "title": "Erfasst vor",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -1215,7 +1215,7 @@
     "x": 0,
     "y": 32,
     "w": 24,
-    "h": 5
+    "h": 7
    },
    "options": {
     "mode": "markdown",
@@ -1228,7 +1228,7 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 37,
+    "y": 39,
     "w": 24,
     "h": 1
    },
@@ -1243,7 +1243,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 38,
+    "y": 40,
     "w": 12,
     "h": 8
    },
@@ -1292,7 +1292,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 38,
+    "y": 40,
     "w": 12,
     "h": 8
    },
@@ -1341,7 +1341,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 46,
+    "y": 48,
     "w": 12,
     "h": 7
    },
@@ -1389,7 +1389,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 46,
+    "y": 48,
     "w": 12,
     "h": 7
    },
@@ -1434,7 +1434,7 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 53,
+    "y": 55,
     "w": 24,
     "h": 1
    },
@@ -1449,7 +1449,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 54,
+    "y": 56,
     "w": 12,
     "h": 8
    },
@@ -1498,7 +1498,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 54,
+    "y": 56,
     "w": 12,
     "h": 8
    },
@@ -1546,7 +1546,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 62,
+    "y": 64,
     "w": 12,
     "h": 7
    },
@@ -1614,7 +1614,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 62,
+    "y": 64,
     "w": 12,
     "h": 7
    },
@@ -1645,7 +1645,7 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 69,
+    "y": 71,
     "w": 24,
     "h": 1
    },
@@ -1660,7 +1660,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 70,
+    "y": 72,
     "w": 16,
     "h": 8
    },
@@ -1708,7 +1708,7 @@
    },
    "gridPos": {
     "x": 16,
-    "y": 70,
+    "y": 72,
     "w": 8,
     "h": 8
    },
@@ -1745,7 +1745,7 @@
    "collapsed": false,
    "gridPos": {
     "x": 0,
-    "y": 78,
+    "y": 80,
     "w": 24,
     "h": 1
    },
@@ -1760,7 +1760,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 79,
+    "y": 81,
     "w": 12,
     "h": 7
    },
@@ -1818,7 +1818,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 79,
+    "y": 81,
     "w": 12,
     "h": 7
    },
@@ -1875,7 +1875,7 @@
    },
    "gridPos": {
     "x": 0,
-    "y": 86,
+    "y": 88,
     "w": 12,
     "h": 7
    },
@@ -1910,7 +1910,7 @@
    },
    "gridPos": {
     "x": 12,
-    "y": 86,
+    "y": 88,
     "w": 12,
     "h": 7
    },

@@ -134,17 +134,17 @@ zeile("Softwarestände und Updates")
 panel("stat", "Neustart nötig", server("max by (job) (swarvex_os_reboot_required)"), 0, 5, 4, quelle=PROM, legende="{{server}}",
       optionen=JE_SERVER, felder={"mappings": JA_NEIN, "thresholds": schwellen((0, "green"), (1, "orange"))},
       beschreibung="Ein neuer Kernel (oder eine Systembibliothek) ist installiert, läuft aber erst nach einem Neustart. Sicherheitsupdates des Kernels wirken vorher nicht.")
-panel("stat", "Sicherheitsupdates offen", server('max by (job) (swarvex_os_updates_pending{kind="security"})'), 5, 5, 4, quelle=PROM,
+panel("stat", "Sicherheitsupdates", server('max by (job) (swarvex_os_updates_pending{kind="security"})'), 5, 5, 4, quelle=PROM,
       legende="{{server}}", optionen=JE_SERVER, felder={"thresholds": schwellen((0, "green"), (1, "red"))},
       beschreibung="Pakete aus dem Debian-Sicherheitsarchiv, die noch nicht installiert sind. Die automatischen Updates spielen sie nachts ein; über einen Tag hinaus ist das ein Alarm.")
-panel("stat", "Automatische Updates zuletzt", server("(time() - max by (job) (swarvex_os_unattended_upgrades_last_run_timestamp_seconds > 0)) / 3600"),
+panel("stat", "Auto-Updates vor", server("(time() - max by (job) (swarvex_os_unattended_upgrades_last_run_timestamp_seconds > 0)) / 3600"),
       10, 5, 4, quelle=PROM, legende="{{server}}", einheit="h", optionen=JE_SERVER,
       felder={"thresholds": schwellen((0, "green"), (30, "orange"), (50, "red")), "decimals": 0, "noValue": "noch nie"},
       beschreibung="Stunden seit dem letzten Lauf von unattended-upgrades (täglich, auch wenn es nichts zu tun gab).")
 panel("stat", "Images mit Update", server('count by (job) (swarvex_image_created_timestamp_seconds{update=~"yes|rebuild"})'), 15, 5, 4, quelle=PROM,
       legende="{{server}}", optionen=JE_SERVER, felder={"thresholds": schwellen((0, "green"), (1, "orange")), "noValue": "0"},
       beschreibung="Images, für die es eine neuere Version gibt (Tabelle unten). Einspielen nach dem Update-Zyklus.")
-panel("stat", "Stand erfasst vor", server("(time() - max by (job) (swarvex_software_check_timestamp_seconds)) / 3600"), 20, 4, 4, quelle=PROM,
+panel("stat", "Erfasst vor", server("(time() - max by (job) (swarvex_software_check_timestamp_seconds)) / 3600"), 20, 4, 4, quelle=PROM,
       legende="{{server}}", einheit="h", optionen=JE_SERVER, felder={"thresholds": schwellen((0, "green"), (30, "red")), "decimals": 0, "noValue": "nie"},
       beschreibung="Wann infra/software-stand.py zuletzt lief (täglich gegen 07:15 und nach jedem Start). Über 30 Stunden: der Timer swarvex-software läuft nicht.")
 weiter(4)
@@ -177,8 +177,8 @@ fällige Neubauten anstoßen, Kernel-Neustarts nach Plan. **Hauptversionen** (Gr
 **Sofort:** bei Sicherheitsmeldungen zu Grafana, Caddy, Postgres, Docker, gVisor oder dem Kernel.
 
 **Alarm:** Sicherheitsupdates länger als einen Tag offen · automatische Updates über 50 Stunden nicht gelaufen · Stand über 30 Stunden nicht erfasst ·
-ein Neustart, der länger als eine Woche wartet.""", 0, 24, 5)
-weiter(5)
+ein Neustart, der länger als eine Woche wartet.""", 0, 24, 7)
+weiter(7)
 
 # ---------- Anmeldung und Agenten ----------
 zeile("Anmeldung und Agenten")
