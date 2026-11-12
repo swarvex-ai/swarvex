@@ -5,10 +5,11 @@
 //   - Alle anderen Projekte (Runner ab 0.11): Zwei grüne Läufe (eigener + Gegenprüfung) ersetzen die Prüfstraße.
 //     Rot in der Gegenprüfung, kein eigener grüner Lauf oder niemand da: Die Prüfstraße prüft wie bisher und
 //     entscheidet. Eine Gegenprüfung allein lehnt also nie ab; was durchkommt, testet der Merge-Zug noch einmal.
-//   - Ändert eine Einreichung Referenzbilder (SZENENBILDER), prüft immer die Prüfstraße: Nur sie liefert die Szenenbilder
-//     (alt, neu, Differenz) für Lead und Prüfer. Bis 11.11.2026 ersetzte die Gegenprüfung sie auch hier; Formwerk-Modelle
-//     kamen dann ohne Bilder in die Fremdprüfung, ein Prüfer ohne Bildmodell durfte zustimmen, ohne dass jemand das
-//     Ergebnis gesehen hatte (so rutschte am 9.11. die Schubkarre durch).
+//   - Ändert eine Einreichung Referenzbilder (SZENENBILDER), braucht die Fremdprüfung Szenenbilder (alt, neu, Differenz).
+//     Am 9.11. kamen Formwerk-Modelle über die Gegenprüfung ohne Bilder in die Fremdprüfung, ein Prüfer ohne Bildmodell
+//     stimmte zu, ohne dass jemand das Ergebnis gesehen hatte (die Schubkarre). Ab 11.11. prüfte deshalb hier immer die
+//     Prüfstraße. Seit 12.11. liest der Prüfserver die Bilder aus dem Patch (bilder_aus_patch: alt aus dem Basis-Commit,
+//     neu aus dem Patch, ohne Testlauf); sind alle da, darf wieder ein Runner gegenprüfen, sonst prüft die Prüfstraße.
 import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, projektPerSlug, type Wer } from "./aufgaben.ts";
@@ -42,10 +43,18 @@ export async function eigenenLaufFesthalten(tx: Tx, einreichungId: number, eigen
  * baseline oder baselines (bei three.js tests/scene/baseline, sonst nach swarvex.yaml images_baseline benannt)?
  */
 export const SZENENBILDER = String.raw`(^|\n)diff --git a/(\S+/)?baselines?/\S+\.png `;
+const szenenbilder = new RegExp(SZENENBILDER);
+/** Ändert der Patch ein Referenzbild? Dann zeigt die Einreichung etwas, das man sehen muss. */
+export const aendertSzenenbilder = (patch: string) => szenenbilder.test(patch ?? "");
+
+/** SQL-Bedingung (Einreichung e): Darf ein Runner sie gegenprüfen, was Szenenbilder angeht? Ohne Referenzbilder immer,
+ *  mit nur, wenn der Prüfserver alle Bilder aus dem Patch geliefert hat (die Prüfer brauchen sie). */
+// is not distinct from: Ohne Meldung ist bilder_aus_patch NULL, und „= 'vollstaendig'“ wäre dann NULL statt false
+const BILDER_DA = `(e.patch !~ '${SZENENBILDER}' or e.bilder_aus_patch is not distinct from 'vollstaendig')`;
 
 /** SQL-Bedingung (Einreichung e, Agent des Einreichers ag): Wartet die Einreichung gerade auf eine Gegenprüfung statt auf die Prüfstraße? */
 export const WARTET_AUF_GEGENPRUEFUNG = `(
-  e.patch !~ '${SZENENBILDER}'
+  ${BILDER_DA}
   and exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'selbst' and x.ergebnis = 'ok')
   and not exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'gegenpruefung' and x.ergebnis = 'fehler')
   and (exists (select 1 from gegenpruefungen g where g.einreichung_id = e.id and g.beendet is null and g.laeuft_ab > now())
@@ -126,7 +135,7 @@ async function allgemeineGegenpruefung(db: Db, wer: Wer, p: any) {
          and e.id = (select max(id) from einreichungen where aufgabe_id = a.id)
          and ag.mensch_id <> $2
          and exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'selbst' and x.ergebnis = 'ok')
-         and e.patch !~ '${SZENENBILDER}'   -- Referenzbilder geändert: die Prüfstraße liefert die Szenenbilder
+         and ${BILDER_DA}   -- Referenzbilder geändert: erst wenn der Prüfserver die Bilder aus dem Patch geliefert hat
          and not exists (select 1 from pruefungen x where x.einreichung_id = e.id and (x.quelle = 'projekt' or (x.quelle = 'gegenpruefung' and x.ergebnis = 'fehler')))
          and not exists (select 1 from gegenpruefungen g where g.einreichung_id = e.id and g.beendet is null and g.laeuft_ab > now())
          and not exists (select 1 from gegenpruefungen g join agenten x on x.id = g.agent_id where g.einreichung_id = e.id and x.mensch_id = $2)

@@ -22,6 +22,7 @@ import { modellFamilie, modellSchluessel, prueferStatus, siehtBilder } from "./m
 import { einreichungsVorschauUrl } from "./konfig.ts";
 import { einreichungsVorschau } from "./katalog.ts";
 import { vertrauenAktualisieren } from "./vertrauen.ts";
+import { aendertSzenenbilder } from "./gegenpruefung.ts";
 
 /** Zustimmungen verschiedener Menschen, nach denen eine Aufgabe der Stufe A ohne Lead angenommen wird. */
 export const AUTO_ANNAHME = { stufen: ["A"], zustimmungen: 2 };
@@ -69,7 +70,10 @@ export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: stri
   }
   // eigene Beiträge eines Leads zuerst (nur der Schwarm kann sie annehmen), dann die, denen dieses Modell zustimmen darf
   // (stabil sortiert, sonst in der Reihenfolge des Eingangs)
-  const zustimmbar = (z: { bilder: string[] }) => !z.bilder.length || (modell?.trim() ? siehtBilder(modell) : true);
+  // Sichtbar ist eine Änderung, wenn es Szenenbilder gibt oder der Patch Referenzbilder ändert (die Bilder kommen dann
+  // gleich vom Prüfserver); zustimmen erst, wenn sie da sind, und nur mit einem Modell, das Bilder liest
+  const zustimmbar = (z: { bilder: string[]; patch: string }) => (!z.bilder.length && !aendertSzenenbilder(z.patch))
+    || (z.bilder.length > 0 && (modell?.trim() ? siehtBilder(modell) : true));
   erlaubt.sort((x, y) => Number(y.vom_lead) - Number(x.vom_lead) || Number(zustimmbar(y)) - Number(zustimmbar(x)));
   return Promise.all(erlaubt.slice(0, 20).map(async ({ projekt_id, autor, raum, vorschau_status, pruefpunkte, bilder, ...z }) => ({
     ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: await einreichungsVorschau(db, z.projekt, Number(z.einreichung_id)) } : {}),
@@ -77,9 +81,10 @@ export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: stri
     automatisch_ab: automatischAb(z.stufe, z.vom_lead),
     ...(pruefpunkte?.length ? { pruefpunkte } : {}),
     ...(bilder.length ? { bilder, bild_adresse: `/submissions/${z.einreichung_id}/images/<scene>/<old|new|diff>.png` } : {}),
-    zustimmen_moeglich: zustimmbar({ bilder }),
+    zustimmen_moeglich: zustimmbar({ bilder, patch: z.patch }),
     ...(!modell?.trim() ? { hinweis: "name your model (model): only a model of another family than the submission's may review it" }
-      : !zustimmbar({ bilder }) ? { hinweis: "this submission changes what you see (images) and your model does not read images: you may request changes, not approve" } : {}),
+      : !bilder.length && aendertSzenenbilder(z.patch) ? { hinweis: "this submission changes what you see; its scene images are not there yet (a few minutes): you may request changes, not approve yet" }
+      : !zustimmbar({ bilder, patch: z.patch }) ? { hinweis: "this submission changes what you see (images) and your model does not read images: you may request changes, not approve" } : {}),
   })));
 }
 
@@ -104,8 +109,10 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
     if (e.modell && modellFamilie(modell) === modellFamilie(e.modell))
       throw new Abgelehnt(`the submission was written by ${e.modell}; a peer review needs a model of another family (yours: ${modellFamilie(modell)})`);
     const bilder = Number((await tx.query("select count(*) from einreichung_bilder where einreichung_id = $1", [einreichungId])).rows[0].count);
-    if (bilder && urteil === "zustimmen") {
+    // Ändert der Patch Referenzbilder, ist die Änderung sichtbar, auch bevor die Bilder da sind (die Schubkarre, 9.11.)
+    if ((bilder || aendertSzenenbilder(e.patch)) && urteil === "zustimmen") {
       if (!siehtBilder(modell)) throw new Abgelehnt("this submission changes what you see (scene images); only a model that reads images may approve it: request changes or leave it to another reviewer");
+      if (!bilder) throw new Abgelehnt("this submission changes what you see, but its scene images are not there yet; approve in a few minutes, after looking at them");
       if (!zusatz.bilderGesehen) throw new Abgelehnt("look at the scene images first (old, new, diff), then approve with images_seen: true");
     }
     const punkte: string[] = e.pruefpunkte ?? [];

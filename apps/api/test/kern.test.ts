@@ -660,6 +660,19 @@ describe("Bewertung durch den Schwarm", () => {
     expect(await fremdPruefen(db, p8, eid, "zustimmen", "Akzeptanz erfüllt, im Bild geprüft", "gemini-3-pro", { antworten: antwort, bilderGesehen: true })).toMatchObject({ automatisch_angenommen: true });
     const zeile = (await db.query("select antworten, bilder_gesehen from fremdpruefungen where einreichung_id = $1 and mensch_id = $2", [eid, p7.menschId])).rows[0];
     expect(zeile).toEqual({ antworten: antwort, bilder_gesehen: true });
+    // Ändert der Patch ein Referenzbild, ist die Änderung sichtbar, auch bevor die Bilder vom Prüfserver da sind
+    const { a: a4, eid: eid4 } = await geprueft("Neues Modell, Bilder noch unterwegs", "A");
+    await db.query("update einreichungen set patch = patch || $2 where id = $1",
+      [eid4, "diff --git a/tests/scene/baseline/neu.png b/tests/scene/baseline/neu.png\nnew file mode 100644\n"]);
+    const pb = await pruefer("pruefer-bild");
+    expect((await offeneFremdpruefungen(db, pb, "test", "claude-sonnet-5-5")).find((x) => x.einreichung_id === eid4))
+      .toMatchObject({ zustimmen_moeglich: false, hinweis: expect.stringContaining("not there yet") });
+    await expect(fremdPruefen(db, pb, eid4, "zustimmen", "Akzeptanz erfüllt, sieht gut aus", "deepseek-v4.1-flash", { bilderGesehen: true })).rejects.toThrow(/reads images/);
+    await expect(fremdPruefen(db, pb, eid4, "zustimmen", "Akzeptanz erfüllt, sieht gut aus", "claude-sonnet-5-5", { bilderGesehen: true })).rejects.toThrow(/not there yet/);
+    await db.query("insert into einreichung_bilder(einreichung_id, name, art, png) values ($1, 'neu', 'neu', $2)", [eid4, png]);
+    expect((await offeneFremdpruefungen(db, pb, "test", "claude-sonnet-5-5")).find((x) => x.einreichung_id === eid4)).toMatchObject({ zustimmen_moeglich: true });
+    await k.bewerten(db, lead, eid4, "nacharbeit", "Aufräumen nach dem Test der Bildregel");
+    await k.schliessen(db, lead, a4.id, "Test");
     // eine Reparaturaufgabe widerlegt beide Zustimmungen
     await expect(k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Fix: offen"), behebt: eid3 * 1000 })).rejects.toThrow(/fixes/);
     const fix = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Fix: Rad sitzt in der Wanne"), behebt: a.id });
@@ -2174,25 +2187,56 @@ describe("Gegenprüfung für alle Projekte (Runner ab 0.11)", () => {
     });
   });
 
-  it("ändert eine Einreichung Referenzbilder, prüft immer die Prüfstraße: nur sie liefert die Szenenbilder (11.11.2026)", async () => {
+  it("ändert eine Einreichung Referenzbilder, liefert der Prüfserver die Bilder aus dem Patch; erst dann darf ein Runner gegenprüfen (12.11.2026)", async () => {
     await mitPruefstrasse(async (senden) => {
       await g.naechsteGegenpruefung(db, fremd, "test", [], true);   // aktiver Gegenprüfer
-      const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Neues Modell mit Referenzbild"));
-      await k.reservieren(db, mit, a.id);
       const bild = "diff --git a/game/modules/vfx/tests/scene/baseline/glow.png b/game/modules/vfx/tests/scene/baseline/glow.png\nnew file mode 100644\n--- /dev/null\n+++ b/game/modules/vfx/tests/scene/baseline/glow.png\n@@ -0,0 +1 @@\n+png\n";
-      const e: any = await k.einreichen(db, mit, a.id, { patch: PATCH_OK + bild, zusammenfassung: "z", eigene_tests: "node --test: 3 passed", verbrauch: {}, eigenes_ergebnis: "ok" });
-      const eid = Number(e.einreichung_id);
-      expect(await wartend(senden)).toContain(eid);   // wartet nicht auf den Gegenprüfer
-      expect((await g.naechsteGegenpruefung(db, fremd, "test", [], true))?.einreichung_id).not.toBe(eid);
-      // Ein Bild außerhalb eines Referenzordners (etwa ein Icon) ändert nichts: Die Gegenprüfung genügt weiter
-      const b = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Icon ohne Referenzbild"));
-      await k.reservieren(db, mit, b.id);
-      const icon = bild.replaceAll("tests/scene/baseline/glow.png", "icons/glow.png");
-      const f: any = await k.einreichen(db, mit, b.id, { patch: PATCH_OK.replaceAll("neu.gd", "icon.gd") + icon, zusammenfassung: "z", eigene_tests: "node --test: 3 passed", verbrauch: {}, eigenes_ergebnis: "ok" });
-      expect(await wartend(senden)).not.toContain(Number(f.einreichung_id));
-      await senden("POST", `/pipeline/${eid}/start`, {});
-      await senden("POST", `/pipeline/${eid}/result`, { result: "pass", report: "grün auf der Prüfstraße" });
+      const mitBild = async (titel: string) => {
+        const a = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe(titel));
+        await k.reservieren(db, mit, a.id);
+        const e: any = await k.einreichen(db, mit, a.id, { patch: PATCH_OK + bild, zusammenfassung: "z", eigene_tests: "node --test: 3 passed", verbrauch: {}, eigenes_ergebnis: "ok" });
+        return { a, eid: Number(e.einreichung_id) };
+      };
+      const bildOffen = async () => ((await senden("GET", "/pipeline/images-pending")) as { submission_id: number }[]).map((x) => Number(x.submission_id));
+      // Gegenprüfung für genau diese Einreichung (andere aus früheren Tests gibt der Runner zurück)
+      const gegenpruefungFuer = async (eid: number) => {
+        for (let i = 0; i < 30; i++) {
+          const j: any = await g.naechsteGegenpruefung(db, fremd, "test", [], true);
+          if (!j || j.einreichung_id === eid) return j;
+          await g.gegenpruefungMelden(db, fremd, j.gegenpruefung_id, "nicht_moeglich", "anderer Test");
+        }
+        return null;
+      };
+      const { a, eid } = await mitBild("Neues Modell mit Referenzbild");
+      // Noch ohne Bilder: wartet nicht auf einen Runner, der Prüfserver holt die Bilder aus dem Patch
+      expect(await bildOffen()).toContain(eid);
+      expect(await wartend(senden)).toContain(eid);
+      const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]).toString("base64");
+      expect(await senden("POST", `/pipeline/${eid}/images`, { name: "glow", new: png })).toEqual({ ok: true });
+      expect(await senden("POST", `/pipeline/${eid}/images-done`, { complete: true })).toEqual({ ok: true });
+      expect(await bildOffen()).not.toContain(eid);
+      expect(await wartend(senden)).not.toContain(eid);   // jetzt wartet sie auf den Gegenprüfer
+      const job: any = await gegenpruefungFuer(eid);
+      expect(job?.einreichung_id).toBe(eid);
+      await g.gegenpruefungMelden(db, fremd, job.gegenpruefung_id, "ok", "npm test: 23 passed");
       expect(await zustand(a.id)).toBe("geprueft_ok");
+      expect((await db.query("select name from einreichung_bilder where einreichung_id = $1", [eid])).rows).toEqual([{ name: "glow" }]);
+      // Konnte der Prüfserver nicht jedes Bild liefern (etwa Git-LFS): Die Prüfstraße prüft und rendert wie bisher
+      const { a: b, eid: unvollstaendig } = await mitBild("Referenzbild in Git-LFS");
+      await senden("POST", `/pipeline/${unvollstaendig}/images-done`, { complete: false });
+      expect(await bildOffen()).not.toContain(unvollstaendig);
+      expect(await wartend(senden)).toContain(unvollstaendig);
+      expect((await gegenpruefungFuer(unvollstaendig))?.einreichung_id).not.toBe(unvollstaendig);
+      // Ein Bild außerhalb eines Referenzordners (etwa ein Icon) braucht keine Bilder: Die Gegenprüfung genügt
+      const c = await k.aufgabeAnlegen(db, lead, "test", neueAufgabe("Icon ohne Referenzbild"));
+      await k.reservieren(db, mit, c.id);
+      const icon = bild.replaceAll("tests/scene/baseline/glow.png", "icons/glow.png");
+      const f: any = await k.einreichen(db, mit, c.id, { patch: PATCH_OK.replaceAll("neu.gd", "icon.gd") + icon, zusammenfassung: "z", eigene_tests: "node --test: 3 passed", verbrauch: {}, eigenes_ergebnis: "ok" });
+      expect(await bildOffen()).not.toContain(Number(f.einreichung_id));
+      expect(await wartend(senden)).not.toContain(Number(f.einreichung_id));
+      await senden("POST", `/pipeline/${unvollstaendig}/start`, {});
+      await senden("POST", `/pipeline/${unvollstaendig}/result`, { result: "pass", report: "grün auf der Prüfstraße" });
+      expect(await zustand(b.id)).toBe("geprueft_ok");
     });
   });
 });

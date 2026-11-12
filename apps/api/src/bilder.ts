@@ -1,6 +1,7 @@
 // Bildvergleich im Review (E-39): Szenenbilder einer Einreichung (alt = Referenz vom Basis-Commit, neu = mit dem
-// Beitrag, diff = Unterschied), von der Prüfstraße geliefert. Nur für Lead, Visionär und Bereichs-Leads des Projekts:
-// Die Bilder zeigt ein fremder Beitrag, sie werden nicht öffentlich ausgeliefert.
+// Beitrag, diff = Unterschied), von der Prüfstraße geliefert: gerendert, oder vorab aus dem Patch gelesen (E-50). Nur
+// für Lead, Visionär und Bereichs-Leads des Projekts: Die Bilder zeigt ein fremder Beitrag, sie werden nicht öffentlich
+// ausgeliefert.
 import type { Db } from "./db.ts";
 import { Abgelehnt, officersVon, rollenVon } from "./aufgaben.ts";
 

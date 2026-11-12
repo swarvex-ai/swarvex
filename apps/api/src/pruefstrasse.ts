@@ -9,7 +9,7 @@ import type { Db } from "./db.ts";
 import { transaktion } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import * as k from "./aufgaben.ts";
-import { WARTET_AUF_GEGENPRUEFUNG } from "./gegenpruefung.ts";
+import { SZENENBILDER, WARTET_AUF_GEGENPRUEFUNG } from "./gegenpruefung.ts";
 import { nachAussen } from "./aussen.ts";
 import { repoToken } from "./github.ts";
 import { einreichungsVorschauUrl, konfig, vorschauUrl } from "./konfig.ts";
@@ -109,6 +109,22 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string, pruefGeheimnis 
            and not ${WARTET_AUF_GEGENPRUEFUNG}
            and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id`);
         return json(res, 200, nachAussen(await mitToken(r.rows, false)));
+      }
+      // Szenenbilder aus dem Patch (gegenpruefung.ts): eingereichte Beiträge, die Referenzbilder ändern und noch keine
+      // Bilder haben. Der Prüfserver holt sie vor jeder Prüfrunde, damit danach auch ein Runner gegenprüfen kann.
+      if (req.method === "GET" && url.pathname === "/pipeline/images-pending") {
+        const r = await db.query(
+          `select e.id as einreichung_id, e.patch, e.patch_sha256, a.basis_commit, p.slug, p.repo_git, p.github_installation
+           from einreichungen e join aufgaben a on a.id = e.aufgabe_id join projekte p on p.id = a.projekt_id
+           where a.zustand = 'eingereicht' and e.bilder_aus_patch is null and e.patch ~ $1 and not p.gesperrt
+           and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id limit 20`, [SZENENBILDER]);
+        return json(res, 200, nachAussen(await mitToken(r.rows, false)));
+      }
+      const fertig = /^\/pipeline\/(\d+)\/images-done$/.exec(url.pathname);
+      if (req.method === "POST" && fertig) {
+        await db.query("update einreichungen set bilder_aus_patch = $2 where id = $1 and bilder_aus_patch is null",
+          [Number(fertig[1]), daten.complete === true ? "vollstaendig" : "unvollstaendig"]);
+        return json(res, 200, { ok: true });
       }
       if (req.method === "GET" && url.pathname === "/pipeline/accepted") {
         const r = await db.query(

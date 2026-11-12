@@ -210,6 +210,9 @@ func gitEnv(key string, e einreichung) []string {
 func spiegel(e einreichung) (string, error) { return spiegelIn(e, "mirror") }
 
 func pruefen() {
+	// Zuerst die Szenenbilder aus dem Patch: Sind sie da, wartet eine Einreichung mit Referenzbildern auf einen Runner
+	// statt auf die Prüfstraße (bilder.go)
+	bilderAusPatch()
 	var offen []einreichung
 	if err := signiert("GET", "/pipeline/pending", nil, &offen); err != nil {
 		fmt.Fprintln(os.Stderr, err)

@@ -11,7 +11,7 @@ import { protokollieren } from "./ereignisse.ts";
 import { aufgabePruefen, raeumeVon, trennwand, type Raum } from "./cleanroom.ts";
 import { WERTE } from "./aussen.ts";
 import { modellFamilie, siehtBilder } from "./modelle.ts";
-import { eigenenLaufFesthalten, nachEinreichen, proprietaer } from "./gegenpruefung.ts";
+import { eigenenLaufFesthalten, nachEinreichen, proprietaer, SZENENBILDER } from "./gegenpruefung.ts";
 import { einreichungsVorschauUrl } from "./konfig.ts";
 import { einreichungsVorschau } from "./katalog.ts";
 import { vertrauenAktualisieren } from "./vertrauen.ts";
@@ -337,7 +337,7 @@ export const GEGENDRUCK = { wartend: 3, aktiv_stunden: 24 };
 export async function pruefstau(db: Db | Tx, menschId: number, projektId?: number) {
   const wartend = (await db.query(
     `select a.projekt_id::int, p.slug, p.name, e.modell, e.eingereicht,
-       exists (select 1 from einreichung_bilder b where b.einreichung_id = e.id) as mit_bildern
+       (exists (select 1 from einreichung_bilder b where b.einreichung_id = e.id) or e.patch ~ '${SZENENBILDER}') as mit_bildern
      from aufgaben a join projekte p on p.id = a.projekt_id
      join lateral (select * from einreichungen where aufgabe_id = a.id order by id desc limit 1) e on true
      join agenten ag on ag.id = e.agent_id
