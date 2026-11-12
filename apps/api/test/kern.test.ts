@@ -1729,6 +1729,47 @@ describe("Zuteilung nach nachgewiesener Stufe", () => {
     for (const a of [v, o]) await k.schliessen(db, lead, a.id, "Test");
   });
 
+  it("Gegendruck (E-49): eigene Arbeit mit Szenenbildern, die niemand annehmen kann, hält neue Bildaufgaben zurück", async () => {
+    const SZENE = ["src/sprites/y.ts", "tests/scene/baseline/y.png"];
+    const pid = Number((await db.query("select id from projekte where slug = 'test'")).rows[0].id);
+    // Eigene Arbeit des Leads mit Szenenbild, geprüft und wartend auf eine Fremdprüfung
+    const wartet = async (titel: string) => {
+      const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe(titel), stufe: "B", pfade: SZENE });
+      const l = Number((await db.query("insert into leases(aufgabe_id, agent_id, laeuft_ab, beendet) values ($1,$2, now() + interval '1 hour', now()) returning id", [a.id, lead.agentId])).rows[0].id);
+      const e = Number((await db.query("insert into einreichungen(aufgabe_id, lease_id, agent_id, patch, patch_sha256, zusammenfassung, eigene_tests, verbrauch, modell) values ($1,$2,$3,'x','x','z','t','{}','qwen-blind') returning id", [a.id, l, lead.agentId])).rows[0].id);
+      await db.query("insert into einreichung_bilder(einreichung_id, name, art, png) values ($1, 'y', 'neu', '\\x89504e47')", [e]);
+      await db.query("update aufgaben set zustand = 'geprueft_ok' where id = $1", [a.id]);
+      return a;
+    };
+    const warten = [await wartet("Stau 1"), await wartet("Stau 2")];
+    const neu = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Neues Bild"), stufe: "A", pfade: SZENE });
+    const ohne = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Ohne Bild"), stufe: "A" });
+    const ids = async () => (await k.aufgabenPassend(db, lead, "test", undefined, "claude-opus-5-5")).map((x: any) => Number(x.id));
+    const bildStau = async () => (await k.pruefstau(db, lead.menschId, pid)).find((s) => s.mit_bildern);
+    expect(await bildStau()).toBeUndefined();   // zwei wartende: noch kein Stau
+    expect(await ids()).toContain(Number(neu.id));
+    warten.push(await wartet("Stau 3"));
+    expect((await bildStau())?.wartend).toBeGreaterThanOrEqual(3);
+    expect(await ids()).not.toContain(Number(neu.id));
+    expect(await ids()).toContain(Number(ohne.id));   // Aufgaben ohne Szenenbild laufen weiter
+    await expect(k.reservieren(db, lead, neu.id)).rejects.toThrow(/waits for \d+ peer reviews nobody can take/);
+    expect((await k.aufgabenErklaert(db, lead, "test")).zurueckgehalten.find((x) => x.id === Number(neu.id))?.grund).toMatch(/that reads images/);
+    expect(nachAussen({ pruefstau: await k.pruefstau(db, lead.menschId, pid) })).toMatchObject({ review_jams: [expect.objectContaining({ with_images: true })] });
+    // Ein Prüfer ohne Bildverständnis hilft nicht, einer derselben Modellfamilie auch nicht; einer, der Bilder liest, löst den Stau
+    const pruefer = async (login: string, modell: string) => {
+      const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login, vertrauensstufe) values ('gitea',$1,$1,1) returning id", [login])).rows[0].id);
+      const ag = Number((await db.query("insert into agenten(mensch_id, client_id, name, runner, gesehen) values ($1,$2,$2,true,now()) returning id", [m, `${login}-runner`])).rows[0].id);
+      await db.query("insert into leases(aufgabe_id, agent_id, laeuft_ab, beendet, modell) values ($1,$2, now(), now(), $3)", [ohne.id, ag, modell]);
+    };
+    await pruefer("stau-blind", "deepseek-v4");
+    await pruefer("stau-gleich", "qwen3-vl-plus");   // liest Bilder, aber dieselbe Familie wie die Einreichungen
+    expect(await bildStau()).toBeDefined();
+    await pruefer("stau-sehend", "gpt-5");
+    expect(await bildStau()).toBeUndefined();
+    expect(await ids()).toContain(Number(neu.id));
+    await db.query("update aufgaben set zustand = 'geschlossen' where id = any($1)", [[...warten, neu, ohne].map((a) => a.id)]);
+  });
+
   it("Rückgaben mit einer Ursache außerhalb des Modells zählen nicht als Misserfolg (E-45)", async () => {
     const r = await neuerAgent("zuteilung-umgebung");
     for (let i = 0; i < 3; i++) await geschafft(r, "C", "modell-u");

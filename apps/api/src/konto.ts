@@ -7,7 +7,7 @@ import { bilderErlaubt, bildLesen } from "./bilder.ts";
 import { anhaltendeSignale, bewerben, gesuchOeffnen, gesuchSchliessen, meineBewerbungen, offeneGesuche, teilenLink } from "./leadkraft.ts";
 import { randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { Abgelehnt, leasesBeenden, runnerStoerungen } from "./aufgaben.ts";
+import { Abgelehnt, leasesBeenden, pruefstau as pruefstauVon, runnerStoerungen } from "./aufgaben.ts";
 import { transaktion, type Db } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { konfig } from "./konfig.ts";
@@ -108,7 +108,9 @@ export async function kontoDaten(db: Db, menschId: number) {
     lead_gesuche: await offeneGesuche(db, Number(p.id)), signale: await anhaltendeSignale(db, Number(p.id)) })));
   // Runner, die nur noch zurückgeben, ohne dass das Modell arbeiten konnte (E-45): oben auf der Seite
   const runner_stoerungen = await runnerStoerungen(db, menschId);
-  return { mensch, rollen, agenten, runner_stoerungen, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId), wochenberichte, lead_dienste,
+  // Eigene Arbeit, die auf Fremdprüfungen wartet, die gerade niemand übernehmen kann (Gegendruck, E-49)
+  const pruefstau = await pruefstauVon(db, menschId);
+  return { mensch, rollen, agenten, runner_stoerungen, pruefstau, beitraege, summe, modelle, freigaben: await offeneFreigaben(db, menschId), zusagen: await meineZusagen(db, menschId), wochenberichte, lead_dienste,
     lead_kraft, meine_bewerbungen: await meineBewerbungen(db, menschId),
     vertrauen: await vertrauenStand(db, menschId), bereichs_leads: await bereichsLeadsFuer(db, menschId) };
 }

@@ -10,7 +10,7 @@ import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { aufgabePruefen, raeumeVon, trennwand, type Raum } from "./cleanroom.ts";
 import { WERTE } from "./aussen.ts";
-import { siehtBilder } from "./modelle.ts";
+import { modellFamilie, siehtBilder } from "./modelle.ts";
 import { eigenenLaufFesthalten, nachEinreichen, proprietaer } from "./gegenpruefung.ts";
 import { einreichungsVorschauUrl } from "./konfig.ts";
 import { einreichungsVorschau } from "./katalog.ts";
@@ -323,6 +323,53 @@ const bildGrund = (b: { modell: string | null; angenommen: number; entschieden: 
   `(${b.angenommen} of ${b.entschieden} reviewed results accepted in ${ZUTEILUNG.tage} days, needs ${ZUTEILUNG.annahmen} at ${ZUTEILUNG.erfolg * 100}%), ` +
   `until then as a trial at most every ${ZUTEILUNG.probe_jeder}th attempt`;
 
+// Gegendruck bei Prüfstau (E-49, Nachtrag 12.11.2026): Eigene Arbeit von Lead und Visionär nimmt nur die Fremdprüfung
+// einer anderen Person an. Gibt es dafür gerade keinen passenden Prüfer, bleibt jede weitere Einreichung liegen: In der
+// Nacht zum 12.11. sammelten sich 37, weil der einzige andere Mensch mit einem Modell ohne Bildverständnis prüfte und
+// Szenenbilder nicht annehmen durfte. Passend: ein Agent einer anderen Person, in den letzten GEGENDRUCK.aktiv_stunden
+// aktiv, nicht abgemeldet, Vertrauensstufe 1 (MIN_VERTRAUEN in schwarmpruefung.ts), nicht gesperrt, ohne Lead- oder
+// Visionärsrolle im Projekt, mit einem Modell anderer Familie als die Einreichung und, hat sie Szenenbilder, einem, das
+// Bilder liest. Ohne gemeldetes Modell zählt er nur für Einreichungen ohne Bilder. Liegen GEGENDRUCK.wartend solcher
+// Einreichungen derselben Art (mit oder ohne Szenenbild), bekommen die Agenten der Person dort keine neuen Aufgaben dieser
+// Art, bis ein Prüfer da ist. Kontoseite und project_context sagen, warum. Nicht öffentlich.
+export const GEGENDRUCK = { wartend: 3, aktiv_stunden: 24 };
+
+export async function pruefstau(db: Db | Tx, menschId: number, projektId?: number) {
+  const wartend = (await db.query(
+    `select a.projekt_id::int, p.slug, p.name, e.modell, e.eingereicht,
+       exists (select 1 from einreichung_bilder b where b.einreichung_id = e.id) as mit_bildern
+     from aufgaben a join projekte p on p.id = a.projekt_id
+     join lateral (select * from einreichungen where aufgabe_id = a.id order by id desc limit 1) e on true
+     join agenten ag on ag.id = e.agent_id
+     where a.zustand = 'geprueft_ok' and ag.mensch_id = $1 and ($2::bigint is null or a.projekt_id = $2) and not p.gesperrt
+       and exists (select 1 from projekt_rollen r where r.mensch_id = $1 and r.projekt_id = a.projekt_id and r.rolle in ('lead', 'visionaer'))`,
+    [menschId, projektId ?? null])).rows;
+  if (wartend.length < GEGENDRUCK.wartend) return [];
+  const ergebnis: { projekt: string; name: string; mit_bildern: boolean; wartend: number; seit: Date }[] = [];
+  for (const pid of new Set(wartend.map((w) => w.projekt_id))) {
+    const pruefer = await Promise.all((await db.query(
+      `select ag.id::int from agenten ag join menschen m on m.id = ag.mensch_id
+       where ag.mensch_id <> $1 and ag.abgemeldet is null and ag.gesehen > now() - make_interval(hours => $3)
+         and not m.gesperrt and m.vertrauensstufe >= 1
+         and not exists (select 1 from projekt_rollen r where r.mensch_id = ag.mensch_id and r.projekt_id = $2 and r.rolle in ('lead', 'visionaer'))`,
+      [menschId, pid, GEGENDRUCK.aktiv_stunden])).rows.map(async (z) => await agentModell(db, z.id)));
+    const passt = (w: { modell: string | null; mit_bildern: boolean }) => pruefer.some((m) => m === null ? !w.mit_bildern
+      : (!w.modell || modellFamilie(m) !== modellFamilie(w.modell)) && (!w.mit_bildern || siehtBilder(m)));
+    for (const mit of [true, false]) {
+      const offen = wartend.filter((w) => w.projekt_id === pid && w.mit_bildern === mit && !passt(w));
+      if (offen.length >= GEGENDRUCK.wartend)
+        ergebnis.push({ projekt: offen[0].slug, name: offen[0].name, mit_bildern: mit, wartend: offen.length,
+          seit: new Date(Math.min(...offen.map((w) => new Date(w.eingereicht).getTime()))) });
+    }
+  }
+  return ergebnis;
+}
+
+const stauGrund = (s: { mit_bildern: boolean; wartend: number }) =>
+  `your person's own work in this project already waits for ${s.wartend} peer reviews nobody can take right now: it needs an agent of another ` +
+  `person, active in the last ${GEGENDRUCK.aktiv_stunden} hours, with a model of another family${s.mit_bildern ? " that reads images" : ""}. ` +
+  `New ${s.mit_bildern ? "tasks with scene images" : "tasks without scene images"} come again once such a reviewer is there`;
+
 const KOPF_FEHLT = "the platform has not read the repository's main branch yet (it does every five minutes after connecting)";
 
 /** Offene Aufgaben, die der Mensch nach Vertrauensstufe bearbeiten darf (optional nach Fähigkeiten gefiltert). */
@@ -356,9 +403,12 @@ export async function aufgabenPassend(db: Db, wer: Wer, projektSlug: string, fae
   const stufeOk = frei ? passend.filter((a) => STUFEN.indexOf(a.stufe) <= STUFEN.indexOf(frei.bis)) : passend;
   // Bildaufgaben (E-49): ohne Bildverständnis und ohne Nachweis nur als fällige Probe, auf einer nachgewiesenen Stufe
   const bild = passend.some((a) => bildaufgabe(a.pfade)) ? await bildFreigabe(db, wer.agentId, await agentModell(db, wer.agentId, modell)) : null;
-  const ohneBild = (l: typeof passend) => bild && !bild.frei ? l.filter((a) => !bildaufgabe(a.pfade)) : l;
+  // Gegendruck (E-49, Nachtrag): Wartet die eigene Arbeit der Person auf Prüfungen, die niemand übernehmen kann, nichts Neues dieser Art
+  const stau = rollen.includes("lead") || rollen.includes("visionaer") ? await pruefstau(db, wer.menschId, Number(p.id)) : [];
+  const gestaut = (a: { pfade: string[] }) => stau.some((s) => s.mit_bildern === bildaufgabe(a.pfade));
+  const ohneBild = (l: typeof passend) => (bild && !bild.frei ? l.filter((a) => !bildaufgabe(a.pfade)) : l).filter((a) => !gestaut(a));
   const normal = ohneBild(stufeOk);
-  const bildProben = bild && !bild.frei && bild.probe_dran ? stufeOk.filter((a) => bildaufgabe(a.pfade)) : [];
+  const bildProben = bild && !bild.frei && bild.probe_dran ? stufeOk.filter((a) => bildaufgabe(a.pfade) && !gestaut(a)) : [];
   const proben = frei ? ohneBild(passend.filter((a) => a.stufe === frei.probe)) : [];
   const probeVorn = proben.length > 0 && (frei!.probe_dran || normal.length === 0);
   // Eigene Nacharbeit zuerst (der Runner nimmt die erste), dann eine fällige Probe, dann der kritische Pfad: was die
@@ -394,6 +444,7 @@ export async function aufgabenErklaert(db: Db, wer: Wer, projektSlug: string, fa
   const rollen = await rollenVon(db, wer.menschId, p.id);
   const frei = rollen.includes("lead") || rollen.includes("visionaer") ? null : await stufenFreigabe(db, wer.agentId);
   const bild = r.rows.some((a) => !angeboten.has(Number(a.id)) && bildaufgabe(a.pfade)) ? await bildFreigabe(db, wer.agentId, await agentModell(db, wer.agentId, modell)) : null;
+  const stau = rollen.includes("lead") || rollen.includes("visionaer") ? await pruefstau(db, wer.menschId, Number(p.id)) : [];
   // In derselben Reihenfolge wie die Filter in aufgabenPassend; der erste zutreffende Grund zählt.
   const grund = (a: any): string => {
     if (wer.runner === true && !p.repo_git) return "the project has no connected repository yet";
@@ -413,6 +464,8 @@ export async function aufgabenErklaert(db: Db, wer: Wer, projektSlug: string, fa
       if (stufe > bis + 1) return `level ${a.stufe} needs an agent that has shown level ${STUFEN[stufe - 1]} (yours: up to ${frei.bis})`;
       if (stufe === bis + 1) return `level ${a.stufe} is a trial for you; trials come at most every ${ZUTEILUNG.probe_jeder}th attempt while other tasks are open`;
     }
+    const s = stau.find((x) => x.mit_bildern === bildaufgabe(a.pfade));
+    if (s) return stauGrund(s);
     if (bild && !bild.frei && bildaufgabe(a.pfade)) return bildGrund(bild);
     return "not offered right now";
   };
@@ -485,6 +538,10 @@ async function reservierenIntern(db: Db, wer: Wer, aufgabeId: number, modell?: s
         throw new Abgelehnt(stufe > bis + 1
           ? `level ${a.stufe} needs an agent that has shown level ${STUFEN[stufe - 1]}: at least ${ZUTEILUNG.annahmen} accepted with ${ZUTEILUNG.erfolg * 100}% success in ${ZUTEILUNG.tage} days (yours: up to ${frei.bis})`
           : `level ${a.stufe} is a trial for this agent (proven up to ${frei.bis}); trials come at most every ${ZUTEILUNG.probe_jeder}th attempt while other tasks are open`);
+    }
+    if (eigeneRollen.includes("lead") || eigeneRollen.includes("visionaer")) {
+      const s = (await pruefstau(tx, wer.menschId, Number(a.projekt_id))).find((x) => x.mit_bildern === bildaufgabe(a.pfade));
+      if (s) throw new Abgelehnt(stauGrund(s));
     }
     if (bildaufgabe(a.pfade)) {
       const bild = await bildFreigabe(tx, wer.agentId, await agentModell(tx, wer.agentId, modell));

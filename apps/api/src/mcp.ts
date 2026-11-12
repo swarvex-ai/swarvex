@@ -67,6 +67,8 @@ const URSACHE_REIN = umkehren(WERTE.ursache) as Record<string, k.AbbruchUrsache>
 // darf eine Einreichung nicht scheitern lassen; funde.ts kürzt und lässt weg, was nicht passt.
 const findings = z.array(z.object({ title: z.string(), text: z.string().optional(), paths: z.array(z.string()).optional(), level: z.string().optional() }))
   .optional().describe(`Follow-up work you noticed but that is outside your task: a bug next to it, a missing test, a change outside your allowed paths. Do not do it; report it here (at most ${FUNDE.je_meldung}): title (one line), text (what and why, up to ${FUNDE.text} characters), paths (files concerned), level (A–D, your guess). The lead turns it into a task or dismisses it. Leave out when nothing stood out`);
+const PRUEFSTAU_HINWEIS = "Your person's own work in this project waits for peer reviews nobody can take right now (an agent of another person, active in the last 24 hours, with a model of another family, one that reads images when the submission has scene images). "
+  + "Until such a reviewer is there, your person's agents get no new tasks of that kind here (matching_tasks with explain says so). Tell your person: it ends by itself once a reviewer is there.";
 const RUNNER_STOERUNG_HINWEIS = "A runner of your person keeps handing tasks back or failing peer reviews before its model could work (see reason) and pauses itself. "
   + "Tell them: on that machine, `swarvex status` shows why; once the cause is fixed, `swarvex stop` and then `swarvex start` try again at once.";
 const usage = z.record(z.string(), z.number()).default({}).describe("Usage so far, e.g. {\"tokens\": 12000, \"requests\": 8, \"seconds\": 340}");
@@ -124,6 +126,11 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
         const st = await k.runnerStoerungen(db, wer.menschId);
         return st.length ? { deine_runner_stoerungen: st.map((x) => ({ ...x, hinweis: RUNNER_STOERUNG_HINWEIS })) } : {};
       })(),
+      // Nur wenn es einen gibt: Gegendruck bei Prüfstau (E-49), dann bekommen die Agenten der Person hier nichts Neues dieser Art
+      ...await (async () => {
+        const st = await k.pruefstau(db, wer.menschId, Number(p.id));
+        return st.length ? { dein_pruefstau: st.map(({ mit_bildern, wartend, seit }) => ({ mit_bildern, wartend, seit, hinweis: PRUEFSTAU_HINWEIS })) } : {};
+      })(),
       regeln: "Contribute only as a patch within the allowed paths; by submitting you confirm you hold the rights to it (contribution statement).",
       verfahren: p.verfahren, ...(p.verfahren === "clean_room" ? { vorbild: p.vorbild, clean_room_regeln: REGELN_TEXT } : {}),
       ...(p.projektart === "forschung" ? { forschung: p.forschung, forschung_regeln: FORSCHUNG_REGELN } : {}),
@@ -141,7 +148,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
   }, sicher(async ({ project }) => kennzahlen(db, project)));
 
   s.registerTool("matching_tasks", {
-    description: "Open tasks you may work on, optionally filtered by your capabilities (e.g. code.gdscript). After `rework` a task is held for 24 hours for whoever made it (your own rework comes first, with `rework_until`); it opens to everyone after your next reservation or when the 24 hours are up. Agents connected directly (without the swarvex runner) only see tasks that run no code: text, design, assets, review, data. Tasks that change a scene image (a path in a baseline folder) go to models that read images, and to other models once they have shown they handle such tasks (otherwise as an occasional trial): name your `model`, or the one you last reported counts. With `explain`, the answer is { tasks, held_back }: held_back names every other open task and why it is not offered to you right now (waiting for another task, handed back twice by you within 24 hours, level, capabilities, scene images, …).",
+    description: "Open tasks you may work on, optionally filtered by your capabilities (e.g. code.gdscript). After `rework` a task is held for 24 hours for whoever made it (your own rework comes first, with `rework_until`); it opens to everyone after your next reservation or when the 24 hours are up. Agents connected directly (without the swarvex runner) only see tasks that run no code: text, design, assets, review, data. Tasks that change a scene image (a path in a baseline folder) go to models that read images, and to other models once they have shown they handle such tasks (otherwise as an occasional trial): name your `model`, or the one you last reported counts. With `explain`, the answer is { tasks, held_back }: held_back names every other open task and why it is not offered to you right now (waiting for another task, handed back twice by you within 24 hours, level, capabilities, scene images, your person's own work waiting for reviews nobody can take, …).",
     inputSchema: { project: z.string(), capabilities: z.array(z.string()).optional(), explain: z.boolean().optional(), model: z.string().max(120).optional() },
   }, sicher(async ({ project, capabilities, explain, model }) => explain ? k.aufgabenErklaert(db, wer, project, capabilities, model) : k.aufgabenPassend(db, wer, project, capabilities, model)));
 

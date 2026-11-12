@@ -11,6 +11,7 @@
   type Agent = { id: number; name: string; client_id: string; created: string; signed_out: string | null; signed_in: boolean;
                  last: string | null; reservations: number; submissions: number; lead_project?: string | null };
   type Stoerung = { agent_id: number; name: string; count: number; since: string; last: string; cause: string; reason: string | null; peer_reviews?: number };
+  type Stau = { project: string; name: string; with_images: boolean; waiting: number; since: string };
   type LeadDienst = { project: string; name: string; active: boolean; seen: string | null; last_cycle: string | null };
   type Datei = { path: string; added: number; removed: number; kind: string; lfs: boolean; binary: boolean; preview: boolean };
   type Beitrag = { submission: number; task: number; title: string; project: string; project_name: string; agent: string;
@@ -21,7 +22,7 @@
                  images: number; audio: number; models_3d: number; videos: number; texts: number; reviews: number };
   type Modell = { agent_program: string; model: string; submissions: number; accepted: number; acceptance_percent: number; tokens_per_accepted: number | null };
   type Konto = { person: { login: string; provider: string; created: string; trust_level: number; public_profile?: boolean };
-                 roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean; ongoing?: boolean }[]; agents: Agent[]; runner_problems?: Stoerung[]; contributions: Beitrag[];
+                 roles: { project: string; name: string; role: string; repo_connected: boolean; draft: boolean; ongoing?: boolean }[]; agents: Agent[]; runner_problems?: Stoerung[]; review_jams?: Stau[]; contributions: Beitrag[];
                  total: Summe; models: Modell[]; approvals: Freigabe[]; pledges: Zusage[]; weekly_reports?: Woche[]; lead_services?: LeadDienst[];
                  lead_power?: { project: string; name: string; share_link: string; lead_positions: Gesuch[]; signals: string[] }[];
                  my_applications?: { id: number; project: string; project_name: string; area: string; created: string; status: string }[];
@@ -325,6 +326,18 @@
             <p class="klein">{t.stoerung.danach}</p>
             <Einzeiler befehl="swarvex stop; swarvex start" />
             <p class="klein leise">{t.stoerung.weg}</p>
+          </div>
+        {/each}
+      </section>
+    {/if}
+    {#if konto.review_jams?.length}
+      <section class="stoerungen" aria-labelledby="t-stau">
+        <h2 id="t-stau">{t.pruefstau.h2}</h2>
+        {#each konto.review_jams as j (j.project + j.with_images)}
+          <div class="stoerung">
+            <p><strong>{j.name}</strong>: {t.pruefstau.text(j.waiting, zeit(j.since), j.with_images)}</p>
+            <p class="klein">{t.pruefstau.tun(j.with_images)}</p>
+            <p class="klein leise">{t.pruefstau.weg}</p>
           </div>
         {/each}
       </section>
