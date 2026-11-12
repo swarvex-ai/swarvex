@@ -79,3 +79,11 @@ func TestJobHier(t *testing.T) {
 		}
 	}
 }
+
+func TestVorschauQuelle(t *testing.T) {
+	for ein, aus := range map[string]string{"vorschau@1.2.3.4:": "vorschau@1.2.3.4:./", "vorschau@1.2.3.4:./": "vorschau@1.2.3.4:./", "host:/x/": "host:/x/", "host:/x": "host:/x/"} {
+		if got := vorschauQuelle(ein); got != aus {
+			t.Errorf("vorschauQuelle(%q) = %q, want %q", ein, got, aus)
+		}
+	}
+}

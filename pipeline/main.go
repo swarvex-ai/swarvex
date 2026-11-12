@@ -97,11 +97,20 @@ func vorschauenHolen() {
 	os.MkdirAll(ziel, 0o755)
 	ssh := fmt.Sprintf("ssh -i %s -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%s.known_hosts", vorschauKey, vorschauKey)
 	if aus, err := befehl("", nil, "rsync", "-rt", "--delete", "--no-links", "--no-devices", "--no-specials", "--chmod=D755,F644",
-		"--max-size=200m", "-e", ssh, strings.TrimRight(vorschauVon, "/")+"/", ziel+"/"); err != nil {
+		"--max-size=200m", "-e", ssh, vorschauQuelle(vorschauVon), ziel+"/"); err != nil {
 		fmt.Fprintf(os.Stderr, "fetching previews from the pipeline server: %v\n%s\n", err, aus)
 		os.Exit(1)
 	}
 	fmt.Println("previews fetched from the pipeline server")
+}
+
+// vorschauQuelle: „vorschau@server:“ wird zu „vorschau@server:./“, relativ zu dem Ordner, auf den rrsync den Zugang
+// beschränkt; immer mit Schrägstrich am Ende, damit rsync den Inhalt spiegelt und nicht den Ordner selbst.
+func vorschauQuelle(v string) string {
+	if strings.HasSuffix(v, ":") {
+		v += "./"
+	}
+	return strings.TrimRight(v, "/") + "/"
 }
 
 func envOder(n, s string) string {
