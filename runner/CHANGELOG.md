@@ -5,6 +5,14 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.16.0 (unreleased)
+
+- `swarvex status` names the model and the connection the runner works with, for example
+  `Model: google/gemini-3.8-flash via OpenRouter (https://openrouter.ai/api), agent opencode`: from the service's
+  start arguments, without a service from what `swarvex setup` saved, and opencode's own default model when no
+  model is given. Local servers show as "local server", the ChatGPT sign-in as "ChatGPT subscription". The key is
+  not read.
+
 ## 0.15.1 (11 Nov 2026)
 
 - A peer review that fails from its sandbox step on is reported to the platform (`report_peer_review_failure`), with

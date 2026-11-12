@@ -58,3 +58,30 @@ func TestTagesverbrauch(t *testing.T) {
 		t.Errorf("mitternacht %v", m)
 	}
 }
+
+// swarvex status nennt Modell und Verbindung, wie der Dienst sie startet (Wunsch von neVs, 12.11.2026).
+func TestModellText(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	for _, f := range []struct {
+		args []string
+		text string
+	}{
+		{[]string{"--project", "formwerk", "--model", "google/gemini-3.8-flash", "--model-url", "https://openrouter.ai/api", "--model-key-file", "/home/x/.config/swarvex/key"},
+			"Model: google/gemini-3.8-flash via OpenRouter (https://openrouter.ai/api), agent opencode"},
+		{[]string{"--agent=claude", "--model=claude-sonnet-5-5"}, "Model: claude-sonnet-5-5 via Anthropic, agent claude"},
+		{[]string{"--agent", "codex", "--model", "gpt-5.5", "--model-url", "https://chatgpt.com/backend-api/codex"}, "Model: gpt-5.5 via ChatGPT subscription, agent codex"},
+		{[]string{"--model", "qwen3.8", "--model-url", "http://192.168.10.20:11434"}, "Model: qwen3.8 via local server (http://192.168.10.20:11434), agent opencode"},
+		{[]string{"--model", "x", "--model-url", "https://llm.example.org/api"}, "Model: x via llm.example.org (https://llm.example.org/api), agent opencode"},
+		{[]string{"--project", "formwerk"}, "Model: the agent's default via the agent's default connection, agent opencode"},
+	} {
+		if got := modellText(f.args); got != f.text {
+			t.Errorf("%v:\n got  %s\n want %s", f.args, got, f.text)
+		}
+	}
+	// Ohne --model: das Standardmodell aus opencodes eigener Konfiguration
+	os.MkdirAll(filepath.Join(os.Getenv("HOME"), ".config", "opencode"), 0o755)
+	os.WriteFile(filepath.Join(os.Getenv("HOME"), ".config", "opencode", "opencode.json"), []byte(`{"model": "openrouter/google/gemini-3.8-flash"}`), 0o644)
+	if got := modellText([]string{"--model-url", "https://openrouter.ai/api"}); got != "Model: openrouter/google/gemini-3.8-flash (opencode default) via OpenRouter (https://openrouter.ai/api), agent opencode" {
+		t.Errorf("opencode default: %s", got)
+	}
+}

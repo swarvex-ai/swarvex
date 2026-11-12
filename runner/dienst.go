@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"os/exec"
@@ -229,10 +230,16 @@ func logsBefehl() {
 
 func statusBefehl() {
 	fmt.Println("Runner:", versionText(version))
-	fmt.Printf("Usage today: %d tokens\n", verbrauchAmTag(verbrauchsDatei(), time.Now()))
-	// Der neueste Stand, auch aus den Lead-Diensten mit demselben Abo
 	einheit, _ := os.ReadFile(dienstDatei())
 	dienstArgs, _ := einheitArgsLesen(string(einheit))
+	// Womit der Dienst arbeitet; ohne Dienst, was swarvex setup gespeichert hat
+	if args := dienstArgs; len(args) > 0 {
+		fmt.Println(modellText(args))
+	} else if args := gespeicherteArgs(); len(args) > 0 {
+		fmt.Println(modellText(args))
+	}
+	fmt.Printf("Usage today: %d tokens\n", verbrauchAmTag(verbrauchsDatei(), time.Now()))
+	// Der neueste Stand, auch aus den Lead-Diensten mit demselben Abo
 	key, _ := argWert(dienstArgs, "model-key-file")
 	if key == "" {
 		key, _ = argWert(gespeicherteArgs(), "model-key-file")
@@ -430,4 +437,57 @@ func uninstallBefehl(args []string) {
 		schritt("program removed ("+programm+")", os.Remove(programm))
 	}
 	fmt.Println("Done. The runner never copied your model key (--model-key-file); that file stays where it is.")
+}
+
+// modellText: welches Modell der Runner nutzt und über welche Verbindung (swarvex status). Aus den Startargumenten;
+// ohne --model nimmt opencode sein eigenes Standardmodell. Den Schlüssel liest das nicht.
+func modellText(args []string) string {
+	agent, _ := argWert(args, "agent")
+	if agent == "" {
+		agent = "opencode"
+	}
+	modell, _ := argWert(args, "model")
+	if modell == "" && agent == "opencode" {
+		if m := opencodeStandardModell(); m != "" {
+			modell = m + " (opencode default)"
+		}
+	}
+	if modell == "" {
+		modell = "the agent's default"
+	}
+	adresse, _ := argWert(args, "model-url")
+	return fmt.Sprintf("Model: %s via %s, agent %s", modell, verbindungText(agent, adresse), agent)
+}
+
+// verbindungText: der Anbieter hinter der Adresse, mit der Adresse selbst.
+func verbindungText(agent, adresse string) string {
+	if adresse == "" {
+		switch agent {
+		case "claude":
+			return "Anthropic"
+		case "codex":
+			return "OpenAI"
+		}
+		return "the agent's default connection"
+	}
+	if strings.HasPrefix(adresse, codexAboURL) {
+		return "ChatGPT subscription"
+	}
+	u, err := url.Parse(adresse)
+	if err != nil || u.Hostname() == "" {
+		return adresse
+	}
+	host, name := u.Hostname(), u.Hostname()
+	ip := net.ParseIP(host)
+	switch {
+	case host == "openrouter.ai" || strings.HasSuffix(host, ".openrouter.ai"):
+		name = "OpenRouter"
+	case host == "api.anthropic.com":
+		name = "Anthropic"
+	case host == "api.openai.com":
+		name = "OpenAI"
+	case host == "localhost" || (ip != nil && (ip.IsLoopback() || ip.IsPrivate())):
+		name = "local server"
+	}
+	return name + " (" + adresse + ")"
 }
