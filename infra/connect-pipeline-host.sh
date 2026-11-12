@@ -32,7 +32,7 @@ cd $DATA
 ssh-keyscan -t ed25519 $ADR 2>/dev/null > pruefserver_vorschau.known_hosts
 EOF
 DORT=$(ssh "$P" "ssh-keygen -lf $DATA/pruefserver_vorschau.known_hosts | awk '{print \$2}'")
-HIER=$(ssh-keygen -F "$ADR" -l | awk '!/^#/ {print $2}' | head -1)
+HIER=$(ssh-keygen -F "$ADR" -l | awk '$2 == "ED25519" {print $3}' | head -1)
 if [ -z "$DORT" ] || [ "$DORT" != "$HIER" ]; then
   echo "   STOP: the pipeline server's host key differs between the platform ($DORT) and here ($HIER)"
   exit 1
