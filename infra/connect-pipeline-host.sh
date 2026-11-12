@@ -47,6 +47,12 @@ echo "   platform: $BASE"
 echo "== 3. Platform: from now on only merging here, previews fetched from the pipeline server"
 ssh "$P" "set -eu; f=$DATA/pipeline.env; sed -i '/^SWARVEX_JOBS=/d;/^SWARVEX_PREVIEW_FROM=/d;/^SWARVEX_PREVIEW_KEY=/d' \$f; printf 'SWARVEX_JOBS=merge\nSWARVEX_PREVIEW_FROM=vorschau@%s:\nSWARVEX_PREVIEW_KEY=%s/pruefserver_vorschau\n' '$ADR' '$DATA' >> \$f"
 
+echo "== 3b. Previews the platform built since the first copy follow (it builds none from now on)"
+V=/var/lib/swarvex-pipeline/vorschau
+T=$(ssh "$H" "find $V -type f -printf '%T@\\n' 2>/dev/null | sort -n | tail -1 | cut -d. -f1")
+ssh "$P" "cd $V && find . -type f -newermt '@${T:-0}' -print0 | tar --null -T - -cf -" | ssh "$H" "mkdir -p $V && tar -C $V -xf - && find $V -type d -exec chmod 755 {} +"
+echo "   newer than $(date -d "@${T:-0}" '+%d.%m. %H:%M'): copied"
+
 echo "== 4. Pipeline server: check and preview on, read-only access for the platform"
 KEY=$(ssh "$P" "cat $DATA/pruefserver_vorschau.pub")
 ssh "$H" "PREVIEW_SYNC_KEY='$KEY' sh /opt/swarvex/infra/setup-pipeline-host.sh" | tail -5
