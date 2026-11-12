@@ -9,12 +9,25 @@
  "refresh": "1m",
  "panels": [
   {
+   "id": 20,
+   "type": "row",
+   "title": "Platform",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
    "id": 1,
    "type": "stat",
    "title": "CPU in use",
    "gridPos": {
     "x": 0,
-    "y": 0,
+    "y": 1,
     "w": 6,
     "h": 4
    },
@@ -31,7 +44,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))"
+     "expr": "1 - avg(rate(node_cpu_seconds_total{job=\"integrations/unix\",mode=\"idle\"}[5m]))"
     }
    ]
   },
@@ -41,7 +54,7 @@
    "title": "CPU steal (other customers)",
    "gridPos": {
     "x": 6,
-    "y": 0,
+    "y": 1,
     "w": 6,
     "h": 4
    },
@@ -58,7 +71,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "avg(rate(node_cpu_seconds_total{mode=\"steal\"}[5m]))"
+     "expr": "avg(rate(node_cpu_seconds_total{job=\"integrations/unix\",mode=\"steal\"}[5m]))"
     }
    ]
   },
@@ -68,7 +81,7 @@
    "title": "Memory in use",
    "gridPos": {
     "x": 12,
-    "y": 0,
+    "y": 1,
     "w": 6,
     "h": 4
    },
@@ -85,7 +98,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes"
+     "expr": "1 - node_memory_MemAvailable_bytes{job=\"integrations/unix\"} / node_memory_MemTotal_bytes{job=\"integrations/unix\"}"
     }
    ]
   },
@@ -95,7 +108,7 @@
    "title": "Disk / in use",
    "gridPos": {
     "x": 18,
-    "y": 0,
+    "y": 1,
     "w": 6,
     "h": 4
    },
@@ -112,7 +125,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "1 - node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}"
+     "expr": "1 - node_filesystem_avail_bytes{job=\"integrations/unix\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"integrations/unix\",mountpoint=\"/\"}"
     }
    ]
   },
@@ -122,7 +135,7 @@
    "title": "CPU by mode",
    "gridPos": {
     "x": 0,
-    "y": 4,
+    "y": 5,
     "w": 12,
     "h": 8
    },
@@ -139,7 +152,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (mode) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m])) / scalar(count(node_cpu_seconds_total{mode=\"idle\"}))",
+     "expr": "sum by (mode) (rate(node_cpu_seconds_total{job=\"integrations/unix\",mode!=\"idle\"}[5m])) / scalar(count(node_cpu_seconds_total{job=\"integrations/unix\",mode=\"idle\"}))",
      "legendFormat": "{{mode}}"
     }
    ]
@@ -150,7 +163,7 @@
    "title": "Memory",
    "gridPos": {
     "x": 12,
-    "y": 4,
+    "y": 5,
     "w": 12,
     "h": 8
    },
@@ -167,12 +180,12 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+     "expr": "node_memory_MemTotal_bytes{job=\"integrations/unix\"} - node_memory_MemAvailable_bytes{job=\"integrations/unix\"}",
      "legendFormat": "used"
     },
     {
      "refId": "B",
-     "expr": "node_memory_MemTotal_bytes",
+     "expr": "node_memory_MemTotal_bytes{job=\"integrations/unix\"}",
      "legendFormat": "total"
     }
    ]
@@ -183,7 +196,7 @@
    "title": "Container memory",
    "gridPos": {
     "x": 0,
-    "y": 12,
+    "y": 13,
     "w": 12,
     "h": 8
    },
@@ -200,7 +213,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (name) (container_memory_working_set_bytes{name!=\"\"})",
+     "expr": "sum by (name) (container_memory_working_set_bytes{job=\"integrations/cadvisor\",name!=\"\"})",
      "legendFormat": "{{name}}"
     }
    ]
@@ -211,7 +224,7 @@
    "title": "Container CPU",
    "gridPos": {
     "x": 12,
-    "y": 12,
+    "y": 13,
     "w": 12,
     "h": 8
    },
@@ -228,7 +241,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m]))",
+     "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{job=\"integrations/cadvisor\",name!=\"\"}[5m]))",
      "legendFormat": "{{name}}"
     }
    ]
@@ -239,7 +252,7 @@
    "title": "Network",
    "gridPos": {
     "x": 0,
-    "y": 20,
+    "y": 21,
     "w": 12,
     "h": 8
    },
@@ -256,12 +269,12 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(rate(node_network_receive_bytes_total{device!~\"lo|veth.*|br-.*|docker.*\"}[5m]))",
+     "expr": "sum(rate(node_network_receive_bytes_total{job=\"integrations/unix\",device!~\"lo|veth.*|br-.*|docker.*\"}[5m]))",
      "legendFormat": "in"
     },
     {
      "refId": "B",
-     "expr": "sum(rate(node_network_transmit_bytes_total{device!~\"lo|veth.*|br-.*|docker.*\"}[5m]))",
+     "expr": "sum(rate(node_network_transmit_bytes_total{job=\"integrations/unix\",device!~\"lo|veth.*|br-.*|docker.*\"}[5m]))",
      "legendFormat": "out"
     }
    ]
@@ -272,7 +285,7 @@
    "title": "Disk I/O",
    "gridPos": {
     "x": 12,
-    "y": 20,
+    "y": 21,
     "w": 12,
     "h": 8
    },
@@ -289,12 +302,12 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(rate(node_disk_read_bytes_total[5m]))",
+     "expr": "sum(rate(node_disk_read_bytes_total{job=\"integrations/unix\"}[5m]))",
      "legendFormat": "read"
     },
     {
      "refId": "B",
-     "expr": "sum(rate(node_disk_written_bytes_total[5m]))",
+     "expr": "sum(rate(node_disk_written_bytes_total{job=\"integrations/unix\"}[5m]))",
      "legendFormat": "write"
     }
    ]
@@ -305,7 +318,7 @@
    "title": "Errors in container logs",
    "gridPos": {
     "x": 0,
-    "y": 28,
+    "y": 29,
     "w": 24,
     "h": 10
    },
@@ -317,6 +330,465 @@
     {
      "refId": "A",
      "expr": "{container=~\".+\"} |~ \"(?i)error|fatal|panic\""
+    }
+   ]
+  },
+  {
+   "id": 21,
+   "type": "row",
+   "title": "Pipeline server (checks and previews of other people's code, gVisor)",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 39,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "id": 22,
+   "type": "stat",
+   "title": "Reachable",
+   "gridPos": {
+    "x": 0,
+    "y": 40,
+    "w": 4,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "1": {
+         "text": "yes",
+         "color": "green"
+        },
+        "0": {
+         "text": "no",
+         "color": "red"
+        }
+       }
+      }
+     ],
+     "noValue": "not connected"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(up{job=\"pruefserver\"})"
+    }
+   ],
+   "description": "The platform reads these metrics through an SSH tunnel it opens itself (infra/monitoring/compose.pipeline-server.yaml). no: pipeline server down or tunnel broken."
+  },
+  {
+   "id": 23,
+   "type": "stat",
+   "title": "CPU in use",
+   "gridPos": {
+    "x": 4,
+    "y": 40,
+    "w": 4,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "1 - avg(rate(node_cpu_seconds_total{job=\"pruefserver\",mode=\"idle\"}[5m]))"
+    }
+   ]
+  },
+  {
+   "id": 24,
+   "type": "stat",
+   "title": "CPU steal (other customers)",
+   "gridPos": {
+    "x": 8,
+    "y": 40,
+    "w": 4,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "avg(rate(node_cpu_seconds_total{job=\"pruefserver\",mode=\"steal\"}[5m]))"
+    }
+   ]
+  },
+  {
+   "id": 25,
+   "type": "stat",
+   "title": "Memory in use",
+   "gridPos": {
+    "x": 12,
+    "y": 40,
+    "w": 4,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "1 - node_memory_MemAvailable_bytes{job=\"pruefserver\"} / node_memory_MemTotal_bytes{job=\"pruefserver\"}"
+    }
+   ]
+  },
+  {
+   "id": 26,
+   "type": "stat",
+   "title": "Disk / in use",
+   "gridPos": {
+    "x": 16,
+    "y": 40,
+    "w": 4,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "1 - node_filesystem_avail_bytes{job=\"pruefserver\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"pruefserver\",mountpoint=\"/\"}"
+    }
+   ]
+  },
+  {
+   "id": 27,
+   "type": "stat",
+   "title": "Container sandbox",
+   "gridPos": {
+    "x": 20,
+    "y": 40,
+    "w": 4,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max by (runtime) (swarvex_pipeline_runtime_info{job=\"pruefserver\"})",
+     "legendFormat": "{{runtime}}"
+    }
+   ],
+   "description": "Runtime around every check container: runsc is gVisor (own kernel per container), runc would be plain Docker.",
+   "options": {
+    "textMode": "name",
+    "colorMode": "none",
+    "graphMode": "none"
+   }
+  },
+  {
+   "id": 28,
+   "type": "stat",
+   "title": "Last check run (ago)",
+   "gridPos": {
+    "x": 0,
+    "y": 44,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 300
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "time() - max(swarvex_pipeline_last_run_timestamp_seconds{job=\"pruefserver\",task=\"check\"})"
+    }
+   ],
+   "description": "The check runs every minute; more than 5 minutes means its timer stopped."
+  },
+  {
+   "id": 29,
+   "type": "stat",
+   "title": "Last run per task",
+   "gridPos": {
+    "x": 6,
+    "y": 44,
+    "w": 12,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "1": {
+         "text": "ok",
+         "color": "green"
+        },
+        "0": {
+         "text": "failed",
+         "color": "red"
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max by (task) (swarvex_pipeline_last_run_success)",
+     "legendFormat": "{{task}}"
+    }
+   ],
+   "description": "check and preview run on the pipeline server; merge and preview_fetch (fetching the built previews, read-only) on the platform. Details: journalctl -u swarvex-<task> on that server."
+  },
+  {
+   "id": 30,
+   "type": "stat",
+   "title": "Previews fetched by the platform (ago)",
+   "gridPos": {
+    "x": 18,
+    "y": 44,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 900
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "time() - max(swarvex_pipeline_last_success_timestamp_seconds{job=\"integrations/unix\",task=\"preview_fetch\"})"
+    }
+   ],
+   "description": "Every 5 minutes; more than 15 minutes means new previews do not reach the preview domain."
+  },
+  {
+   "id": 31,
+   "type": "timeseries",
+   "title": "Pipeline server: CPU and memory",
+   "gridPos": {
+    "x": 0,
+    "y": 48,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "1 - avg(rate(node_cpu_seconds_total{job=\"pruefserver\",mode=\"idle\"}[5m]))",
+     "legendFormat": "CPU"
+    },
+    {
+     "refId": "B",
+     "expr": "avg(rate(node_cpu_seconds_total{job=\"pruefserver\",mode=\"steal\"}[5m]))",
+     "legendFormat": "CPU steal"
+    },
+    {
+     "refId": "C",
+     "expr": "1 - node_memory_MemAvailable_bytes{job=\"pruefserver\"} / node_memory_MemTotal_bytes{job=\"pruefserver\"}",
+     "legendFormat": "Memory"
+    }
+   ]
+  },
+  {
+   "id": 32,
+   "type": "timeseries",
+   "title": "Run duration per task",
+   "gridPos": {
+    "x": 12,
+    "y": 48,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max by (task) (swarvex_pipeline_last_run_duration_seconds)",
+     "legendFormat": "{{task}}"
+    }
+   ]
+  },
+  {
+   "id": 33,
+   "type": "timeseries",
+   "title": "Pipeline server: network",
+   "gridPos": {
+    "x": 0,
+    "y": 56,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "Bps"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(node_network_receive_bytes_total{job=\"pruefserver\",device!~\"lo|veth.*|br-.*|docker.*\"}[5m]))",
+     "legendFormat": "in"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(rate(node_network_transmit_bytes_total{job=\"pruefserver\",device!~\"lo|veth.*|br-.*|docker.*\"}[5m]))",
+     "legendFormat": "out"
+    }
+   ]
+  },
+  {
+   "id": 34,
+   "type": "timeseries",
+   "title": "Pipeline server: disk /",
+   "gridPos": {
+    "x": 12,
+    "y": 56,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "node_filesystem_size_bytes{job=\"pruefserver\",mountpoint=\"/\"} - node_filesystem_avail_bytes{job=\"pruefserver\",mountpoint=\"/\"}",
+     "legendFormat": "used"
+    },
+    {
+     "refId": "B",
+     "expr": "node_filesystem_size_bytes{job=\"pruefserver\",mountpoint=\"/\"}",
+     "legendFormat": "size"
     }
    ]
   }

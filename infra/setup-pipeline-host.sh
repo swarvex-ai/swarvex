@@ -7,7 +7,8 @@
 # as a second barrier around every container, then the pipeline jobs check and preview. Merging stays on the platform:
 # this server never gets a key that can write to a repository.
 #
-#   PREVIEW_SYNC_KEY='ssh-ed25519 AAAA… swarvex previews (read-only)' sh infra/setup-pipeline-host.sh
+#   PREVIEW_SYNC_KEY='ssh-ed25519 AAAA… swarvex previews (read-only)' METRICS_KEY='ssh-ed25519 AAAA… swarvex metrics tunnel' \
+#     sh infra/setup-pipeline-host.sh
 #
 # Before: infra/deploy-pipeline-host.sh <target> copies the code, and /opt/swarvex-data/pipeline.env holds
 #   SWARVEX_PLATFORM=https://<platform>   SWARVEX_PIPELINE_SECRET=<PIPELINE_SECRET_CHECK of the platform>
@@ -93,6 +94,26 @@ if [ -n "${PREVIEW_SYNC_KEY:-}" ]; then
   echo "   preview sync: key installed"
 else
   echo "   preview sync: PREVIEW_SYNC_KEY not given, unchanged"
+fi
+
+echo "== 6. Metrics for the platform's monitoring"
+# The node exporter listens on 127.0.0.1 only; the platform reaches it through an SSH tunnel it opens itself
+# (infra/monitoring/compose.pipeline-server.yaml). Its one key may forward to that port and nothing else: no shell,
+# no other port. This server gets no access to the platform. Pipeline runs add their own metrics as textfiles.
+apt-get install -y -qq --no-install-recommends prometheus-node-exporter >/dev/null
+mkdir -p /var/lib/swarvex-metrics
+chmod 755 /var/lib/swarvex-metrics
+printf 'ARGS="--web.listen-address=127.0.0.1:9100 --collector.textfile.directory=/var/lib/swarvex-metrics"\n' > /etc/default/prometheus-node-exporter
+systemctl enable prometheus-node-exporter >/dev/null 2>&1
+systemctl restart prometheus-node-exporter
+id metriken >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/swarvex-metriken --shell /usr/sbin/nologin metriken
+if [ -n "${METRICS_KEY:-}" ]; then
+  install -d -m 700 -o metriken -g metriken /var/lib/swarvex-metriken/.ssh
+  printf 'restrict,port-forwarding,permitopen="127.0.0.1:9100",command="/bin/false" %s\n' "$METRICS_KEY" > /var/lib/swarvex-metriken/.ssh/authorized_keys
+  chown metriken:metriken /var/lib/swarvex-metriken/.ssh/authorized_keys && chmod 600 /var/lib/swarvex-metriken/.ssh/authorized_keys
+  echo "   metrics: node exporter on 127.0.0.1:9100, tunnel key installed"
+else
+  echo "   metrics: node exporter on 127.0.0.1:9100, METRICS_KEY not given, tunnel key unchanged"
 fi
 
 echo

@@ -1,0 +1,40 @@
+# Separate pipeline server (infra/connect-pipeline-host.sh): its host metrics and pipeline runs reach Prometheus
+# through an SSH tunnel opened from this side. The pipeline server gets no access to this server, and the key here
+# may only forward to its node exporter (127.0.0.1:9100 there). infra/deploy.sh adds this file when
+# infra/stack/.env names PIPELINE_SERVER_ADDRESS.
+services:
+  pipeline-server:
+    build:
+      dockerfile_inline: |
+        FROM docker.io/library/alpine:3.22
+        RUN apk add --no-cache openssh-client-default
+    command:
+      - ssh
+      - -N
+      - -i
+      - /run/secrets/key
+      - -o
+      - BatchMode=yes
+      - -o
+      - IdentitiesOnly=yes
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - UserKnownHostsFile=/run/secrets/known_hosts
+      - -o
+      - ExitOnForwardFailure=yes
+      - -o
+      - ServerAliveInterval=30
+      - -o
+      - ServerAliveCountMax=3
+      # Listens inside this container only, reachable on the monitoring network as pipeline-server:9100
+      - -L
+      - 0.0.0.0:9100:127.0.0.1:9100
+      - metriken@${PIPELINE_SERVER_ADDRESS:?}
+    volumes:
+      - /opt/swarvex-data/pruefserver_metriken:/run/secrets/key:ro
+      - /opt/swarvex-data/pruefserver_vorschau.known_hosts:/run/secrets/known_hosts:ro
+    restart: unless-stopped
+  alloy:
+    environment:
+      PIPELINE_SERVER_TARGETS: '[{"__address__": "pipeline-server:9100"}]'

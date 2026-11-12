@@ -9,6 +9,8 @@
 #   ssh <platform> 'tar -C /var/lib/swarvex-pipeline/vorschau -cf - .' | ssh <pipeline> 'tar -C /var/lib/swarvex-pipeline/vorschau -xf -'
 # Undo: delete the lines SWARVEX_JOBS, SWARVEX_PREVIEW_FROM and SWARVEX_PREVIEW_KEY from /opt/swarvex-data/pipeline.env
 # on the platform, and on the pipeline server: systemctl disable --now swarvex-check.timer swarvex-preview.timer
+# Metrics: delete PIPELINE_SERVER_ADDRESS from infra/stack/.env on the platform, then in infra/monitoring there:
+#   docker compose rm -sf pipeline-server && docker compose --env-file ../stack/.env up -d alloy
 set -eu
 P="${1:?usage: infra/connect-pipeline-host.sh <platform> <pipeline-server> <pipeline-server-address>}"
 H="${2:?usage: infra/connect-pipeline-host.sh <platform> <pipeline-server> <pipeline-server-address>}"
@@ -16,7 +18,7 @@ ADR="${3:?usage: infra/connect-pipeline-host.sh <platform> <pipeline-server> <pi
 STACK=/opt/swarvex/infra/stack
 DATA=/opt/swarvex-data
 
-echo "== 1. Platform: a key for the pipeline server, a key to fetch previews"
+echo "== 1. Platform: a key for the pipeline server, keys to fetch previews and metrics"
 ssh "$P" sh -s <<EOF
 set -eu
 umask 077
@@ -27,8 +29,11 @@ if ! grep -q '^PIPELINE_SECRET_CHECK=.' .env; then
   docker compose up -d api >/dev/null 2>&1
   echo "   check key created, API restarted"
 fi
+sed -i '/^PIPELINE_SERVER_ADDRESS=/d' .env
+echo "PIPELINE_SERVER_ADDRESS=$ADR" >> .env
 cd $DATA
 [ -f pruefserver_vorschau ] || ssh-keygen -q -t ed25519 -N '' -C 'swarvex previews (read-only)' -f pruefserver_vorschau
+[ -f pruefserver_metriken ] || ssh-keygen -q -t ed25519 -N '' -C 'swarvex metrics tunnel' -f pruefserver_metriken
 ssh-keyscan -t ed25519 $ADR 2>/dev/null > pruefserver_vorschau.known_hosts
 EOF
 DORT=$(ssh "$P" "ssh-keygen -lf $DATA/pruefserver_vorschau.known_hosts | awk '{print \$2}'")
@@ -53,9 +58,13 @@ T=$(ssh "$H" "find $V -type f -printf '%T@\\n' 2>/dev/null | sort -n | tail -1 |
 ssh "$P" "cd $V && find . -type f -newermt '@${T:-0}' -print0 | tar --null -T - -cf -" | ssh "$H" "mkdir -p $V && tar -C $V -xf - && find $V -type d -exec chmod 755 {} +"
 echo "   newer than $(date -d "@${T:-0}" '+%d.%m. %H:%M'): copied"
 
-echo "== 4. Pipeline server: check and preview on, read-only access for the platform"
+echo "== 4. Pipeline server: check and preview on, read-only access for the platform, metrics tunnel"
 KEY=$(ssh "$P" "cat $DATA/pruefserver_vorschau.pub")
-ssh "$H" "PREVIEW_SYNC_KEY='$KEY' sh /opt/swarvex/infra/setup-pipeline-host.sh" | tail -5
+KEY2=$(ssh "$P" "cat $DATA/pruefserver_metriken.pub")
+ssh "$H" "PREVIEW_SYNC_KEY='$KEY' METRICS_KEY='$KEY2' sh /opt/swarvex/infra/setup-pipeline-host.sh" | tail -7
 
 echo "== 5. Platform: fetch previews once"
 ssh "$P" "systemctl start swarvex-preview.service; journalctl -u swarvex-preview.service -n 1 --no-pager -o cat"
+
+echo "== 6. Platform: pipeline server metrics into the monitoring (Grafana, dashboard Server)"
+ssh "$P" "cd /opt/swarvex/infra/monitoring && docker compose --env-file ../stack/.env -f compose.yaml -f compose.pipeline-server.yaml up -d pipeline-server alloy >/dev/null 2>&1; sleep 90; docker compose exec -T prometheus wget -qO- 'http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22pruefserver%22%7D' | grep -q '\"1\"\]' && echo '   metrics arrive' || echo '   no metrics yet: docker compose logs pipeline-server (in infra/monitoring)'"

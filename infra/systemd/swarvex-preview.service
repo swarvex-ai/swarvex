@@ -6,3 +6,5 @@ After=network-online.target docker.service
 Type=oneshot
 EnvironmentFile=/opt/swarvex-data/pipeline.env
 ExecStart=/usr/local/bin/swarvex-pipeline preview
+# Metrics of this run for Prometheus (infra/pipeline-metrics.sh)
+ExecStopPost=-/bin/sh /opt/swarvex/infra/pipeline-metrics.sh preview

@@ -36,6 +36,15 @@ prometheus.scrape "all" {
   scrape_interval = "30s"
 }
 
+// Eigener Prüfserver (infra/connect-pipeline-host.sh): Host-Kennzahlen und Läufe der Prüfstraße über den SSH-Tunnel,
+// den diese Seite öffnet (compose.pipeline-server.yaml). Ohne Prüfserver ist die Liste leer.
+prometheus.scrape "pipeline_server" {
+  targets         = encoding.from_json(coalesce(sys.env("PIPELINE_SERVER_TARGETS"), "[]"))
+  job_name        = "pruefserver"
+  forward_to      = [prometheus.remote_write.local.receiver]
+  scrape_interval = "30s"
+}
+
 prometheus.remote_write "local" {
   endpoint {
     url = "http://prometheus:9090/api/v1/write"
