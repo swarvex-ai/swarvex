@@ -7,11 +7,15 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
 
 ## 0.16.0 (unreleased)
 
-- `swarvex status` names the model and the connection the runner works with, for example
-  `Model: google/gemini-3.8-flash via OpenRouter (https://openrouter.ai/api), agent opencode`: from the service's
-  start arguments, without a service from what `swarvex setup` saved, and opencode's own default model when no
-  model is given. Local servers show as "local server", the ChatGPT sign-in as "ChatGPT subscription". The key is
-  not read.
+- `swarvex status` is laid out for people. The first line says which runner version and where it is signed in,
+  then sections: **Service** (running or stopped, what it waits for and until when, paused projects), **Work**
+  (project, hours, mode, media), **Model** (model, connection, agent, for example `google/gemini-3.8-flash` via
+  OpenRouter), **Today** (tokens with thousands separators against the daily budget, the subscription's windows),
+  **Disk** (work data, LFS cache, what `swarvex clean` would free) and **Latest messages** with their time.
+  Only the runner's own messages and the service starting or stopping show there, no Podman lines; long lines
+  wrap to the terminal width. The model and connection come from the service's start arguments (without a
+  service from what `swarvex setup` saved, and opencode's own default when no model is given); the key is not
+  read.
 
 ## 0.15.1 (11 Nov 2026)
 

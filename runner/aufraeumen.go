@@ -421,18 +421,17 @@ func aufraeumenBefehl(args []string) {
 	}
 }
 
-// datenText: eine Zeile für `swarvex status`.
-func datenText() string {
-	gesamt := groesse(datenOrdner())
+// datenZeilen: Arbeitsdaten und Cache für `swarvex status`, und was sich davon löschen ließe.
+func datenZeilen() [][2]string {
 	var frei int64
 	for _, p := range aufraeumPlan(false, time.Now()) {
 		if p.Image == "" {
 			frei += p.Bytes
 		}
 	}
-	text := fmt.Sprintf("Work data: %s in %s, LFS cache %s", groesseText(gesamt), heimKurz(datenOrdner()), groesseText(groesse(lfsCache())))
+	z := [][2]string{{"Work data", groesseText(groesse(datenOrdner())) + " in " + heimKurz(datenOrdner())}, {"LFS cache", groesseText(groesse(lfsCache()))}}
 	if frei >= 100<<20 {
-		text += fmt.Sprintf(" (%s no longer needed: swarvex clean)", groesseText(frei))
+		z = append(z, [2]string{"Can be freed", groesseText(frei) + " no longer needed (swarvex clean)"})
 	}
-	return text
+	return z
 }
