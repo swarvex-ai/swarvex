@@ -9,6 +9,7 @@
 #   ssh <platform> 'tar -C /var/lib/swarvex-pipeline/vorschau -cf - .' | ssh <pipeline> 'tar -C /var/lib/swarvex-pipeline/vorschau -xf -'
 # Undo: delete the lines SWARVEX_JOBS, SWARVEX_PREVIEW_FROM and SWARVEX_PREVIEW_KEY from /opt/swarvex-data/pipeline.env
 # on the platform, and on the pipeline server: systemctl disable --now swarvex-check.timer swarvex-preview.timer
+# Merge train tests: delete SWARVEX_TRAIN_TESTS_ON and SWARVEX_TRAIN_TESTS_KEY from the platform's pipeline.env.
 # Metrics: delete PIPELINE_SERVER_ADDRESS from infra/stack/.env on the platform, then in infra/monitoring there:
 #   docker compose rm -sf pipeline-server && docker compose --env-file ../stack/.env up -d alloy
 set -eu
@@ -18,7 +19,7 @@ ADR="${3:?usage: infra/connect-pipeline-host.sh <platform> <pipeline-server> <pi
 STACK=/opt/swarvex/infra/stack
 DATA=/opt/swarvex-data
 
-echo "== 1. Platform: a key for the pipeline server, keys to fetch previews and metrics"
+echo "== 1. Platform: a key for the pipeline server, keys to fetch previews and metrics and to send merge trains"
 ssh "$P" sh -s <<EOF
 set -eu
 umask 077
@@ -34,7 +35,9 @@ echo "PIPELINE_SERVER_ADDRESS=$ADR" >> .env
 cd $DATA
 [ -f pruefserver_vorschau ] || ssh-keygen -q -t ed25519 -N '' -C 'swarvex previews (read-only)' -f pruefserver_vorschau
 [ -f pruefserver_metriken ] || ssh-keygen -q -t ed25519 -N '' -C 'swarvex metrics tunnel' -f pruefserver_metriken
+[ -f pruefserver_zug ] || ssh-keygen -q -t ed25519 -N '' -C 'swarvex merge train tests' -f pruefserver_zug
 ssh-keyscan -t ed25519 $ADR 2>/dev/null > pruefserver_vorschau.known_hosts
+cp pruefserver_vorschau.known_hosts pruefserver_zug.known_hosts
 EOF
 DORT=$(ssh "$P" "ssh-keygen -lf $DATA/pruefserver_vorschau.known_hosts | awk '{print \$2}'")
 HIER=$(ssh-keygen -F "$ADR" -l | awk '$2 == "ED25519" {print $3}' | head -1)
@@ -61,10 +64,26 @@ echo "   newer than $(date -d "@${T:-0}" '+%d.%m. %H:%M'): copied"
 echo "== 4. Pipeline server: check and preview on, read-only access for the platform, metrics tunnel"
 KEY=$(ssh "$P" "cat $DATA/pruefserver_vorschau.pub")
 KEY2=$(ssh "$P" "cat $DATA/pruefserver_metriken.pub")
-ssh "$H" "PREVIEW_SYNC_KEY='$KEY' METRICS_KEY='$KEY2' sh /opt/swarvex/infra/setup-pipeline-host.sh" | tail -7
+KEY3=$(ssh "$P" "cat $DATA/pruefserver_zug.pub")
+ssh "$H" "PREVIEW_SYNC_KEY='$KEY' METRICS_KEY='$KEY2' TRAIN_KEY='$KEY3' sh /opt/swarvex/infra/setup-pipeline-host.sh" | tail -9
 
 echo "== 5. Platform: fetch previews once"
 ssh "$P" "systemctl start swarvex-preview.service; journalctl -u swarvex-preview.service -n 1 --no-pager -o cat"
 
 echo "== 6. Platform: pipeline server metrics into the monitoring (Grafana, dashboard Server)"
 ssh "$P" "cd /opt/swarvex/infra/monitoring && docker compose --env-file ../stack/.env -f compose.yaml -f compose.pipeline-server.yaml up -d pipeline-server alloy >/dev/null 2>&1; sleep 90; docker compose exec -T prometheus wget -qO- 'http://localhost:9090/api/v1/query?query=up%7Bjob%3D%22pruefserver%22%7D' | grep -q '\"1\"\]' && echo '   metrics arrive' || echo '   no metrics yet: docker compose logs pipeline-server (in infra/monitoring)'"
+
+echo "== 7. Platform: merge trains tested on the pipeline server (building and pushing stay here)"
+ssh "$P" sh -s <<EOF
+set -eu
+A=\$(printf '{"probe":true}\n' | ssh -i $DATA/pruefserver_zug -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$DATA/pruefserver_zug.known_hosts root@$ADR 2>&1 || true)
+if printf '%s' "\$A" | grep -q '"result":0.*ready'; then
+  f=$DATA/pipeline.env
+  sed -i '/^SWARVEX_TRAIN_TESTS_ON=/d;/^SWARVEX_TRAIN_TESTS_KEY=/d' \$f
+  printf 'SWARVEX_TRAIN_TESTS_ON=root@%s\nSWARVEX_TRAIN_TESTS_KEY=%s/pruefserver_zug\n' '$ADR' '$DATA' >> \$f
+  echo "   pipeline server answers: \$(printf '%s' "\$A" | sed 's/.*"report":"\([^"]*\)".*/\1/')"
+  echo "   merge trains are tested there from the next run on"
+else
+  echo "   STOP: the pipeline server did not answer the probe, merge trains stay tested here: \$A"
+fi
+EOF

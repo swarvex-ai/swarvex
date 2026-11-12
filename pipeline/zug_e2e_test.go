@@ -5,8 +5,11 @@ package main
 //
 //	go test -c -o .e2e/pipeline.test .      (CGO_ENABLED=0)
 //	SWARVEX_E2E=1 .e2e/pipeline.test -test.run TestZugEchterDurchlauf -test.v
+//
+// Einmal mit den Tests hier, einmal über den Weg zum Prüfserver (Bundle, zugTestAnnehmen, Antwort; ohne SSH).
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -31,6 +34,11 @@ func TestZugEchterDurchlauf(t *testing.T) {
 		// Was der Container (Nutzer 1000) im Cache anlegt, gehört ohne Root einer anderen Kennung
 		aufraeumen = func(p string) error { return exec.Command(podman, "unshare", "rm", "-rf", p).Run() }
 	}
+	t.Run("tests here", func(t *testing.T) { zugDurchlauf(t, aufraeumen, false) })
+	t.Run("tests on the pipeline server", func(t *testing.T) { zugDurchlauf(t, aufraeumen, true) })
+}
+
+func zugDurchlauf(t *testing.T, aufraeumen func(string) error, aufPruefserver bool) {
 	arbeit, _ = os.MkdirTemp("", "zug-e2e-")
 	t.Cleanup(func() { aufraeumen(arbeit) })
 	git := func(dir string, args ...string) string {
@@ -99,7 +107,25 @@ func TestZugEchterDurchlauf(t *testing.T) {
 		}
 		return nil
 	}
+	fern := 0
+	if aufPruefserver {
+		b.fern = func(a zugAuftrag, bundle string) (zugAntwort, error) {
+			fern++
+			ein, err := zugAnfrage(a, bundle)
+			if err != nil {
+				return zugAntwort{}, err
+			}
+			defer ein.Close()
+			var aus bytes.Buffer
+			zugTestAnnehmen(ein, &aus, func(slug string) (einreichung, error) { return einreichung{Slug: slug, RepoGit: ursprung}, nil })
+			return zugAntwortLesen(aus.Bytes(), false)
+		}
+	}
 	zugFahren(b, zug)
+	if aufPruefserver && fern == 0 {
+		t.Error("the train was not tested on the pipeline server")
+	}
+	t.Logf("tests on the pipeline server: %d", fern)
 	got := strings.Join(meldungen, " ")
 	t.Log(got)
 	for _, erwartet := range []string{"/pipeline/5/conflict", "/pipeline/6/train-red", "/pipeline/1/merged", "/pipeline/2/merged", "/pipeline/3/train-red", "/pipeline/4/merged"} {

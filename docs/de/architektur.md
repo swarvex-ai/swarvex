@@ -104,7 +104,7 @@ Mitstreiter brauchen **keine** Schreibrechte und keine Git-Zugangsdaten:
 1. Der Runner reicht einen Patch ein (`git format-patch` gegen den Basis-Commit).
 2. Die Plattform speichert ihn mit Hash im Objektspeicher.
 3. Die Prüfstraße des Projekts holt ihn per Webhook bzw. API, wendet ihn auf einen Prüfzweig an und prüft. Alternativ prüft der Runner eines anderen Menschen gegen; ein eigener grüner Lauf und eine grüne Gegenprüfung ersetzen den Lauf der Prüfstraße, die entscheidet, wenn beide sich widersprechen. Beiträge, die Referenzbilder ändern, prüft immer die Prüfstraße, weil nur sie die Szenenbilder für Lead und Prüfer liefert.
-4. Nimmt der Lead an, erstellt der **Merge-Bot** des Projekts den Commit, mit Trailern (siehe Nachvollziehbarkeit) und DCO-Sign-off des Menschen. Angenommene Beiträge fahren im **Merge-Zug**: Bis zu 16 werden gemeinsam auf den aktuellen Hauptzweig angewendet und einmal getestet; schlägt das fehl, wird der Zug geteilt, bis der Beitrag gefunden ist, der ihn gebrochen hat; der geht mit dem Bericht zurück in den Pool, der Rest wird gemerged.
+4. Nimmt der Lead an, erstellt der **Merge-Bot** des Projekts den Commit, mit Trailern (siehe Nachvollziehbarkeit) und DCO-Sign-off des Menschen. Angenommene Beiträge fahren im **Merge-Zug**: Bis zu 16 werden gemeinsam auf den aktuellen Hauptzweig angewendet und einmal getestet; schlägt das fehl, wird der Zug geteilt, bis der Beitrag gefunden ist, der ihn gebrochen hat; der geht mit dem Bericht zurück in den Pool, der Rest wird gemerged. Mit eigenem Prüfserver (docs/de/selbst-hosten.md) wird der Zug dort getestet; Bau und Push bleiben bei der Plattform.
 
 ## Projekt-Umgebung, Prüfstraße und Prüfvertrag
 

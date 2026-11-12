@@ -4,6 +4,7 @@
 //	swarvex-pipeline check   offene Einreichungen prüfen (Patch auf Basis-Commit, Tests im Container ohne Netz)
 //	swarvex-pipeline merge   angenommene Einreichungen als Merge-Zug zusammen testen und mit Herkunfts-Trailern in den Hauptzweig übernehmen (zug.go)
 //	swarvex-pipeline preview spielbare Web-Vorschau des Hauptzweigs bauen, wenn er sich geändert hat (vorschau.go)
+//	swarvex-pipeline train-test  auf dem Prüfserver: einen Merge-Zug der Plattform testen (zugfern.go)
 //
 // Getrennte Schlüssel: Der Prüfdienst liest nur (Deploy-Key read-only); allein der Merge-Bot
 // darf schreiben. Alle Meldungen an die Plattform sind HMAC-signiert.
@@ -49,12 +50,21 @@ var (
 	laufzeit    = os.Getenv("SWARVEX_RUNTIME")
 	vorschauVon = os.Getenv("SWARVEX_PREVIEW_FROM")
 	vorschauKey = os.Getenv("SWARVEX_PREVIEW_KEY")
+	// Tests des Merge-Zugs auf dem Prüfserver (zugfern.go): SWARVEX_TRAIN_TESTS_ON=root@<server>, dessen Schlüssel dort
+	// nur train-test ausführen darf (SWARVEX_TRAIN_TESTS_KEY, daneben <key>.known_hosts). Leer: Tests hier.
+	zugTestsAuf = os.Getenv("SWARVEX_TRAIN_TESTS_ON")
+	zugTestsKey = os.Getenv("SWARVEX_TRAIN_TESTS_KEY")
 )
 
 func main() {
 	if len(os.Args) < 2 || plattform == "" || geheimnis == "" {
-		fmt.Fprintln(os.Stderr, "usage: swarvex-pipeline check|merge|preview  (requires SWARVEX_PLATFORM, SWARVEX_PIPELINE_SECRET)")
+		fmt.Fprintln(os.Stderr, "usage: swarvex-pipeline check|merge|preview|train-test  (requires SWARVEX_PLATFORM, SWARVEX_PIPELINE_SECRET)")
 		os.Exit(2)
+	}
+	if os.Args[1] == "train-test" {
+		// Nur über den Zug-Schlüssel der Plattform (erzwungener Befehl, infra/setup-pipeline-host.sh), nie per Timer
+		zugTestAnnehmen(os.Stdin, os.Stdout, projektAusKoepfen)
+		return
 	}
 	if !jobHier(jobs, os.Args[1]) {
 		if os.Args[1] == "preview" && vorschauVon != "" {

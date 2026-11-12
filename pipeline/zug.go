@@ -7,6 +7,10 @@ package main
 // aktuellen Stand rot ist; er geht mit dem Testbericht und dem neuen Stand als Basis zurück in den Pool, der Rest
 // wird gemerged. Lässt sich gar nicht testen (Umgebung, Docker), bleibt alles angenommen und der nächste Lauf
 // versucht es wieder: das liegt nicht an den Beiträgen.
+//
+// Mit eigenem Prüfserver (SWARVEX_TRAIN_TESTS_ON) testet er den Zug: Die Plattform baut ihn mit ihrem Schreibschlüssel
+// und schiebt ihn auch, fremder Code läuft aber nur dort, unter gVisor. Hin geht ein Git-Bundle mit den Commits des
+// Zugs, zurück nur das Ergebnis (zugfern.go).
 
 import (
 	"errors"
@@ -115,21 +119,28 @@ func mergen() {
 	}
 }
 
+// kopfLauf: Ergebnis der Tests auf main ohne Zug (Gegenprobe); reist bei Tests auf dem Prüfserver mit.
 type kopfLauf struct {
-	gruen   bool
-	ausgabe string
+	Gruen   bool   `json:"passed"`
+	Ausgabe string `json:"output"`
 }
 
 // echteBahn: Klon mit Schreibschlüssel für die Commits, eigener Spiegel (getrennt vom Prüfdienst) mit LFS für den Testbaum.
 type echteBahn struct {
 	kopfErgebnis map[string]kopfLauf // Tests auf main ohne Zug, je Stand nur einmal
 	melden       func(pfad string, daten map[string]any) error
+	// fern: testet den Zug auf dem Prüfserver (nil: hier)
+	fern func(a zugAuftrag, bundle string) (zugAntwort, error)
 }
 
 func neueBahn() *echteBahn {
-	return &echteBahn{kopfErgebnis: map[string]kopfLauf{}, melden: func(pfad string, daten map[string]any) error {
+	b := &echteBahn{kopfErgebnis: map[string]kopfLauf{}, melden: func(pfad string, daten map[string]any) error {
 		return signiert("POST", pfad, daten, nil)
 	}}
+	if zugTestsAuf != "" {
+		b.fern = sshZugTest
+	}
+	return b
 }
 
 func (b *echteBahn) bauen(zug []einreichung) (*zugStand, error) {
@@ -218,6 +229,9 @@ func (b *echteBahn) testen(s *zugStand) (zugErgebnis, string) {
 	if strings.TrimSpace(s.umg.Testen) == "" {
 		return zugGruen, ""
 	}
+	if b.fern != nil {
+		return b.fernTesten(s)
+	}
 	e := s.dabei[0]
 	sp, err := spiegelIn(e, "merge-mirror")
 	if err != nil {
@@ -226,12 +240,47 @@ func (b *echteBahn) testen(s *zugStand) (zugErgebnis, string) {
 	if aus, err := befehl(sp, nil, "git", "fetch", "--quiet", s.dir, "+HEAD:refs/swarvex/train"); err != nil {
 		return zugFehler, "fetching the train: " + aus
 	}
-	if aus, err := befehl(sp, gitEnv(leseKey, e), "git", "lfs", "fetch", "origin", s.kopf); err != nil {
-		return zugFehler, "LFS: " + aus
+	var bekannt *kopfLauf
+	if k, ok := b.kopfErgebnis[s.kopf]; ok {
+		bekannt = &k
+	}
+	ergebnis, bericht, k := zugTesten(sp, e, s.kopf, s.spitze, len(s.dabei), bekannt)
+	if k != nil {
+		b.kopfErgebnis[s.kopf] = *k
+	}
+	return ergebnis, bericht
+}
+
+// fernTesten: Bundle mit den Commits des Zugs (main hat der Prüfserver selbst) an den Prüfserver, Ergebnis zurück.
+func (b *echteBahn) fernTesten(s *zugStand) (zugErgebnis, string) {
+	bundle := filepath.Join(s.dir, ".git", "train.bundle")
+	if aus, err := befehl(s.dir, nil, "git", "bundle", "create", bundle, s.kopf+"..HEAD"); err != nil {
+		return zugFehler, "bundling the train: " + aus
+	}
+	defer os.Remove(bundle)
+	a := zugAuftrag{Slug: s.dabei[0].Slug, Kopf: s.kopf, Spitze: s.spitze, Anzahl: len(s.dabei)}
+	if k, ok := b.kopfErgebnis[s.kopf]; ok {
+		a.KopfLauf = &k
+	}
+	antwort, err := b.fern(a, bundle)
+	if err != nil {
+		return zugFehler, "tests on the pipeline server: " + err.Error()
+	}
+	if antwort.KopfLauf != nil {
+		b.kopfErgebnis[s.kopf] = *antwort.KopfLauf
+	}
+	return antwort.Ergebnis, antwort.Bericht
+}
+
+// zugTesten: die Tests des Zugs (kopf..spitze im Spiegel sp), bei Rot mit Gegenprobe auf main ohne den Zug. bekannt:
+// deren Ergebnis, falls schon gelaufen; zurück kommt es (neu oder bekannt) für die nächste Hälfte des Zugs.
+func zugTesten(sp string, e einreichung, kopf, spitze string, anzahl int, bekannt *kopfLauf) (zugErgebnis, string, *kopfLauf) {
+	if aus, err := befehl(sp, gitEnv(leseKey, e), "git", "lfs", "fetch", "origin", kopf); err != nil {
+		return zugFehler, "LFS: " + aus, bekannt
 	}
 	// Was der ganze Zug gegenüber main ändert, an den Test (SWARVEX_CHANGED), auch bei der Gegenprobe auf main
 	var geaendert []string
-	if aus, err := befehl(sp, nil, "git", "-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", s.kopf, s.spitze); err == nil {
+	if aus, err := befehl(sp, nil, "git", "-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", kopf, spitze); err == nil {
 		for _, p := range strings.Split(strings.TrimSpace(aus), "\n") {
 			if p != "" {
 				geaendert = append(geaendert, p)
@@ -249,34 +298,33 @@ func (b *echteBahn) testen(s *zugStand) (zugErgebnis, string) {
 		return projektTesten(baum, e.Slug, geaendert)
 	}
 	var bericht strings.Builder
-	fmt.Fprintf(&bericht, "Merge train: %d accepted contributions on main at %s\n", len(s.dabei), kurz(s.kopf))
-	ergebnis, text, ausgabe := lauf(s.spitze)
+	fmt.Fprintf(&bericht, "Merge train: %d accepted contributions on main at %s\n", anzahl, kurz(kopf))
+	ergebnis, text, ausgabe := lauf(spitze)
 	bericht.WriteString(text)
 	if ergebnis != zugRot || strings.Contains(text, Zeitlimit) {
 		// Am Zeitlimit keine Gegenprobe: sie kostete noch einmal so lange und hielte alle anderen Züge auf
-		return ergebnis, bericht.String()
+		return ergebnis, bericht.String(), bekannt
 	}
 	// Gegenprobe: Ist main schon ohne den Zug rot, zählt nur, was der Zug neu kaputt macht
-	k, ok := b.kopfErgebnis[s.kopf]
-	if !ok {
-		erg, _, aus := lauf(s.kopf)
+	if bekannt == nil {
+		erg, _, aus := lauf(kopf)
 		if erg == zugFehler {
-			return zugFehler, bericht.String() + "\n=== Counter-check on main without the train: not possible\n"
+			return zugFehler, bericht.String() + "\n=== Counter-check on main without the train: not possible\n", nil
 		}
-		k = kopfLauf{gruen: erg == zugGruen, ausgabe: aus}
-		b.kopfErgebnis[s.kopf] = k
+		bekannt = &kopfLauf{Gruen: erg == zugGruen, Ausgabe: aus}
 	}
-	if k.gruen {
+	k := *bekannt
+	if k.Gruen {
 		bericht.WriteString("\n=== Counter-check on main without the train: passed\nThe tests fail only with these contributions on the current main.\n")
-		return zugRot, bericht.String()
+		return zugRot, bericht.String(), bekannt
 	}
-	neu, schon := fehlschlaege(ausgabe), fehlschlaege(k.ausgabe)
+	neu, schon := fehlschlaege(ausgabe), fehlschlaege(k.Ausgabe)
 	if len(neu) > 0 && len(schon) > 0 && !teilmenge(neu, schon) {
 		fmt.Fprintf(&bericht, "\n=== Counter-check on main without the train: failed too, but on fewer tests\nNew failures with the train: %s\n", strings.Join(ohne(neu, schon), ", "))
-		return zugRot, bericht.String()
+		return zugRot, bericht.String(), bekannt
 	}
 	bericht.WriteString("\n=== Counter-check on main without the train: failed too\nThe project's tests are already red on main; the train adds no new failures and is merged.\n")
-	return zugGruen, bericht.String()
+	return zugGruen, bericht.String(), bekannt
 }
 
 // projektTesten: Umgebung, Einrichten (mit Netz), Bauen und Testen (ohne Netz, zweiter Lauf bei Rot) in baum.
