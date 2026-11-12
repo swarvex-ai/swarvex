@@ -24,6 +24,8 @@ apt-get update -qq
 apt-get full-upgrade -y -qq >/dev/null
 apt-get install -y -qq curl ca-certificates gnupg docker.io git git-lfs jq rsync ufw unattended-upgrades >/dev/null
 systemctl enable --now docker >/dev/null
+# Docker restarts only when its configuration changed: a restart would kill a running check
+DOCKER_VORHER=$(cat /etc/docker/daemon.json 2>/dev/null || true)
 # Bounded container logs
 [ -f /etc/docker/daemon.json ] || printf '{ "log-driver": "json-file", "log-opts": { "max-size": "10m", "max-file": "3" } }\n' > /etc/docker/daemon.json
 
@@ -56,7 +58,9 @@ if ! command -v runsc >/dev/null 2>&1; then
   apt-get install -y -qq runsc >/dev/null
 fi
 runsc install >/dev/null 2>&1 || true
-systemctl restart docker
+if [ "$DOCKER_VORHER" != "$(cat /etc/docker/daemon.json 2>/dev/null || true)" ] || ! docker info --format '{{range $k, $v := .Runtimes}}{{$k}} {{end}}' | grep -qw runsc; then
+  systemctl restart docker
+fi
 docker info --format '{{range $k, $v := .Runtimes}}{{$k}} {{end}}' | grep -qw runsc && echo "   docker runtimes: $(docker info --format '{{range $k, $v := .Runtimes}}{{$k}} {{end}}')"
 # Smoke test: the kernel inside a gVisor container is gVisor's, not the host's
 docker run --rm --runtime=runsc docker.io/library/alpine:3 dmesg 2>/dev/null | grep -q gVisor && echo "   gvisor: works" || { echo "   gvisor: FAILED"; exit 1; }
