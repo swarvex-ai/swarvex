@@ -12,7 +12,8 @@ package main
 //	submit_peer_review.
 //
 // Eine Einreichung versucht der Runner höchstens einmal je Tag (peer-reviews.json), damit ein Modell, das kein gültiges
-// Urteil schreibt, keine Schleife wird. Abschalten: --peer-reviews=false.
+// Urteil schreibt, keine Schleife wird. Konnte das Modell gar nicht arbeiten (Anbieter, Runner, angehalten), zählt der
+// Versuch nicht (0.16.0). Abschalten: --peer-reviews=false.
 
 import (
 	"context"
@@ -94,6 +95,36 @@ func fremdVersuchMerken(datei string, id int64, jetzt time.Time) {
 	os.WriteFile(datei, roh, 0o644)
 }
 
+// fremdVersuchVergessen gibt eine Einreichung für die nächste Runde frei.
+func fremdVersuchVergessen(datei string, id int64, jetzt time.Time) {
+	alle := fremdVersuche(datei, jetzt)
+	if _, ok := alle[id]; !ok {
+		return
+	}
+	delete(alle, id)
+	roh, _ := json.Marshal(alle)
+	os.WriteFile(datei, roh, 0o644)
+}
+
+// fremdVersuchZaehlt: ob ein abgebrochener Versuch den Tagesversuch verbraucht. Nicht, wenn das Modell nicht arbeiten
+// konnte (Ursache mit Art: der Anbieter antwortete nicht, die Sandbox startete nicht, der Betreiber hielt an), denn das
+// liegt nicht an der Einreichung (12.11.2026: ein falscher Modellname sperrte drei Formwerk-Einreichungen für einen Tag).
+// Gegen eine Schleife mit einem kaputten Schlüssel helfen die Fehlerpause und die Absturzserie: Nach drei gleichen
+// Abstürzen setzt der Dauerbetrieb aus (serieAus). Lief das Modell, oder ist die Ursache nicht sicher erkennbar (etwa
+// HTTP 400 nach Antworten des Modells), bleibt es bei einem Versuch am Tag. Vor der Sandbox (melden nil) ebenso. Weist
+// der Anbieter schon die erste Anfrage als ungültig ab (400, 413, 422), kann das an der Einreichung liegen (etwa ein Patch
+// über dem Kontextfenster): Das zählt auch, sonst käme dieselbe Einreichung jede Runde wieder und hielte den Runner an.
+func fremdVersuchZaehlt(u *ursache) bool {
+	if u == nil || u.Art == "" {
+		return true
+	}
+	switch u.Schluessel {
+	case "provider:400", "provider:413", "provider:422":
+		return true
+	}
+	return false
+}
+
 // fremdAuswahl: die erste Einreichung, der dieses Modell zustimmen dürfte und die der Runner heute noch nicht hatte.
 func fremdAuswahl(liste []fremdEintrag, versucht map[int64]time.Time) *fremdEintrag {
 	for i := range liste {
@@ -141,6 +172,12 @@ func fremdbewertungRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e
 					m.token = neu // nach bis zu 30 Minuten Sandbox
 				}
 				m.werkzeug("report_peer_review_failure", argumente, nil) // eine ältere Plattform kennt es nicht: egal
+			}
+		}
+		if !fremdVersuchZaehlt(melden) {
+			fremdVersuchVergessen(fremdVersucheDatei(), b.Einreichung, time.Now())
+			if melden.Art != ursacheGestoppt {
+				fmt.Println("This attempt does not count: the model could not work, so the runner tries this submission again later.")
 			}
 		}
 		wegraeumen(arbeit)

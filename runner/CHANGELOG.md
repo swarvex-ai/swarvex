@@ -20,6 +20,12 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   other OpenAI-compatible servers). A name the provider does not know used to show up only as HTTP 404 on every task;
   now setup says so and offers the matching name, for example `google/gemini-3.8-flash` for `gemini-3.8-flash`.
   Keeping your own name stays possible; without a terminal (scripts) nothing is asked.
+- A peer review where the model could not work at all (the provider did not answer, for example HTTP 404 on a
+  wrong model name, the sandbox did not start, or the runner was stopped) no longer uses up the day's attempt for
+  that submission; the runner tries it again later. On 12 Nov 2026 one wrong model name kept three submissions
+  waiting for a day. When the model ran, the cause is not clear, or the provider rejected the request itself as
+  invalid (HTTP 400, 413, 422, which can come from the submission), it stays at one attempt a day; a key that keeps
+  failing still pauses the service after three equal crashes.
 
 ## 0.15.1 (11 Nov 2026)
 

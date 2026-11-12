@@ -37,6 +37,43 @@ func TestFremdVersuche(t *testing.T) {
 	}
 }
 
+// Konnte das Modell nicht arbeiten, verbraucht der Versuch den Tag nicht (12.11.2026: HTTP 404 nach einem falschen
+// Modellnamen sperrte drei Einreichungen für 24 Stunden); lief es, bleibt es bei einem Versuch am Tag.
+func TestFremdVersuchZaehlt(t *testing.T) {
+	for _, f := range []struct {
+		name string
+		u    *ursache
+		want bool
+	}{
+		{"before the sandbox", nil, true},
+		{"model ran, no valid verdict", &ursache{}, true},
+		{"HTTP 400 after answers", &ursache{Schluessel: "agent:400"}, true},
+		{"provider never answered", &ursache{Art: ursacheAnbieter, Schluessel: "provider:404"}, false},
+		{"provider unreachable", &ursache{Art: ursacheAnbieter, Schluessel: "provider:unreachable"}, false},
+		{"first request rejected as invalid", &ursache{Art: ursacheAnbieter, Schluessel: "provider:400"}, true},
+		{"request too large", &ursache{Art: ursacheAnbieter, Schluessel: "provider:413"}, true},
+		{"sandbox did not start", &uSandbox, false},
+		{"runner stopped", &uGestoppt, false},
+	} {
+		if got := fremdVersuchZaehlt(f.u); got != f.want {
+			t.Errorf("%s: %v, want %v", f.name, got, f.want)
+		}
+	}
+	datei := filepath.Join(t.TempDir(), "peer-reviews.json")
+	jetzt := time.Now()
+	fremdVersuchMerken(datei, 147, jetzt)
+	fremdVersuchMerken(datei, 150, jetzt)
+	fremdVersuchVergessen(datei, 147, jetzt)
+	fremdVersuchVergessen(datei, 999, jetzt) // unbekannt: nichts passiert
+	v := fremdVersuche(datei, jetzt)
+	if _, ok := v[147]; ok {
+		t.Fatal("the attempt still blocks after it was released")
+	}
+	if _, ok := v[150]; !ok {
+		t.Fatal("releasing one attempt dropped another")
+	}
+}
+
 func TestFremdUrteilLesen(t *testing.T) {
 	ordner := t.TempDir()
 	mitPunkten := fremdEintrag{Pruefpunkte: []string{"Liegt die Achse unter der Wanne?"}, Bilder: []string{"side"}}
