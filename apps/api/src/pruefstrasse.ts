@@ -68,16 +68,26 @@ async function rohKoerper(req: IncomingMessage): Promise<string | null> {
 // Abgewiesene Anfragen kommen ins öffentliche Protokoll, aber höchstens eine je Minute (sonst ließe es sich fluten).
 let zuletztProtokolliert = 0;
 
-export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
+// Zwei Schlüssel (12.11.2026): Der volle (PIPELINE_SECRET) darf alles. Der Prüf-Schlüssel (PIPELINE_SECRET_CHECK) gehört
+// dem eigenen Prüfserver, der fremden Code ausführt: prüfen, Vorschauen bauen, Stände melden, aber nichts, was einen
+// schreibenden Git-Token liefert oder einen Merge meldet. Wird der Prüfserver übernommen, kommt damit niemand an die Repos.
+const NUR_MERGE = /^\/pipeline\/(accepted|\d+\/(merged|conflict|train-red))$/;
+
+export function pruefstrasseBehandeln(db: Db, geheimnis: string, pruefGeheimnis = "") {
   return async (req: IncomingMessage, res: ServerResponse, url: URL) => {
     const koerper = await rohKoerper(req);
     if (koerper === null) return json(res, 413, { error: "request too large" });
     const zeit = String(req.headers["x-time"] ?? "");
     const sig = String(req.headers["x-signature"] ?? "");
     const nonce = String(req.headers["x-nonce"] ?? "");
-    const erwartet = signatur(geheimnis, zeit, nonce, req.method ?? "", url.pathname, koerper);
     const frisch = Math.abs(Date.now() - Number(zeit)) < GUELTIG_MS;
-    const echt = !!geheimnis && frisch && /^[A-Za-z0-9_-]{16,64}$/.test(nonce) && sig.length === erwartet.length && timingSafeEqual(Buffer.from(sig), Buffer.from(erwartet));
+    const passt = (g: string) => {
+      const erwartet = signatur(g, zeit, nonce, req.method ?? "", url.pathname, koerper);
+      return !!g && sig.length === erwartet.length && timingSafeEqual(Buffer.from(sig), Buffer.from(erwartet));
+    };
+    const voll = frisch && /^[A-Za-z0-9_-]{16,64}$/.test(nonce) && passt(geheimnis);
+    const nurPruefen = !voll && frisch && /^[A-Za-z0-9_-]{16,64}$/.test(nonce) && passt(pruefGeheimnis);
+    const echt = voll || nurPruefen;
     if (!echt || schonGesehen(nonce)) {
       if (Date.now() - zuletztProtokolliert > 60_000) {
         zuletztProtokolliert = Date.now();
@@ -85,6 +95,7 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string) {
       } else console.warn(`pipeline: rejected ${req.method} ${url.pathname} (${!frisch ? "timestamp" : echt ? "replayed" : "signature"})`);
       return json(res, 401, { error: "invalid signature" });
     }
+    if (nurPruefen && NUR_MERGE.test(url.pathname)) return json(res, 403, { error: "this pipeline key checks and builds previews; merging needs the platform's own key" });
     const daten = koerper ? JSON.parse(koerper) : {};
     try {
       if (req.method === "GET" && url.pathname === "/pipeline/pending") {

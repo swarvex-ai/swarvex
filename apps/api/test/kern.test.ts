@@ -2066,6 +2066,31 @@ describe("MCP: Aufgaben gebündelt anlegen, Kontextpaket", () => {
   });
 });
 
+describe("Schlüssel des Prüfservers", () => {
+  it("prüft und baut Vorschauen, bekommt aber nie schreibende Tokens und meldet keine Merges", async () => {
+    const { createServer } = await import("node:http");
+    const { pruefstrasseBehandeln, signatur } = await import("../src/pruefstrasse.ts");
+    const h = pruefstrasseBehandeln(db, "voller-schluessel-der-plattform", "schluessel-des-pruefservers");
+    const server = createServer((req, res) => h(req, res, new URL(req.url!, "http://x")));
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const basis = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    const status = async (geheim: string, methode: string, pfad: string, koerper?: unknown) => {
+      const text = koerper ? JSON.stringify(koerper) : "", zeit = String(Date.now()), nonce = `n${Math.random().toString(36).slice(2)}${Date.now()}`;
+      return (await fetch(basis + pfad, { method: methode, body: text || undefined, headers: { "x-time": zeit, "x-nonce": nonce, "x-signature": signatur(geheim, zeit, nonce, methode, pfad, text) } })).status;
+    };
+    try {
+      const pruef = "schluessel-des-pruefservers", voll = "voller-schluessel-der-plattform";
+      for (const pfad of ["/pipeline/pending", "/pipeline/heads", "/pipeline/previews", "/pipeline/submission-previews"]) expect(await status(pruef, "GET", pfad)).toBe(200);
+      expect(await status(pruef, "GET", "/pipeline/accepted")).toBe(403);
+      for (const art of ["merged", "conflict", "train-red"]) expect(await status(pruef, "POST", `/pipeline/999999/${art}`, { commit: "x" })).toBe(403);
+      expect(await status(voll, "GET", "/pipeline/accepted")).toBe(200);
+      expect(await status("falsch", "GET", "/pipeline/pending")).toBe(401);
+    } finally {
+      server.close();
+    }
+  });
+});
+
 describe("Gegenprüfung für alle Projekte (Runner ab 0.11)", () => {
   const zustand = async (id: number) => (await db.query("select zustand from aufgaben where id = $1", [id])).rows[0].zustand;
   const mitPruefstrasse = async (lauf: (senden: (m: string, p: string, k?: unknown) => Promise<any>) => Promise<void>) => {

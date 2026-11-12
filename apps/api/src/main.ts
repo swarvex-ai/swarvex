@@ -65,7 +65,7 @@ console.log(`account providers: ${konten.map((k) => k.name).join(", ")}`);
 const zugang = zugangPruefer(db, anbieter, schluessel.signatur);
 const konto = kontoBehandeln(db, schluessel.cookies[0], konten);
 const oidc = anbieter.callback();
-const pruefstrasse = pruefstrasseBehandeln(db, konfig.pruefstrasseGeheimnis);
+const pruefstrasse = pruefstrasseBehandeln(db, konfig.pruefstrasseGeheimnis, konfig.pruefServerGeheimnis);
 
 // Abgelaufene Reservierungen jede Minute zurück in den Pool (pg-boss in derselben Datenbank).
 const boss = new PgBoss(konfig.datenbank);

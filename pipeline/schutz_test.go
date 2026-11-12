@@ -62,3 +62,20 @@ func TestBannerEinfuegen(t *testing.T) {
 		}
 	}
 }
+
+// Eigener Prüfserver: welche Teile der Prüfstraße auf welchem Rechner laufen (SWARVEX_JOBS)
+func TestJobHier(t *testing.T) {
+	faelle := []struct {
+		liste, job string
+		hier       bool
+	}{
+		{"", "merge", true}, {"", "check", true},
+		{"check,preview", "check", true}, {"check, preview", "preview", true}, {"check,preview", "merge", false},
+		{"merge", "check", false}, {"merge", "merge", true},
+	}
+	for _, f := range faelle {
+		if got := jobHier(f.liste, f.job); got != f.hier {
+			t.Errorf("jobHier(%q, %q) = %v, want %v", f.liste, f.job, got, f.hier)
+		}
+	}
+}

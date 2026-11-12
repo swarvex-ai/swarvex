@@ -4,9 +4,15 @@
 #
 # The pipeline runs other people's code: their tests, merge-train runs and preview builds. On its own server, an
 # escape or an abuse report never reaches the platform. This script sets up the base: hardening, Docker, and gVisor
-# as a second barrier around every container. The pipeline itself follows in a later step.
+# as a second barrier around every container, then the pipeline jobs check and preview. Merging stays on the platform:
+# this server never gets a key that can write to a repository.
 #
-#   sh infra/setup-pipeline-host.sh
+#   PREVIEW_SYNC_KEY='ssh-ed25519 AAAA… swarvex previews (read-only)' sh infra/setup-pipeline-host.sh
+#
+# Before: infra/deploy-pipeline-host.sh <target> copies the code, and /opt/swarvex-data/pipeline.env holds
+#   SWARVEX_PLATFORM=https://<platform>   SWARVEX_PIPELINE_SECRET=<PIPELINE_SECRET_CHECK of the platform>
+# The platform then gets in its pipeline.env: SWARVEX_JOBS=merge, SWARVEX_PREVIEW_FROM=vorschau@<this server>:
+# and SWARVEX_PREVIEW_KEY=<private key matching PREVIEW_SYNC_KEY>; it fetches the built previews read-only.
 set -eu
 
 echo "== 1. Packages"
@@ -52,5 +58,42 @@ docker info --format '{{range $k, $v := .Runtimes}}{{$k}} {{end}}' | grep -qw ru
 # Smoke test: the kernel inside a gVisor container is gVisor's, not the host's
 docker run --rm --runtime=runsc docker.io/library/alpine:3 dmesg 2>/dev/null | grep -q gVisor && echo "   gvisor: works" || { echo "   gvisor: FAILED"; exit 1; }
 
+echo "== 4. Test pipeline (check and preview; merging stays on the platform)"
+ENVF=/opt/swarvex-data/pipeline.env
+mkdir -p /opt/swarvex-data /var/lib/swarvex-pipeline/vorschau
+chmod 755 /var/lib/swarvex-pipeline /var/lib/swarvex-pipeline/vorschau
+if [ -f "$ENVF" ]; then
+  # Fixed settings of this server; platform address and key stay as the operator wrote them
+  for kv in SWARVEX_JOBS=check,preview SWARVEX_RUNTIME=runsc SWARVEX_WORKDIR=/var/lib/swarvex-pipeline; do
+    grep -q "^${kv%%=*}=" "$ENVF" || echo "$kv" >> "$ENVF"
+  done
+  chmod 600 "$ENVF"
+  if [ -d /opt/swarvex/pipeline ]; then
+    cd /opt/swarvex
+    docker run --rm -v "$PWD:/src" -w /src/pipeline -e CGO_ENABLED=0 -e GOCACHE=/tmp/gc docker.io/library/golang:1 go build -trimpath -ldflags="-s -w" -o swarvex-pipeline .
+    install -m 755 pipeline/swarvex-pipeline /usr/local/bin/ && rm -f pipeline/swarvex-pipeline
+    install -m 644 infra/systemd/swarvex-check.service infra/systemd/swarvex-check.timer infra/systemd/swarvex-preview.service infra/systemd/swarvex-preview.timer /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable --now swarvex-check.timer swarvex-preview.timer >/dev/null
+    echo "   pipeline: check and preview timers on"
+  else
+    echo "   pipeline: no code in /opt/swarvex yet (infra/deploy-pipeline-host.sh)"
+  fi
+else
+  echo "   pipeline: $ENVF missing, see the header of this script"
+fi
+
+echo "== 5. Read-only access for the platform to fetch built previews"
+# A user without a shell of its own: its one key may only run rrsync, read-only, in the preview folder.
+id vorschau >/dev/null 2>&1 || useradd --system --create-home --home-dir /var/lib/swarvex-vorschau-sync --shell /bin/sh vorschau
+if [ -n "${PREVIEW_SYNC_KEY:-}" ]; then
+  install -d -m 700 -o vorschau -g vorschau /var/lib/swarvex-vorschau-sync/.ssh
+  printf 'restrict,command="/usr/bin/rrsync -ro /var/lib/swarvex-pipeline/vorschau/" %s\n' "$PREVIEW_SYNC_KEY" > /var/lib/swarvex-vorschau-sync/.ssh/authorized_keys
+  chown vorschau:vorschau /var/lib/swarvex-vorschau-sync/.ssh/authorized_keys && chmod 600 /var/lib/swarvex-vorschau-sync/.ssh/authorized_keys
+  echo "   preview sync: key installed"
+else
+  echo "   preview sync: PREVIEW_SYNC_KEY not given, unchanged"
+fi
+
 echo
-echo "== Done. Next: the test pipeline (later step)."
+echo "== Done."

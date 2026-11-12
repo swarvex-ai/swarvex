@@ -16,6 +16,8 @@ export const konfig = {
   kontoAlterAusnahmen: new Set((process.env.ACCOUNT_AGE_EXEMPT ?? "").split(",").map((s) => s.trim()).filter(Boolean)),
   /** Gemeinsames Geheimnis der Prüfstraße (HMAC über Prüfergebnisse, P5). */
   pruefstrasseGeheimnis: process.env.PIPELINE_SECRET ?? "",
+  // Schlüssel des eigenen Prüfservers: prüfen und Vorschauen bauen, nicht mergen (pruefstrasse.ts)
+  pruefServerGeheimnis: process.env.PIPELINE_SECRET_CHECK ?? "",
   /** Eigene Adresse der Projekt-Vorschauen (infra/stack/vorschau.caddy), leer = keine Vorschauen. */
   vorschau: /^https:\/\//.test(process.env.VORSCHAU_ADRESSE ?? "") ? process.env.VORSCHAU_ADRESSE!.replace(/\/$/, "") : "",
   /** Eigene Domain der Vorschauen, je Projekt eine Subdomain (infra/stack/vorschau-domain.caddy); hat Vorrang vor vorschau. */

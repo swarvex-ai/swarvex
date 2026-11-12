@@ -41,12 +41,28 @@ var (
 	arbeit     = envOder("SWARVEX_WORKDIR", "/var/lib/swarvex-pipeline")
 	leseKey    = os.Getenv("SWARVEX_DEPLOY_KEY_READ")
 	schreibKey = os.Getenv("SWARVEX_DEPLOY_KEY_WRITE")
+	// Eigener Prüfserver (infra/setup-pipeline-host.sh): Dort laufen check und preview (SWARVEX_JOBS=check,preview) mit
+	// gVisor um jeden Container (SWARVEX_RUNTIME=runsc), auf der Plattform nur merge (SWARVEX_JOBS=merge); deren preview
+	// holt dann die fertigen Vorschauen nur lesend vom Prüfserver (SWARVEX_PREVIEW_FROM, SWARVEX_PREVIEW_KEY).
+	// Leer: alles auf diesem Rechner, ohne zweite Laufzeit (Labor, Selbsthoster mit einem Server).
+	jobs        = os.Getenv("SWARVEX_JOBS")
+	laufzeit    = os.Getenv("SWARVEX_RUNTIME")
+	vorschauVon = os.Getenv("SWARVEX_PREVIEW_FROM")
+	vorschauKey = os.Getenv("SWARVEX_PREVIEW_KEY")
 )
 
 func main() {
 	if len(os.Args) < 2 || plattform == "" || geheimnis == "" {
 		fmt.Fprintln(os.Stderr, "usage: swarvex-pipeline check|merge|preview  (requires SWARVEX_PLATFORM, SWARVEX_PIPELINE_SECRET)")
 		os.Exit(2)
+	}
+	if !jobHier(jobs, os.Args[1]) {
+		if os.Args[1] == "preview" && vorschauVon != "" {
+			vorschauenHolen()
+			return
+		}
+		fmt.Printf("%s runs on the pipeline server, not here (SWARVEX_JOBS=%s)\n", os.Args[1], jobs)
+		return
 	}
 	switch os.Args[1] {
 	case "check":
@@ -58,6 +74,34 @@ func main() {
 	default:
 		os.Exit(2)
 	}
+}
+
+// jobHier: Läuft dieser Teil der Prüfstraße auf diesem Rechner? Ohne SWARVEX_JOBS alle.
+func jobHier(liste, job string) bool {
+	if strings.TrimSpace(liste) == "" {
+		return true
+	}
+	for _, j := range strings.Split(liste, ",") {
+		if strings.TrimSpace(j) == job {
+			return true
+		}
+	}
+	return false
+}
+
+// vorschauenHolen spiegelt die auf dem Prüfserver gebauten Vorschauen in den Ordner, den Caddy hier ausliefert. Nur
+// lesend (dort erzwingt rrsync -ro den Ordner) und nur gewöhnliche Dateien: Ein übernommener Prüfserver soll über einen
+// Link keine Datei dieses Rechners ausliefern lassen können.
+func vorschauenHolen() {
+	ziel := filepath.Join(arbeit, "vorschau")
+	os.MkdirAll(ziel, 0o755)
+	ssh := fmt.Sprintf("ssh -i %s -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=%s.known_hosts", vorschauKey, vorschauKey)
+	if aus, err := befehl("", nil, "rsync", "-rt", "--delete", "--no-links", "--no-devices", "--no-specials", "--chmod=D755,F644",
+		"--max-size=200m", "-e", ssh, strings.TrimRight(vorschauVon, "/")+"/", ziel+"/"); err != nil {
+		fmt.Fprintf(os.Stderr, "fetching previews from the pipeline server: %v\n%s\n", err, aus)
+		os.Exit(1)
+	}
+	fmt.Println("previews fetched from the pipeline server")
 }
 
 func envOder(n, s string) string {
@@ -432,6 +476,9 @@ func imContainer(image, baum, cache string, u umgebung.Umgebung, skript string, 
 	args := []string{"run", "--rm", "--network", netz, "--read-only", "--cap-drop=ALL", "--security-opt", "no-new-privileges",
 		"--user", "1000:1000", "--tmpfs", "/tmp:rw,exec,size=2g", "--tmpfs", "/home/agent:rw,exec,size=1g",
 		"--memory", "4g", "--pids-limit", "1024", "-v", baum + ":/work", "-v", cache + ":/cache", "-w", filepath.Join("/work", u.Ordner)}
+	if laufzeit != "" {
+		args = append(args, "--runtime", laufzeit) // gVisor auf dem Prüfserver: eigener Kernel im Nutzerraum je Container
+	}
 	for _, v := range umgebung.CacheVariablen {
 		args = append(args, "-e", v)
 	}

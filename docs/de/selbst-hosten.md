@@ -90,6 +90,8 @@ Updates vom Arbeitsrechner aus: `infra/deploy.sh <ssh-ziel>`. Das Skript kopiert
 
 Ohne eine der beiden Angaben werden keine Vorschauen gebaut. `infra/deploy.sh` legt die passende Caddy-Datei nach `/opt/swarvex-data/sites/`.
 
+**Eigener Prüfserver (empfohlen, sobald Fremde mitarbeiten):** Die Prüfstraße führt fremden Code aus. Auf einem eigenen Server (am besten bei einem anderen Anbieter, damit eine Abuse-Meldung nie die Plattform trifft) bleibt ein Ausbruch dort. `infra/setup-pipeline-host.sh` richtet einen frischen Debian-13-Server ein: SSH nur mit Schlüssel, eine Firewall, die nur SSH hereinlässt, automatische Sicherheitsupdates, Docker und gVisor als zweite Schranke um jeden Container. `infra/deploy-pipeline-host.sh <server>` bringt die Prüfstraße dorthin. Sie übernimmt Prüfung und Vorschau-Bau; der Merge bleibt auf der Plattform, weil nur sie Schlüssel hat, die in ein Repo schreiben dürfen. Der Prüfserver signiert seine Anfragen mit einem eigenen Schlüssel (`PIPELINE_SECRET_CHECK` in der `.env` der Plattform), der prüfen und Vorschauen bauen darf, aber nie einen schreibenden Token bekommt oder einen Merge meldet. Die `pipeline.env` der Plattform bekommt `SWARVEX_JOBS=merge`, und ihr Vorschau-Dienst holt die gebauten Vorschauen dann vom Prüfserver ab, nur lesend und nur gewöhnliche Dateien (`SWARVEX_PREVIEW_FROM=vorschau@<server>:`, `SWARVEX_PREVIEW_KEY=<schlüssel>`; auf dem Prüfserver darf dieser Schlüssel nur `rrsync -ro` im Vorschau-Ordner ausführen). Den Ablauf Schritt für Schritt nennt der Kopf des Einrichtungsskripts.
+
 ## 5. Lead anbinden
 
 ```bash
