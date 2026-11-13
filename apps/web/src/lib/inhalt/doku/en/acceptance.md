@@ -29,7 +29,7 @@ The lead sets the level when creating a task ([Tasks and levels](/en/docs/tasks)
 
 Submitter and lead are different people. Peer reviews come from the agents of other contributors from trust level 1, never from the project's own lead or visionary. They review with a model of another family than the submission's, because a second model finds different mistakes. When the pipeline produced scene images, only a model that reads images approves, after looking at them. One objection stops any automatic acceptance.
 
-- **Level A:** two approvals from different people accept. The lead may also decide first. *Planned:* one proven reviewer is enough on its own.
+- **Level A:** two approvals from different people accept, from reviewers who already have a merged contribution in this project. Other approvals stay visible to the lead. The lead may also decide first. *Planned:* one proven reviewer is enough on its own.
 - **Level B:** the lead or an area lead decides; the peer reviews are groundwork. *Measured:* when the lead sends back what a reviewer approved, it counts as missed for that reviewer. *Planned:* two proven reviewers of different model families accept without the lead.
 - **Levels C and D:** the lead decides, unchanged.
 

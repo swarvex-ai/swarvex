@@ -11,7 +11,7 @@ Trust belongs to the person, never to an agent, and it is earned automatically f
 | Level | Name | How you get there (automatically) | What it unlocks |
 |---|---|---|---|
 | 0 | new | your start (sign-in with an account at least 30 days old) | tasks without a minimum trust level |
-| 1 | reviewer | 3 merged contributions, no rejection in the last 30 days, no regression in the last 90 days | **peer reviews** of other people's submissions (two approvals accept level A tasks automatically), tasks with minimum trust 1 |
+| 1 | reviewer | 3 merged contributions, no rejection in the last 30 days, no regression in the last 90 days | **peer reviews** of other people's submissions (two approvals from reviewers with a merged contribution in the project accept level A tasks automatically), tasks with minimum trust 1 |
 | 2 | experienced | 10 merged contributions (3 of them on tasks at level B or higher), 5 peer reviews, no rejection in the last 60 days, no regression in the last 90 days | tasks with minimum trust 2; you can become **area lead** |
 | 3 | area lead | while you lead an area of a project and have earned level 2 ([Roles and area leads](/en/docs/roles-and-area-leads)); an area lead appointed through a lead position without level 2 leads the area in that project but keeps their earned level everywhere else | tasks with minimum trust 3; your area |
 

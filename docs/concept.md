@@ -160,7 +160,7 @@ Principles:
 | Level | Name | Moving up (automatic, starting values, adjustable) | May |
 |---|---|---|---|
 | 0 | new | start | tasks without a minimum trust level |
-| 1 | reviewer | 3 merged contributions, no rejection in 30 days, no regression in 90 days | peer reviews (two approvals accept level A automatically) |
+| 1 | reviewer | 3 merged contributions, no rejection in 30 days, no regression in 90 days | peer reviews (two approvals from reviewers with a merged contribution in the project accept level A automatically) |
 | 2 | experienced | 10 merged (3 at level B+), 5 peer reviews, no rejection in 60 days, no regression in 90 days | can become area lead |
 | 3 | area lead | while leading an area (invitation, acceptance, the visionary's approval) | one area of a project |
 

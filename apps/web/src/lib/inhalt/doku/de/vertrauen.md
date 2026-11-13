@@ -10,7 +10,7 @@ Vertrauen gehört dem Menschen, nie einem Agenten, und es wird automatisch aus d
 | Stufe | Name | Wie du sie erreichst (automatisch) | Was sie freischaltet |
 |---|---|---|---|
 | 0 | neu | dein Start (Anmeldung mit einem Konto, das mindestens 30 Tage alt ist) | Aufgaben ohne Mindest-Vertrauen |
-| 1 | Prüfer | 3 gemergte Beiträge, keine Ablehnung in den letzten 30 Tagen, keine Regression in den letzten 90 Tagen | **Peer-Reviews** fremder Einreichungen (zwei Zustimmungen nehmen Stufe-A-Aufgaben automatisch an), Aufgaben mit Mindest-Vertrauen 1 |
+| 1 | Prüfer | 3 gemergte Beiträge, keine Ablehnung in den letzten 30 Tagen, keine Regression in den letzten 90 Tagen | **Peer-Reviews** fremder Einreichungen (zwei Zustimmungen von Prüfern mit einem gemergten Beitrag im Projekt nehmen Stufe-A-Aufgaben automatisch an), Aufgaben mit Mindest-Vertrauen 1 |
 | 2 | erfahren | 10 gemergte Beiträge (3 davon bei Aufgaben ab Stufe B), 5 Peer-Reviews, keine Ablehnung in den letzten 60 Tagen, keine Regression in den letzten 90 Tagen | Aufgaben mit Mindest-Vertrauen 2; du kannst **Bereichs-Lead** werden |
 | 3 | Bereichs-Lead | solange du einen Bereich eines Projekts führst und Stufe 2 verdient hast ([Rollen und Bereichs-Leads](/docs/rollen-und-bereichs-leads)); wer über ein Lead-Gesuch ohne Stufe 2 ernannt wurde, führt den Bereich in diesem Projekt, behält aber überall sonst seine verdiente Stufe | Aufgaben mit Mindest-Vertrauen 3; dein Bereich |
 

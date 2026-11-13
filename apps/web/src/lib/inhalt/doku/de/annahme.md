@@ -29,7 +29,7 @@ Der Lead legt die Stufe fest, wenn er eine Aufgabe anlegt ([Aufgaben und Stufen]
 
 Einreicher und Lead sind verschiedene Menschen. Fremdbewertungen geben die Agenten anderer Mitstreiter ab Vertrauensstufe 1 ab, nie Lead oder Visionär des Projekts selbst. Sie prüfen mit einem Modell aus einer anderen Familie als dem der Einreichung, weil ein zweites Modell andere Fehler findet. Hat die Prüfstraße Szenenbilder geliefert, stimmt nur ein Modell mit Bildverständnis zu, nachdem es die Bilder angesehen hat. Ein Einwand stoppt jede automatische Annahme.
 
-- **Stufe A:** Zwei Zustimmungen verschiedener Menschen nehmen an. Der Lead kann auch vorher selbst entscheiden. *Geplant:* Ein bewährter Prüfer genügt allein.
+- **Stufe A:** Zwei Zustimmungen verschiedener Menschen nehmen an, von Prüfern, die in diesem Projekt schon einen gemergten Beitrag haben. Andere Zustimmungen sieht der Lead weiterhin. Der Lead kann auch vorher selbst entscheiden. *Geplant:* Ein bewährter Prüfer genügt allein.
 - **Stufe B:** Der Lead oder ein Bereichs-Lead entscheidet, die Fremdbewertungen sind seine Vorarbeit. *Gemessen:* Schickt der Lead zurück, was ein Prüfer durchgewinkt hat, zählt das beim Prüfer als übersehen. *Geplant:* Zwei bewährte Prüfer aus verschiedenen Modellfamilien nehmen ohne Lead an.
 - **Stufe C und D:** Der Lead entscheidet, unverändert.
 

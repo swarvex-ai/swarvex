@@ -572,10 +572,22 @@ describe("Bewertung durch den Schwarm", () => {
     const ag = Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,$2,$2) returning id", [m, `${login}-agent`])).rows[0].id);
     return { menschId: m, agentId: ag };
   };
+  // Ohne Lead zählen nur Prüfer mit einem gemergten Beitrag im Projekt (schwarmpruefung.ts, AUTO_ANNAHME)
+  const gemergtIn = async (p: { menschId: number; agentId: number }) => {
+    const t = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe(`Vorarbeit ${p.agentId}`), stufe: "B" });
+    await k.reservieren(db, p, t.id);
+    const e: any = await k.einreichen(db, p, t.id, { patch: PATCH_OK, zusammenfassung: "fertig", eigene_tests: "ok", verbrauch: {} });
+    await k.pruefungStarten(db, e.einreichung_id);
+    await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
+    await k.bewerten(db, lead, Number(e.einreichung_id), "annehmen", "passt");
+    await k.gemergedMelden(db, Number(e.einreichung_id), "f".repeat(32) + String(p.agentId).padStart(8, "0"));
+  };
   it("Stufe A: nach zwei unabhängigen Zustimmungen automatisch angenommen; Selbst, Lead und Neulinge prüfen nicht", async () => {
     const { fremdPruefen, offeneFremdpruefungen } = await import("../src/schwarmpruefung.ts");
-    const { a, eid } = await geprueft("Fremd geprüft", "A");
     const p1 = await pruefer("pruefer-1"), p2 = await pruefer("pruefer-2"), neu = await pruefer("neuling", 0);
+    await gemergtIn(p1);
+    await gemergtIn(p2);
+    const { a, eid } = await geprueft("Fremd geprüft", "A");
     expect((await offeneFremdpruefungen(db, p1, "test")).map((x) => x.einreichung_id)).toContain(eid);
     expect((await offeneFremdpruefungen(db, mit, "test")).map((x) => x.einreichung_id)).not.toContain(eid);
     await expect(fremdPruefen(db, mit, eid, "zustimmen", "ich finde meine Arbeit gut genug", "claude-sonnet-5-5")).rejects.toThrow(/own submission/);
@@ -596,6 +608,21 @@ describe("Bewertung durch den Schwarm", () => {
     expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("angenommen");
     const b = (await db.query("select b.urteil, ag.mensch_id::int as m from bewertungen b join agenten ag on ag.id = b.agent_id where b.einreichung_id = $1", [eid])).rows[0];
     expect(b).toEqual({ urteil: "annehmen", m: p2.menschId });   // vier Augen: ein anderer Mensch als der Einreicher
+  });
+  it("Stufe A: Zustimmungen ohne gemergten Beitrag im Projekt nehmen nicht ohne Lead an (Stufe 1 aus einem eigenen Projekt)", async () => {
+    const { fremdPruefen } = await import("../src/schwarmpruefung.ts");
+    const { a, eid } = await geprueft("Nur mit Vorarbeit im Projekt", "A");
+    const f1 = await pruefer("anderswo-1"), f2 = await pruefer("anderswo-2");
+    expect(await fremdPruefen(db, f1, eid, "zustimmen", "Akzeptanz erfüllt, Pfade passen, Tests grün", "deepseek-v4.1-flash"))
+      .toMatchObject({ zustimmungen: 1, automatisch_angenommen: false, hinweis: expect.stringMatching(/merged contribution in this project/) });
+    expect(await fremdPruefen(db, f2, eid, "zustimmen", "Geprüft: Effekt korrekt, keine Nebenwirkungen", "gpt-5"))
+      .toMatchObject({ zustimmungen: 2, automatisch_angenommen: false });
+    expect((await db.query("select zustand from aufgaben where id = $1", [a.id])).rows[0].zustand).toBe("geprueft_ok");
+    // Der Lead sieht beide Zustimmungen und entscheidet selbst
+    const wartend = (await k.wartendeEinreichungen(db, lead, "test")).find((x) => Number(x.einreichung_id) === eid);
+    expect(wartend.fremdpruefungen.map((f: { von: string }) => f.von)).toEqual(["anderswo-1", "anderswo-2"]);
+    await k.bewerten(db, lead, eid, "nacharbeit", "Test: zurück, dann schließen");
+    await k.schliessen(db, lead, a.id, "Test");
   });
   it("ab Stufe B und bei Einwänden entscheidet der Lead; Merge-Konflikt schickt zurück in den Pool", async () => {
     const { fremdPruefen } = await import("../src/schwarmpruefung.ts");
@@ -675,6 +702,8 @@ describe("Bewertung durch den Schwarm", () => {
     const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
     await db.query("insert into einreichung_bilder(einreichung_id, name, art, png) values ($1, 'side', 'neu', $2), ($1, 'side', 'alt', $2)", [eid, png]);
     const p7 = await pruefer("pruefer-7"), p8 = await pruefer("pruefer-8");
+    await gemergtIn(p7);
+    await gemergtIn(p8);
     const offen = (await offeneFremdpruefungen(db, p7, "test", "deepseek-v4.1-flash")).find((x) => x.einreichung_id === eid);
     expect(offen).toMatchObject({ pruefpunkte: [frage], bilder: ["side"], zustimmen_moeglich: false });
     const antwort = ["Ja: im Bild side neu liegt die Achse unter der Wanne, alt hatte kein Rad"];

@@ -24,7 +24,10 @@ import { einreichungsVorschau } from "./katalog.ts";
 import { vertrauenAktualisieren } from "./vertrauen.ts";
 import { aendertSzenenbilder } from "./gegenpruefung.ts";
 
-/** Zustimmungen verschiedener Menschen, nach denen eine Aufgabe der Stufe A ohne Lead angenommen wird. */
+/** Zustimmungen verschiedener Menschen, nach denen eine Aufgabe der Stufe A ohne Lead angenommen wird. Es zählen nur
+ *  Prüfer mit einem gemergten Beitrag in diesem Projekt: Stufe 1 lässt sich mit Zweitkonten in einem eigenen Projekt
+ *  verdienen, und zwei solche Konten nähmen sonst in fremden Projekten ohne deren Lead an (Sicherheitsaudit, Nachtrag
+ *  13.11.2026). Andere Zustimmungen stehen weiter in der Bewertung und helfen dem Lead. */
 export const AUTO_ANNAHME = { stufen: ["A"], zustimmungen: 2 };
 /** Eigene Beiträge des Leads: eine Zustimmung eines anderen Menschen ersetzt die Bewertung durch den Lead. */
 export const LEAD_EIGEN = { stufen: ["A", "B"], zustimmungen: 1 };
@@ -135,12 +138,21 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
       daten: { einreichung: einreichungId, urteil, modell: modell.trim().slice(0, 120), anderes_modell: e.modell ? modellSchluessel(modell) !== modellSchluessel(e.modell) : null,
         ...(bilder ? { bilder_gesehen: Boolean(zusatz.bilderGesehen) } : {}), ...(punkte.length ? { pruefpunkte: punkte.length } : {}) } });
     const alle = (await tx.query(
-      "select f.urteil, f.begruendung, f.agent_id, m.login from fremdpruefungen f join menschen m on m.id = f.mensch_id where f.einreichung_id = $1 order by f.id", [einreichungId])).rows;
+      `select f.urteil, f.begruendung, f.agent_id, m.login,
+         exists (select 1 from einreichungen e2 join agenten g2 on g2.id = e2.agent_id join aufgaben a2 on a2.id = e2.aufgabe_id
+                 where g2.mensch_id = f.mensch_id and a2.projekt_id = $2
+                   and exists (select 1 from ereignisse x where x.art = 'gemerged' and x.daten->>'einreichung' = e2.id::text)) as im_projekt
+       from fremdpruefungen f join menschen m on m.id = f.mensch_id where f.einreichung_id = $1 order by f.id`, [einreichungId, a.projekt_id])).rows;
     const zu = alle.filter((f) => f.urteil === "zustimmen");
     const vomLead = Boolean((await tx.query(`select ${VOM_LEAD("e", "$2")} as v from einreichungen e where e.id = $1`, [einreichungId, a.projekt_id])).rows[0].v);
     const leadEigen = vomLead && LEAD_EIGEN.stufen.includes(a.stufe);
     const ab = automatischAb(a.stufe, vomLead);
-    const automatisch = ab !== null && zu.length >= ab && !alle.some((f) => f.urteil === "aenderungen");
+    // Ohne Lead (Stufe A) zählen nur Prüfer, die in diesem Projekt schon gemergt haben (AUTO_ANNAHME)
+    const zaehlen = leadEigen ? zu : zu.filter((f) => f.im_projekt);
+    const automatisch = ab !== null && zaehlen.length >= ab && !alle.some((f) => f.urteil === "aenderungen");
+    const meine = alle.filter((f) => Number(f.agent_id) === wer.agentId).at(-1);
+    const hinweis = !leadEigen && ab !== null && urteil === "zustimmen" && meine && !meine.im_projekt
+      ? "your approval is recorded and the lead sees it; it counts toward automatic acceptance once you have a merged contribution in this project" : undefined;
     const ich = alle.filter((f) => Number(f.agent_id) === wer.agentId).at(-1)?.login ?? "";
     if (leadEigen && urteil === "aenderungen") {
       // eigener Beitrag des Leads: der Lead darf nicht entscheiden, also schickt der Einwand in die Nacharbeit
@@ -151,12 +163,12 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
     }
     if (automatisch) {
       const grund = (leadEigen ? `Accepted by a peer review of the lead's own submission (${zu.map((f) => f.login).join(", ")}): `
-        : `Automatically accepted after ${zu.length} independent peer reviews (${zu.map((f) => f.login).join(", ")}): `) + zu.map((f) => f.begruendung).join(" | ");
+        : `Automatically accepted after ${zaehlen.length} independent peer reviews (${zaehlen.map((f) => f.login).join(", ")}): `) + zaehlen.map((f) => f.begruendung).join(" | ");
       await tx.query("insert into bewertungen(einreichung_id, agent_id, urteil, begruendung) values ($1,$2,'annehmen',$3)", [einreichungId, wer.agentId, grund.slice(0, 8000)]);
-      await wechseln(tx, a, "angenommen", "system", "bewertet", { einreichung: einreichungId, urteil: "annehmen", automatisch: true, fremdpruefer: zu.map((f) => f.login) });
+      await wechseln(tx, a, "angenommen", "system", "bewertet", { einreichung: einreichungId, urteil: "annehmen", automatisch: true, fremdpruefer: zaehlen.map((f) => f.login) });
       await variantenSchliessen(tx, a);
     }
-    return { einreichung: einreichungId, zustimmungen: zu.length, automatisch_angenommen: automatisch };
+    return { einreichung: einreichungId, zustimmungen: zu.length, automatisch_angenommen: automatisch, ...(hinweis ? { hinweis } : {}) };
   });
   // Messung (E-43, noch ohne Folgen): Der Prüfer sieht seinen Stand mit diesem Modell
   return { ...ergebnis, dein_pruefer_status: await prueferStatus(db, wer.menschId, modell) };
