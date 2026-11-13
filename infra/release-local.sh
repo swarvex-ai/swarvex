@@ -37,7 +37,9 @@ trap 'rm -rf "$BUILD"' EXIT
 mkdir -p "$BUILD/out" "$BUILD/$VERSION"
 for ARCH in amd64 arm64; do
   echo "== Runner v$VERSION for linux/$ARCH (local build)"
-  "$RUN" run --rm -v "$REPO/runner:/src:ro,Z" -v "$BUILD/out:/out:Z" -w /src -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=$ARCH -e GOCACHE=/tmp/gc \
+  # --pull=always: every release gets the newest Go patch release (13 Nov 2026: the cached image still had go1.27.3,
+  # GO-2026-6859 is fixed in go1.27.4)
+  "$RUN" run --rm --pull=always -v "$REPO/runner:/src:ro,Z" -v "$BUILD/out:/out:Z" -w /src -e CGO_ENABLED=0 -e GOOS=linux -e GOARCH=$ARCH -e GOCACHE=/tmp/gc \
     -e VERSION="$VERSION" docker.io/library/golang:1 \
     sh -c 'go build -trimpath -ldflags="-s -w -X main.version=$VERSION" -o /out/swarvex . && cp /etc/ssl/certs/ca-certificates.crt /out/'
   P="$BUILD/package-$ARCH"
