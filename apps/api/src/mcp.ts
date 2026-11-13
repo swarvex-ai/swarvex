@@ -20,7 +20,7 @@ import { fremdPruefen, fremdpruefungErlaubt, fremdpruefungGescheitert, offeneFre
 import { wochenbericht } from "./wochenbericht.ts";
 import { feedbackListe, feedbackMarkieren } from "./feedback.ts";
 import { uebersetzungSetzen } from "./projekte.ts";
-import { aufArbeitWarten, WECKEN } from "./fluss.ts";
+import { aufArbeitWarten, begrenztWarten, WECKEN } from "./fluss.ts";
 import { aufgabeAusFund, FUNDE, fundeListe, fundeMelden, fundeZuEinreichungen, fundVerwerfen, offeneFunde } from "./funde.ts";
 import { kennzahlen } from "./kennzahlen.ts";
 import { vertrauenStand } from "./vertrauen.ts";
@@ -40,9 +40,9 @@ import { auftraegeFuerLead, auftragAnlegen, DATEITYPEN, DIENSTE, MEDIEN_JE_TAG_M
 const text = (wert: unknown) => ({ content: [{ type: "text" as const, text: typeof wert === "string" ? wert : wert === undefined ? "ok" : JSON.stringify(nachAussen(wert), null, 2) }] });
 
 /** Werkzeug-Aufruf mit einheitlicher Fehlerbehandlung: fachliche Ablehnungen sind Tool-Fehler, keine Abstürze. */
-function sicher<A>(f: (a: A) => Promise<unknown>) {
-  return async (a: A) => {
-    try { return text(await f(a)); }
+function sicher<A>(f: (a: A, extra?: { signal?: AbortSignal }) => Promise<unknown>) {
+  return async (a: A, extra?: { signal?: AbortSignal }) => {
+    try { return text(await f(a, extra)); }
     catch (e) {
       if (e instanceof k.Abgelehnt) return { ...text(`Rejected: ${e.message}`), isError: true };
       throw e;
@@ -87,8 +87,14 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
         if (nein) return { ...text(`Rejected: ${nein}`), isError: true };
         // Mehrere Lead-Dienste je Projekt (E-39): ohne Hauptschleife und ohne Bereich wartet dieser in Bereitschaft
         if (name === "wait_for_work") {
-          const b = await bereitschaft(db, gebunden, wer.agentId, Number(a?.max_seconds ?? 300));
-          if (b) return text(b);
+          const signal = (extra as { signal?: AbortSignal } | undefined)?.signal;
+          try {
+            const b = await begrenztWarten(wer, () => bereitschaft(db, gebunden, wer.agentId, Number(a?.max_seconds ?? 300), undefined, signal));
+            if (b) return text(b);
+          } catch (e) {
+            if (e instanceof k.Abgelehnt) return { ...text(`Rejected: ${e.message}`), isError: true };
+            throw e;
+          }
         }
         return handler(a, extra);
       });
@@ -366,8 +372,9 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       description: "(Lead, area lead) Waits until there is something for you and returns at once: checked submissions to review (area leads: in their area), open messages, and with wake_on including backlog: fewer free tasks than active agents. Returns after max_seconds otherwise (continue: true). Use it as your work loop instead of polling.",
       inputSchema: { project: z.string(), max_seconds: z.number().int().min(0).max(600).default(300),
         wake_on: z.array(z.enum(WECKEN)).min(1).default(["reviews", "messages"]) },
-    }, sicher(async ({ project, max_seconds, wake_on }) => {
-      const r = await aufArbeitWarten(db, wer, project, max_seconds, wake_on);
+    }, sicher(async ({ project, max_seconds, wake_on }, extra) => {
+      // höchstens zwei gleichzeitig je Agent, und Schluss, sobald der Aufrufer die Verbindung schließt (fluss.ts)
+      const r = await begrenztWarten(wer, () => aufArbeitWarten(db, wer, project, max_seconds, wake_on, undefined, extra?.signal));
       // Fehlt Nachschub, liegen in den Fundmeldungen oft schon Aufgaben bereit (findings, task_from_finding)
       const offen = await offeneFunde(db, Number((await k.projektPerSlug(db, project)).id));
       return offen ? { ...r, funde_offen: offen } : r;

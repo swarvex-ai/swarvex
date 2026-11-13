@@ -152,6 +152,28 @@ describe("Abhängigkeiten (Fluss ohne Warten)", () => {
     expect(ohne.weiter).toBe(true);
     await expect(aufArbeitWarten(db, mit, "test", 0, ["reviews"], async () => {})).rejects.toThrow(/lead/);
   });
+  it("wait_for_work: höchstens zwei gleichzeitig je Agent und acht je Mensch, Schluss beim Abbruch der Verbindung", async () => {
+    const { aufArbeitWarten, begrenztWarten, WARTEN_JE_MENSCH } = await import("../src/fluss.ts");
+    let loslassen!: () => void;
+    const haengt = new Promise<void>((r) => { loslassen = r; });
+    const laufend = [begrenztWarten(lead, () => haengt), begrenztWarten(lead, () => haengt)];
+    await expect(begrenztWarten(lead, async () => "drei")).rejects.toThrow(/already waiting 2 times for this agent/);
+    loslassen();
+    await Promise.all(laufend);
+    expect(await begrenztWarten(lead, async () => "wieder frei")).toBe("wieder frei");
+    let loslassen2!: () => void;
+    const haengt2 = new Promise<void>((r) => { loslassen2 = r; });
+    const viele = Array.from({ length: WARTEN_JE_MENSCH }, (_, i) => begrenztWarten({ menschId: lead.menschId, agentId: 900_000 + i }, () => haengt2));
+    await expect(begrenztWarten({ menschId: lead.menschId, agentId: 999_999 }, async () => 1)).rejects.toThrow(/for your agents/);
+    loslassen2();
+    await Promise.all(viele);
+    // Schließt der Aufrufer die Verbindung, endet das Warten nach dem laufenden Schritt statt nach max_seconds
+    const ab = new AbortController();
+    let geschlafen = 0;
+    const r = await aufArbeitWarten(db, lead, "test", 600, ["messages"], async () => { geschlafen++; ab.abort(); }, ab.signal);
+    expect(geschlafen).toBeLessThanOrEqual(1);
+    expect(r).toHaveProperty("weiter");
+  });
 });
 
 describe("Direkt-Modus (#8)", () => {

@@ -134,12 +134,12 @@ export async function leadGesehen(db: Db, projektId: number, agentId: number): P
 /** wait_for_work eines Dienstes ohne Hauptschleife und ohne Bereich: Er wartet in Bereitschaft (ohne Runde) und
  *  übernimmt, sobald der Halter schweigt. null: Er arbeitet normal weiter. */
 export async function bereitschaft(db: Db, projektId: number, agentId: number, maxSekunden: number,
-  schlaf = (ms: number) => new Promise((r) => setTimeout(r, ms))) {
+  schlaf = (ms: number) => new Promise((r) => setTimeout(r, ms)), signal?: AbortSignal) {
   const ende = Date.now() + Math.min(Math.max(maxSekunden, 0), 600) * 1000;
   for (;;) {
     const st = await leadGesehen(db, projektId, agentId);
     if (st.halter || st.bereich !== null || st.ohne_amt) return null;
-    if (Date.now() >= ende) {
+    if (Date.now() >= ende || signal?.aborted) {
       return { bereitschaft: true, halter: st.halter_name ?? null, weiter: true,
         hinweis: `another lead service of this project holds the main loop; this one stands by and takes over when that one is silent for ${HALTER_STILLE_MINUTEN} minutes. To split the work instead, give this one an area (take_area).` };
     }
