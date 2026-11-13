@@ -7,7 +7,7 @@ Läuft täglich und nach dem Start (swarvex-software.timer), auf der Plattform u
 Schreibt /var/lib/swarvex-metrics/software.prom: Betriebssystem und Kernel (laufend und installiert, Neustart nötig?),
 ausstehende Paketupdates (davon Sicherheit), wann die automatischen Updates zuletzt liefen und zuletzt etwas
 änderten, Docker und gVisor, und jedes Image mit Version, Alter, den Containern, die es nutzen, und ob es eine neuere
-Version gibt. Neuer heißt: bei festen Versionen (grafana:12.1.0) die neueste veröffentlichte, bei mitwandernden Tags
+Version gibt. Neuer heißt: bei festen Versionen (grafana:13.3.1) die neueste veröffentlichte, bei mitwandernden Tags
 (postgres:18) ein anderer Digest unter demselben Tag. Gefragt wird Docker Hub, ohne Anmeldung; geht das nicht, steht
 dort „unknown“. Das Grafana-Dashboard Sicherheit zeigt es (infra/monitoring/grafana/sicherheit-dashboard.py).
 Nichts davon ist geheim, aber auch nicht öffentlich: Die Kennzahlen bleiben im internen Monitoring.

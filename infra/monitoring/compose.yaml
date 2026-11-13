@@ -5,7 +5,7 @@
 name: swarvex-monitoring
 services:
   prometheus:
-    image: prom/prometheus:v3.5.0
+    image: prom/prometheus:v3.16.0
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -16,14 +16,14 @@ services:
       - prometheus:/prometheus
     restart: unless-stopped
   loki:
-    image: grafana/loki:3.5.3
+    image: grafana/loki:3.6.20
     command: -config.file=/etc/loki/loki.yaml
     volumes:
       - ./loki.yaml:/etc/loki/loki.yaml:ro
       - loki:/loki
     restart: unless-stopped
   alloy:
-    image: grafana/alloy:v1.10.0
+    image: grafana/alloy:v1.21.3
     command: run --storage.path=/var/lib/alloy /etc/alloy/config.alloy
     # Nur diese Werte aus infra/stack/.env (docker compose --env-file ../stack/.env), keine Geheimnisse
     environment:
@@ -43,7 +43,7 @@ services:
     depends_on: [prometheus, loki]
     restart: unless-stopped
   grafana:
-    image: grafana/grafana:12.1.0
+    image: grafana/grafana:13.3.1
     ports: ["127.0.0.1:3100:3000"]
     environment:
       GF_SECURITY_ADMIN_USER: admin

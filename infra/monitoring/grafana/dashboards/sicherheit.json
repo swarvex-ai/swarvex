@@ -1053,7 +1053,7 @@
      }
     }
    ],
-   "description": "Jedes Image auf dem Server mit Version, Alter, den Containern, die es nutzen, und ob es eine neuere gibt. Feste Versionen (grafana:12.1.0): neueste veröffentlichte Version bei Docker Hub. Mitwandernde Tags (postgres:18): neuerer Stand unter demselben Tag. Hier gebaute Images auf Node: neuere Node-Version derselben Hauptversion, dann ist ein Neubau fällig (deploy.sh zieht das Basis-Image frisch)."
+   "description": "Jedes Image auf dem Server mit Version, Alter, den Containern, die es nutzen, und ob es eine neuere gibt. Feste Versionen (grafana:13.3.1): neueste veröffentlichte Version bei Docker Hub. Mitwandernde Tags (postgres:18): neuerer Stand unter demselben Tag. Hier gebaute Images auf Node: neuere Node-Version derselben Hauptversion, dann ist ein Neubau fällig (deploy.sh zieht das Basis-Image frisch)."
   },
   {
    "type": "table",
@@ -1219,7 +1219,7 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "**Täglich, automatisch:** Debian-Sicherheitsupdates (unattended-upgrades) auf beiden Servern, danach wird der Stand hier erfasst.\n**Bei jedem Deploy:** Basis-Images für api, web (Node) und die Prüfstraße (Go) werden frisch gezogen.\n**Wöchentlich (Claude, Wochenbeginn):** diese Tabelle durchgehen: neuere Patch- und Minor-Versionen einspielen (Postgres, Caddy, Monitoring),\nfällige Neubauten anstoßen, Kernel-Neustarts nach Plan. **Hauptversionen** (Grafana 12 → 13, Postgres 18 → 19) mit Ankündigung und Probe vorher.\n**Sofort:** bei Sicherheitsmeldungen zu Grafana, Caddy, Postgres, Docker, gVisor oder dem Kernel.\n\n**Alarm:** Sicherheitsupdates länger als einen Tag offen · automatische Updates über 50 Stunden nicht gelaufen · Stand über 30 Stunden nicht erfasst ·\nein Neustart, der länger als eine Woche wartet."
+    "content": "**Täglich, automatisch:** Debian-Sicherheitsupdates (unattended-upgrades) auf beiden Servern, danach wird der Stand hier erfasst.\n**Bei jedem Deploy:** Basis-Images für api, web (Node) und die Prüfstraße (Go) werden frisch gezogen.\n**Wöchentlich (Claude, Wochenbeginn):** diese Tabelle durchgehen: neuere Patch- und Minor-Versionen einspielen (Postgres, Caddy, Monitoring),\nfällige Neubauten anstoßen, Kernel-Neustarts nach Plan. **Hauptversionen** (Grafana 13 → 14, Postgres 18 → 19) mit Ankündigung und Probe vorher.\n**Sofort:** bei Sicherheitsmeldungen zu Grafana, Caddy, Postgres, Docker, gVisor oder dem Kernel.\n\n**Alarm:** Sicherheitsupdates länger als einen Tag offen · automatische Updates über 50 Stunden nicht gelaufen · Stand über 30 Stunden nicht erfasst ·\nein Neustart, der länger als eine Woche wartet."
    }
   },
   {

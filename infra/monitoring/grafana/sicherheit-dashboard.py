@@ -157,7 +157,7 @@ UPDATE_FARBEN = [{"matcher": {"id": "byName", "options": "Update"}, "properties"
         {"id": "custom.cellOptions", "value": {"type": "color-text"}}, {"id": "thresholds", "value": schwellen((0, "text"), (90, "orange"), (180, "red"))}]}]
 tabelle("Images", server("(time() - swarvex_image_created_timestamp_seconds) / 86400"), 0, 24, 9,
         {"server": "Server", "image": "Image", "version": "Version", "newest": "Neueste", "update": "Update", "containers": "Container", "Value": "Alter (Tage)"},
-        beschreibung="Jedes Image auf dem Server mit Version, Alter, den Containern, die es nutzen, und ob es eine neuere gibt. Feste Versionen (grafana:12.1.0): "
+        beschreibung="Jedes Image auf dem Server mit Version, Alter, den Containern, die es nutzen, und ob es eine neuere gibt. Feste Versionen (grafana:13.3.1): "
                      "neueste veröffentlichte Version bei Docker Hub. Mitwandernde Tags (postgres:18): neuerer Stand unter demselben Tag. Hier gebaute Images auf Node: "
                      "neuere Node-Version derselben Hauptversion, dann ist ein Neubau fällig (deploy.sh zieht das Basis-Image frisch).",
         overrides=UPDATE_FARBEN)
@@ -173,7 +173,7 @@ text("Update-Zyklus", """\
 **Täglich, automatisch:** Debian-Sicherheitsupdates (unattended-upgrades) auf beiden Servern, danach wird der Stand hier erfasst.
 **Bei jedem Deploy:** Basis-Images für api, web (Node) und die Prüfstraße (Go) werden frisch gezogen.
 **Wöchentlich (Claude, Wochenbeginn):** diese Tabelle durchgehen: neuere Patch- und Minor-Versionen einspielen (Postgres, Caddy, Monitoring),
-fällige Neubauten anstoßen, Kernel-Neustarts nach Plan. **Hauptversionen** (Grafana 12 → 13, Postgres 18 → 19) mit Ankündigung und Probe vorher.
+fällige Neubauten anstoßen, Kernel-Neustarts nach Plan. **Hauptversionen** (Grafana 13 → 14, Postgres 18 → 19) mit Ankündigung und Probe vorher.
 **Sofort:** bei Sicherheitsmeldungen zu Grafana, Caddy, Postgres, Docker, gVisor oder dem Kernel.
 
 **Alarm:** Sicherheitsupdates länger als einen Tag offen · automatische Updates über 50 Stunden nicht gelaufen · Stand über 30 Stunden nicht erfasst ·
