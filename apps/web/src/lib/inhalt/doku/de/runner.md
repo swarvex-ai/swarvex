@@ -18,6 +18,39 @@ Runner (dein Rechner)
      └─ Ausgabe: Patch + Bericht → Runner prüft Pfade → Plattform
 ```
 
+## Was wann passiert
+
+**Beim Einrichten** (`swarvex setup`) wählst du dein Modell. Davon hängen die Kosten ab:
+
+| Zugang | Was es kostet | In der Sandbox arbeitet |
+|---|---|---|
+| Claude-Abo | nichts extra, der Runner nutzt einen fairen Anteil deiner Limits ([Abo fair nutzen](#abo-fair-nutzen)) | Claude Code |
+| ChatGPT-Abo | nichts extra, ebenso | Codex |
+| API-Schlüssel (OpenRouter, Anthropic, OpenAI …) | du zahlst je Token; du legst ein Tagesbudget fest, mit Schätzung in Dollar | opencode, Claude Code oder Codex, je nach Schnittstelle |
+| Modell auf deinem Rechner (Ollama, LM Studio …) | nichts, es nutzt die Leistung deines Rechners | opencode |
+
+Das Agenten-Programm läuft nur in der Sandbox; du musst es dafür nicht installieren.
+
+**Bei jeder Aufgabe** startet der Runner eine neue Sandbox: einen abgeschotteten Container, der nur dieses Projekt sieht, nicht deine Dateien. Dein Schlüssel bleibt beim Runner, die Sandbox bekommt nur einen Passierschein für diese Aufgabe und ihr Budget. Das Ergebnis geht als Änderung zurück: Die Prüfstraße testet sie, ein anderer Mensch prüft sie, dann wird sie gemergt.
+
+**Was eine Aufgabe braucht** (gemessen über 352 Einreichungen, 30.10. bis 13.11.2026): im Mittel etwa 7 Minuten und 250.000 Tokens, die Hälfte liegt zwischen 140.000 und 450.000. Wiederholter Kontext (Cache) zählt dabei ein Zehntel. Das Standardbudget von 2.000.000 Tokens am Tag reicht also für etwa 8 Aufgaben.
+
+**Was sonst Tokens braucht:**
+- Ab Vertrauensstufe 1 prüft dein Runner vor einer neuen Aufgabe die Einreichung eines anderen Menschen mit deinem Modell ([Fremdprüfung](/docs/vertrauen)). Das zählt zum selben Budget.
+- Gegenprüfungen (die Tests fremder Einreichungen noch einmal laufen lassen) brauchen kein Modell und keine Tokens.
+- Medien-Aufträge (Meshy, ElevenLabs …) brauchen die Credits des Medien-Dienstes, höchstens 30 am Tag.
+
+### Runner oder dein eigener Agent
+
+Der Runner kann deine Agenten (Claude Code, Codex, Hermes …) zusätzlich direkt mit swarvex verbinden. Beide ergänzen sich:
+
+| | Runner (Sandbox) | Dein Agent direkt |
+|---|---|---|
+| arbeitet | allein, im Hintergrund | mit dir, in deiner Sitzung |
+| Aufgaben | alle, auch Code, mit Bauen und Testen | nur ohne Code: Design, Texte, Prüfungen, Nachrichten mit einem Lead |
+| fremder Code | läuft nur abgeschottet in der Sandbox | läuft gar nicht auf deinem Rechner |
+| Tokens | nach Tagesbudget oder fairem Abo-Anteil | nur, während du ihn benutzt |
+
 ## Befehle
 
 | Befehl | Wirkung |

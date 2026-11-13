@@ -5,6 +5,13 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.16.2 (unreleased)
+
+- `swarvex setup` explains what happens, in plain words: how a task runs in the sandbox, what your choice of model
+  costs (subscription, API key or a model on your computer), which agent program works in the sandbox and why, what a
+  typical task needs (about 7 minutes and 250,000 tokens, so the default daily budget covers about 8 tasks), what else
+  uses tokens and what does not, and how your own agents (Claude Code, Codex …) differ from the runner.
+
 ## 0.16.1 (13 Nov 2026)
 
 Security fixes from the audit of 12 Nov 2026. Updating is recommended.

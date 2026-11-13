@@ -532,7 +532,8 @@ func setupDialog(ausfuehren bool) []string {
 		pruefen(err)
 	}
 
-	fmt.Println("\n== 1/2 Model\nYour agent works with a model of your choice. Your key stays on this machine; the sandbox never sees it.")
+	fmt.Print(soLaeuftEs)
+	fmt.Print(modellErklaerung)
 	w, abo := modellWaehlen(f, "Which model should your agent use?")
 	var plan aboPlan
 	if abo {
@@ -560,10 +561,14 @@ func setupDialog(ausfuehren bool) []string {
 	pruefen(argsSpeichern(e.args))
 	gefragtMerken(gefragtDatei(), "auto-update", "fair-use", "task-budget", "media")
 	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
+	if len(agenten) > 0 && !istWSL() {
+		fmt.Print(eigeneAgentenErklaerung)
+	}
 	agentenVerbinden(z, agenten)
 	if !ausfuehren {
 		return e.args
 	}
+	fmt.Print(wasJetztPassiert)
 	dienstBefehl(append(append([]string{}, e.args...), e.dienstArgs...))
 	return e.args
 }
@@ -632,7 +637,67 @@ func modellWaehlen(f *frager, frage string) (w modellWahl, abo bool) {
 		}
 	}
 	w.Modell = modellPruefen(f, w)
+	fmt.Println("  → " + sandboxAgentText(w))
 	return w, abo
+}
+
+// Kurze Erklärungen im Setup (neVs 14.11.2026: was wann passiert, was es kostet, Sandbox oder eigener Agent; für
+// Menschen ohne Vorwissen). Die Zahlen je Aufgabe sind gemessen: live, 352 Einreichungen vom 30.10. bis 13.11.2026,
+// Median 250.000 Budget-Tokens (Cache-Treffer zählen ein Zehntel; Hälfte zwischen 140.000 und 450.000), etwa 7 Minuten.
+const (
+	typischeAufgabeTokens  = 250_000
+	typischeAufgabeMinuten = 7
+)
+
+var soLaeuftEs = fmt.Sprintf(`
+== How it works
+  This runner is your agent's workplace for swarvex projects:
+  • It fetches a task and starts a sandbox: a sealed container that sees only that project, not your
+    files. An agent program works in there with your model.
+  • Your key stays with the runner. The sandbox gets a pass that only works for this task and its budget.
+  • The result goes back as a change: swarvex tests it, another person reviews it, then it is merged.
+  • A typical task takes about %d minutes and %s tokens (repeated context counts a tenth).
+`, typischeAufgabeMinuten, tausender(typischeAufgabeTokens))
+
+const modellErklaerung = `
+== 1/2 Model
+  What you pick decides what it costs:
+  • Claude or ChatGPT subscription: nothing extra. The runner uses a fair share of your limits.
+  • API key: you pay per token and set a daily budget (with an estimate in dollars).
+  • A model on this computer (Ollama, LM Studio …): free, it uses your computer's power.
+`
+
+const eigeneAgentenErklaerung = `
+  Your own agents join too. The difference:
+  • The runner works alone in the background, in the sandbox, and may run code and tests there.
+  • Your agent (Claude Code, Codex …) works with you, in your own session, on tasks without code:
+    design, texts, reviews, messages with a lead. No project code runs on your computer, and it only
+    uses tokens while you use it.
+`
+
+const wasJetztPassiert = `
+  What happens now: the runner builds its sandbox once (a few minutes), then takes its first task.
+  On the way it re-runs other people's tests now and then (cross-checks): that needs no model and no
+  tokens. From trust level 1 it also reviews someone else's submission with your model before a new
+  task; that uses tokens from the same budget.
+`
+
+// sandboxAgentText: welches Agenten-Programm in der Sandbox mit diesem Modell arbeitet, in einem Satz.
+func sandboxAgentText(w modellWahl) string {
+	name, warum := w.Agent, ""
+	switch w.Agent {
+	case "opencode":
+		name, warum = "opencode", "it works with almost any model"
+	case "claude":
+		name, warum = "Claude Code", "made for Claude models"
+	case "codex":
+		name, warum = "Codex", "made for OpenAI models"
+	}
+	t := "In the sandbox, " + name + " works with " + w.Modell
+	if warum != "" {
+		t += " (" + warum + ")"
+	}
+	return t + ". It only runs in there; you don't need it installed for this."
 }
 
 // empfohlen: der Schnellstart (eine Frage statt aller): beliebiges Projekt, Dienst, automatische Updates, Budget nach
@@ -677,11 +742,11 @@ func empfehlung(w modellWahl, abo bool, plan aboPlan, agenten []mcpAgent) empfoh
 	case w.Lokal:
 		e.zeilen = append(e.zeilen, "local model: no token limits")
 	default:
-		zeile := "at most 2,000,000 tokens per day, however they split between tasks"
+		zeile := fmt.Sprintf("at most 2,000,000 tokens a day, enough for about %d typical tasks", 2_000_000/typischeAufgabeTokens)
 		if k := kostenText(2_000_000, w.Modell); k != "" {
 			zeile += " (" + k + ")"
 		}
-		e.zeilen = append(e.zeilen, zeile+"; more or open end: swarvex budget",
+		e.zeilen = append(e.zeilen, zeile+"; change it any time: swarvex budget",
 			"an API key is billed per token; a Claude or ChatGPT subscription would cost nothing extra")
 		e.dienstArgs = append(e.dienstArgs, "--daily-budget-tokens", "2000000")
 	}
@@ -690,7 +755,7 @@ func empfehlung(w modellWahl, abo bool, plan aboPlan, agenten []mcpAgent) empfoh
 		for i, a := range agenten {
 			namen[i] = a.Titel
 		}
-		e.zeilen = append(e.zeilen, "connects "+strings.Join(namen, ", ")+" for tasks without code (design, texts, reviews)")
+		e.zeilen = append(e.zeilen, "also connects "+strings.Join(namen, ", ")+": with them you take tasks without code yourself (design, texts, reviews)")
 	}
 	return e
 }
@@ -800,13 +865,14 @@ func anpassen(f *frager, z *zugangsdaten, w modellWahl, abo bool, plan aboPlan, 
 	gefragtMerken(gefragtDatei(), "auto-update", "fair-use", "task-budget", "media")
 	fmt.Println("Saved in", einstellungenDatei(), "(change any time with `swarvex setup`).")
 
-	fmt.Println("\n-- Tasks without code")
+	fmt.Println("\n-- Your own agents")
 	if len(agenten) > 0 && !istWSL() {
 		namen := make([]string, len(agenten))
 		for i, a := range agenten {
 			namen[i] = a.Titel
 		}
-		if f.jaNein("Also connect "+strings.Join(namen, ", ")+" directly (design, texts, reviews; no code runs on your machine)?", true) {
+		fmt.Print(eigeneAgentenErklaerung)
+		if f.jaNein("Also connect "+strings.Join(namen, ", ")+" to swarvex?", true) {
 			agentenVerbinden(z, agenten)
 		}
 	} else if istWSL() {
@@ -820,6 +886,7 @@ func anpassen(f *frager, z *zugangsdaten, w modellWahl, abo bool, plan aboPlan, 
 	}
 	switch modus {
 	case 0:
+		fmt.Print(wasJetztPassiert)
 		dienstBefehl(append(append([]string{}, args...), dienstArgs...))
 	case 1:
 		fmt.Println("\nStarting one task …")

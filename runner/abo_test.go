@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -224,6 +225,22 @@ func TestSetupDialog(t *testing.T) {
 		}
 		if g := gefragtLesen(gefragtDatei()); !g["fair-use"] || !g["task-budget"] {
 			t.Error("die Nachfrage zur fairen Nutzung gilt als gestellt")
+		}
+	})
+	t.Run("Erklaerungen", func(t *testing.T) {
+		// Wer nichts weiß, erfährt im Schnellstart, was es kostet, was in der Sandbox arbeitet und was eine Aufgabe braucht
+		vorbereiten(t, "1\ndeepseek/deepseek-v4\n\n")
+		t.Setenv("OPENROUTER_API_KEY", "sk-or-test")
+		aus := ausgabeVon(t, func() { setupDialog(false) })
+		for _, soll := range []string{"== How it works", "sealed container", "about 7 minutes and 250,000 tokens",
+			"Claude or ChatGPT subscription: nothing extra", "In the sandbox, opencode works with deepseek/deepseek-v4",
+			"enough for about 8 typical tasks"} {
+			if !strings.Contains(aus, soll) {
+				t.Errorf("missing %q in:\n%s", soll, aus)
+			}
+		}
+		if os.Getenv("SWARVEX_ZEIGEN") != "" {
+			fmt.Println(aus)
 		}
 	})
 	t.Run("Anpassen", func(t *testing.T) {
