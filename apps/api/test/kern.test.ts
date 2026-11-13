@@ -1039,6 +1039,46 @@ describe("Clean Room (E-26)", () => {
     await expect(aufgabeAusFund(db, o, Number(funde[1].id), { stufe: "A", faehigkeiten: ["spec"], akzeptanz: ["ok"] })).rejects.toThrow(/outside your area/);
     await k.officerBeenden(db, v, "cr", "analyst", "Test");
   });
+
+  it("Fremdprüfungen im Clean Room nur von Menschen, die schon in diesem Raum arbeiten, und sie zählen als Raum", async () => {
+    const { fremdPruefen, offeneFremdpruefungen } = await import("../src/schwarmpruefung.ts");
+    const { raeumeVon, nachweis } = await import("../src/cleanroom.ts");
+    const cr = Number((await db.query(
+      `insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,lead_modell,ziel,verfahren,vorbild)
+       values ('cr2','CR2','Vision','kurz','godot-4.7','MIT','CC BY 4.0','http://x','Claude','Demo','clean_room',$1) returning id`,
+      [{ name: "Vorbild", rechtsgrundlage: "eigene Lizenz, Analyse zur Interoperabilität" }])).rows[0].id);
+    await db.query("insert into projekt_rollen values ($1,$2,'lead')", [cr, lead.menschId]);
+    const basis = { beschreibung: "x", stufe: "A" as const, faehigkeiten: ["spec"], akzeptanz: ["ok"], raum: "analyse" as const, pfade: ["specification/**"] };
+    const a = await k.aufgabeAnlegen(db, lead, "cr2", { ...basis, titel: "Format beschreiben" });
+    const b = await k.aufgabeAnlegen(db, lead, "cr2", { ...basis, titel: "Ablauf beschreiben" });
+    const pruefer = async (login: string) => {
+      const m = Number((await db.query("insert into menschen(konto_provider, konto_id, login, vertrauensstufe) values ('gitea',$1,$1,1) returning id", [login])).rows[0].id);
+      const ag = Number((await db.query("insert into agenten(mensch_id, client_id, name) values ($1,$2,$2) returning id", [m, `${login}-agent`])).rows[0].id);
+      return { menschId: m, agentId: ag };
+    };
+    const autor = await pruefer("cr-autor");
+    await k.reservieren(db, autor, a.id);
+    const e: any = await k.einreichen(db, autor, a.id, { patch: PATCH_OK.replaceAll("game/modules/vfx/neu.gd", "specification/format.md"),
+      zusammenfassung: "fertig", eigene_tests: "ok", verbrauch: { tokens: 10 } });
+    await k.pruefungStarten(db, e.einreichung_id);
+    await k.pruefungMelden(db, e.einreichung_id, "ok", "grün", "sig");
+    const eid = Number(e.einreichung_id);
+    // Wer im Projekt noch in keinem Raum war, sieht den Patch nicht und prüft ihn nicht
+    const draussen = await pruefer("cr-draussen");
+    expect((await offeneFremdpruefungen(db, draussen, "cr2")).map((x) => x.einreichung_id)).not.toContain(eid);
+    await expect(fremdPruefen(db, draussen, eid, "zustimmen", "Akzeptanz erfüllt, Pfade passen, Tests grün", "deepseek-v4.1-flash")).rejects.toThrow(/clean room/);
+    // Wer schon in der Analyse arbeitet, darf
+    const drinnen = await pruefer("cr-drinnen");
+    await k.reservieren(db, drinnen, b.id);
+    expect((await offeneFremdpruefungen(db, drinnen, "cr2")).map((x) => x.einreichung_id)).toContain(eid);
+    await fremdPruefen(db, drinnen, eid, "zustimmen", "Akzeptanz erfüllt, Pfade passen, Tests grün", "deepseek-v4.1-flash");
+    // Eine Fremdprüfung allein legt den Raum fest und erscheint im Nachweis
+    const nurPruefer = await pruefer("cr-nur-pruefer");
+    await db.query("insert into fremdpruefungen(einreichung_id, agent_id, mensch_id, urteil, begruendung) values ($1,$2,$3,'aenderungen','x')",
+      [eid, nurPruefer.agentId, nurPruefer.menschId]);
+    expect(await raeumeVon(db, nurPruefer.menschId, cr)).toEqual(["analyse"]);
+    expect(await nachweis(db, cr)).toMatchObject({ menschen_je_raum: { analyse: 3 } });
+  });
 });
 
 describe("Meldungen und Sperren (#19, #29)", () => {
@@ -2165,6 +2205,18 @@ describe("Gegenprüfung für alle Projekte (Runner ab 0.11)", () => {
       await k.bewerten(db, lead, eid, "annehmen", "zwei grüne Läufe, Akzeptanz erfüllt");
       const angenommen = ((await senden("GET", "/pipeline/accepted")) as { submission_id: number; check: string }[]).find((x) => Number(x.submission_id) === eid);
       expect(angenommen?.check).toBe("pass");
+    });
+  });
+
+  it("eine Gegenprüfung zählt nur für ihre Einreichung, solange die Prüfstraße sie nicht übernommen hat (Audit 12.11.2026)", async () => {
+    await mitPruefstrasse(async () => {
+      const { eid } = await einreichen("Prüfstraße übernimmt", "ok");
+      const job: any = await g.naechsteGegenpruefung(db, fremd, "test", [], true);
+      expect(job.einreichung_id).toBe(eid);
+      // Die Prüfstraße startet die Einreichung: die offene Reservierung endet, ihr Ergebnis zählt nicht mehr
+      await k.pruefungStarten(db, eid);
+      await expect(g.gegenpruefungMelden(db, fremd, job.gegenpruefung_id, "ok", "spät")).rejects.toThrow(/already reported/);
+      await k.pruefungMelden(db, eid, "fehler", "rot", "pruefstrasse");
     });
   });
 

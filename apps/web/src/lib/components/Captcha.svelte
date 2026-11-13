@@ -15,7 +15,7 @@
     try {
       const r = await fetch("/api/reports/challenge", { cache: "no-store" });
       if (!r.ok) throw new Error(String(r.status));
-      const a: { challenge: string; salt: string; algorithm: string; maxnumber: number } = await r.json();
+      const a: { challenge: string; salt: string; signature: string; algorithm: string; maxnumber: number } = await r.json();
       if (a.algorithm !== "SHA-256") throw new Error(a.algorithm);
       zustand = "prueft";
       for (let n = 0; n <= a.maxnumber; n++) {
@@ -25,7 +25,7 @@
         }
         if (sha256Hex(a.salt + n) === a.challenge) {
           zustand = "fertig";
-          onloesung(btoa(JSON.stringify({ challenge: a.challenge, salt: a.salt, number: n, algorithm: a.algorithm })));
+          onloesung(btoa(JSON.stringify({ challenge: a.challenge, salt: a.salt, number: n, algorithm: a.algorithm, signature: a.signature })));
           return;
         }
       }

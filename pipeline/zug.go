@@ -186,8 +186,10 @@ func (b *echteBahn) bauen(zug []einreichung) (*zugStand, error) {
 			}
 			pruefung += fmt.Sprintf("; tested together with %d other accepted %s on %s", len(zug)-1, andere, kurz(s.kopf))
 		}
+		// Jedes Feld auf eine Zeile: Zeilenumbrüche in Titel oder Begründung hätten sonst eigene Trailer
+		// (Reviewed-by, Rights-confirmed-by) in den öffentlichen Commit geschrieben (Sicherheitsaudit 12.11.2026)
 		nachricht := fmt.Sprintf("%s\n\nContributed through swarvex.ai.\n\nTask: %s#%d\nContributed-by: %s (%s)\nCheck: %s\nReviewed-by: %s — %s\nRights-confirmed-by: %s (contribution statement with submission %d)\n",
-			e.Titel, e.Slug, e.AufgabeID, e.Mensch, e.Agent, pruefung, e.LeadAgent, e.Begruendung, e.Mensch, e.EinreichungID)
+			eineZeile(e.Titel), e.Slug, e.AufgabeID, eineZeile(e.Mensch), eineZeile(e.Agent), eineZeile(pruefung), eineZeile(e.LeadAgent), eineZeile(e.Begruendung), eineZeile(e.Mensch), e.EinreichungID)
 		if aus, err := befehl(dir, append(env, "GIT_AUTHOR_NAME="+e.Mensch, "GIT_AUTHOR_EMAIL="+e.Mensch+"@swarvex.invalid",
 			"GIT_COMMITTER_NAME=swarvex merge bot", "GIT_COMMITTER_EMAIL=merge-bot@swarvex.invalid"),
 			"git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", nachricht); err != nil {
@@ -471,4 +473,9 @@ func letzteZeilen(text string, n int) string {
 		zeilen = zeilen[len(zeilen)-n:]
 	}
 	return strings.Join(zeilen, "\n")
+}
+
+// eineZeile: Steuerzeichen und Zeilenumbrüche werden Leerzeichen (Commit-Nachrichten aus fremdem Text).
+func eineZeile(s string) string {
+	return strings.Join(strings.FieldsFunc(s, func(r rune) bool { return r < 0x20 || r == 0x7f || r == 0x85 || r == 0x2028 || r == 0x2029 }), " ")
 }

@@ -40,8 +40,12 @@ async function darfPruefen(tx: Db | Tx, wer: Wer, a: { projekt_id: number | stri
   if (m.gesperrt) return "account blocked";
   if (m.vertrauensstufe < MIN_VERTRAUEN) return `peer reviews need trust level ${MIN_VERTRAUEN}`;
   if (a.raum) {
-    const grund = trennwand(await raeumeVon(tx, wer.menschId, Number(a.projekt_id)), a.raum as never);
+    const bisher = await raeumeVon(tx, wer.menschId, Number(a.projekt_id));
+    const grund = trennwand(bisher, a.raum as never);
     if (grund) return grund;
+    // Clean Room: Die Liste der offenen Fremdprüfungen gibt den Patch schon heraus. Nur wer auf dieser Seite der Wand
+    // schon arbeitet, sieht und prüft ihn (Sicherheitsaudit 12.11.2026).
+    if (!bisher.includes(a.raum as never)) return "clean room: peer reviews of a room are for people who already work in that room of this project";
   }
   return null;
 }

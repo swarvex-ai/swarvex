@@ -13,6 +13,7 @@
 import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 import { Abgelehnt, projektPerSlug, type Wer } from "./aufgaben.ts";
+import { RAEUME, raeumeVon, trennwand } from "./cleanroom.ts";
 
 /** Engines, die nur beim Mitstreiter laufen können (Projektfeld engine, z. B. "Unity 6000.0" oder "unreal"). */
 export const proprietaer = (engine: string) => /unity|unreal/i.test(engine ?? "");
@@ -112,8 +113,9 @@ export async function naechsteGegenpruefung(db: Db, wer: Wer, projektSlug: strin
          and ag.mensch_id <> $2
          and not exists (select 1 from gegenpruefungen g where g.einreichung_id = e.id and g.beendet is null and g.laeuft_ab > now())
          and not exists (select 1 from gegenpruefungen g join agenten x on x.id = g.agent_id where g.einreichung_id = e.id and x.mensch_id = $2)
+         and ($3::text[] is null or a.raum is null or a.raum = any($3::text[]))
        order by e.id limit 1 for update of a skip locked`,
-      [p.id, wer.menschId])).rows[0];
+      [p.id, wer.menschId, await erlaubteRaeume(tx, wer, p)])).rows[0];
     if (!e) return null;
     const g = (await tx.query(
       "insert into gegenpruefungen(einreichung_id, agent_id, laeuft_ab) values ($1,$2, now() + make_interval(mins => $3)) returning id, laeuft_ab",
@@ -122,6 +124,14 @@ export async function naechsteGegenpruefung(db: Db, wer: Wer, projektSlug: strin
     return { gegenpruefung_id: Number(g.id), aufgabe_id: Number(e.aufgabe_id), einreichung_id: Number(e.id), titel: e.titel,
       basis_commit: e.basis_commit, patch: e.patch, engine: p.engine, laeuft_ab: g.laeuft_ab };
   });
+}
+
+/** Clean Room: nur Einreichungen aus Räumen, die diese Person betreten darf (wie beim Reservieren und bei Fremdprüfungen);
+ *  die Gegenprüfung zählt danach als Arbeit in diesem Raum (raeumeVon). Sonst null (keine Einschränkung). */
+async function erlaubteRaeume(tx: Tx, wer: Wer, p: any): Promise<string[] | null> {
+  if (p.verfahren !== "clean_room") return null;
+  const bisher = await raeumeVon(tx, wer.menschId, Number(p.id));
+  return RAEUME.filter((r) => !trennwand(bisher, r));
 }
 
 async function allgemeineGegenpruefung(db: Db, wer: Wer, p: any) {
@@ -139,8 +149,9 @@ async function allgemeineGegenpruefung(db: Db, wer: Wer, p: any) {
          and not exists (select 1 from pruefungen x where x.einreichung_id = e.id and (x.quelle = 'projekt' or (x.quelle = 'gegenpruefung' and x.ergebnis = 'fehler')))
          and not exists (select 1 from gegenpruefungen g where g.einreichung_id = e.id and g.beendet is null and g.laeuft_ab > now())
          and not exists (select 1 from gegenpruefungen g join agenten x on x.id = g.agent_id where g.einreichung_id = e.id and x.mensch_id = $2)
+         and ($3::text[] is null or a.raum is null or a.raum = any($3::text[]))
        order by e.id limit 1 for update of a skip locked`,
-      [p.id, wer.menschId])).rows[0];
+      [p.id, wer.menschId, await erlaubteRaeume(tx, wer, p)])).rows[0];
     if (!e) return null;
     const g = (await tx.query(
       "insert into gegenpruefungen(einreichung_id, agent_id, laeuft_ab) values ($1,$2, now() + make_interval(mins => $3)) returning id, laeuft_ab",
@@ -161,6 +172,14 @@ export async function gegenpruefungMelden(db: Db, wer: Wer, id: number, ergebnis
     await tx.query("update gegenpruefungen set beendet = now(), ergebnis = $2 where id = $1", [id, ergebnis]);
     const e = (await tx.query("select * from einreichungen where id = $1", [g.einreichung_id])).rows[0];
     const a = await aufgabeSperren(tx, e.aufgabe_id);
+    if (ergebnis !== "nicht_moeglich") {
+      // Das Ergebnis gilt nur für die reservierte Einreichung, solange sie die neueste ist und die Prüfstraße sie nicht
+      // schon geprüft hat; sonst würde eine alte Reservierung eine neue, ungeprüfte Einreichung als geprüft markieren
+      // (Sicherheitsaudit 12.11.2026). Fremdprüfungen und Lead-Bewertungen prüfen das genauso.
+      const neueste = Number((await tx.query("select max(id) as n from einreichungen where aufgabe_id = $1", [a.id])).rows[0].n);
+      const geprueft = (await tx.query("select 1 from pruefungen where einreichung_id = $1 and quelle = 'projekt'", [e.id])).rowCount;
+      if (neueste !== Number(e.id) || geprueft) throw new Abgelehnt("this cross-check no longer counts: the test pipeline took the submission or a newer one replaced it");
+    }
     if (ergebnis === "nicht_moeglich") {
       await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: akteur(wer), art: "gegenpruefung_zurueckgegeben", bezug: `aufgabe:${a.id}`, daten: { einreichung: Number(e.id), grund: bericht.slice(0, 300) } });
       return { ergebnis };

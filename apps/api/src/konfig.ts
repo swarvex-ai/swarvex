@@ -24,6 +24,21 @@ export const konfig = {
   vorschauDomain: /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(process.env.VORSCHAU_DOMAIN ?? "") ? process.env.VORSCHAU_DOMAIN! : "",
 };
 
+/** Vorschauen teilen keinen Cookie-Bereich mit der Plattform (Sicherheitsaudit 12.11.2026): Cookies kennen keine Ports,
+ *  und eine Subdomain kann Cookies für die übergeordnete Domain setzen, die alle Geschwister bekommen. Ohne Public
+ *  Suffix List gelten Namen mit denselben letzten zwei Labels als geteilt. Warnt beim Start (das Labor nutzt bewusst
+ *  dieselbe Adresse mit Port 8444); doppelte Sitzungs-Cookies weist konto.ts ab. */
+export function vorschauGetrennt(vorschauHost: string, basis: string) {
+  const ohnePunkt = (h: string) => h.toLowerCase().replace(/\.$/, "");
+  const v = ohnePunkt(vorschauHost), b = ohnePunkt(new URL(basis).hostname);
+  const istIp = (h: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h.startsWith("[");
+  const letzteZwei = (h: string) => h.split(".").slice(-2).join(".");
+  if (v === b || v.endsWith(`.${b}`) || b.endsWith(`.${v}`) || (!istIp(v) && !istIp(b) && letzteZwei(v) === letzteZwei(b)))
+    console.error(`WARNING: previews (${v}) share a host or a parent domain with BASE_URL (${b}). Cookies ignore ports and reach subdomains, so preview code can set cookies the platform reads; use a separate host or domain for previews (docs/self-hosting.md).`);
+}
+if (konfig.vorschau) vorschauGetrennt(new URL(konfig.vorschau).hostname, konfig.basis);
+if (konfig.vorschauDomain) vorschauGetrennt(konfig.vorschauDomain, konfig.basis);
+
 export const RESSOURCE = () => `${konfig.basis}/mcp`;
 
 /** Adresse der Vorschau einer Einreichung vor der Bewertung (review.<Domain>/<id>/), leer ohne eingerichtete Vorschauen. */

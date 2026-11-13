@@ -91,7 +91,7 @@ Updates from your workstation: `infra/deploy.sh <ssh-target>`. The script copies
 **Playable previews:** the job `swarvex-preview` (timer every five minutes) builds a web preview after every merge for Godot projects with a Web preset and for projects with `preview` and `preview_dir` in `swarvex.yaml`. Previews are project code, so they are served on their own address, never under the platform's:
 
 - **Recommended, an own domain:** register a domain only for previews (never one you want to use for anything trusted), point its A records for the domain itself and for `*` to the server (no proxy in front, so Caddy can fetch certificates) and set `VORSCHAU_DOMAIN=<domain>` in `.env`. Every project then gets its own subdomain, `<slug>.<domain>`, so projects do not share browser storage either. Caddy fetches a certificate per subdomain on its first visit, only for projects with a built preview (on-demand TLS, checked by `/api/preview-allowed`).
-- **Simpler, one address:** `VORSCHAU_ADRESSE=https://<host>:8444` (as in the lab) serves all previews under one address, one folder per project.
+- **Simpler, one address:** `VORSCHAU_ADRESSE=https://<preview host>:8444` serves all previews under one address, one folder per project. Use a host name or IP that is **not** the platform's own and not a subdomain of its domain: cookies ignore ports and reach subdomains, so preview code (contributors' code) could otherwise set cookies the platform reads. The API warns at start when the two share a host or domain.
 
 Without either setting, no previews are built. `infra/deploy.sh` installs the matching Caddy site file into `/opt/swarvex-data/sites/`.
 

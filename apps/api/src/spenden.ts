@@ -194,14 +194,28 @@ export async function hochladen(db: Db, menschId: number, auftragId: number, req
   }
   const sha = hash.digest("hex");
   const ziel = join(ordner, `${auftragId}-${sha.slice(0, 16)}.${endung}`);
-  await rename(tmp, ziel);
-  const alt = a.datei as string | null;
-  await transaktion(db, async (tx) => {
-    await tx.query("update spendenauftraege set zustand = 'hochgeladen', datei = $2, dateiname = $3, sha256 = $4, bytes = $5, hochgeladen = now(), begonnen = null, abgebrochen = null, abbruchgrund = null where id = $1",
-      [auftragId, ziel, dateiname.slice(0, 200), sha, bytes]);
-    await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: runnerAgent !== undefined ? `agent:${runnerAgent}` : `mensch:${menschId}`, art: "spende_hochgeladen",
-      bezug: `spendenauftrag:${auftragId}`, daten: { sha256: sha, bytes, ...(runnerAgent !== undefined ? { weg: "runner" } : {}) } });
-  });
+  // Zustand und Tageslimit noch einmal unter Sperre prüfen: Gleichzeitige Uploads kamen sonst alle an den Prüfungen
+  // oben vorbei, überschritten das Limit und ließen Dateien liegen, die das Aufräumen nie löscht (Sicherheitsaudit
+  // 12.11.2026). Nur der Gewinner bekommt seinen Dateinamen; ein Verlierer löscht seine Datei.
+  let alt: string | null = null;
+  try {
+    await transaktion(db, async (tx) => {
+      await tx.query("select pg_advisory_xact_lock(hashtext('spende-upload:' || $1::text))", [menschId]);
+      const jetzt = (await tx.query("select zustand, datei from spendenauftraege where id = $1 for update", [auftragId])).rows[0];
+      if (!["offen", "nacharbeit"].includes(jetzt?.zustand)) throw new Abgelehnt("this brief takes no upload right now");
+      const n = Number((await tx.query("select count(*) from spendenauftraege a join zusagen z on z.id = a.zusage_id where z.mensch_id = $1 and a.hochgeladen > now() - interval '1 day'", [menschId])).rows[0].count);
+      if (runnerAgent === undefined && n >= UPLOADS_JE_TAG) throw new Abgelehnt(`at most ${UPLOADS_JE_TAG} uploads per day`);
+      await rename(tmp, ziel);
+      alt = jetzt.datei;
+      await tx.query("update spendenauftraege set zustand = 'hochgeladen', datei = $2, dateiname = $3, sha256 = $4, bytes = $5, hochgeladen = now(), begonnen = null, abgebrochen = null, abbruchgrund = null where id = $1",
+        [auftragId, ziel, dateiname.slice(0, 200), sha, bytes]);
+      await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: runnerAgent !== undefined ? `agent:${runnerAgent}` : `mensch:${menschId}`, art: "spende_hochgeladen",
+        bezug: `spendenauftrag:${auftragId}`, daten: { sha256: sha, bytes, ...(runnerAgent !== undefined ? { weg: "runner" } : {}) } });
+    });
+  } catch (e) {
+    await rm(tmp, { force: true });
+    throw e;
+  }
   if (alt && alt !== ziel) await rm(alt, { force: true });
   return { auftrag_id: auftragId, sha256: sha, bytes };
 }

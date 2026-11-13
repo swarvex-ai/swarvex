@@ -103,3 +103,25 @@ func TestZugAnfrageRundweg(t *testing.T) {
 		t.Errorf("%+v %v", a, err)
 	}
 }
+
+// Die Antwort passt nach der Kodierung immer unter zugAntwortMax, auch bei HTML-lastiger Ausgabe (Sicherheitsaudit
+// 12.11.2026: 2 MiB Snapshot-Diff wurden mit Escapes über 4 MiB und der Zug galt jedes Mal als nicht testbar).
+func TestAntwortPasst(t *testing.T) {
+	ausgabe := strings.Repeat("-    <div class=\"row\"><span>&nbsp;</span></div>\n\x01", 60000)
+	a := zugAntwort{Ergebnis: 1, Bericht: strings.Repeat("<&>", 40000), KopfLauf: &kopfLauf{Ausgabe: kuerzenVorn(ausgabe, zugAusgabeMax)}}
+	var buf bytes.Buffer
+	antwortSchreiben(&buf, a)
+	if buf.Len() >= zugAntwortMax {
+		t.Fatalf("answer %d bytes, limit %d", buf.Len(), zugAntwortMax)
+	}
+	gelesen, err := zugAntwortLesen(buf.Bytes(), false)
+	if err != nil || gelesen.Ergebnis != 1 || gelesen.KopfLauf == nil {
+		t.Fatalf("platform side: %+v %v", gelesen, err)
+	}
+}
+
+func TestEineZeile(t *testing.T) {
+	if z := eineZeile("Titel\nReviewed-by: core-maintainer\r\n\tLGTM"); z != "Titel Reviewed-by: core-maintainer LGTM" {
+		t.Fatalf("%q", z)
+	}
+}

@@ -29,12 +29,16 @@ const SITZUNG = "swarvex_account";
 const ANMELDUNG = "swarvex_login";
 const SITZUNG_TAGE = 14;
 
+/** Wert eines Cookies. Kommt derselbe Name mehrfach (eine andere Herkunft hat einen zweiten gesetzt, „cookie
+ *  tossing“), gilt keiner: Wer so einen zweiten Wert unterschiebt, bindet die Sitzung nicht an sein Konto
+ *  (Sicherheitsaudit 12.11.2026). */
 function cookie(req: IncomingMessage, name: string) {
+  const werte: string[] = [];
   for (const teil of (req.headers.cookie ?? "").split(";")) {
     const [k, ...v] = teil.trim().split("=");
-    if (k === name) return v.join("=");
+    if (k === name) werte.push(v.join("="));
   }
-  return undefined;
+  return werte.length === 1 ? werte[0] : undefined;
 }
 
 function cookieSetzen(name: string, wert: string, pfad: string, sekunden: number) {

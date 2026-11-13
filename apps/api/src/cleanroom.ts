@@ -38,11 +38,16 @@ export function aufgabePruefen(verfahren: string, raum: string | null | undefine
   return [];
 }
 
-/** Räume, in denen der Mensch in diesem Projekt schon gearbeitet hat: Reservierungen und Bereichs-Lead-Ämter (auch beendete). */
+/** Räume, in denen der Mensch in diesem Projekt schon gearbeitet hat: Reservierungen, Bereichs-Lead-Ämter (auch beendete),
+ *  Fremdprüfungen und Gegenprüfungen. Wer eine Einreichung prüft, hat ihren Inhalt gesehen (Sicherheitsaudit 12.11.2026). */
 export async function raeumeVon(tx: Db | Tx, menschId: number, projektId: number): Promise<Raum[]> {
   const r = await tx.query(
     `select a.raum from leases l join aufgaben a on a.id = l.aufgabe_id join agenten g on g.id = l.agent_id
      where a.projekt_id = $1 and g.mensch_id = $2 and a.raum is not null
+     union select a.raum from fremdpruefungen f join einreichungen e on e.id = f.einreichung_id join aufgaben a on a.id = e.aufgabe_id
+     where a.projekt_id = $1 and f.mensch_id = $2 and a.raum is not null
+     union select a.raum from gegenpruefungen x join agenten g on g.id = x.agent_id join einreichungen e on e.id = x.einreichung_id
+       join aufgaben a on a.id = e.aufgabe_id where a.projekt_id = $1 and g.mensch_id = $2 and a.raum is not null
      union select raum from officers where projekt_id = $1 and mensch_id = $2 and raum is not null`, [projektId, menschId]);
   return r.rows.map((z) => z.raum);
 }
@@ -59,6 +64,10 @@ export async function nachweis(tx: Db | Tx, projektId: number) {
     `select mensch_id, array_agg(distinct raum) as raeume from (
        select g.mensch_id, a.raum from leases l join aufgaben a on a.id = l.aufgabe_id join agenten g on g.id = l.agent_id
        where a.projekt_id = $1 and a.raum is not null
+       union select f.mensch_id, a.raum from fremdpruefungen f join einreichungen e on e.id = f.einreichung_id join aufgaben a on a.id = e.aufgabe_id
+       where a.projekt_id = $1 and a.raum is not null
+       union select g.mensch_id, a.raum from gegenpruefungen x join agenten g on g.id = x.agent_id join einreichungen e on e.id = x.einreichung_id
+         join aufgaben a on a.id = e.aufgabe_id where a.projekt_id = $1 and a.raum is not null
        union select mensch_id, raum from officers where projekt_id = $1 and raum is not null) x group by mensch_id`, [projektId]);
   const zaehler: Record<Raum, number> = { analyse: 0, pruefung: 0, bau: 0 };
   let verletzungen = 0;

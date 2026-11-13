@@ -8,7 +8,7 @@ const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 
 function loesen(a: ReturnType<typeof captchaAufgabe>, salt = a.salt) {
   for (let n = 0; n <= a.maxnumber; n++) {
-    if (sha256(a.salt + n) === a.challenge) return Buffer.from(JSON.stringify({ challenge: a.challenge, salt, number: n, algorithm: a.algorithm })).toString("base64");
+    if (sha256(a.salt + n) === a.challenge) return Buffer.from(JSON.stringify({ challenge: a.challenge, salt, number: n, algorithm: a.algorithm, signature: a.signature })).toString("base64");
   }
   throw new Error("keine Lösung");
 }
@@ -34,5 +34,16 @@ describe("Captcha", () => {
     const salt = `abc.${Date.now() + 60_000}.gefaelscht.`;
     const l = Buffer.from(JSON.stringify({ challenge: sha256(salt + 1), salt, number: 1, algorithm: "SHA-256" })).toString("base64");
     expect(captchaPruefen(G, l)).toBe(false);
+  });
+  it("lehnt eine selbst ausgerechnete challenge zu einem echten Salt ab (Audit 12.11.2026)", () => {
+    const a = captchaAufgabe(G);
+    for (let n = 0; n < 5; n++) {
+      const eigene = Buffer.from(JSON.stringify({ challenge: sha256(a.salt + n), salt: a.salt, number: n, algorithm: "SHA-256", signature: a.signature })).toString("base64");
+      expect(captchaPruefen(G, eigene)).toBe(false);
+    }
+    // ohne Signatur geht auch die richtige Lösung nicht durch
+    const ohne = JSON.parse(Buffer.from(loesen(a), "base64").toString());
+    delete ohne.signature;
+    expect(captchaPruefen(G, Buffer.from(JSON.stringify(ohne)).toString("base64"))).toBe(false);
   });
 });

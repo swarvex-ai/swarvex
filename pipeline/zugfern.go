@@ -182,7 +182,35 @@ func zugTestAnnehmen(r io.Reader, w io.Writer, suchen func(slug string) (einreic
 		}
 		return zugTestAusfuehren(a, f.Name(), suchen)
 	}()
-	json.NewEncoder(w).Encode(antwort)
+	// Ohne HTML-Escaping und auf die Größe nach der Kodierung begrenzt: Escapes machten aus 2 MiB Ausgabe mehr als die
+	// 4 MiB, die die Plattform liest, und der Zug galt dann jedes Mal als nicht testbar (Sicherheitsaudit 12.11.2026)
+	antwortSchreiben(w, antwort)
+}
+
+func antwortSchreiben(w io.Writer, a zugAntwort) {
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	enc.Encode(antwortBegrenzt(a))
+}
+
+// antwortBegrenzt kürzt Kopflauf-Ausgabe und Bericht, bis die kodierte Antwort sicher unter zugAntwortMax liegt.
+func antwortBegrenzt(a zugAntwort) zugAntwort {
+	for {
+		roh, _ := json.Marshal(a) // obere Schranke: Marshal escapt HTML, der Encoder oben nicht
+		if len(roh) < zugAntwortMax-4096 {
+			return a
+		}
+		if a.KopfLauf != nil && a.KopfLauf.Ausgabe != "" {
+			k := *a.KopfLauf
+			k.Ausgabe = kuerzenVorn(k.Ausgabe, len(k.Ausgabe)/2)
+			a.KopfLauf = &k
+			continue
+		}
+		if a.Bericht == "" {
+			return a
+		}
+		a.Bericht = kuerzenVorn(a.Bericht, len(a.Bericht)/2)
+	}
 }
 
 // zugTestAusfuehren: Bundle in den eigenen Spiegel, prüfen, dass es genau der angekündigte Zug auf main ist, testen.

@@ -11,7 +11,11 @@ export type Db = pg.Pool;
 export type Tx = pg.PoolClient;
 
 export function verbinden(url: string): Db {
-  return new pg.Pool({ connectionString: url, max: 10 });
+  const pool = new pg.Pool({ connectionString: url, max: 10 });
+  // Bricht die Datenbank eine ruhende Verbindung ab (Neustart, Herunterfahren), meldet der Pool das als Ereignis;
+  // ohne Behandlung beendet es den ganzen Prozess (13.11.2026, Neustart des Servers). Die nächste Anfrage verbindet neu.
+  pool.on("error", (e) => console.error("database connection lost:", e.message));
+  return pool;
 }
 
 export async function transaktion<T>(db: Db, arbeit: (tx: Tx) => Promise<T>): Promise<T> {
