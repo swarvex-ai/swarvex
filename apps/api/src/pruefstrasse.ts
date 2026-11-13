@@ -99,15 +99,22 @@ export function pruefstrasseBehandeln(db: Db, geheimnis: string, pruefGeheimnis 
     const daten = koerper ? JSON.parse(koerper) : {};
     try {
       if (req.method === "GET" && url.pathname === "/pipeline/pending") {
+        // Reihum nach Projekt: zuerst die älteste Einreichung jedes Projekts, dann die zweite usw. Eine Prüfung kann mit
+        // Einrichten, Bau, Test und Gegenprobe über eine Stunde dauern; ein Projekt mit vielen Einreichungen und langsamen
+        // Tests hielte sonst alle anderen stundenlang auf (Sicherheitsaudit, Nachtrag 13.11.2026). Die Prüfstraße holt
+        // nach jeder Prüfung neu ab und nimmt die erste noch nicht versuchte. Gesperrte Projekte werden nicht geprüft.
         const r = await db.query(
-          `select e.id as einreichung_id, e.patch, e.patch_sha256, a.id as aufgabe_id, a.basis_commit, a.pfade, p.slug, p.repo_git, p.github_installation
-           from einreichungen e join aufgaben a on a.id = e.aufgabe_id join projekte p on p.id = a.projekt_id join agenten ag on ag.id = e.agent_id
-           -- „pruefung“ ohne Ergebnis: Ein Prüflauf läuft auf einer Plattform immer allein (systemd), beim Abholen ist
-           -- also jede solche Aufgabe von einem abgebrochenen Lauf (Neustart, Absturz) und wird neu geprüft
-           where a.zustand in ('eingereicht', 'pruefung') and p.engine !~* '(unity|unreal)'
-           and not exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'projekt')
-           and not ${WARTET_AUF_GEGENPRUEFUNG}
-           and e.id = (select max(id) from einreichungen where aufgabe_id = a.id) order by e.id`);
+          `select einreichung_id, patch, patch_sha256, aufgabe_id, basis_commit, pfade, slug, repo_git, github_installation from (
+             select e.id as einreichung_id, e.patch, e.patch_sha256, a.id as aufgabe_id, a.basis_commit, a.pfade, p.slug, p.repo_git, p.github_installation,
+                    row_number() over (partition by a.projekt_id order by e.id) as rang
+             from einreichungen e join aufgaben a on a.id = e.aufgabe_id join projekte p on p.id = a.projekt_id join agenten ag on ag.id = e.agent_id
+             -- „pruefung“ ohne Ergebnis: Ein Prüflauf läuft auf einer Plattform immer allein (systemd), beim Abholen ist
+             -- also jede solche Aufgabe von einem abgebrochenen Lauf (Neustart, Absturz) und wird neu geprüft
+             where a.zustand in ('eingereicht', 'pruefung') and p.engine !~* '(unity|unreal)' and not p.gesperrt
+             and not exists (select 1 from pruefungen x where x.einreichung_id = e.id and x.quelle = 'projekt')
+             and not ${WARTET_AUF_GEGENPRUEFUNG}
+             and e.id = (select max(id) from einreichungen where aufgabe_id = a.id)) reihum
+           order by rang, einreichung_id`);
         return json(res, 200, nachAussen(await mitToken(r.rows, false)));
       }
       // Szenenbilder aus dem Patch (gegenpruefung.ts): eingereichte Beiträge, die Referenzbilder ändern und noch keine

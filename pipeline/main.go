@@ -251,33 +251,60 @@ func gitEnv(key string, e einreichung) []string {
 func spiegel(e einreichung) (string, error) { return spiegelIn(e, "mirror") }
 
 func pruefen() {
-	// Zuerst die Szenenbilder aus dem Patch: Sind sie da, wartet eine Einreichung mit Referenzbildern auf einen Runner
-	// statt auf die Prüfstraße (bilder.go)
-	bilderAusPatch()
-	var offen []einreichung
-	if err := signiert("GET", "/pipeline/pending", nil, &offen); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	// Nach jeder Prüfung neu abholen und die erste noch nicht versuchte nehmen: Die Plattform liefert reihum nach Projekt
+	// (pruefstrasse.ts), so wartet eine neue Einreichung eines anderen Projekts höchstens eine Prüfung lang, auch wenn
+	// ein Projekt viele langsame Einreichungen hat (Sicherheitsaudit, Nachtrag 13.11.2026).
+	versucht := map[int64]bool{}
+	for {
+		// Zuerst die Szenenbilder aus dem Patch: Sind sie da, wartet eine Einreichung mit Referenzbildern auf einen
+		// Runner statt auf die Prüfstraße (bilder.go)
+		bilderAusPatch()
+		var offen []einreichung
+		if err := signiert("GET", "/pipeline/pending", nil, &offen); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			if len(versucht) == 0 {
+				os.Exit(1)
+			}
+			return
+		}
+		e, ok := naechsteOffene(offen, versucht)
+		if !ok {
+			return
+		}
+		versucht[e.EinreichungID] = true
+		einePruefungMelden(e)
 	}
+}
+
+// naechsteOffene: die erste Einreichung der Liste, die dieser Lauf noch nicht versucht hat.
+func naechsteOffene(offen []einreichung, versucht map[int64]bool) (einreichung, bool) {
 	for _, e := range offen {
-		fmt.Printf("Checking submission %d (task %d)\n", e.EinreichungID, e.AufgabeID)
-		if err := signiert("POST", fmt.Sprintf("/pipeline/%d/start", e.EinreichungID), map[string]any{}, nil); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			continue
+		if !versucht[e.EinreichungID] {
+			return e, true
 		}
-		ok, bericht, basisRot := einePruefung(e)
-		ergebnis := "fail"
-		if ok {
-			ergebnis = "pass"
-		}
-		if len(bericht) > 20000 {
-			bericht = bericht[len(bericht)-20000:]
-		}
-		if err := signiert("POST", fmt.Sprintf("/pipeline/%d/result", e.EinreichungID), map[string]any{"result": ergebnis, "report": bericht, "base_red": basisRot}, nil); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		}
-		fmt.Printf("  → %s\n", ergebnis)
 	}
+	return einreichung{}, false
+}
+
+// einePruefungMelden: Start melden, prüfen, Ergebnis melden.
+func einePruefungMelden(e einreichung) {
+	fmt.Printf("Checking submission %d (task %d)\n", e.EinreichungID, e.AufgabeID)
+	if err := signiert("POST", fmt.Sprintf("/pipeline/%d/start", e.EinreichungID), map[string]any{}, nil); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	ok, bericht, basisRot := einePruefung(e)
+	ergebnis := "fail"
+	if ok {
+		ergebnis = "pass"
+	}
+	if len(bericht) > 20000 {
+		bericht = bericht[len(bericht)-20000:]
+	}
+	if err := signiert("POST", fmt.Sprintf("/pipeline/%d/result", e.EinreichungID), map[string]any{"result": ergebnis, "report": bericht, "base_red": basisRot}, nil); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	fmt.Printf("  → %s\n", ergebnis)
 }
 
 func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {

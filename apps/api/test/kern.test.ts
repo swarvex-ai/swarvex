@@ -2231,6 +2231,29 @@ describe("Gegenprüfung für alle Projekte (Runner ab 0.11)", () => {
   };
   const wartend = async (senden: (m: string, p: string) => Promise<any>) => ((await senden("GET", "/pipeline/pending")) as { submission_id: number }[]).map((x) => Number(x.submission_id));
 
+  it("die Prüfstraße bekommt Einreichungen reihum nach Projekt, aus gesperrten Projekten keine (Audit, Nachtrag 13.11.2026)", async () => {
+    await mitPruefstrasse(async (senden) => {
+      await db.query("update agenten set gegenpruefer_gesehen = null");
+      const { a: a1, eid: t1 } = await einreichen("Reihum 1");
+      const { a: a2, eid: t2 } = await einreichen("Reihum 2");
+      const pid = Number((await db.query(
+        `insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,lead_modell,ziel)
+         values ('reihum','Reihum','Vision','kurz','godot-4.7','MIT','CC BY 4.0','http://x','Claude','Demo') returning id`)).rows[0].id);
+      await db.query("insert into projekt_rollen values ($1,$2,'lead')", [pid, lead.menschId]);
+      const b = await k.aufgabeAnlegen(db, lead, "reihum", neueAufgabe("Anderes Projekt"));
+      await k.reservieren(db, fremd, b.id);
+      const eb = Number(((await k.einreichen(db, fremd, b.id, { patch: PATCH_OK, zusammenfassung: "z", eigene_tests: "", verbrauch: {} })) as any).einreichung_id);
+      const liste = await wartend(senden);
+      // die neuere Einreichung des anderen Projekts kommt vor den späteren aus „test“
+      expect(liste.indexOf(eb)).toBeGreaterThanOrEqual(0);
+      expect(liste.indexOf(eb)).toBeLessThan(liste.indexOf(t1));
+      expect(liste.indexOf(t1)).toBeLessThan(liste.indexOf(t2));
+      await db.query("update projekte set gesperrt = true where id = $1", [pid]);
+      expect(await wartend(senden)).not.toContain(eb);
+      await db.query("update aufgaben set zustand = 'geschlossen' where id = any($1)", [[a1.id, a2.id, b.id]]);
+    });
+  });
+
   it("ohne aktiven Gegenprüfer prüft die Prüfstraße sofort; mit einem wartet die Einreichung auf ihn, zwei grüne Läufe genügen", async () => {
     await mitPruefstrasse(async (senden) => {
       await db.query("update agenten set gegenpruefer_gesehen = null");
