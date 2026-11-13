@@ -570,12 +570,15 @@ func snapshotHolen(z *zugangsdaten, token string, id int64, ziel string) error {
 
 // git führt Git mit eigenem GIT_DIR außerhalb des Arbeitsbaums aus. Hooks, fsmonitor und
 // Filter sind abgeschaltet, damit nichts aus dem (von der Sandbox beschriebenen) Baum
-// beim Diff ausgeführt werden kann.
+// beim Diff ausgeführt werden kann. Auch die Git-Einstellungen des Nutzers gelten nicht: Eine
+// .gitattributes aus der Sandbox hätte sonst dort eingetragene Filter beim „git add“ gestartet
+// (Sicherheitsaudit 12.11.2026); Identität und alles Nötige kommen über -c.
 func git(gitDir, baum string, args ...string) (string, error) {
 	sicher := []string{"-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "-c", "core.autocrlf=false",
 		"-c", "user.name=swarvex", "-c", "user.email=runner@swarvex.invalid", "-c", "commit.gpgsign=false"}
 	cmd := exec.Command("git", append(sicher, args...)...)
-	cmd.Env = append(os.Environ(), "GIT_DIR="+gitDir, "GIT_WORK_TREE="+baum, "GIT_CONFIG_NOSYSTEM=1", "GIT_ATTR_NOSYSTEM=1")
+	cmd.Env = append(os.Environ(), "GIT_DIR="+gitDir, "GIT_WORK_TREE="+baum, "GIT_CONFIG_NOSYSTEM=1", "GIT_ATTR_NOSYSTEM=1",
+		"GIT_CONFIG_GLOBAL=/dev/null")
 	cmd.Dir = baum // Pfade in Ausgaben immer ab der Wurzel des Baums
 	aus, err := cmd.CombinedOutput()
 	if err != nil {

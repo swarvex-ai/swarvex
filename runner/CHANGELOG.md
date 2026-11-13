@@ -21,6 +21,8 @@ Security fixes from the audit of 12 Nov 2026. Updating is recommended.
   settles afterwards; parallel requests and streams that end early can no longer go past the token budget.
 - The media runner reads the agent's `RESULT` file like findings and verdicts: only as a small regular file.
 - Output of containers is kept in memory only up to 8 MB (beginning and end); `agent.log` holds the same.
+- Building the patch ignores your personal Git settings (`~/.gitconfig`), so a `.gitattributes` written in the
+  sandbox cannot start a filter defined there.
 
 ## 0.16.0 (12 Nov 2026)
 

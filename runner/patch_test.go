@@ -60,3 +60,37 @@ func TestPatchMitGeschuetztenPfadenAusDir(t *testing.T) {
 		t.Errorf("Auftrag nennt den Basis-Commit nicht:\n%s", auftrag)
 	}
 }
+
+// Ein Filter aus der Git-Konfiguration des Nutzers läuft nicht, auch wenn eine .gitattributes aus der Sandbox ihn
+// auswählt (Sicherheitsaudit 12.11.2026).
+func TestPatchOhneGitEinstellungenDesNutzers(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git fehlt")
+	}
+	ordner := t.TempDir()
+	home := filepath.Join(ordner, "home")
+	os.MkdirAll(home, 0o755)
+	marke := filepath.Join(ordner, "filter-ran")
+	os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[filter \"boese\"]\n\tclean = touch "+marke+" && cat\n"), 0o644)
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	baum, gitDir := filepath.Join(ordner, "tree"), filepath.Join(ordner, "git")
+	os.MkdirAll(filepath.Join(baum, "docs"), 0o755)
+	os.WriteFile(filepath.Join(baum, "docs", "a.md"), []byte("alt\n"), 0o644)
+	if err := gitBasis(gitDir, baum, nil); err != nil {
+		t.Fatal(err)
+	}
+	// die Sandbox schreibt eine .gitattributes und ändert eine erlaubte Datei
+	os.WriteFile(filepath.Join(baum, ".gitattributes"), []byte("*.md filter=boese\n"), 0o644)
+	os.WriteFile(filepath.Join(baum, "docs", "a.md"), []byte("neu\n"), 0o644)
+	patch, _, err := patchBilden(gitDir, baum, []string{"docs/**"}, umgebung.Umgebung{})
+	if err != nil {
+		t.Fatalf("Patch: %v", err)
+	}
+	if _, err := os.Stat(marke); err == nil {
+		t.Fatal("a filter from the user's git config ran on the sandbox tree")
+	}
+	if !strings.Contains(patch, "+neu") {
+		t.Errorf("patch lost the change:\n%s", patch)
+	}
+}
