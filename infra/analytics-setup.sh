@@ -7,7 +7,7 @@ DATA=/opt/swarvex-data
 DATEI=$DATA/analytics_db
 cd /opt/swarvex/infra/stack
 [ -s "$DATEI" ] || { head -c 24 /dev/urandom | base64 | tr -d '/+=' > "$DATEI"; }
-chmod 644 "$DATEI"   # read by the Grafana container user
+chown 472:0 "$DATEI"; chmod 600 "$DATEI"   # only the Grafana container user (uid 472) and root
 # The role comes from the API's migration; wait until it exists
 for i in $(seq 1 60); do
   docker compose exec -T postgres psql -U swarvex -d swarvex -Atc "select 1 from pg_roles where rolname = 'analytik_leser'" 2>/dev/null | grep -q 1 && break

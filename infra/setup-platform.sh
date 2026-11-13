@@ -115,7 +115,7 @@ grep -q '^RESTIC_REPOSITORY=.' "$DATA/backup.env" && echo "   backup target set"
 
 echo "== 7. Monitoring (Prometheus, Loki, Alloy, Grafana on 127.0.0.1:3100)"
 [ -f "$DATA/grafana_admin" ] || { head -c 24 /dev/urandom | base64 | tr -d '/+=' > "$DATA/grafana_admin"; }
-chmod 644 "$DATA/grafana_admin"   # read by the Grafana container user
+chown 472:0 "$DATA/grafana_admin"; chmod 600 "$DATA/grafana_admin"   # only the Grafana container user (uid 472)
 sh "$CODE/infra/analytics-setup.sh"
 sh "$CODE/infra/grafana-setup.sh" files
 ( cd "$CODE/infra/monitoring" && docker compose --env-file ../stack/.env up -d )

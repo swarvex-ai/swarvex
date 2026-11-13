@@ -24,8 +24,14 @@ dateien() {
   host=$(sed -n 's/^ANALYTICS_HOST=//p' "$CODE/infra/stack/.env" 2>/dev/null | tr -d '"' | tail -1)
   id=$(sed -n 's/^GRAFANA_GITHUB_CLIENT_ID=//p' "$DATA/grafana-oauth.env" 2>/dev/null | tr -d '"' | tail -1)
   geheim=$(sed -n 's/^GRAFANA_GITHUB_CLIENT_SECRET=//p' "$DATA/grafana-oauth.env" 2>/dev/null | tr -d '"' | tail -1)
-  printf '%s' "$geheim" > "$DATA/grafana_github_secret"; chmod 644 "$DATA/grafana_github_secret"   # read by the Grafana container user
+  # Secret files only for the Grafana container user (uid 472 in the grafana/grafana image) and root, not for every
+  # account on the server (security audit 12 Nov 2026; until then 644). grafana_admin is created by setup-platform.sh.
+  ( umask 077; printf '%s' "$geheim" > "$DATA/grafana_github_secret" )
+  for f in grafana_github_secret grafana_admin; do
+    if [ -f "$DATA/$f" ]; then chown 472:0 "$DATA/$f"; chmod 600 "$DATA/$f"; fi
+  done
   if [ -n "$host" ] && [ -n "$id" ] && [ -n "$geheim" ]; then
+    ( umask 077; : > "$DATA/grafana.env" ); chmod 600 "$DATA/grafana.env"
     cat > "$DATA/grafana.env" <<EOF
 GF_SERVER_ROOT_URL=https://$host/
 GF_SECURITY_COOKIE_SECURE=true
@@ -47,7 +53,8 @@ $host {
 	tls $(sed -n 's/^TLS_MODE=//p' "$CODE/infra/stack/.env" | tail -1)
 	header X-Robots-Tag "noindex, nofollow"
 	header Strict-Transport-Security "max-age=31536000"
-	@passwort header Authorization "Basic *"
+	# the auth scheme is case-insensitive (security audit 12 Nov 2026: "basic …" passed the old exact match)
+	@passwort header_regexp Authorization (?i)^\s*basic(\s|$)
 	respond @passwort 403
 	reverse_proxy grafana:3000
 }
