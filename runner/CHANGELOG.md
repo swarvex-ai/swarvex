@@ -23,6 +23,8 @@ Security fixes from the audit of 12 Nov 2026. Updating is recommended.
 - Output of containers is kept in memory only up to 8 MB (beginning and end); `agent.log` holds the same.
 - Building the patch ignores your personal Git settings (`~/.gitconfig`), so a `.gitattributes` written in the
   sandbox cannot start a filter defined there.
+- Your provider key (or subscription token) reaches the key proxy through the environment of the podman process,
+  no longer through its command line, which other accounts on the same computer could read while podman started.
 
 ## 0.16.0 (12 Nov 2026)
 

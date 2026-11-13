@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -280,5 +281,28 @@ func TestProxyBudgetReserviert(t *testing.T) {
 	}
 	if abgebrochen == 0 || abgebrochen >= 20 || verbraucht.Load() == 0 {
 		t.Fatalf("abandoned streams: %d before the budget stopped them, %d charged", abgebrochen, verbraucht.Load())
+	}
+}
+
+// Der Schlüssel des Anbieters steht nicht in der Kommandozeile von podman (in /proc für alle Konten lesbar), sondern nur
+// in der Umgebung des podman-Prozesses (Sicherheitsaudit, Nachtrag 13.11.2026).
+func TestProxyPodmanSchluesselNichtInArgumenten(t *testing.T) {
+	cmd := proxyPodman(context.Background(), modellZugang{Key: "sk-DUMMY-NOT-A-KEY"}, "run", "-d", "-e", "SWARVEX_UPSTREAM_KEY", "swarvex-proxy")
+	for _, a := range cmd.Args {
+		if strings.Contains(a, "sk-DUMMY-NOT-A-KEY") {
+			t.Fatalf("key in the command line: %q", cmd.Args)
+		}
+	}
+	gefunden := false
+	for _, v := range cmd.Env {
+		if v == "SWARVEX_UPSTREAM_KEY=sk-DUMMY-NOT-A-KEY" {
+			gefunden = true
+		}
+	}
+	if !gefunden {
+		t.Fatal("key missing from the podman process environment")
+	}
+	if ohne := proxyPodman(context.Background(), modellZugang{}, "run"); len(ohne.Env) != len(os.Environ()) {
+		t.Fatal("environment changed without a key")
 	}
 }

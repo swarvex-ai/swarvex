@@ -690,7 +690,7 @@ func leadProxyBetrieb(ctx context.Context, l *leadKonfig, name, netz string, zug
 		"-e", "SWARVEX_UPSTREAM=" + zugang.URL, "-e", "SWARVEX_API=" + agent.API, "-e", "SWARVEX_MODEL=" + l.Modell, "-e", "SWARVEX_TASK_TOKEN=" + tok,
 		"-e", fmt.Sprintf("SWARVEX_BUDGET_TOKENS=%d", budget), "-e", "SWARVEX_PLATFORM=" + l.Plattform, "-e", "SWARVEX_GIT_HOSTS=" + hostsGit}
 	if zugang.Key != "" {
-		args = append(args, "-e", "SWARVEX_UPSTREAM_KEY="+zugang.Key)
+		args = append(args, "-e", "SWARVEX_UPSTREAM_KEY") // Wert aus der Umgebung (proxyPodman)
 	}
 	if zugang.chatgpt() {
 		args = append(args, "-e", "SWARVEX_ACCOUNT_ID="+zugang.Konto)
@@ -698,7 +698,7 @@ func leadProxyBetrieb(ctx context.Context, l *leadKonfig, name, netz string, zug
 	if l.CAPfad != "" {
 		args = append(args, "-v", l.CAPfad+":/run/lead-ca.pem:ro,z", "-e", "SWARVEX_PLATFORM_CA=/run/lead-ca.pem")
 	}
-	if aus, err := exec.CommandContext(ctx, "podman", append(args, "swarvex-proxy", "lead")...).CombinedOutput(); err != nil {
+	if aus, err := proxyPodman(ctx, zugang, append(args, "swarvex-proxy", "lead")...).CombinedOutput(); err != nil {
 		return "", nil, fmt.Errorf("starting the lead proxy: %s", strings.TrimSpace(string(aus)))
 	}
 	hosts, err := proxyHost(ctx, name)

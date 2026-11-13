@@ -801,6 +801,18 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	return verbrauch, string(aus), nil
 }
 
+// proxyPodman: podman für einen Proxy mit dem Schlüssel des Anbieters (oder dem Abo-Token). Der Schlüssel steht nicht in
+// der Kommandozeile, die jedes Konto des Rechners in /proc lesen kann, solange podman läuft, sondern in der Umgebung
+// dieses einen Prozesses; „-e SWARVEX_UPSTREAM_KEY“ ohne Wert übernimmt ihn von dort (Sicherheitsaudit, Nachtrag 13.11.2026).
+func proxyPodman(ctx context.Context, zugang modellZugang, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, "podman", args...)
+	cmd.Env = os.Environ()
+	if zugang.Key != "" {
+		cmd.Env = append(cmd.Env, "SWARVEX_UPSTREAM_KEY="+zugang.Key)
+	}
+	return cmd
+}
+
 // schluesselProxyStarten: der Schlüssel-Proxy einer Aufgabe im Sandbox-Netz (und nach außen). Liefert das Wegwerf-Token
 // der Sandbox und den /etc/hosts-Eintrag, unter dem sie ihn erreicht. Aufräumen: podman rm -f name.
 func schluesselProxyStarten(ctx context.Context, name, netz string, agent agentArt, zugang modellZugang, modell string, budget int) (string, []string, error) {
@@ -814,7 +826,7 @@ func schluesselProxyStarten(ctx context.Context, name, netz string, agent agentA
 		"-e", "SWARVEX_UPSTREAM=" + zugang.URL, "-e", "SWARVEX_API=" + agent.API, "-e", "SWARVEX_MODEL=" + modell, "-e", "SWARVEX_TASK_TOKEN=" + tok,
 		"-e", fmt.Sprintf("SWARVEX_BUDGET_TOKENS=%d", budget)}
 	if zugang.Key != "" {
-		proxyArgs = append(proxyArgs, "-e", "SWARVEX_UPSTREAM_KEY="+zugang.Key)
+		proxyArgs = append(proxyArgs, "-e", "SWARVEX_UPSTREAM_KEY") // Wert aus der Umgebung (proxyPodman)
 	}
 	if zugang.chatgpt() {
 		proxyArgs = append(proxyArgs, "-e", "SWARVEX_ACCOUNT_ID="+zugang.Konto)
@@ -823,7 +835,7 @@ func schluesselProxyStarten(ctx context.Context, name, netz string, agent agentA
 		k, _ := kontingentAktuell(aboAktiv)
 		proxyArgs = append(proxyArgs, "-e", "SWARVEX_LEFTOVER="+restModus.fuer(k, time.Now()).String())
 	}
-	if aus, err := exec.CommandContext(ctx, "podman", append(proxyArgs, "swarvex-proxy")...).CombinedOutput(); err != nil {
+	if aus, err := proxyPodman(ctx, zugang, append(proxyArgs, "swarvex-proxy")...).CombinedOutput(); err != nil {
 		return "", nil, fmt.Errorf("starting the proxy: %s", strings.TrimSpace(string(aus)))
 	}
 	hosts, err := proxyHost(ctx, name)
