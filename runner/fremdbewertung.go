@@ -452,7 +452,7 @@ func fremdSandbox(ctx context.Context, id int64, e fremdEinstellung, ordner, arb
 		return cmd.Process.Kill()
 	}
 	cmd.WaitDelay = 10 * time.Second
-	ausgabe, err := cmd.CombinedOutput()
+	ausgabe, err := begrenztAusfuehren(cmd)
 	exec.Command("podman", "rm", "-f", sandboxName).Run()
 	os.WriteFile(filepath.Join(ordner, "agent.log"), ausgabe, 0o644)
 	verbrauch := proxyAuswerten(proxyName, ordner)

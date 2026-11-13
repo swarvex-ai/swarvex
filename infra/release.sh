@@ -51,13 +51,14 @@ for ARCH in amd64 arm64; do
   cp "$CODE/runner/sandbox/Containerfile" "$PACKAGE/sandbox/"
   tar -czf "$TARGET/swarvex-$VERSION-linux-$ARCH.tar.gz" -C "$PACKAGE" .
 done
-( cd "$TARGET" && sha256sum swarvex-*.tar.gz > SHA256SUMS )
-echo "$QUELLE" > "$TARGET/SOURCE"
-ssh-keygen -q -Y sign -f "$DATA/release_key" -n swarvex-release "$TARGET/SHA256SUMS"   # creates SHA256SUMS.sig
-
 PUB=$(cut -d' ' -f1-2 "$DATA/release_key.pub")
 sed -e "s#@PLATFORM@#$PLATFORM#g" -e "s#@VERSION@#$VERSION#g" -e "s#@PUBKEY@#$PUB#g" -e "s#@ROTATION_SIG@##g" \
-  "$CODE/runner/install.sh.in" > "$DOWNLOADS/install.sh"
+  "$CODE/runner/install.sh.in" > "$TARGET/install.sh"
+# install.sh is signed with the packages: `swarvex update` runs it only when the signed SHA256SUMS lists it
+( cd "$TARGET" && sha256sum swarvex-*.tar.gz install.sh > SHA256SUMS )
+echo "$QUELLE" > "$TARGET/SOURCE"
+ssh-keygen -q -Y sign -f "$DATA/release_key" -n swarvex-release "$TARGET/SHA256SUMS"   # creates SHA256SUMS.sig
+cp "$TARGET/install.sh" "$DOWNLOADS/install.sh"
 # Windows: sets up the WSL distribution and runs install.sh inside it (signature check happens there)
 sed -e "s#@PLATFORM@#$PLATFORM#g" "$CODE/runner/install.ps1.in" > "$DOWNLOADS/install.ps1"
 chmod -R a+rX "$DOWNLOADS"

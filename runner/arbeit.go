@@ -783,7 +783,7 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 		return cmd.Process.Kill()
 	}
 	cmd.WaitDelay = 10 * time.Second
-	aus, err := cmd.CombinedOutput()
+	aus, err := begrenztAusfuehren(cmd)
 	exec.Command("podman", "rm", "-f", sandboxName).Run()
 	os.WriteFile(filepath.Join(ordner, "agent.log"), aus, 0o644)
 

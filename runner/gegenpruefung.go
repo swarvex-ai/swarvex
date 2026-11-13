@@ -121,15 +121,10 @@ func gegenpruefen(ctx context.Context, m *mcpClient, z *zugangsdaten, projekt st
 	if err := gitBasis(gitDir, baum, lfsPfade); err != nil {
 		return "unable", "base commit: " + err.Error()
 	}
-	patchDatei := filepath.Join(ordner, "submission.patch")
-	os.WriteFile(patchDatei, []byte(job.Patch), 0o644)
-	if aus, err := git(gitDir, baum, "apply", "--check", patchDatei); err != nil {
-		return "fail", "patch does not apply to the base commit:\n" + aus + err.Error()
-	}
-	if _, err := git(gitDir, baum, "apply", patchDatei); err != nil {
-		return "fail", err.Error()
-	}
-	// Die Umgebung kommt aus dem Basis-Stand samt Beitrag; geschützte Dateien kann ein Beitrag nicht ändern.
+	// Umgebung und Image kommen aus dem Basis-Stand, bevor der fremde Patch angewendet ist, wie in der Prüfstraße
+	// (pipeline/main.go, pruefImage): Ein Beitrag ändert so weder, was beim Bau des Images läuft (podman build hat
+	// Netz ohne Egress-Proxy), noch welche Engine samt Lizenz der Gegenprüfer einbindet, noch ein zwischengespeichertes
+	// Basis-Image, das danach die eigenen Aufgaben nutzen (Sicherheitsaudit 12.11.2026).
 	u, err := umgebungErmitteln(baum)
 	if err != nil {
 		return "unable", "environment: " + err.Error()
@@ -138,7 +133,19 @@ func gegenpruefen(ctx context.Context, m *mcpClient, z *zugangsdaten, projekt st
 	if err != nil {
 		return "unable", err.Error()
 	}
-	cache := cacheOrdner(projekt)
+	patchDatei := filepath.Join(ordner, "submission.patch")
+	os.WriteFile(patchDatei, []byte(job.Patch), 0o644)
+	if aus, err := git(gitDir, baum, "apply", "--check", patchDatei); err != nil {
+		return "fail", "patch does not apply to the base commit:\n" + aus + err.Error()
+	}
+	if _, err := git(gitDir, baum, "apply", patchDatei); err != nil {
+		return "fail", err.Error()
+	}
+	// Fremder Code bekommt einen eigenen Wegwerf-Cache, nie den Projekt-Cache der eigenen Arbeit: Was er dort ablegt,
+	// liefe sonst in den eigenen Aufgaben, Testläufen und späteren Gegenprüfungen mit (Sicherheitsaudit 12.11.2026).
+	// Fremdbewertungen und Medien-Aufträge machen es schon so.
+	cache := filepath.Join(ordner, "cache")
+	os.MkdirAll(cache, 0o777)
 	if err := einrichten(ctx, u, image, baum, cache, filepath.Join(ordner, "setup.log")); err != nil {
 		return "unable", err.Error()
 	}

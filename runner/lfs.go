@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -56,11 +57,15 @@ func zeigerLesen(pfad string) (lfsZeiger, bool) {
 			z.groesse, _ = strconv.ParseInt(v, 10, 64)
 		}
 	}
-	if len(z.oid) != 64 {
+	// Die oid wird ein Dateiname im Cache: nur 64 Hex-Zeichen, sonst würde ein Zeiger aus dem Repo mit "../" eine Datei
+	// des Rechners in den Arbeitsbaum kopieren (Sicherheitsaudit 12.11.2026). Die Plattform prüft genauso (snapshot.ts).
+	if !lfsOid.MatchString(z.oid) || z.groesse < 0 {
 		return lfsZeiger{}, false
 	}
 	return z, true
 }
+
+var lfsOid = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // lfsAufloesen ersetzt alle LFS-Zeiger im Baum durch die echten Dateien und gibt deren Pfade zurück.
 func lfsAufloesen(z *zugangsdaten, token string, id int64, baum string) ([]string, error) {
@@ -126,7 +131,7 @@ func lfsAufloesen(z *zugangsdaten, token string, id int64, baum string) ([]strin
 // lfsObjekt stellt ein Objekt im Cache bereit (Download nur, wenn es fehlt) und prüft es.
 func lfsObjekt(c *http.Client, z *zugangsdaten, token string, id int64, cache string, zg lfsZeiger) (int64, error) {
 	ziel := filepath.Join(cache, zg.oid)
-	if info, err := os.Stat(ziel); err == nil && info.Size() == zg.groesse {
+	if info, err := os.Lstat(ziel); err == nil && info.Mode().IsRegular() && info.Size() == zg.groesse {
 		return 0, nil
 	}
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/tasks/%d/lfs/%s", z.Plattform, id, zg.oid), nil)

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -260,6 +261,26 @@ func TestMedienEinsammeln(t *testing.T) {
 	os.Chtimes(filepath.Join(aus, "a.glb"), jetzt.Add(-time.Hour), jetzt.Add(-time.Hour))
 	if d, _ := medienEinsammeln(aus, arbeit, b); filepath.Base(d) != "b.glb" {
 		t.Errorf("otherwise the newest that fits (the 2 MB one is too large): %q", d)
+	}
+	// RESULT als Link oder FIFO wird übergangen, statt ihm zu folgen oder zu blockieren (Sicherheitsaudit 12.11.2026)
+	fremd := filepath.Join(t.TempDir(), "fremd")
+	os.WriteFile(fremd, []byte("a.glb\n"), 0o644)
+	os.Symlink(fremd, filepath.Join(arbeit, "RESULT"))
+	if d, _ := medienEinsammeln(aus, arbeit, b); filepath.Base(d) != "b.glb" {
+		t.Errorf("RESULT as a link was followed: %q", d)
+	}
+	os.Remove(filepath.Join(arbeit, "RESULT"))
+	if err := syscall.Mkfifo(filepath.Join(arbeit, "RESULT"), 0o644); err == nil {
+		fertig := make(chan string, 1)
+		go func() { d, _ := medienEinsammeln(aus, arbeit, b); fertig <- d }()
+		select {
+		case d := <-fertig:
+			if filepath.Base(d) != "b.glb" {
+				t.Errorf("RESULT as a FIFO: %q", d)
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatal("RESULT as a FIFO blocks the runner")
+		}
 	}
 }
 

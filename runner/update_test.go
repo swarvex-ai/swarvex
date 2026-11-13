@@ -1,9 +1,13 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -258,5 +262,74 @@ func TestSchluesselwechsel(t *testing.T) {
 	_, _, w := installerLesen("VERSION=\"0.9.3\"\nSIGNING_KEY=\"" + neu + "\"\nKEY_ROTATION_SIGNATURE=\"abc\"\n")
 	if w != "abc" {
 		t.Fatalf("rotation signature not read: %q", w)
+	}
+}
+
+// Ein Update-Skript läuft nur, wenn die signierte SHA256SUMS seiner Version es aufführt (Sicherheitsaudit 12.11.2026):
+// Ein Skript mit dem richtigen Schlüssel im Text, aber ohne signierte Prüfsumme, wird abgelehnt.
+func TestReleaseGeprueft(t *testing.T) {
+	if _, err := exec.LookPath("ssh-keygen"); err != nil {
+		t.Skip("ssh-keygen not installed")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	schluessel := filepath.Join(home, "release")
+	if aus, err := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "test", "-f", schluessel).CombinedOutput(); err != nil {
+		t.Fatalf("%v %s", err, aus)
+	}
+	pubRoh, _ := os.ReadFile(schluessel + ".pub")
+	f := strings.Fields(string(pubRoh))
+	pub := f[0] + " " + f[1]
+	skript := "#!/bin/sh\nVERSION=\"9.9.9\"\nSIGNING_KEY=\"" + pub + "\"\nKEY_ROTATION_SIGNATURE=\"\"\necho ok\n"
+	h := sha256.Sum256([]byte(skript))
+	signiert := func(summen string) []byte {
+		datei := filepath.Join(home, "SHA256SUMS")
+		os.WriteFile(datei, []byte(summen), 0o644)
+		os.Remove(datei + ".sig")
+		if aus, err := exec.Command("ssh-keygen", "-q", "-Y", "sign", "-f", schluessel, "-n", "swarvex-release", datei).CombinedOutput(); err != nil {
+			t.Fatalf("%v %s", err, aus)
+		}
+		sig, _ := os.ReadFile(datei + ".sig")
+		return sig
+	}
+	mitSkript := "aaaa  swarvex-9.9.9-linux-amd64.tar.gz\n" + hex.EncodeToString(h[:]) + "  install.sh\n"
+	ohneSkript := "aaaa  swarvex-9.9.9-linux-amd64.tar.gz\n"
+	var summen string
+	var sig []byte
+	plattform := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/downloads/9.9.9/SHA256SUMS":
+			io.WriteString(w, summen)
+		case "/downloads/9.9.9/SHA256SUMS.sig":
+			w.Write(sig)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer plattform.Close()
+	// ohne gemerkten Schlüssel: kein Update
+	if err := releaseGeprueft(plattform.URL, "", skript, "9.9.9"); err == nil || !strings.Contains(err.Error(), "no release key") {
+		t.Fatalf("without release.pub: %v", err)
+	}
+	os.MkdirAll(filepath.Dir(pinDatei()), 0o755)
+	os.WriteFile(pinDatei(), []byte(pub+"\n"), 0o644)
+	summen, sig = mitSkript, signiert(mitSkript)
+	if err := releaseGeprueft(plattform.URL, "", skript, "9.9.9"); err != nil {
+		t.Fatalf("signed release with this install.sh: %v", err)
+	}
+	if err := releaseGeprueft(plattform.URL, "", skript+"rm -rf ~\n", "9.9.9"); err == nil {
+		t.Fatal("a changed install.sh with the right key text must be refused")
+	}
+	summen, sig = ohneSkript, signiert(ohneSkript)
+	if err := releaseGeprueft(plattform.URL, "", skript, "9.9.9"); err == nil {
+		t.Fatal("checksums that do not list install.sh must be refused")
+	}
+	summen, sig = mitSkript, signiert(ohneSkript) // Signatur passt nicht zum Inhalt
+	if err := releaseGeprueft(plattform.URL, "", skript, "9.9.9"); err == nil {
+		t.Fatal("a signature over other checksums must be refused")
+	}
+	if err := releaseGeprueft(plattform.URL, "", skript, "9.9.9/../x"); err == nil {
+		t.Fatal("an odd version string must be refused")
 	}
 }

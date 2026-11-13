@@ -46,13 +46,6 @@ for ARCH in amd64 arm64; do
   cp "$REPO/runner/sandbox/Containerfile" "$P/sandbox/"
   tar -czf "$BUILD/$VERSION/swarvex-$VERSION-linux-$ARCH.tar.gz" -C "$P" .
 done
-( cd "$BUILD/$VERSION" && sha256sum swarvex-*.tar.gz > SHA256SUMS )
-echo "$QUELLE" > "$BUILD/$VERSION/SOURCE"
-echo "== Signing the checksums: touch your key when it blinks"
-ssh-keygen -q -Y sign -f "$KEY" -n swarvex-release "$BUILD/$VERSION/SHA256SUMS"
-printf 'swarvex-release %s\n' "$NEU" > "$BUILD/allowed"
-ssh-keygen -Y verify -f "$BUILD/allowed" -I swarvex-release -n swarvex-release -s "$BUILD/$VERSION/SHA256SUMS.sig" < "$BUILD/$VERSION/SHA256SUMS" >/dev/null
-
 # Key change: the key the platform signs with today, and if it differs, the new key signed by it (once)
 ALT=$(ssh "$TARGET" "sed -n 's/^SIGNING_KEY=\"\\(.*\\)\"$/\\1/p' $DOWNLOADS/install.sh 2>/dev/null || true")
 ROT=""
@@ -76,9 +69,19 @@ elif [ "$ALT" = "$NEU" ] && ssh "$TARGET" "test -f $DOWNLOADS/key-rotation.sig";
 fi
 
 sed -e "s#@PLATFORM@#$PLATFORM#g" -e "s#@VERSION@#$VERSION#g" -e "s#@PUBKEY@#$NEU#g" -e "s#@ROTATION_SIG@#$ROT#g" \
-  "$REPO/runner/install.sh.in" > "$BUILD/install.sh"
+  "$REPO/runner/install.sh.in" > "$BUILD/$VERSION/install.sh"
 sed -e "s#@PLATFORM@#$PLATFORM#g" "$REPO/runner/install.ps1.in" > "$BUILD/install.ps1"
-sh -n "$BUILD/install.sh"
+sh -n "$BUILD/$VERSION/install.sh"
+# The one-liner copy at /install.sh is the same file: `swarvex update` runs it only when the signed SHA256SUMS of
+# its version lists it (runner/update.go, releaseGeprueft; security audit of 12 Nov 2026)
+cp "$BUILD/$VERSION/install.sh" "$BUILD/install.sh"
+( cd "$BUILD/$VERSION" && sha256sum swarvex-*.tar.gz install.sh > SHA256SUMS )
+echo "$QUELLE" > "$BUILD/$VERSION/SOURCE"
+echo "== Signing the checksums: touch your key when it blinks"
+ssh-keygen -q -Y sign -f "$KEY" -n swarvex-release "$BUILD/$VERSION/SHA256SUMS"
+printf 'swarvex-release %s\n' "$NEU" > "$BUILD/allowed"
+ssh-keygen -Y verify -f "$BUILD/allowed" -I swarvex-release -n swarvex-release -s "$BUILD/$VERSION/SHA256SUMS.sig" < "$BUILD/$VERSION/SHA256SUMS" >/dev/null
+
 # `swarvex update` shows what's new from this file: the version released now carries today's date, not "(unreleased)"
 sed "s/^## $VERSION (unreleased)\$/## $VERSION ($(LC_ALL=C date '+%-d %b %Y'))/" "$REPO/runner/CHANGELOG.md" > "$BUILD/CHANGELOG.md"
 

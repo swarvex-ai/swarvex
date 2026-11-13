@@ -10,8 +10,11 @@ package main
 // Neue Einrichtungsfragen einer Version stellt danach das neue Programm (setup --new), nur diese.
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -171,7 +174,74 @@ func neuesteVersion(plattform, ca string) (skript, neu string, err error) {
 	return skript, neu, nil
 }
 
-// installieren führt install.sh ohne Einrichtungsfragen aus (dieselbe Signatur- und Prüfsummenprüfung wie der Einzeiler).
+var versionForm = regexp.MustCompile(`^[0-9]+(\.[0-9]+){1,3}$`)
+
+// releaseGeprueft: install.sh läuft nur, wenn die SHA256SUMS seiner Version mit dem Schlüssel signiert ist, dem dieser
+// Rechner vertraut (release.pub oder ein neuer Schlüssel, den der gemerkte signiert hat), und genau dieses install.sh
+// aufführt. Vorher prüfte nur das Skript selbst die Signatur, und ein Skript von einer übernommenen Plattform hätte
+// es einfach weglassen können: der Hardware-Schlüssel schützte Updates nicht (Sicherheitsaudit 12.11.2026).
+// Ohne gemerkten Schlüssel gibt es kein Update mehr, sondern den Hinweis auf den Einzeiler.
+func releaseGeprueft(plattform, ca, skript, neu string) error {
+	gemerkt, _ := os.ReadFile(pinDatei())
+	pin := strings.TrimSpace(string(gemerkt))
+	if pin == "" {
+		return errors.New("no release key is pinned on this machine (release.pub); install again with the one-liner from the website")
+	}
+	_, schluessel, wechsel := installerLesen(skript)
+	vertraut := pin
+	if strings.TrimSpace(schluessel) != pin {
+		if !schluesselwechselGeprueft(pin, schluessel, wechsel) {
+			return errors.New("the platform's release signing key is not the one you installed with")
+		}
+		vertraut = strings.TrimSpace(schluessel)
+	}
+	if !versionForm.MatchString(neu) {
+		return fmt.Errorf("unexpected version %q", neu)
+	}
+	c := httpClient(ca)
+	c.Timeout = 30 * time.Second
+	holen := func(name string) ([]byte, error) {
+		r, err := c.Get(strings.TrimRight(plattform, "/") + "/downloads/" + neu + "/" + name)
+		if err != nil {
+			return nil, err
+		}
+		defer r.Body.Close()
+		if r.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("%s: HTTP %d", name, r.StatusCode)
+		}
+		return io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	}
+	summen, err := holen("SHA256SUMS")
+	if err != nil {
+		return err
+	}
+	sig, err := holen("SHA256SUMS.sig")
+	if err != nil {
+		return err
+	}
+	dir, err := os.MkdirTemp("", "swarvex-release-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+	erlaubt, sigDatei := filepath.Join(dir, "allowed"), filepath.Join(dir, "SHA256SUMS.sig")
+	if os.WriteFile(erlaubt, []byte("swarvex-release "+vertraut+"\n"), 0o600) != nil || os.WriteFile(sigDatei, sig, 0o600) != nil {
+		return errors.New("could not prepare the signature check")
+	}
+	pruefung := exec.Command("ssh-keygen", "-Y", "verify", "-f", erlaubt, "-I", "swarvex-release", "-n", "swarvex-release", "-s", sigDatei)
+	pruefung.Stdin = bytes.NewReader(summen)
+	if pruefung.Run() != nil {
+		return errors.New("the release signature does not verify with your release key")
+	}
+	h := sha256.Sum256([]byte(skript))
+	if !bytes.Contains(append([]byte("\n"), summen...), []byte("\n"+hex.EncodeToString(h[:])+"  install.sh\n")) {
+		return errors.New("install.sh is not part of the signed release")
+	}
+	return nil
+}
+
+// installieren führt install.sh ohne Einrichtungsfragen aus (dieselbe Signatur- und Prüfsummenprüfung wie der Einzeiler);
+// vorher hat releaseGeprueft das Skript selbst gegen die signierte SHA256SUMS geprüft.
 func installieren(skript, ca string, ausgabe io.Writer) error {
 	datei, err := os.CreateTemp("", "swarvex-install-*.sh")
 	if err != nil {
@@ -226,6 +296,9 @@ func updateBefehl(args []string) {
 		return
 	}
 	os.Remove(ueberspringenDatei()) // von Hand gewollt: auch eine zurückgerollte Version
+	if err := releaseGeprueft(plattform, ca, skript, neu); err != nil {
+		fehlerAus(err.Error() + "; nothing was installed.")
+	}
 	if err := sicherInstallieren(skript, ca, neu, os.Stdout); err != nil {
 		fehlerAus("The update did not finish (" + err.Error() + "); " + versionText(version) + " stays installed.")
 	}
@@ -255,6 +328,10 @@ func autoUpdate() {
 			for _, z := range neuigkeiten(text, version, neu) {
 				fmt.Println(strings.TrimRight("  "+z, " "))
 			}
+		}
+		if err := releaseGeprueft(plattform, ca, skript, neu); err != nil {
+			fmt.Printf("Automatic update skipped: %v; continuing with %s\n", err, versionText(version))
+			return
 		}
 		if err := sicherInstallieren(skript, ca, neu, os.Stdout); err != nil {
 			fmt.Printf("Automatic update did not finish (%v); continuing with %s\n", err, versionText(version))

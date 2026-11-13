@@ -198,6 +198,33 @@ func weiterleiten(w http.ResponseWriter, r *http.Request, k proxyKonfig, verbrau
 		return
 	}
 	anfrage["model"] = k.modell // nur das freigegebene Modell
+	// Budget vor der Anfrage reservieren, nicht erst danach abrechnen (Sicherheitsaudit 12.11.2026): Sonst kamen
+	// parallele Anfragen alle an der Prüfung vorbei, und ein vor der Nutzungsmeldung abgebrochener Stream kostete 0.
+	// Die Ausgabe wird auf die Hälfte des Rests begrenzt; abgerechnet wird nach der Antwort, abgebrochene Antworten
+	// behalten mindestens die Reservierung.
+	var reserviert int64
+	if kostet && k.budget > 0 {
+		delete(anfrage, "n")
+		delete(anfrage, "background")
+		rest := k.budget - verbraucht.Load()
+		grenze := rest / 2
+		feld := ausgabeFeld(k.api, anfrage)
+		if v, ok := anfrage[feld].(float64); ok && int64(v) > 0 && int64(v) < grenze {
+			grenze = int64(v)
+		}
+		if _, gesetzt := anfrage[feld]; gesetzt || k.api != "chat" {
+			anfrage[feld] = grenze
+		}
+		roh, _ := json.Marshal(anfrage)
+		reserviert = int64(len(roh))/4 + min(grenze, 16384)
+		if grenze < 1 || !reservieren(verbraucht, k.budget, reserviert) {
+			ereignis("budget_exhausted", map[string]any{"used": verbraucht.Load(), "budget": k.budget})
+			w.Header().Set("content-type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			io.WriteString(w, `{"error":{"message":"the token budget for this task is used up","type":"budget_exhausted"}}`)
+			return
+		}
+	}
 	stream, _ := anfrage["stream"].(bool)
 	if stream && k.api == "chat" {
 		anfrage["stream_options"] = map[string]any{"include_usage": true}
@@ -224,6 +251,7 @@ func weiterleiten(w http.ResponseWriter, r *http.Request, k proxyKonfig, verbrau
 	start := time.Now()
 	antwort, err := http.DefaultClient.Do(req)
 	if err != nil {
+		verbraucht.Add(-reserviert)
 		nichtErreichbar(w, r)
 		return
 	}
@@ -236,6 +264,7 @@ func weiterleiten(w http.ResponseWriter, r *http.Request, k proxyKonfig, verbrau
 	}
 	w.WriteHeader(antwort.StatusCode)
 	var z zaehler
+	vollstaendig := false // die Antwort kam bis zum Ende an (nicht abgebrochen)
 	if strings.HasPrefix(antwort.Header.Get("content-type"), "text/event-stream") {
 		// SSE durchreichen; die Nutzung steht je nach Schnittstelle in einzelnen Ereignissen.
 		flusher, _ := w.(http.Flusher)
@@ -253,11 +282,13 @@ func weiterleiten(w http.ResponseWriter, r *http.Request, k proxyKonfig, verbrau
 				}
 			}
 			if err != nil {
+				vollstaendig = err == io.EOF && r.Context().Err() == nil
 				break
 			}
 		}
 	} else {
-		roh, _ := io.ReadAll(io.LimitReader(antwort.Body, 32<<20))
+		roh, err := io.ReadAll(io.LimitReader(antwort.Body, 32<<20))
+		vollstaendig = err == nil && r.Context().Err() == nil
 		w.Write(roh)
 		z.lesen(roh)
 	}
@@ -265,9 +296,46 @@ func weiterleiten(w http.ResponseWriter, r *http.Request, k proxyKonfig, verbrau
 	if !kostet {
 		tokens, fuersBudget = 0, 0
 	}
-	gesamt := verbraucht.Add(fuersBudget) // das Budget zählt gewichtet
+	if reserviert > 0 {
+		switch {
+		case !vollstaendig:
+			// abgebrochen: nie weniger als reserviert (ein Anthropic-Stream meldet die Eingabe schon in message_start)
+			fuersBudget = max(fuersBudget, reserviert)
+		case z.summe() == 0 && antwort.StatusCode < 300:
+			fuersBudget = reserviert // vollständig, aber ohne Nutzungsangabe: vorsichtig die Reservierung
+		}
+	}
+	gesamt := verbraucht.Add(fuersBudget - reserviert) // das Budget zählt gewichtet; die Reservierung ist schon gebucht
 	ereignis("request", map[string]any{"status": antwort.StatusCode, "tokens": tokens, "cached": min(z.cache, tokens), "budget_tokens": fuersBudget,
 		"total": gesamt, "ms": time.Since(start).Milliseconds(), "stream": stream, "path": r.URL.Path})
+}
+
+// ausgabeFeld: das Feld, das die Ausgabe einer Anfrage begrenzt. Chat Completions kennt zwei; ältere
+// OpenAI-kompatible Server nur max_tokens, deshalb gilt das Feld, das der Agent schickt.
+func ausgabeFeld(api string, anfrage map[string]any) string {
+	switch api {
+	case "anthropic":
+		return "max_tokens"
+	case "responses":
+		return "max_output_tokens"
+	}
+	if _, ok := anfrage["max_tokens"]; ok {
+		return "max_tokens"
+	}
+	return "max_completion_tokens"
+}
+
+// reservieren bucht n Tokens, wenn sie ins Budget passen (atomar, auch bei parallelen Anfragen).
+func reservieren(verbraucht *atomic.Int64, budget, n int64) bool {
+	for {
+		alt := verbraucht.Load()
+		if alt+n > budget {
+			return false
+		}
+		if verbraucht.CompareAndSwap(alt, alt+n) {
+			return true
+		}
+	}
 }
 
 // zaehler sammelt die Nutzung einer Antwort (ganz oder als Folge von SSE-Ereignissen). summe() zählt alle Tokens

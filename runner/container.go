@@ -180,7 +180,7 @@ func einrichten(ctx context.Context, u umgebung.Umgebung, image, baum, cache, pr
 	cmd := exec.CommandContext(ctx, "podman", args...)
 	cmd.Cancel = func() error { exec.Command("podman", "kill", name).Run(); return cmd.Process.Kill() }
 	cmd.WaitDelay = 10 * time.Second
-	aus, err := cmd.CombinedOutput()
+	aus, err := begrenztAusfuehren(cmd)
 	if ausgangName != "" {
 		// Gesperrte Ziele ins Protokoll, damit sichtbar ist, warum ein Download scheiterte
 		if log, _ := exec.Command("podman", "logs", ausgangName).CombinedOutput(); strings.Contains(string(log), "egress_blocked") {
@@ -228,7 +228,7 @@ func ohneNetz(ctx context.Context, u umgebung.Umgebung, image, baum, cache, befe
 	cmd := exec.CommandContext(ctx, "podman", args...)
 	cmd.Cancel = func() error { exec.Command("podman", "kill", name).Run(); return cmd.Process.Kill() }
 	cmd.WaitDelay = 10 * time.Second
-	aus, err := cmd.CombinedOutput()
+	aus, err := begrenztAusfuehren(cmd)
 	return string(aus), err
 }
 

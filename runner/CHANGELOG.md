@@ -5,6 +5,23 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.16.1 (unreleased)
+
+Security fixes from the audit of 12 Nov 2026. Updating is recommended.
+
+- `swarvex update` and the automatic update check the release themselves before running anything: the installer
+  runs only when the checksums of its version, signed with the release key this machine trusts, list exactly that
+  installer. Without a pinned key (`release.pub`) there is no update any more, only the hint to install again with
+  the one-liner. Releases from this version on sign the installer together with the packages.
+- Git LFS pointers are accepted only with a valid object id (64 hex characters); anything else stays as it is.
+- Cross-checks of other people's submissions get their own throwaway cache instead of the project cache your own
+  tasks use, and the environment and image come from the base commit before the submission is applied, as in the
+  test pipeline.
+- The key proxy reserves budget before each request (the output limit is capped at half of what is left) and
+  settles afterwards; parallel requests and streams that end early can no longer go past the token budget.
+- The media runner reads the agent's `RESULT` file like findings and verdicts: only as a small regular file.
+- Output of containers is kept in memory only up to 8 MB (beginning and end); `agent.log` holds the same.
+
 ## 0.16.0 (12 Nov 2026)
 
 - `swarvex status` is laid out for people. The first line says which runner version and where it is signed in,

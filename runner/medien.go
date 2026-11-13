@@ -322,7 +322,7 @@ func medienSandbox(ctx context.Context, b medienBrief, server []medienServer, e 
 		return cmd.Process.Kill()
 	}
 	cmd.WaitDelay = 10 * time.Second
-	ausgabe, err := cmd.CombinedOutput()
+	ausgabe, err := begrenztAusfuehren(cmd)
 	exec.Command("podman", "rm", "-f", sandboxName).Run()
 	os.WriteFile(filepath.Join(ordner, "agent.log"), ausgabe, 0o644)
 	verbrauch := proxyAuswerten(proxyName, ordner)
@@ -577,7 +577,10 @@ func medienEinsammeln(aus, arbeit string, b medienBrief) (string, string) {
 		}
 		return nil
 	})
-	if gewaehlt := strings.TrimSpace(lesen(filepath.Join(arbeit, "RESULT"))); gewaehlt != "" {
+	// RESULT schreibt der Agent in der Sandbox: wie Funde und Urteile nur als begrenzte reguläre Datei lesen, ohne Links
+	// (sonst blockiert ein FIFO den Runner, ein Link liest beliebig viel; Sicherheitsaudit 12.11.2026)
+	ergebnis, _ := sandboxDateiLesen(filepath.Join(arbeit, "RESULT"))
+	if gewaehlt := strings.TrimSpace(string(ergebnis)); gewaehlt != "" {
 		for _, p := range passend {
 			if filepath.Base(p) == filepath.Base(strings.SplitN(gewaehlt, "\n", 2)[0]) {
 				return p, ""

@@ -1,13 +1,18 @@
 package main
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestZaehler(t *testing.T) {
@@ -98,7 +103,7 @@ func TestProxyPfadeUndBudget(t *testing.T) {
 	up := upstreamAttrappe(t, &kopf, &pfad, &modell)
 	defer up.Close()
 	tok := strings.Repeat("t", 40)
-	k := proxyKonfig{upstream: up.URL, api: "responses", modell: "m", aufgabenTok: tok, budget: 10}
+	k := proxyKonfig{upstream: up.URL, api: "responses", modell: "m", aufgabenTok: tok, budget: 20}
 	var verbraucht atomic.Int64
 	p := httptest.NewServer(proxyHandler(k, &verbraucht))
 	defer p.Close()
@@ -194,5 +199,86 @@ func TestZaehlerFuersBudget(t *testing.T) {
 		if z.summe() != f.summe || z.fuersBudget() != f.budget {
 			t.Errorf("%s: summe %d (soll %d), budget %d (soll %d)", f.name, z.summe(), f.summe, z.fuersBudget(), f.budget)
 		}
+	}
+}
+
+// Das Budget wird vor der Anfrage reserviert (Sicherheitsaudit 12.11.2026): Parallele Anfragen überziehen es nicht
+// mehr, und ein vor der Nutzungsmeldung abgebrochener Stream kostet mindestens seine Reservierung statt 0.
+func TestProxyBudgetReserviert(t *testing.T) {
+	tok := strings.Repeat("t", 40)
+	var gestartet atomic.Int32
+	alle := make(chan struct{})
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var a map[string]any
+		json.NewDecoder(r.Body).Decode(&a)
+		grenze, _ := a["max_tokens"].(float64)
+		if a["stream"] == true {
+			w.Header().Set("content-type", "text/event-stream")
+			io.WriteString(w, "data: {\"choices\":[{\"delta\":{\"content\":\"x\"},\"finish_reason\":\"stop\"}]}\n\n")
+			w.(http.Flusher).Flush()
+			<-r.Context().Done() // die Nutzung käme erst danach: der Agent bricht vorher ab
+			return
+		}
+		if gestartet.Add(1) == 5 {
+			close(alle)
+		}
+		select {
+		case <-alle:
+		case <-time.After(2 * time.Second):
+		}
+		w.Header().Set("content-type", "application/json")
+		fmt.Fprintf(w, `{"usage":{"total_tokens":%d}}`, 10+int(grenze))
+	}))
+	defer up.Close()
+	k := proxyKonfig{upstream: up.URL, api: "chat", modell: "m", aufgabenTok: tok, budget: 1000}
+	var verbraucht atomic.Int64
+	p := httptest.NewServer(proxyHandler(k, &verbraucht))
+	defer p.Close()
+	senden := func(body string) int {
+		req, _ := http.NewRequest("POST", p.URL+"/v1/chat/completions", strings.NewReader(body))
+		req.Header.Set("authorization", "Bearer "+tok)
+		r, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return 0
+		}
+		io.ReadAll(r.Body)
+		r.Body.Close()
+		return r.StatusCode
+	}
+	// fünf parallele Anfragen, jede will 900 Tokens Ausgabe
+	var wg sync.WaitGroup
+	for range 5 {
+		wg.Add(1)
+		go func() { defer wg.Done(); senden(`{"max_tokens":900,"messages":[]}`) }()
+	}
+	wg.Wait()
+	if v := verbraucht.Load(); v > k.budget {
+		t.Fatalf("parallel requests used %d of a budget of %d", v, k.budget)
+	}
+	// abgebrochene Streams: kosten ihre Reservierung, bis das Budget erschöpft ist
+	verbraucht.Store(0)
+	abgebrochen := 0
+	for range 20 {
+		ctx, stopp := context.WithCancel(context.Background())
+		req, _ := http.NewRequestWithContext(ctx, "POST", p.URL+"/v1/chat/completions", strings.NewReader(`{"stream":true,"max_tokens":400,"messages":[]}`))
+		req.Header.Set("authorization", "Bearer "+tok)
+		r, err := http.DefaultClient.Do(req)
+		if err != nil {
+			stopp()
+			continue
+		}
+		if r.StatusCode == http.StatusTooManyRequests {
+			r.Body.Close()
+			stopp()
+			break
+		}
+		bufio.NewReader(r.Body).ReadString('\n') // erstes Ereignis lesen, dann abbrechen
+		stopp()
+		r.Body.Close()
+		abgebrochen++
+		time.Sleep(50 * time.Millisecond) // der Proxy rechnet ab
+	}
+	if abgebrochen == 0 || abgebrochen >= 20 || verbraucht.Load() == 0 {
+		t.Fatalf("abandoned streams: %d before the budget stopped them, %d charged", abgebrochen, verbraucht.Load())
 	}
 }
