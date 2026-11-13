@@ -25,6 +25,10 @@ Security fixes from the audit of 12 Nov 2026. Updating is recommended.
   sandbox cannot start a filter defined there.
 - Your provider key (or subscription token) reaches the key proxy through the environment of the podman process,
   no longer through its command line, which other accounts on the same computer could read while podman started.
+- Media tools: the bridge reads a tool call's name exactly as the media server does, so a generating call can no
+  longer pass as a free status query and slip past the limit of generating calls per brief. Tools that do more than
+  create or fetch media (phone calls, messages, deleting, sharing, payments, conversational agents) are not passed
+  on to your media server.
 
 ## 0.16.0 (12 Nov 2026)
 

@@ -38,6 +38,65 @@ var abfrageWoerter = map[string]bool{"status": true, "get": true, "list": true, 
 
 var wortGrenze = regexp.MustCompile(`[A-Z]?[a-z0-9]+|[A-Z]+`)
 
+// Werkzeuge, die mehr tun als Medien erzeugen oder abfragen: anrufen, Nachrichten senden, löschen, teilen, bezahlen,
+// Gesprächs-Agenten anlegen (der offizielle ElevenLabs-Server hat etwa make_outbound_call und create_agent). Ein
+// Medien-Auftrag braucht sie nie, und ein manipulierter Agent könnte sie mit dem Konto des Mitstreiters aufrufen
+// (Sicherheitsaudit, Nachtrag 13.11.2026). Die Brücke reicht sie nicht weiter.
+var gesperrteWoerter = map[string]bool{"call": true, "outbound": true, "phone": true, "sms": true, "email": true, "mail": true,
+	"delete": true, "send": true, "publish": true, "share": true, "transfer": true, "invite": true, "purchase": true,
+	"buy": true, "pay": true, "payment": true, "agent": true, "agents": true}
+
+func istGesperrt(name string) bool {
+	for _, w := range wortGrenze.FindAllString(name, -1) {
+		if gesperrteWoerter[strings.ToLower(w)] {
+			return true
+		}
+	}
+	return false
+}
+
+// werkzeugName: der Name aus den Parametern von tools/call, so wie der Server ihn liest. Go ordnet JSON-Felder ohne
+// Rücksicht auf Groß- und Kleinschreibung zu; mit {"name":"…_text_to_3d","NAME":"get_status"} hätte die Brücke eine
+// Abfrage gezählt und der Server erzeugt. Darum genau ein Schlüssel „name“ und kein anderer, der so heißen könnte.
+func werkzeugName(params json.RawMessage) (string, error) {
+	d := json.NewDecoder(bytes.NewReader(params))
+	if t, err := d.Token(); err != nil || t != json.Delim('{') {
+		return "", fmt.Errorf("params must be an object")
+	}
+	name, gefunden := "", false
+	for d.More() {
+		t, err := d.Token()
+		if err != nil {
+			return "", err
+		}
+		schluessel, _ := t.(string)
+		if strings.EqualFold(schluessel, "name") {
+			if schluessel != "name" || gefunden {
+				return "", fmt.Errorf("params must have exactly one key \"name\"")
+			}
+			if err := d.Decode(&name); err != nil {
+				return "", fmt.Errorf("name must be a string")
+			}
+			gefunden = true
+			continue
+		}
+		var weg json.RawMessage
+		if err := d.Decode(&weg); err != nil {
+			return "", err
+		}
+	}
+	if !gefunden || name == "" {
+		return "", fmt.Errorf("params.name is missing")
+	}
+	return name, nil
+}
+
+func brueckenFehler(id json.RawMessage, text string) []byte {
+	roh, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": id, "result": map[string]any{
+		"isError": true, "content": []any{map[string]any{"type": "text", "text": "swarvex: " + text}}}})
+	return roh
+}
+
 func istAbfrage(name string) bool {
 	for _, w := range wortGrenze.FindAllString(name, -1) {
 		if abfrageWoerter[strings.ToLower(w)] {
@@ -129,7 +188,20 @@ func (b *bruecke) behandeln(w http.ResponseWriter, r *http.Request) {
 	}
 	erwartet := n.Method != "" && len(n.ID) > 0
 	if n.Method == "tools/call" {
-		if abgelehnt := b.zaehlen(n); abgelehnt != nil {
+		name, err := werkzeugName(n.Params)
+		if err != nil {
+			ereignis("rejected", map[string]any{"reason": "tool name", "error": err.Error()})
+			w.Header().Set("content-type", "application/json")
+			w.Write(brueckenFehler(n.ID, err.Error()))
+			return
+		}
+		if istGesperrt(name) {
+			ereignis("rejected", map[string]any{"reason": "tool not for media briefs", "tool": name})
+			w.Header().Set("content-type", "application/json")
+			w.Write(brueckenFehler(n.ID, name+" does more than create or fetch media (calls, messages, deleting, sharing, payments, agents); a media brief may not use it"))
+			return
+		}
+		if abgelehnt := b.zaehlen(n.ID, name); abgelehnt != nil {
 			w.Header().Set("content-type", "application/json")
 			w.Write(abgelehnt)
 			return
@@ -155,11 +227,8 @@ func (b *bruecke) behandeln(w http.ResponseWriter, r *http.Request) {
 }
 
 // zaehlen: Werkzeug-Aufruf zählen; über der Grenze eine Fehlerantwort (als Ergebnis, damit der Agent sie liest).
-func (b *bruecke) zaehlen(n rpc) []byte {
-	var p struct {
-		Name string `json:"name"`
-	}
-	json.Unmarshal(n.Params, &p)
+func (b *bruecke) zaehlen(id json.RawMessage, name string) []byte {
+	p := struct{ Name string }{name}
 	erzeugt := !istAbfrage(p.Name)
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -172,9 +241,7 @@ func (b *bruecke) zaehlen(n rpc) []byte {
 	}
 	if grund != "" {
 		ereignis("tool_limit", map[string]any{"tool": p.Name, "generating": erzeugt})
-		roh, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": n.ID, "result": map[string]any{
-			"isError": true, "content": []any{map[string]any{"type": "text", "text": "swarvex: " + grund}}}})
-		return roh
+		return brueckenFehler(id, grund)
 	}
 	b.alle++
 	if erzeugt {

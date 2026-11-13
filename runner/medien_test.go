@@ -361,3 +361,55 @@ func TestMedienHochladen(t *testing.T) {
 		t.Errorf("the platform's reason comes back: %v", err)
 	}
 }
+
+// Der Name eines Werkzeug-Aufrufs gilt so, wie der Server ihn liest, und Werkzeuge jenseits der Medienerzeugung reicht
+// die Brücke nicht weiter (Sicherheitsaudit, Nachtrag 13.11.2026).
+func TestBrueckeNameUndSperre(t *testing.T) {
+	var weiter []string
+	b := &bruecke{token: strings.Repeat("t", 32), maxErzeug: 1, maxAlle: 50, aufrufe: func(_ context.Context, n []byte, erwartet bool) ([]byte, error) {
+		weiter = append(weiter, string(n))
+		var r rpc
+		json.Unmarshal(n, &r)
+		return []byte(`{"jsonrpc":"2.0","id":` + string(r.ID) + `,"result":{"ok":true}}`), nil
+	}}
+	srv := httptest.NewServer(http.HandlerFunc(b.behandeln))
+	defer srv.Close()
+	aufruf := func(params string) string {
+		req, _ := http.NewRequest(http.MethodPost, srv.URL+"/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":`+params+`}`))
+		req.Header.Set("Authorization", "Bearer "+strings.Repeat("t", 32))
+		r, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Body.Close()
+		roh, _ := io.ReadAll(r.Body)
+		return string(roh)
+	}
+	// zweiter Schlüssel, der für Go auch „name“ wäre: abgewiesen, nicht als Abfrage gezählt
+	for _, p := range []string{`{"name":"meshy_text_to_3d","NAME":"meshy_get_task_status"}`, `{"Name":"meshy_get_task_status","name":"meshy_text_to_3d"}`,
+		`{"name":"meshy_text_to_3d","name":"meshy_get_task_status"}`, `{"arguments":{}}`, `[]`} {
+		if aus := aufruf(p); !strings.Contains(aus, `"isError":true`) {
+			t.Errorf("%s: %s", p, aus)
+		}
+	}
+	for _, name := range []string{"make_outbound_call", "create_agent", "deleteVoice", "meshy_send_to_slicer", "list_phone_numbers"} {
+		if aus := aufruf(`{"name":"` + name + `","arguments":{}}`); !strings.Contains(aus, "does more than create or fetch media") {
+			t.Errorf("%s not blocked: %s", name, aus)
+		}
+	}
+	if len(weiter) != 0 {
+		t.Fatalf("forwarded to the server: %v", weiter)
+	}
+	// normale Aufrufe gehen weiter, der erzeugende wird gezählt
+	if aus := aufruf(`{"name":"text_to_speech","arguments":{"text":"hallo"}}`); !strings.Contains(aus, `"ok":true`) {
+		t.Errorf("text_to_speech: %s", aus)
+	}
+	if aus := aufruf(`{"name":"text_to_speech","arguments":{}}`); !strings.Contains(aus, "at most 1 generating calls") {
+		t.Errorf("second generating call: %s", aus)
+	}
+	for _, name := range []string{"meshy_get_task_status", "search_voice_library", "remove_background_status"} {
+		if istGesperrt(name) {
+			t.Errorf("%s blocked", name)
+		}
+	}
+}
