@@ -147,14 +147,22 @@ func vorschauBauen(e einreichung, baum, ziel string, mitDoku bool, vonMain func(
 		}
 		extra = []string{"-v", vorlagen + ":/home/agent/.local/share/godot/export_templates/" + u.Godot + ".stable:ro"}
 	}
-	// Der Hauptzweig hat einen eigenen Cache: Ungeprüfte Einreichungen (Prüfung, Einreichungs-Vorschau) schreiben in
-	// cache/<slug> und dürfen nichts hinterlegen, was später in die öffentliche Vorschau des Projekts gebaut wird.
-	cache := filepath.Join(arbeit, "cache", e.Slug)
+	// Der Hauptzweig hat einen eigenen Cache (cache-main): Ungeprüfte Einreichungen (Prüfung, Merge-Zug,
+	// Einreichungs-Vorschau) bekommen je Lauf einen Wegwerf-Cache (wegwerfCache) und hinterlegen nichts, was später in
+	// die öffentliche Vorschau des Projekts oder in die Läufe anderer Einreichungen gelangt.
+	var cache string
 	if mitDoku {
 		cache = filepath.Join(arbeit, "cache-main", e.Slug)
+		os.MkdirAll(cache, 0o777)
+		os.Chmod(cache, 0o777)
+	} else {
+		c, weg, err := wegwerfCache(e.Slug)
+		if err != nil {
+			return vorschauStand{status: "failed", bericht: "cache: " + err.Error()}
+		}
+		defer weg()
+		cache = c
 	}
-	os.MkdirAll(cache, 0o777)
-	os.Chmod(cache, 0o777)
 	var b strings.Builder
 	if strings.TrimSpace(u.Einrichten) != "" {
 		if aus, err := imContainer(image, baum, cache, u, u.Einrichten, true, 1200); err != nil {

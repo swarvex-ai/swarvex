@@ -346,9 +346,11 @@ func projektTesten(baum, slug string, geaendert []string, vonMain func() (string
 	if err != nil {
 		return zugFehler, b.String() + err.Error(), ""
 	}
-	cache := filepath.Join(arbeit, "cache", slug)
-	os.MkdirAll(cache, 0o777)
-	os.Chmod(cache, 0o777)
+	cache, cacheWeg, err := wegwerfCache(slug)
+	if err != nil {
+		return zugFehler, b.String() + "cache: " + err.Error(), ""
+	}
+	defer cacheWeg()
 	if strings.TrimSpace(u.Einrichten) != "" {
 		if aus, err := imContainer(image, baum, cache, u, u.Einrichten, true, 1200); err != nil {
 			return zugFehler, b.String() + "setup failed:\n" + letzteZeilen(aus, 60), ""

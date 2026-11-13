@@ -239,6 +239,38 @@ func baumGit(gitDir, baum string, args ...string) (string, error) {
 	return string(aus), err
 }
 
+// wegwerfCache: eigener Cache für einen Lauf mit Code, der noch nicht auf main ist (Prüfung, Gegenprobe, Merge-Zug,
+// Vorschau einer Einreichung), vorbelegt mit dem Cache der main-Vorschau (cache-main, nur von main beschrieben). Ein
+// gemeinsamer Cache je Projekt ließ eine Einreichung ablegen, was spätere Prüfungen, Vorschauen und der Merge-Zug ohne
+// Prüfung weiterbenutzten, etwa Go-Build-Cache, Modulquellen (-modcacherw) oder entpackte Cargo-Quellen
+// (Sicherheitsaudit, Nachtrag 13.11.2026; beim Runner ebenso seit 0.16.1). Die Caches sind klein (Formwerk 94 MB).
+func wegwerfCache(slug string) (string, func(), error) {
+	dir, err := os.MkdirTemp(arbeit, "cache-")
+	if err != nil {
+		return "", func() {}, err
+	}
+	weg := func() { os.RemoveAll(dir) }
+	ziel := filepath.Join(dir, "cache")
+	if err := os.MkdirAll(ziel, 0o777); err != nil {
+		weg()
+		return "", func() {}, err
+	}
+	if quelle := filepath.Join(arbeit, "cache-main", slug); istOrdner(quelle) {
+		if aus, err := befehl("", nil, "cp", "-a", "--", quelle+"/.", ziel); err != nil {
+			weg()
+			return "", func() {}, fmt.Errorf("copying the main cache: %s", letzteZeilen(aus, 5))
+		}
+	}
+	os.Chmod(dir, 0o755)
+	os.Chmod(ziel, 0o777)
+	return ziel, weg, nil
+}
+
+func istOrdner(p string) bool {
+	fi, err := os.Lstat(p)
+	return err == nil && fi.IsDir()
+}
+
 func gitEnv(key string, e einreichung) []string {
 	if e.GitToken != "" { // als HTTP-Header, nicht in der Adresse oder Konfiguration; git-lfs liest ihn mit
 		kopf := "AUTHORIZATION: basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+e.GitToken))
@@ -375,9 +407,11 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 	if err != nil {
 		return false, b.String() + err.Error(), false
 	}
-	cache := filepath.Join(arbeit, "cache", e.Slug)
-	os.MkdirAll(cache, 0o777)
-	os.Chmod(cache, 0o777)
+	cache, cacheWeg, err := wegwerfCache(e.Slug)
+	if err != nil {
+		return false, b.String() + "cache: " + err.Error(), false
+	}
+	defer cacheWeg()
 	if strings.TrimSpace(u.Einrichten) != "" {
 		aus, err := imContainer(image, baum, cache, u, u.Einrichten, true, 1200)
 		if err != nil {
@@ -424,6 +458,12 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 		if aus, err := baumGit(gitDir, baum, "apply", "-R", patchDatei); err != nil {
 			return aus, false, err
 		}
+		// eigener frischer Cache: Was der Beitrag in seinen Läufen abgelegt hat, verfälscht die Gegenprobe nicht
+		cache, cacheWeg, err := wegwerfCache(e.Slug)
+		if err != nil {
+			return "cache: " + err.Error(), false, err
+		}
+		defer cacheWeg()
 		if u.Bauen != "" {
 			if aus, err := imContainer(image, baum, cache, u, u.Bauen, false, 1800); err != nil {
 				return "build failed:\n" + aus, false, nil
