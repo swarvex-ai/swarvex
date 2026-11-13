@@ -38,7 +38,7 @@ func TestGeschuetztGeaendert(t *testing.T) {
 			patch := filepath.Join(t.TempDir(), "p.patch")
 			os.WriteFile(patch, []byte(f.patch), 0o644)
 			git(dir, "apply", patch)
-			p, err := geschuetztGeaendert(dir)
+			p, err := geschuetztGeaendert(filepath.Join(dir, ".git"), dir)
 			if err != nil || p != f.erwartet {
 				t.Fatalf("got %q (%v), want %q", p, err, f.erwartet)
 			}

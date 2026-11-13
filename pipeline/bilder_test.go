@@ -35,7 +35,7 @@ func TestSzenenBilder(t *testing.T) {
 	schreibe("tests/scene/out/anders.diff.png", png(9))
 	schreibe("tests/scene/out/neu.png", png(4))
 	schreibe("tests/scene/out/Unsinn!.png", png(5))
-	bilder, err := szenenBilder(baum, "", "tests/scene/out", "tests/scene/baseline", string(basis[:40]))
+	bilder, err := szenenBilder(filepath.Join(baum, ".git"), baum, "", "tests/scene/out", "tests/scene/baseline", string(basis[:40]))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestSzenenBilder(t *testing.T) {
 	if string(bilder[0].Alt) != string(png(2)) || string(bilder[0].Diff) != string(png(9)) || bilder[1].Alt != nil {
 		t.Errorf("old from the base commit, diff from the run: %+v", bilder)
 	}
-	if bilder, _ := szenenBilder(baum, "", "", "", string(basis[:40])); bilder != nil {
+	if bilder, _ := szenenBilder(filepath.Join(baum, ".git"), baum, "", "", "", string(basis[:40])); bilder != nil {
 		t.Error("without images in swarvex.yaml: none")
 	}
 }

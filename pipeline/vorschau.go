@@ -275,12 +275,16 @@ func eineEinreichungsVorschau(e einreichung) vorschauStand {
 	if err != nil {
 		return vorschauStand{status: "failed", bericht: err.Error()}
 	}
+	gitDir, err := baumGitDir(baum)
+	if err != nil {
+		return vorschauStand{status: "failed", bericht: err.Error()}
+	}
 	patchDatei := filepath.Join(filepath.Dir(baum), "contribution.patch")
 	os.WriteFile(patchDatei, []byte(e.Patch), 0o644)
-	if aus, err := befehl(baum, nil, "git", "apply", patchDatei); err != nil {
+	if aus, err := baumGit(gitDir, baum, "apply", patchDatei); err != nil {
 		return vorschauStand{status: "failed", bericht: "patch does not apply:\n" + aus}
 	}
-	if p, err := geschuetztGeaendert(baum); err != nil || p != "" {
+	if p, err := geschuetztGeaendert(gitDir, baum); err != nil || p != "" {
 		return vorschauStand{status: "failed", bericht: fmt.Sprintf("no preview: the contribution changes a protected file %q (%v)", p, err)}
 	}
 	vonMain := &mainVorlage{sp: sp, stand: "HEAD", e: e}

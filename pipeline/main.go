@@ -198,6 +198,47 @@ func befehl(dir string, env []string, name string, args ...string) (string, erro
 	return string(aus), err
 }
 
+// baumGitDir: das Git-Verzeichnis eines frisch ausgecheckten Baums, gelesen bevor ein Container darin läuft. Bei einem
+// Worktree (so checkt die Prüfstraße aus) liegt es im Spiegel, außerhalb dessen, was ein Container beschreiben darf.
+func baumGitDir(baum string) (string, error) {
+	p := filepath.Join(baum, ".git")
+	fi, err := os.Lstat(p)
+	if err != nil {
+		return "", err
+	}
+	if fi.IsDir() {
+		return p, nil
+	}
+	roh, err := os.ReadFile(p)
+	if err != nil {
+		return "", err
+	}
+	gd, ok := strings.CutPrefix(strings.TrimSpace(string(roh)), "gitdir:")
+	if !ok {
+		return "", fmt.Errorf("%s is not a git file", p)
+	}
+	if gd = strings.TrimSpace(gd); !filepath.IsAbs(gd) {
+		gd = filepath.Join(baum, gd)
+	}
+	return gd, nil
+}
+
+// baumGitBefehl: Git auf einem Baum, den ein Container beschreiben darf (Sicherheitsaudit 12.11.2026). Der Container
+// kann die .git-Datei des Worktrees durch ein eigenes Repository ersetzen, dessen Einstellungen (Hooks, fsmonitor,
+// Filter) Git sonst mit den Rechten der Prüfstraße ausführte; auf dem Prüfserver hielt das bisher nur safe.directory
+// auf, weil die Prüfstraße dort als root läuft. Darum gilt das vorher gelesene Git-Verzeichnis, ohne Hooks und fsmonitor.
+func baumGitBefehl(gitDir, baum string, args ...string) *exec.Cmd {
+	cmd := exec.Command("git", append([]string{"-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false"}, args...)...)
+	cmd.Dir = baum
+	cmd.Env = append(os.Environ(), "GIT_DIR="+gitDir, "GIT_WORK_TREE="+baum)
+	return cmd
+}
+
+func baumGit(gitDir, baum string, args ...string) (string, error) {
+	aus, err := baumGitBefehl(gitDir, baum, args...).CombinedOutput()
+	return string(aus), err
+}
+
 func gitEnv(key string, e einreichung) []string {
 	if e.GitToken != "" { // als HTTP-Header, nicht in der Adresse oder Konfiguration; git-lfs liest ihn mit
 		kopf := "AUTHORIZATION: basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+e.GitToken))
@@ -263,14 +304,18 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 		return false, "base commit: " + aus, false
 	}
 	defer befehl(sp, nil, "git", "worktree", "remove", "--force", baum)
+	gitDir, err := baumGitDir(baum)
+	if err != nil {
+		return false, "base commit: " + err.Error(), false
+	}
 	patchDatei := filepath.Join(dir, "contribution.patch")
 	os.WriteFile(patchDatei, []byte(e.Patch), 0o644)
-	if aus, err := befehl(baum, nil, "git", "apply", "--check", patchDatei); err != nil {
+	if aus, err := baumGit(gitDir, baum, "apply", "--check", patchDatei); err != nil {
 		return false, "patch does not apply to the base commit:\n" + aus, false
 	}
-	befehl(baum, nil, "git", "apply", patchDatei)
+	baumGit(gitDir, baum, "apply", patchDatei)
 	// Maßgeblich ist, was sich im Baum wirklich geändert hat, nicht was im Text des Patches steht.
-	if p, err := geschuetztGeaendert(baum); err != nil || p != "" {
+	if p, err := geschuetztGeaendert(gitDir, baum); err != nil || p != "" {
 		if err != nil {
 			return false, "could not list the changed files: " + err.Error(), false
 		}
@@ -290,7 +335,7 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 		return false, b.String() + fmt.Sprintf("this project needs %s; the platform has contributor runners check it, not the test pipeline", u.Engine), false
 	}
 	// Projekteigene geschützte Pfade (swarvex.yaml protect:) kennt erst die Umgebung
-	if pfade, err := geaendertePfade(baum); err == nil {
+	if pfade, err := geaendertePfade(gitDir, baum); err == nil {
 		for _, p := range pfade {
 			if u.Gesperrt(p) {
 				return false, b.String() + "contribution changes a protected file: " + p, false
@@ -324,12 +369,12 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 		return true, b.String(), false
 	}
 	// Was der Beitrag ändert, an den Test (SWARVEX_CHANGED): Ein Projekt kann damit nur das Betroffene prüfen
-	geaendert, _ := geaendertePfade(baum)
+	geaendert, _ := geaendertePfade(gitDir, baum)
 	gruen := testen(&b, func() (string, error) {
 		return imContainer(image, baum, cache, u, u.Testen, false, testSekunden, geaendertEnv(geaendert)...)
 	})
 	// Bildvergleich im Review: geänderte Szenenbilder dieses Laufs an die Plattform (vor einer Gegenprobe ohne Beitrag)
-	if bilder, err := szenenBilder(baum, u.Ordner, u.Bilder, u.Referenzen, e.BasisCommit); err != nil {
+	if bilder, err := szenenBilder(gitDir, baum, u.Ordner, u.Bilder, u.Referenzen, e.BasisCommit); err != nil {
 		fmt.Fprintf(&b, "scene images: %v\n", err)
 	} else {
 		for _, bild := range bilder {
@@ -349,7 +394,7 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 		return true, b.String(), true
 	}
 	basisRot = gegenprobe(&b, func() (string, bool, error) {
-		if aus, err := befehl(baum, nil, "git", "apply", "-R", patchDatei); err != nil {
+		if aus, err := baumGit(gitDir, baum, "apply", "-R", patchDatei); err != nil {
 			return aus, false, err
 		}
 		if u.Bauen != "" {
@@ -564,13 +609,11 @@ func imContainer(image, baum, cache string, u umgebung.Umgebung, skript string, 
 
 // geaendertePfade: alle Dateien, die sich im Baum gegenüber HEAD geändert haben (angelegt, geändert, gelöscht,
 // umbenannt als Löschen plus Anlegen), so wie Git sie sieht.
-func geaendertePfade(baum string) ([]string, error) {
-	if aus, err := befehl(baum, nil, "git", "add", "-A"); err != nil {
+func geaendertePfade(gitDir, baum string) ([]string, error) {
+	if aus, err := baumGit(gitDir, baum, "add", "-A"); err != nil {
 		return nil, fmt.Errorf("git add: %s", aus)
 	}
-	cmd := exec.Command("git", "-c", "core.quotePath=false", "diff", "--cached", "--name-only", "--no-renames", "-z", "HEAD")
-	cmd.Dir = baum
-	aus, err := cmd.Output()
+	aus, err := baumGitBefehl(gitDir, baum, "-c", "core.quotePath=false", "diff", "--cached", "--name-only", "--no-renames", "-z", "HEAD").Output()
 	if err != nil {
 		return nil, err
 	}
@@ -584,8 +627,8 @@ func geaendertePfade(baum string) ([]string, error) {
 }
 
 // geschuetztGeaendert: der erste geänderte Pfad, den kein Beitrag ändern darf (feste Liste), sonst "".
-func geschuetztGeaendert(baum string) (string, error) {
-	pfade, err := geaendertePfade(baum)
+func geschuetztGeaendert(gitDir, baum string) (string, error) {
+	pfade, err := geaendertePfade(gitDir, baum)
 	if err != nil {
 		return "", err
 	}

@@ -47,7 +47,7 @@ func (s szenenBild) daten() map[string]any {
 }
 
 // szenenBilder: geänderte oder neue Szenenbilder im Arbeitsbaum, verglichen mit dem Referenzbild im Basis-Commit.
-func szenenBilder(baum, ordner, bilder, referenzen, basis string) ([]szenenBild, error) {
+func szenenBilder(gitDir, baum, ordner, bilder, referenzen, basis string) ([]szenenBild, error) {
 	if bilder == "" || referenzen == "" {
 		return nil, nil
 	}
@@ -78,7 +78,7 @@ func szenenBilder(baum, ordner, bilder, referenzen, basis string) ([]szenenBild,
 			continue
 		}
 		// Referenz vom Basis-Commit: ohne Beitrag, auch wenn der Beitrag die Referenz selbst ändert
-		alt, err := exec.Command("git", "-C", baum, "show", basis+":"+path.Join(filepath.ToSlash(ordner), referenzen, n+".png")).Output()
+		alt, err := baumGitBefehl(gitDir, baum, "show", basis+":"+path.Join(filepath.ToSlash(ordner), referenzen, n+".png")).Output()
 		if err != nil || len(alt) == 0 || len(alt) > bildGroesseMax {
 			alt = nil
 		}
