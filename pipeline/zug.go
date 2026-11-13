@@ -144,6 +144,7 @@ func neueBahn() *echteBahn {
 }
 
 func (b *echteBahn) bauen(zug []einreichung) (*zugStand, error) {
+	zug = mitFrischemToken(zug)
 	e0 := zug[0]
 	dir, _ := os.MkdirTemp(arbeit, "merge-")
 	env := gitEnv(schreibKey, e0)
@@ -398,6 +399,23 @@ func frischesToken(e einreichung) einreichung {
 		}
 	}
 	return e
+}
+
+// mitFrischemToken: der Zug mit einem frischen Token in jedem Beitrag. Ein roter Zug wird halbiert und neu gebaut, und
+// ein späteres Projekt wartet auf die Züge davor: Nach einer Stunde Tests scheiterte sonst der nächste Klon an einem
+// abgelaufenen Token (13.11.2026). Der Prüfserver bekommt das Token mit dem Zug, auch er braucht ein gültiges.
+func mitFrischemToken(zug []einreichung) []einreichung {
+	if len(zug) == 0 || zug[0].GitToken == "" {
+		return zug
+	}
+	neu := frischesToken(zug[0])
+	kopie := append([]einreichung(nil), zug...)
+	for i := range kopie {
+		if kopie[i].Slug == neu.Slug {
+			kopie[i].GitToken = neu.GitToken
+		}
+	}
+	return kopie
 }
 
 func (b *echteBahn) gemerged(e einreichung, commit string) {
