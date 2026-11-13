@@ -29,6 +29,9 @@ Security fixes from the audit of 12 Nov 2026. Updating is recommended.
   longer pass as a free status query and slip past the limit of generating calls per brief. Tools that do more than
   create or fetch media (phone calls, messages, deleting, sharing, payments, conversational agents) are not passed
   on to your media server.
+- Lead service: the runner reads the clone's current commit like a file from the sandbox (no links, no FIFOs, refs
+  only under `refs/`), so the lead agent cannot stall the service or point it at files outside the clone. Files
+  from the sandbox are also checked again after opening.
 
 ## 0.16.0 (12 Nov 2026)
 

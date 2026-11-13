@@ -48,11 +48,15 @@ func sandboxDateiLesen(pfad string) ([]byte, error) {
 	if info.Size() > sandboxMaxB {
 		return nil, fmt.Errorf("larger than %d KiB", sandboxMaxB>>10)
 	}
-	f, err := os.OpenFile(pfad, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	// O_NONBLOCK: wird die Datei zwischen Lstat und Öffnen gegen eine FIFO getauscht, wartet open nicht auf einen Schreiber
+	f, err := os.OpenFile(pfad, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
+	if offen, err := f.Stat(); err != nil || !offen.Mode().IsRegular() {
+		return nil, errors.New("not a regular file")
+	}
 	return io.ReadAll(io.LimitReader(f, sandboxMaxB+1))
 }
 

@@ -614,24 +614,40 @@ func leadVorbereiten(ctx context.Context, l *leadKonfig) (umgebung.Umgebung, str
 	return u, image, nil
 }
 
-// gitStand liest den Commit von HEAD aus dem Klon (nur Dateien lesen, kein git auf dem Rechner).
+// gitStand liest den Commit von HEAD aus dem Klon (nur Dateien lesen, kein git auf dem Rechner). Der Klon gehört dem
+// Lead-Agenten, also wie Dateien aus der Sandbox: nur kleine reguläre Dateien, keine Links, Refs nur unter refs/ und
+// als Ergebnis nur ein Commit-Hash. Ein Link von .git/HEAD auf /dev/zero oder eine FIFO hätte den Lead-Dienst sonst
+// angehalten, und „ref: ../..“ hätte Dateien außerhalb des Klons gelesen (Sicherheitsaudit, Nachtrag 13.11.2026).
 func gitStand(baum string) string {
-	kopf, err := os.ReadFile(filepath.Join(baum, ".git", "HEAD"))
+	kopf, err := sandboxDateiLesen(filepath.Join(baum, ".git", "HEAD"))
 	if err != nil {
 		return ""
 	}
 	ref, ok := strings.CutPrefix(strings.TrimSpace(string(kopf)), "ref: ")
 	if !ok {
-		return strings.TrimSpace(string(kopf))
+		return nurCommit(string(kopf))
 	}
-	if roh, err := os.ReadFile(filepath.Join(baum, ".git", filepath.FromSlash(ref))); err == nil {
-		return strings.TrimSpace(string(roh))
+	if !gitRefForm.MatchString(ref) || strings.Contains(ref, "..") {
+		return ""
 	}
-	gepackt, _ := os.ReadFile(filepath.Join(baum, ".git", "packed-refs"))
+	if roh, err := sandboxDateiLesen(filepath.Join(baum, ".git", filepath.FromSlash(ref))); err == nil {
+		return nurCommit(string(roh))
+	}
+	gepackt, _ := sandboxDateiLesen(filepath.Join(baum, ".git", "packed-refs"))
 	for _, z := range strings.Split(string(gepackt), "\n") {
 		if f := strings.Fields(z); len(f) == 2 && f[1] == ref {
-			return f[0]
+			return nurCommit(f[0])
 		}
+	}
+	return ""
+}
+
+var gitRefForm = regexp.MustCompile(`^refs/[A-Za-z0-9._/-]+$`)
+var commitForm = regexp.MustCompile(`^[0-9a-f]{40}([0-9a-f]{24})?$`)
+
+func nurCommit(s string) string {
+	if s = strings.TrimSpace(s); commitForm.MatchString(s) {
+		return s
 	}
 	return ""
 }

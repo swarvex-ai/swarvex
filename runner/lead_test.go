@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -336,5 +337,55 @@ func TestLeadAufAppWarten(t *testing.T) {
 	}, time.Millisecond, time.Second)
 	if g.Token != nil || g.Hinweis != "cannot push" {
 		t.Fatalf("%+v", g)
+	}
+}
+
+// gitStand liest den Klon des Lead-Agenten wie eine Sandbox: Links, FIFOs und Refs außerhalb des Klons ergeben keinen
+// Stand, und das Lesen hält nicht an (Sicherheitsaudit, Nachtrag 13.11.2026).
+func TestGitStandNurAusDemKlon(t *testing.T) {
+	baum := t.TempDir()
+	git := filepath.Join(baum, ".git")
+	os.MkdirAll(filepath.Join(git, "refs", "heads"), 0o755)
+	commit := strings.Repeat("a", 40)
+	os.WriteFile(filepath.Join(git, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644)
+	os.WriteFile(filepath.Join(git, "refs", "heads", "main"), []byte(commit+"\n"), 0o644)
+	if s := gitStand(baum); s != commit {
+		t.Fatalf("normal clone: %q", s)
+	}
+	os.Remove(filepath.Join(git, "refs", "heads", "main"))
+	os.WriteFile(filepath.Join(git, "packed-refs"), []byte("# pack-refs\n"+commit+" refs/heads/main\n"), 0o644)
+	if s := gitStand(baum); s != commit {
+		t.Fatalf("packed refs: %q", s)
+	}
+	geheim := filepath.Join(t.TempDir(), "secret")
+	os.WriteFile(geheim, []byte(strings.Repeat("b", 40)), 0o600)
+	rel, _ := filepath.Rel(git, geheim)
+	faelle := map[string]func(){
+		"ref outside":  func() { os.WriteFile(filepath.Join(git, "HEAD"), []byte("ref: "+rel+"\n"), 0o644) },
+		"link to file": func() { os.Remove(filepath.Join(git, "HEAD")); os.Symlink(geheim, filepath.Join(git, "HEAD")) },
+		"link to zero": func() { os.Remove(filepath.Join(git, "HEAD")); os.Symlink("/dev/zero", filepath.Join(git, "HEAD")) },
+		"fifo": func() {
+			os.Remove(filepath.Join(git, "HEAD"))
+			if err := syscall.Mkfifo(filepath.Join(git, "HEAD"), 0o644); err != nil {
+				t.Skip("no mkfifo")
+			}
+		},
+		"not a commit": func() {
+			os.Remove(filepath.Join(git, "HEAD"))
+			os.WriteFile(filepath.Join(git, "HEAD"), []byte("hello\n"), 0o644)
+		},
+	}
+	for name, vorbereiten := range faelle {
+		vorbereiten()
+		fertig := make(chan string, 1)
+		go func() { fertig <- gitStand(baum) }()
+		select {
+		case s := <-fertig:
+			if s != "" {
+				t.Errorf("%s: stand %q, want none", name, s)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("%s: gitStand hangs", name)
+		}
 	}
 }
