@@ -66,6 +66,14 @@ describe("Meilensteine", () => {
 });
 
 describe("Basis beim Reservieren", () => {
+  it("nur ein Commit-Hash wird Basis: keine Option für git (Audit 12.11.2026)", async () => {
+    await expect(k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Option statt Hash"), basis_commit: "--output=/tmp/x" })).rejects.toThrow(/base_commit: a commit hash/);
+    await expect(k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Zu kurz"), basis_commit: "abc" })).rejects.toThrow(/base_commit: a commit hash/);
+    const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Kurzer Hash"), basis_commit: " ABCDEF1 " });
+    expect((await db.query("select basis_commit from aufgaben where id = $1", [a.id])).rows[0].basis_commit).toBe("abcdef1");
+    await k.schliessen(db, lead, a.id, "nur ein Test");
+  });
+
   it("eine offene Aufgabe bekommt beim Reservieren den gemeldeten Stand von main, eine reservierte behält ihre Basis", async () => {
     const alt = "1".repeat(40), kopf = "2".repeat(40), neuer = "3".repeat(40);
     const a = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Auf altem Stand"), basis_commit: alt });
@@ -2705,6 +2713,8 @@ describe("Lead-Kraft (E-39): Haupt-Reservierung, Bereichs-Leads, Lead-Gesuche, H
     expect(await lk.offeneGesuche(db, kp)).toEqual([]);
     expect((await db.query("select zustand from bereichs_vorschlaege where id = $1", [b2.bewerbung_id])).rows[0].zustand).toBe("abgelaufen");
     expect((await lk.meineBewerbungen(db, bewerberin.menschId)).map((x) => x.status)).toEqual(["appointed"]);
+    // Das Amt gilt im Projekt, hebt aber nicht die plattformweite Stufe: keine Fremdprüfungen anderswo (Audit 12.11.2026)
+    expect(Number((await db.query("select vertrauensstufe from menschen where id = $1", [bewerberin.menschId])).rows[0].vertrauensstufe)).toBe(0);
     // Ein besetzter Bereich bekommt kein neues Gesuch
     await expect(lk.gesuchOeffnen(db, lead, "kraft", gesuch)).rejects.toThrow(/already has an area lead \(kimi-fan\)/);
   });
@@ -2803,6 +2813,20 @@ describe("Projektübergreifende Aufgaben (Bedarf, E-39)", () => {
     await expect(b.bedarfBeantworten(db, zielLead, r.bedarf_id, true, wartet, "")).rejects.toThrow(/not an open task of formwerk-test/);
     const liefer = Number((await k.aufgabeAnlegen(db, zielLead, "formwerk-test", { ...neueAufgabe("Asset: Ohrensessel"), meilenstein: "Möbel", neuer_meilenstein: true })).id);
     expect(await b.bedarfBeantworten(db, zielLead, r.bedarf_id, true, liefer, "Kommt in die Möbel-Reihe.")).toEqual({ bedarf_id: r.bedarf_id, zustand: "angenommen" });
+    // Text und Antwort liest nur, wer das Projekt führt: zielLead führt formwerk-test, aber nicht kraft (Audit 12.11.2026)
+    const anfragen = async (wer: { menschId: number; agentId: number }, projekt: string) => {
+      const { mcpServerFuer } = await import("../src/mcp.ts");
+      const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+      const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+      const server = await mcpServerFuer(db, { ...wer, runner: false, leadProjekt: null, clientId: "test", token: "t", scopes: ["mcp"], ablauf: Date.now() + 60_000 });
+      const [x, y] = InMemoryTransport.createLinkedPair();
+      const client = new Client({ name: "test", version: "1" });
+      await Promise.all([server.connect(x), client.connect(y)]);
+      return ((await client.callTool({ name: "work_requests", arguments: { project: projekt } })) as any).content[0].text as string;
+    };
+    expect(await anfragen(zielLead, "formwerk-test")).toMatch(/Ohrensessel mit hoher Lehne, Parameter/);
+    expect(await anfragen(lead, "kraft")).toMatch(/Kommt in die Möbel-Reihe/);
+    expect(await anfragen(zielLead, "kraft")).toMatch(/Rejected: only the project's lead, visionary or an area lead reads its requests/);
     expect(await blockiert(wartet)).toBe(true);
     expect((await db.query("select inhalt from nachrichten where projekt_id = $1 and betreff like 'Request #%accepted%'", [quelle])).rows[0].inhalt).toMatch(new RegExp(`task #${liefer}`));
     await db.query("update aufgaben set zustand = 'angenommen' where id = $1", [liefer]);

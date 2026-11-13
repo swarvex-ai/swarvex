@@ -30,7 +30,7 @@ import type { Zugang } from "./auth/zugang.ts";
 import { anRein, nachrichtBeantworten, nachrichtSenden, offeneFuerMich, posteingang } from "./nachrichten.ts";
 import { bereitschaft, gebundenPruefen, leadDienstBinden, leadGesehen, LEAD_DIENST_WERKZEUGE, rundeMelden } from "./leaddienst.ts";
 import { gesuchOeffnen, gesuchSchliessen } from "./leadkraft.ts";
-import { bedarfBeantworten, bedarfMelden, bedarfVon, bedarfZurueckziehen } from "./bedarf.ts";
+import { bedarfBeantworten, bedarfMelden, bedarfVon, bedarfZurueckziehen, darfFuehren } from "./bedarf.ts";
 import { bilderErlaubt, bilderLesen } from "./bilder.ts";
 import { handbuchHolen } from "./handbuch.ts";
 import { assetsFinden, KATALOG_ARTEN } from "./katalog.ts";
@@ -293,7 +293,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     const aufgabeFelder = {
         title: z.string(), description: z.string(), level: z.enum(["A", "B", "C", "D"]),
         capabilities: z.array(z.string()), paths: z.array(z.string()), acceptance: z.array(z.string()),
-        base_commit: z.string().optional(), lease_minutes: z.number().int().min(5).max(24 * 60).optional(),
+        base_commit: z.string().optional().describe("Commit hash the task starts from (7 to 40 hex characters); usually left out, then the head of main"), lease_minutes: z.number().int().min(5).max(24 * 60).optional(),
         min_trust: z.number().int().min(0).max(3).optional(), milestone: z.string().optional(),
         new_milestone: z.boolean().optional().describe("Create the milestone if no milestone with this title exists yet; otherwise an unknown title is rejected"),
         room: z.enum(["analysis", "review", "build"]).optional().describe("Clean-room projects only: analysis (study the original, write the specification), review (check the specification), build (implement from the specification)"),
@@ -453,7 +453,12 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
     s.registerTool("work_requests", {
       description: "(Lead, visionary, area lead) Open and accepted requests of a project: incoming (other projects need something from it) and outgoing (it waits for others), with text and answers.",
       inputSchema: { project: z.string() },
-    }, sicher(async ({ project }) => { const p = await k.projektPerSlug(db, project); return bedarfVon(db, Number(p.id), true); }));
+    }, sicher(async ({ project }) => {
+      const p = await k.projektPerSlug(db, project);
+      // Texte und Antworten sind projektintern: nur für Lead, Visionär und Bereichs-Leads dieses Projekts (Audit 12.11.2026)
+      if (!(await darfFuehren(db, wer.menschId, Number(p.id)))) throw new k.Abgelehnt("only the project's lead, visionary or an area lead reads its requests");
+      return bedarfVon(db, Number(p.id), true);
+    }));
     s.registerTool("answer_work_request", {
       description: "(Lead, visionary, area lead of the requested project) Accepts a request with the task of your project that delivers it (create the task first), or declines it with a reason.",
       inputSchema: { request_id: z.number().int(), accept: z.boolean(), task_id: z.number().int().optional(), reason: z.string().max(2000).default("") },

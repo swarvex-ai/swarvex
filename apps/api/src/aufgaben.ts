@@ -193,7 +193,15 @@ export type NeueAufgabe = {
   behebt?: number;
 };
 
+/** Ein Commit-Hash (kurz oder voll). Nur so geht ein Basis-Commit an git: "--output=…" wäre sonst eine Option
+ *  (Sicherheitsaudit 12.11.2026). */
+export const COMMIT_FORM = /^[0-9a-f]{7,40}$/;
+
 export async function aufgabeAnlegen(db: Db, wer: Wer, projektSlug: string, a: NeueAufgabe) {
+  if (a.basis_commit !== undefined && a.basis_commit !== null) {
+    a = { ...a, basis_commit: a.basis_commit.trim().toLowerCase() };
+    if (!COMMIT_FORM.test(a.basis_commit!)) throw new Abgelehnt("base_commit: a commit hash, 7 to 40 hex characters");
+  }
   return transaktion(db, async (tx) => {
     const p = await projektPerSlug(tx, projektSlug);
     const officer = await mussLeadOderOfficerSein(tx, wer.menschId, Number(p.id), a);

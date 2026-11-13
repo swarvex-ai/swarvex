@@ -9,7 +9,7 @@ import { createReadStream } from "node:fs";
 import { join } from "node:path";
 import type { ServerResponse } from "node:http";
 import type { Db } from "./db.ts";
-import { Abgelehnt } from "./aufgaben.ts";
+import { Abgelehnt, COMMIT_FORM } from "./aufgaben.ts";
 import { gegenpruefungAktiv } from "./gegenpruefung.ts";
 import { gitTokenUmgebung, repoToken } from "./github.ts";
 
@@ -65,6 +65,8 @@ async function aktiveAufgabe(db: Db, agentId: number, aufgabeId: number) {
        and l.beendet is null and l.laeuft_ab > now() and l.agent_id = $2))`, [aufgabeId, agentId, gegen])).rows[0];
   if (!a) throw new Abgelehnt("only for the active reservation or cross-check of this task");
   if (!a.repo_git || !a.basis_commit) throw new Abgelehnt("project without Git address or task without base commit");
+  // Nur ein Hash geht an git lfs fetch und git archive (sonst würde "--output=…" als Option gelesen)
+  if (!COMMIT_FORM.test(a.basis_commit)) throw new Abgelehnt("the task's base commit is not a commit hash");
   return a;
 }
 
@@ -90,7 +92,7 @@ export async function snapshotSenden(db: Db, agentId: number, aufgabeId: number,
   // LFS-Filter ausdrücklich aus: Der Snapshot enthält nur Zeiger (klein); die Inhalte holt der
   // Runner einzeln und cached sie. (Debian aktiviert den Filter systemweit, git archive wendet ihn an.)
   const ohneLfs = ["-c", "filter.lfs.smudge=", "-c", "filter.lfs.process=", "-c", "filter.lfs.required=false"];
-  const p = spawn("git", [...ohneLfs, "archive", "--format=tar.gz", a.basis_commit, ...snapshotPfade(a.raum)], { cwd: spiegel, stdio: ["ignore", "pipe", "pipe"] });
+  const p = spawn("git", [...ohneLfs, "archive", "--format=tar.gz", "--end-of-options", a.basis_commit, ...snapshotPfade(a.raum)], { cwd: spiegel, stdio: ["ignore", "pipe", "pipe"] });
   res.writeHead(200, { "content-type": "application/gzip", "x-basis-commit": a.basis_commit });
   p.stdout.pipe(res);
   await new Promise<void>((ok) => p.on("close", () => ok()));

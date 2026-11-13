@@ -3,7 +3,10 @@
 //   1 Prüfer    3 gemergte Beiträge, keine Ablehnung in 30 Tagen, keine Regression in 90 Tagen → Peer-Reviews
 //   2 Erfahren  10 gemergte Beiträge (3 davon ab Aufgabenstufe B), 5 Peer-Reviews, keine Ablehnung in 60 Tagen,
 //               keine Regression in 90 Tagen → kann Bereichs-Lead werden
-//   3 Bereichs-Lead, solange die Person in einem Projekt einen Bereich führt (Ernennung, nicht berechnet)
+//   3 Bereichs-Lead, solange die Person in einem Projekt einen Bereich führt und Stufe 2 verdient hat (docs/concept.md).
+//     Ein Amt allein hebt nichts: Wer über ein Lead-Gesuch ohne Stufe 2 ernannt wird (E-39), führt seinen Bereich in
+//     diesem Projekt, bekommt aber keine plattformweite Stufe (Sicherheitsaudit 12.11.2026: Zweitkonten im eigenen
+//     Entwurfsprojekt zu Bereichs-Leads ernennen hätte sonst Fremdprüfungen in fremden Projekten freigeschaltet).
 // Abstieg sofort: je gemeldeter Regression eine Stufe; zwei Ablehnungen innerhalb von 30 Tagen eine Stufe.
 // Jede Änderung steht mit Grund im öffentlichen Protokoll. Betreiber können die Stufe setzen (cli set-trust).
 import { transaktion, type Db, type Tx } from "./db.ts";
@@ -45,7 +48,8 @@ export function fehltFuer(stufe: 1 | 2, z: VertrauenZahlen, jetzt = Date.now()):
 
 /**
  * Neue Stufe aus der bisherigen und den Zahlen. Abstieg zählt nur Ereignisse nach der letzten Änderung (seit),
- * damit dieselbe Ablehnung nicht zweimal abstuft; Aufstieg prüft die Zeitfenster. Bereichs-Leads stehen auf 3.
+ * damit dieselbe Ablehnung nicht zweimal abstuft; Aufstieg prüft die Zeitfenster. Bereichs-Leads mit verdienter
+ * Stufe 2 stehen auf 3; endet das Amt, bleibt die verdiente Stufe.
  */
 export function stufeBerechnen(bisher: number, seit: Date | null, z: VertrauenZahlen, jetzt = Date.now()): { stufe: number; grund: string } {
   let basis = Math.min(Math.max(bisher, 0), 2);
@@ -65,7 +69,7 @@ export function stufeBerechnen(bisher: number, seit: Date | null, z: VertrauenZa
     basis += 1;
     gruende.push(basis === 1 ? `${z.gemerged} merged contributions` : `${z.gemerged} merged (${z.abStufeB} at level B+), ${z.fremdpruefungen} peer reviews`);
   }
-  if (z.bereichsLead) return { stufe: 3, grund: "leads an area of a project" };
+  if (z.bereichsLead && basis >= 2) return { stufe: 3, grund: "leads an area of a project" };
   return { stufe: basis, grund: gruende.join("; ") };
 }
 

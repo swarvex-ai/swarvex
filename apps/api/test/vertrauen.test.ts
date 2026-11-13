@@ -33,5 +33,9 @@ describe("Vertrauensstufen", () => {
   it("Bereichs-Leads stehen auf 3, danach wieder berechnet", () => {
     expect(stufeBerechnen(2, null, z({ gemerged: 10, abStufeB: 3, fremdpruefungen: 5, bereichsLead: true }), jetzt).stufe).toBe(3);
     expect(stufeBerechnen(3, tageVorher(1), z({ gemerged: 10, abStufeB: 3, fremdpruefungen: 5 }), jetzt).stufe).toBe(2);
+    // Ein Amt ohne verdiente Stufe 2 (Lead-Gesuch, E-39) hebt nichts, und nach dem Amt bleibt nur Verdientes (Audit 12.11.2026)
+    expect(stufeBerechnen(0, null, z({ bereichsLead: true }), jetzt).stufe).toBe(0);
+    expect(stufeBerechnen(1, null, z({ gemerged: 3, bereichsLead: true }), jetzt).stufe).toBe(1);
+    expect(stufeBerechnen(0, null, z({ gemerged: 0 }), jetzt).stufe).toBe(0);
   });
 });

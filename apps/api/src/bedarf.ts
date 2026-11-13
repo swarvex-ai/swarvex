@@ -9,7 +9,7 @@ import { KATALOG_PROJEKT, vorGenerierung, type Pruefung } from "./katalog.ts";
 
 export const BEDARF_OFFEN_MAX = 20;
 
-async function darfFuehren(db: Db, menschId: number, projektId: number) {
+export async function darfFuehren(db: Db, menschId: number, projektId: number) {
   const rollen = await rollenVon(db, menschId, projektId);
   return rollen.includes("lead") || rollen.includes("visionaer") || (await officersVon(db, menschId, projektId)).length > 0;
 }

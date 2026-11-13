@@ -79,6 +79,14 @@ await boss.work("leases-aufraeumen", async () => {
   const f = await ohneGegenpruefungFreigeben(db);
   if (f) console.log(`cross-check: ${f} submission(s) released with the contributor's own run only`);
 });
+// Abgelaufene Sitzungen, Interaktionen, PAR- und Geräte-Codes des OIDC-Servers löschen: Der Adapter blendet sie beim Lesen
+// nur aus, sonst wüchse die Datenbank mit jeder anonymen Anfrage (Sicherheitsaudit 12.11.2026). Clients laufen nicht ab.
+await boss.createQueue("oidc-aufraeumen");
+await boss.schedule("oidc-aufraeumen", "*/15 * * * *");
+await boss.work("oidc-aufraeumen", async () => {
+  const r = await db.query("delete from oidc_payloads where laeuft_ab < now() - interval '1 hour'");
+  if (r.rowCount) console.log(`oidc cleanup: ${r.rowCount} expired`);
+});
 // Besucherstatistik: abgeschlossene Tage behalten nur die Zahl, Tagesgeheimnis und Hashes werden gelöscht
 await boss.createQueue("besuche-abschliessen");
 await boss.schedule("besuche-abschliessen", "7 * * * *");
@@ -166,7 +174,10 @@ const server = createServer(async (req, res) => {
   try {
     if (url.pathname === "/healthz") return json(res, 200, { ok: true });
     if (url.pathname === "/reg" && req.method === "POST" && gebremst("registrierung", ip)) return;
-    if ((/^\/(interaction|auth|token|device)(\/|$)/.test(url.pathname) || url.pathname === "/api/account/login") && gebremst("anmeldung", ip)) return;
+    // Jede Anmelde-Route, die Zustand anlegt, ist gebremst: auch PAR (/request) und das Abmelden (/session/end)
+    if ((/^\/(interaction|auth|token|device|request|session)(\/|$)/.test(url.pathname) || url.pathname === "/api/account/login") && gebremst("anmeldung", ip)) return;
+    // Lange Parameter würde der OIDC-Server unverändert speichern (state, nonce): Adressen außerhalb von /api und /mcp kurz halten
+    if (!url.pathname.startsWith("/api/") && !url.pathname.startsWith("/mcp") && (req.url ?? "").length > 8192) return json(res, 414, { error: "uri_too_long" });
     if (url.pathname.startsWith("/api/") && gebremst("oeffentlich", ip)) return;
     // Besucherstatistik ohne Cookies (besuche.ts): immer 204, auch wenn nicht gezählt wird
     if (url.pathname === "/api/visit" && req.method === "POST") {

@@ -129,7 +129,7 @@ func bilderAusPatch() {
 // geänderte Szene geliefert werden kann.
 func patchBilder(e einreichung) ([]szenenBild, bool) {
 	summe := sha256.Sum256([]byte(e.Patch))
-	if hex.EncodeToString(summe[:]) != e.PatchSHA {
+	if hex.EncodeToString(summe[:]) != e.PatchSHA || !commitForm.MatchString(e.BasisCommit) {
 		return nil, false
 	}
 	sp, err := spiegel(e)

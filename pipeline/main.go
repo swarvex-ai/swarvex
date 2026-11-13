@@ -245,6 +245,9 @@ func einePruefung(e einreichung) (ok bool, bericht string, basisRot bool) {
 	if hex.EncodeToString(summe[:]) != e.PatchSHA {
 		return false, "patch checksum does not match", false
 	}
+	if !commitForm.MatchString(e.BasisCommit) {
+		return false, "the task's base commit is not a commit hash", false
+	}
 	sp, err := spiegel(e)
 	if err != nil {
 		return false, err.Error(), false
@@ -411,6 +414,9 @@ func testen(b *strings.Builder, lauf func() (string, error)) bool {
 }
 
 var (
+	// Basis-Commit nur als Hash an git (Sicherheitsaudit 12.11.2026): ein Wert wie "--index-output=…" würde sonst als
+	// Option gelesen. Die Plattform prüft schon beim Anlegen der Aufgabe; das hier schützt auch ältere Zeilen.
+	commitForm  = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
 	fehlZeile   = regexp.MustCompile(`\bFAIL(ED)?\b`)
 	zaehlZeile  = regexp.MustCompile(`^\d+ FAIL`)                      // Zusammenfassung wie „3 FAIL headless“
 	dauerAmEnde = regexp.MustCompile(` ?\(?\d+(\.\d+)? ?(ms|s|m)\)?$`) // „(0.01s)“, „0.012s“

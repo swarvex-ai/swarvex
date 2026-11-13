@@ -42,7 +42,9 @@ export function grenzenErstellen(regeln: Record<string, Regel> = REGELN, jetzt: 
   };
 }
 
-/** Adresse des Aufrufers: Caddy setzt X-Forwarded-For selbst (fremde Werte werden überschrieben). */
+/** Adresse des Aufrufers: Caddy setzt X-Forwarded-For selbst (fremde Werte werden überschrieben); beim serverseitigen
+ *  Rendern reicht der Web-Dienst die Besucheradresse weiter (apps/web/src/hooks.server.ts). Die API ist nur für Caddy
+ *  und den Web-Dienst erreichbar. */
 export function aufruferIp(req: IncomingMessage): string {
   const weitergeleitet = String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim();
   return weitergeleitet || req.socket.remoteAddress || "unbekannt";

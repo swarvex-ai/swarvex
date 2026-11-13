@@ -127,6 +127,17 @@ func TestPatchBilder(t *testing.T) {
 	if b, vollstaendig := patchBilder(lfs); vollstaendig || len(b) != 0 {
 		t.Errorf("LFS pointer: complete %v, %d scenes", vollstaendig, len(b))
 	}
+	// Basis-Commit, der kein Hash ist, geht nie an git (Audit 12.11.2026: "--index-output=…" schrieb sonst eine Datei als root)
+	ziel := filepath.Join(t.TempDir(), "probe")
+	os.WriteFile(ziel, []byte("unverändert"), 0o644)
+	option := e
+	option.BasisCommit = "--index-output=" + ziel
+	if _, vollstaendig := patchBilder(option); vollstaendig {
+		t.Error("option-shaped base commit counted as complete")
+	}
+	if roh, _ := os.ReadFile(ziel); string(roh) != "unverändert" {
+		t.Errorf("option-shaped base commit reached git: %q", roh)
+	}
 	// Prüfsumme passt nicht: nichts
 	e.PatchSHA = strings.Repeat("0", 64)
 	if _, vollstaendig := patchBilder(e); vollstaendig {

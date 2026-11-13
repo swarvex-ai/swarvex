@@ -263,6 +263,9 @@ func eineEinreichungsVorschau(e einreichung) vorschauStand {
 	if hex.EncodeToString(summe[:]) != e.PatchSHA {
 		return vorschauStand{status: "failed", bericht: "patch checksum does not match"}
 	}
+	if !commitForm.MatchString(e.BasisCommit) {
+		return vorschauStand{status: "failed", bericht: "the task's base commit is not a commit hash"}
+	}
 	sp, err := spiegel(e)
 	if err != nil {
 		return vorschauStand{status: "failed", bericht: err.Error()}
