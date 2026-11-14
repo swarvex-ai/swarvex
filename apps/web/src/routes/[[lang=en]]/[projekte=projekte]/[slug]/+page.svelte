@@ -51,7 +51,9 @@
     quality?: { rework_percent: number | null; regressions: number; merge_train_failed: number }; cost?: { tokens_per_unit: number | null } };
   const b = $derived(t.detail.bilanz);
   // Fortlaufend ohne Endziel (z. B. Formwerk): Bestand, Anfragen und Galerie statt Fortschritt und Zeitvergleich
-  type Laufend = { catalogue: { assets: number; kinds: number } | null; this_week: number; requests: { open: number; answered: number } };
+  type Laufend = { catalogue: { assets: number; kinds: number; by_kind?: Record<string, number> } | null; this_week: number; requests: { open: number; answered: number } };
+  // Reihenfolge wie im Formwerk-Katalog
+  const KATALOG_REIHE = ["model", "surface", "sprite", "icon", "sound"];
   const laufend = $derived((p.ongoing ? p.ongoing_figures : null) as Laufend | null);
   const l = $derived(d.laufend);
   type Jetzt = { available: number; blocked: number; active: number; waiting_for_check: number; oldest_check_hours: number | null; awaiting_review: number; oldest_review_hours: number | null; awaiting_peer_review?: number; oldest_peer_review_hours?: number | null; waiting_for_merge?: number; oldest_merge_hours?: number | null; bottleneck: string | null };
@@ -84,7 +86,7 @@
       {#if p.preview?.url || p.preview?.docs_url}
         <!-- Projektcode auf eigener Adresse (infra/stack/vorschau-domain.caddy): neues Fenster, ohne Verweis auf diese Seite -->
         <div class="vorschau-knoepfe">
-          {#if p.preview.url}<a class="knopf" href={p.preview.url} target="_blank" rel="noopener noreferrer">{d.vorschau} ↗</a>{/if}
+          {#if p.preview.url}<a class="knopf" href={p.preview.url} target="_blank" rel="noopener noreferrer">{d.vorschau(p.project_type ?? null, Boolean(laufend?.catalogue))} ↗</a>{/if}
           {#if p.preview.docs_url}<a class="knopf" href={p.preview.docs_url} target="_blank" rel="noopener noreferrer">{d.doku} ↗</a>{/if}
         </div>
         <span class="leise klein">{d.vorschauStand(String(p.preview.playable_commit).slice(0, 7), datum(p.preview.playable_since))}{#if p.preview.status === "failed"}<br />{d.vorschauFehler}{/if}</span>
@@ -118,7 +120,13 @@
     <dl class="kennzahlen">
       <div class="gross"><dt>{laufend ? l.bestand : t.fortschritt}</dt><dd>
         {#if laufend?.catalogue}
-          <span class="wert">{l.assets(laufend.catalogue.assets)}</span><span class="leise">{l.arten(laufend.catalogue.kinds)} · {l.dieseWoche(laufend.this_week)}</span>
+          <span class="wert">{l.assets(laufend.catalogue.assets)}</span>
+          {#if laufend.catalogue.by_kind}
+            <span class="leise">{KATALOG_REIHE.filter((a) => laufend.catalogue?.by_kind?.[a]).map((a) => l.jeArt(a, laufend.catalogue?.by_kind?.[a] ?? 0)).join(" · ")}</span>
+            <span class="leise">{l.dieseWoche(laufend.this_week)}</span>
+          {:else}
+            <span class="leise">{l.arten(laufend.catalogue.kinds)} · {l.dieseWoche(laufend.this_week)}</span>
+          {/if}
         {:else if laufend}
           <span class="wert">{l.gemerged(laufend.this_week)}</span><span class="leise">{l.gemergedText}</span>
         {:else if p.progress_percent !== null}

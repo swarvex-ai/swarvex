@@ -265,10 +265,15 @@ async function laufendeZahlen(db: Db, projektId: number, slug: string) {
   const anfragen = (await db.query(
     `select count(*) filter (where zustand in ('offen', 'angenommen'))::int as offen, count(*) filter (where zustand = 'erledigt')::int as beantwortet
      from bedarf where an_projekt = $1`, [projektId])).rows[0];
-  let katalog: { assets: number; arten: number } | null = null;
+  let katalog: { assets: number; arten: number; je_art: Record<string, number> } | null = null;
   if (slug === KATALOG_PROJEKT) {
     const k = await katalogLaden(db);
-    if (k.verfuegbar) katalog = { assets: k.eintraege.length, arten: new Set(k.eintraege.map((e) => e.art)).size };
+    if (k.verfuegbar) {
+      // je Art (model, surface, sprite, icon, sound), damit die Projektseite den Bestand aufschlüsselt
+      const je_art: Record<string, number> = {};
+      for (const e of k.eintraege) je_art[e.art] = (je_art[e.art] ?? 0) + 1;
+      katalog = { assets: k.eintraege.length, arten: Object.keys(je_art).length, je_art };
+    }
   }
   return { katalog, diese_woche, anfragen };
 }
@@ -286,18 +291,19 @@ export async function schwarmLive(db: Db) {
 
 /** Abzeichen für die README eines Projekts: „▶ play“, wenn es eine Vorschau gibt, sonst der geschätzte Fortschritt oder erledigt von geplant. */
 export async function abzeichen(db: Db, slug: string) {
-  const p = (await db.query("select id, vorschau from projekte where slug = $1 and not gesperrt and not entwurf", [slug])).rows[0];
+  const p = (await db.query("select id, vorschau, projektart from projekte where slug = $1 and not gesperrt and not entwurf", [slug])).rows[0];
   const v = p?.vorschau, da = Boolean(v?.ok_commit && vorschauUrl(slug));
   let rechts: string;
   if (!p) rechts = "unknown";
-  else if (da && v.hat_vorschau !== false) rechts = "▶ play";
+  // „play“ nur bei Spielen; eine Bibliothek, App oder Website zeigt ihre Vorschau als „live“
+  else if (da && v.hat_vorschau !== false) rechts = !p.projektart || p.projektart === "spiel" ? "▶ play" : "▶ live";
   else if (da && v.hat_doku) rechts = "docs";
   else {
     // The lead's estimate when there is one; otherwise only done of planned, never a percentage of an unknown whole
     const z = await kennzahlen(db, slug);
     rechts = z.fortschritt_prozent !== null ? `≈ ${z.fortschritt_prozent} %` : `${z.aufgaben_fertig}/${z.aufgaben_geplant} tasks`;
   }
-  const farbe = rechts === "▶ play" || rechts === "docs" ? "#047857" : rechts === "unknown" ? "#6b7280" : "#0369a1";
+  const farbe = rechts.startsWith("▶") || rechts === "docs" ? "#047857" : rechts === "unknown" ? "#6b7280" : "#0369a1";
   const breite = (t: string) => Math.round([...t].length * 6.6 + 12);
   const l = "swarvex", bl = breite(l), br = breite(rechts);
   const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");

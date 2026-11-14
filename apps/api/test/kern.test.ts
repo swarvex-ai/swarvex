@@ -3093,6 +3093,23 @@ describe("Asset-Katalog vor der Generierung (Formwerk zuerst)", () => {
     expect(geholt).toBe(2);
   });
 
+  it("Projektseite des Katalogs: Bestand je Art; das Abzeichen sagt bei Nicht-Spielen „live“ statt „play“ (14.11.2026)", async () => {
+    const { projektDetail, abzeichen } = await import("../src/kennzahlen.ts");
+    await db.query("update projekte set fortlaufend = true, projektart = 'bibliothek' where id = $1", [formwerk]);
+    try {
+      const d = await projektDetail(db, "formwerk") as { laufend: { katalog: { assets: number; arten: number; je_art: Record<string, number> } } };
+      const je = d.laufend.katalog.je_art;
+      expect(Object.values(je).reduce((a, b) => a + b, 0)).toBe(d.laufend.katalog.assets);
+      expect(Object.keys(je).length).toBe(d.laufend.katalog.arten);
+      expect(je).toMatchObject({ model: expect.any(Number), sound: expect.any(Number) });
+      expect(await abzeichen(db, "formwerk")).toContain("▶ live");
+      await db.query("update projekte set projektart = 'spiel' where id = $1", [formwerk]);
+      expect(await abzeichen(db, "formwerk")).toContain("▶ play");
+    } finally {
+      await db.query("update projekte set fortlaufend = false, projektart = null where id = $1", [formwerk]);
+    }
+  });
+
   it("Spendenauftrag: bei Treffern erst abgelehnt, mit Begründung angelegt; Lead und Spender sehen sie", async () => {
     const sp = await import("../src/spenden.ts");
     const brief = { zusage_id: zusage, titel: "Holzkiste mit Deckel", anleitung: "Eine Kiste aus Holz für das Lager, Deckel lässt sich öffnen.", zielpfad: "assets/kiste.glb", dateitypen: ["glb"], credits: 20 };
