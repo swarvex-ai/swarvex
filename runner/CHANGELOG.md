@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.16.2 (unreleased)
+## 0.16.2 (14 Nov 2026)
 
 - `swarvex setup` explains what happens, in plain words: how a task runs in the sandbox, what your choice of model
   costs (subscription, API key or a model on your computer), which agent program works in the sandbox and why, what a
