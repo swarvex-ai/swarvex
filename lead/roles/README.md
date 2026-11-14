@@ -13,7 +13,7 @@ A swarm is only better than a single agent when its work is divided sensibly. Re
 | Continuing abandoned software (any type) | [continuation/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/continuation): upstream and legacy, in addition to the cards of the type |
 | Something else (documents, data, designs) | the software set, plus cards borrowed from the other sets (the bundle says which fit) |
 
-A hybrid project takes the cards of both types. Add roles the project needs (e.g. `economy` for a game with trading, `ml` for an app with a model); keep the card format.
+A hybrid project takes the cards of both types. Whatever its type, a project that makes images, 3D models, surfaces, sprites or sound takes the game cards **art** and **audio** for that part: an asset library like Formwerk is software plus art plus audio. Without them nobody owns the look, and the style guide gate has no owner. Add roles the project needs (e.g. `economy` for a game with trading, `ml` for an app with a model); keep the card format.
 
 ## Three ways the lead uses a role card
 

@@ -13,7 +13,7 @@ Ein Schwarm ist nur dann besser als ein einzelner Agent, wenn die Arbeit sinnvol
 | Verwaiste Software weiterführen (jede Art) | [continuation/](https://github.com/swarvex-ai/swarvex/tree/main/lead/roles/continuation): Upstream und Altbestand, zusätzlich zu den Karten der Art |
 | Etwas anderes (Dokumente, Daten, Entwürfe) | der Software-Satz, dazu geliehene Karten aus den anderen Sätzen (das Paket sagt, welche passen) |
 
-Ein Mischprojekt nimmt die Karten beider Arten. Ergänze Rollen, die das Projekt braucht (z. B. `economy` für ein Spiel mit Handel, `ml` für eine App mit Modell), im selben Kartenformat.
+Ein Mischprojekt nimmt die Karten beider Arten. Egal welche Art: Ein Projekt, das Bilder, 3D-Modelle, Oberflächen, Sprites oder Klänge macht, nimmt dafür die Spielkarten **Art** und **Audio** dazu; eine Asset-Bibliothek wie Formwerk ist Software plus Art plus Audio. Ohne sie gehört der Look niemandem, und das Tor „Stilvorgabe“ hat keinen Besitzer. Ergänze Rollen, die das Projekt braucht (z. B. `economy` für ein Spiel mit Handel, `ml` für eine App mit Modell), im selben Kartenformat.
 
 ## Drei Arten, wie der Lead eine Rollenkarte nutzt
 
