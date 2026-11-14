@@ -17,7 +17,7 @@ import { projektAnlegen, projektPruefen, repoVerbinden, uebersetzungSetzen, type
 import * as g from "../src/gegenpruefung.ts";
 import { createServer, type Server } from "node:http";
 import { createHash, randomBytes } from "node:crypto";
-import { anbieterErstellen } from "../src/auth/anbieter.ts";
+import { anbieterErstellen, GRANT_TAGE } from "../src/auth/anbieter.ts";
 import { interaktionBehandeln } from "../src/auth/interaktion.ts";
 import { schluesselLaden } from "../src/auth/schluessel.ts";
 import { konfig, RESSOURCE } from "../src/konfig.ts";
@@ -2491,6 +2491,25 @@ describe("Anmeldung: Zustimmung und Geräte-Bestätigung", () => {
     const { client_id } = await registrieren({ client_name: "Lokal", redirect_uris: ["http://127.0.0.1:9/cb"] });
     const r = await folgen(await autorisieren(client_id, "http://127.0.0.1:9/cb"));
     expect(r.ort).toMatch(/^http:\/\/127\.0\.0\.1:9\/cb\?code=/);
+    // Der Grant gilt ein Jahr (bis 14.11.2026: 14 Tage ab dem Login, danach fiel jeder Runner aus)
+    const g = (await db.query("select (payload->>'exp')::bigint - (payload->>'iat')::bigint as dauer, extract(epoch from laeuft_ab)::bigint - (payload->>'exp')::bigint as abweichung from oidc_payloads where typ = 'Grant' and payload->>'clientId' = $1", [client_id])).rows[0];
+    expect(Number(g.dauer)).toBe(GRANT_TAGE * 86400);
+    expect(Math.abs(Number(g.abweichung))).toBeLessThan(5);
+  });
+
+  it("Migration 065 verlängert gültige Grants auf ein Jahr ab Ausstellung, abgelaufene bleiben abgelaufen", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const sql = await readFile(new URL("../migrations/065_grant_laufzeit.sql", import.meta.url), "utf8");
+    const jetzt = Math.floor(Date.now() / 1000);
+    const zeile = async (id: string, iat: number) => db.query("insert into oidc_payloads(id, typ, payload, laeuft_ab) values ($1, 'Grant', $2, to_timestamp($3))",
+      [id, { iat, exp: iat + 14 * 86400, accountId: "1", clientId: "test-migration" }, iat + 14 * 86400]);
+    await zeile("grant-gueltig", jetzt - 13 * 86400);
+    await zeile("grant-abgelaufen", jetzt - 20 * 86400);
+    await db.query(sql);
+    const r = Object.fromEntries((await db.query("select id, (payload->>'exp')::bigint - (payload->>'iat')::bigint as dauer, laeuft_ab > now() as gueltig from oidc_payloads where id like 'grant-%'")).rows.map((z) => [z.id, z]));
+    expect(r["grant-gueltig"]).toMatchObject({ dauer: GRANT_TAGE * 86400, gueltig: true });
+    expect(r["grant-abgelaufen"]).toMatchObject({ dauer: 14 * 86400, gueltig: false });
+    await db.query("delete from oidc_payloads where id like 'grant-%'");
   });
 
   it("Geräte-Bestätigung zeigt den Client-Namen maskiert", async () => {

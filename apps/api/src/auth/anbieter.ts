@@ -13,6 +13,8 @@ import type { Schluessel } from "./schluessel.ts";
 import { oeffentlicheAdresse } from "./netz.ts";
 import { esc } from "./interaktion.ts";
 
+/** Lebensdauer eines Grants in Tagen (Migration 065 nutzt denselben Wert). */
+export const GRANT_TAGE = 365;
 export const CSP_ANMELDUNG = "default-src 'none'; script-src; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'";
 const englisch = (ctx: { get(name: string): string }) => !/^de\b/i.test(ctx.get("accept-language") ?? "");
 const seite = (titel: string, inhalt: string, en = true) => `<!doctype html><html lang="${en ? "en" : "de"}"><head><meta charset="utf-8">
@@ -117,8 +119,11 @@ export function anbieterErstellen(db: Db, schluessel: Schluessel) {
     },
     interactions: { url: (_ctx, interaktion) => `/interaction/${interaktion.uid}` },
     issueRefreshToken: async (_ctx, client) => client.grantTypeAllowed("refresh_token"),
+    // Grant ein Jahr, Refresh-Token 14 Tage und bei jeder Rotation neu: Eine Anmeldung endet nach 14 Tagen ohne Nutzung,
+    // spätestens nach einem Jahr. Bis 14.11.2026 galt auch der Grant nur 14 Tage ab dem Login, und jeder Runner fiel
+    // danach still aus, obwohl er sein Token laufend erneuerte (Migration 065).
     ttl: {
-      AccessToken: 3600, AuthorizationCode: 600, DeviceCode: 600, Grant: 14 * 86400, IdToken: 3600,
+      AccessToken: 3600, AuthorizationCode: 600, DeviceCode: 600, Grant: GRANT_TAGE * 86400, IdToken: 3600,
       Interaction: 3600, RefreshToken: 14 * 86400, Session: 14 * 86400,
     },
     renderError: async (ctx, out) => {
