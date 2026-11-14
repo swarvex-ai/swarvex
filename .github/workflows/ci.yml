@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:18
+        image: postgres:18.7
         env:
           POSTGRES_USER: swarvex
           POSTGRES_PASSWORD: swarvex

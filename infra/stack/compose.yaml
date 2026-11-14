@@ -2,7 +2,9 @@
 name: swarvex
 services:
   postgres:
-    image: postgres:18
+    # Fixed minor version: a new one comes in with a deploy (`up -d` pulls it and restarts Postgres for a few seconds).
+    # 18.7 (13 Nov 2026) fixes CVE-2026-6460 (code execution by an authenticated user) and CVE-2026-116322.
+    image: postgres:18.7
     # Memory for database pages: Postgres' default (128MB) unless PG_SHARED_BUFFERS in .env says otherwise (live 2GB
     # since 11 Nov 2026, headroom for growth; the database had 44 MB then). Changing it restarts Postgres.
     command: ["postgres", "-c", "shared_buffers=${PG_SHARED_BUFFERS:-128MB}"]

@@ -5,7 +5,7 @@
 name: compat
 services:
   pg:
-    image: postgres:18
+    image: postgres:18.7
     network_mode: host
     environment: { POSTGRES_PASSWORD: compat, PGPORT: "55432" }
     command: ["postgres", "-c", "listen_addresses=127.0.0.1"]
