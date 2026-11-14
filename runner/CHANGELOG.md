@@ -11,6 +11,11 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   costs (subscription, API key or a model on your computer), which agent program works in the sandbox and why, what a
   typical task needs (about 7 minutes and 250,000 tokens, so the default daily budget covers about 8 tasks), what else
   uses tokens and what does not, and how your own agents (Claude Code, Codex …) differ from the runner.
+- Faster tasks: the agent tests only what it changed. In the sandbox it gets `sh /run/swarvex-test/test.sh`, which
+  builds and runs the project's tests for the files it changed in its paths (`SWARVEX_CHANGED`), exactly as the
+  runner's own test run checks the result afterwards; the full suite runs in the test pipeline. Until now the agent ran
+  the whole suite each time (one Formwerk sprite: 26 minutes of tests for one asset). The runner's own test run stays:
+  it is the result the platform counts, and an agent cannot fake it.
 
 ## 0.16.1 (13 Nov 2026)
 

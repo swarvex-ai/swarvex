@@ -763,6 +763,10 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 		return nil, "", err
 	}
 
+	hilfe, err := testHilfeAnlegen(ordner, a, u)
+	if err != nil {
+		return nil, "", err
+	}
 	auftrag := auftragstext(a, u)
 	agentArgs, agentBefehl, err := agentStart(agent, ordner, "http://"+proxyName+":8080", tok, modell, auftrag, skills, baum, u.Ordner, zugang)
 	if err != nil {
@@ -776,6 +780,9 @@ func sandboxAusfuehren(ctx context.Context, a aufgabe, u umgebung.Umgebung, imag
 	}
 	// Agent im Projekt-Image: kein Netz außer dem Schlüssel-Proxy, Projekt unter /work, Caches unter /cache.
 	sandboxArgs := append(append(append(containerArgs(sandboxName, baum, cache, u, rest), "--network", netz), proxyHosts...), agentArgs...)
+	if hilfe != "" {
+		sandboxArgs = append(sandboxArgs, "-v", hilfe+":"+testHilfePfad+":ro,Z")
+	}
 	sandboxArgs = append(sandboxArgs, image)
 	if befehl == nil {
 		befehl = agentBefehl
@@ -914,7 +921,7 @@ func auftragstext(a aufgabe, u umgebung.Umgebung) string {
 		fmt.Fprintf(&b, "- Keep the change within %d changed lines (added plus removed) and %d files; the platform rejects larger patches. Do the core of the task compactly rather than everything at length.\n", a.Grenzen.Zeilen, a.Grenzen.Dateien)
 	}
 	if u.Testen != "" {
-		fmt.Fprintf(&b, "- The project's tests run with:\n%s\n  Run them and fix failures until they pass.\n", einruecken(u.Testen))
+		fmt.Fprintf(&b, "- Test what you changed with:  sh %s/test.sh\n  It builds and runs the project's tests for the files you changed (SWARVEX_CHANGED), exactly as the runner checks your result afterwards; the full suite runs in the test pipeline, not here. Run it and fix failures until it passes. The project's test command on its own (below) tests everything and can take very long: use it only when the task asks for it.\n%s\n", testHilfePfad, einruecken(u.Testen))
 	} else {
 		b.WriteString("- Run the checks from the acceptance criteria yourself and fix failures.\n")
 	}
