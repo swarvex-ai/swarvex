@@ -12,6 +12,10 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   are often 100 to 600 KB of encoded text that the model re-sends with every step without being able to read it; the
   scene images come separately anyway. Measured on the 153 submissions reviewed with Gemini so far: the patches the
   model reads shrink from 10.1 MB to 1.3 MB.
+- `swarvex setup`, when you enter the model yourself ("Something else") for OpenRouter, Anthropic or OpenAI, offers
+  an API key it finds in Hermes' `.env` or in the environment (Enter takes it), asks again instead of saving no key,
+  and checks the key with the provider right away. Before, an empty key there only showed up later, as HTTP 401 on
+  every request.
 
 ## 0.16.2 (14 Nov 2026)
 

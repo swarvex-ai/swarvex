@@ -276,10 +276,7 @@ func modellAuswahl() []modellWahl {
 // hermesModelle übernimmt das Modell, das Hermes Agent nutzt (~/.hermes/config.yaml, Schlüssel dort oder in ~/.hermes/.env).
 // Nur Anbieter mit API-Schlüssel oder lokale Server; Anmeldungen per OAuth (Nous Portal, Codex) lassen sich nicht übertragen.
 func hermesModelle() []modellWahl {
-	ordner := os.Getenv("HERMES_HOME")
-	if ordner == "" {
-		ordner = heim(".hermes")
-	}
+	ordner := hermesVerzeichnis()
 	roh, err := os.ReadFile(filepath.Join(ordner, "config.yaml"))
 	if err != nil {
 		return nil
@@ -382,6 +379,118 @@ func yamlWert(v string) string {
 		v = v[:i]
 	}
 	return strings.TrimSpace(v)
+}
+
+func hermesVerzeichnis() string {
+	if d := os.Getenv("HERMES_HOME"); d != "" {
+		return d
+	}
+	return heim(".hermes")
+}
+
+// Schlüssel im Weg „Something else“ (16.11.2026): Ein Mitstreiter wählte dort OpenRouter mit einem Gratismodell und ließ
+// den Schlüssel leer, in der Annahme, er komme wie bei „Hermes's model“ aus Hermes' .env. Der Runner bekam dann nur
+// HTTP 401. Für die großen Cloud-Anbieter bietet setup deshalb einen vorhandenen Schlüssel an (Enter übernimmt ihn),
+// besteht auf einem und prüft ihn gleich beim Anbieter.
+
+// cloudAnbieter: Name eines Cloud-Anbieters, der ohne Schlüssel jede Anfrage ablehnt; leer für andere Adressen.
+func cloudAnbieter(adresse string) string {
+	switch a := strings.ToLower(adresse); {
+	case strings.Contains(a, "openrouter.ai"):
+		return "OpenRouter"
+	case strings.Contains(a, "api.anthropic.com"):
+		return "Anthropic"
+	case strings.Contains(a, "api.openai.com"):
+		return "OpenAI"
+	}
+	return ""
+}
+
+// vorhandenerSchluessel: ein Schlüssel für diesen Anbieter aus Hermes' .env oder der Umgebung, mit seiner Herkunft.
+func vorhandenerSchluessel(anbieter string) (string, string) {
+	name := map[string]string{"OpenRouter": "OPENROUTER_API_KEY", "Anthropic": "ANTHROPIC_API_KEY", "OpenAI": "OPENAI_API_KEY"}[anbieter]
+	if name == "" {
+		return "", ""
+	}
+	if k := envDatei(filepath.Join(hermesVerzeichnis(), ".env"))[name]; k != "" {
+		return k, "Hermes .env"
+	}
+	if k := strings.TrimSpace(os.Getenv(name)); k != "" {
+		return k, name
+	}
+	return "", ""
+}
+
+// schluesselAbgelehnt: Lehnt der Anbieter den Schlüssel ab (HTTP 401 oder 403)? Netzfehler und andere Antworten
+// zählen nicht als Ablehnung: Dann prüft setup eben nicht.
+func schluesselAbgelehnt(anbieter, adresse, key string) (bool, int) {
+	ziel := strings.TrimRight(adresse, "/") + "/v1/models"
+	if anbieter == "OpenRouter" {
+		ziel = strings.TrimRight(adresse, "/") + "/v1/key" // die Modellliste ist dort öffentlich, /key nicht
+	}
+	req, err := http.NewRequest("GET", ziel, nil)
+	if err != nil {
+		return false, 0
+	}
+	if anbieter == "Anthropic" {
+		req.Header.Set("x-api-key", key)
+		req.Header.Set("anthropic-version", "2023-06-01")
+	} else {
+		req.Header.Set("Authorization", "Bearer "+key)
+	}
+	r, err := (&http.Client{Timeout: 8 * time.Second}).Do(req)
+	if err != nil {
+		return false, 0
+	}
+	r.Body.Close()
+	return r.StatusCode == 401 || r.StatusCode == 403, r.StatusCode
+}
+
+// eigenerSchluessel fragt den Schlüssel im Weg „Something else“. anbieter (cloudAnbieter) leer: wie bisher, leer
+// heißt ohne Schlüssel (lokale Server).
+func eigenerSchluessel(f *frager, adresse, anbieter string) string {
+	if anbieter == "" {
+		return f.geheim("API key (empty if none)")
+	}
+	vorhanden, quelle := vorhandenerSchluessel(anbieter)
+	text := "API key (" + anbieter + " needs one)"
+	if vorhanden != "" {
+		fmt.Printf("  Found an API key for %s in %s.\n", anbieter, quelle)
+		text = "API key (Enter = the key from " + quelle + ")"
+	}
+	for versuch := 0; versuch < 3; versuch++ {
+		k := f.geheim(text)
+		if k == "" {
+			k = vorhanden
+		}
+		text = "API key"
+		if k == "" {
+			fmt.Printf("  Without a key, %s refuses every request (HTTP 401).\n", anbieter)
+			continue
+		}
+		fmt.Printf("Checking the key with %s … ", anbieter)
+		abgelehnt, code := schluesselAbgelehnt(anbieter, adresse, k)
+		switch {
+		case abgelehnt:
+			fmt.Printf("refused (HTTP %d)\n", code)
+			if k == vorhanden {
+				vorhanden = "" // nicht noch einmal anbieten
+			}
+			if f.jaNein("Keep this key anyway?", false) {
+				return k
+			}
+			continue
+		case code == 200:
+			fmt.Println("ok")
+		case code == 0:
+			fmt.Println("not checked (no answer)")
+		default:
+			fmt.Printf("not checked (HTTP %d)\n", code)
+		}
+		return k
+	}
+	fmt.Printf("  No key; your agent will get HTTP 401 from %s until you run swarvex setup again.\n", anbieter)
+	return ""
 }
 
 // envDatei liest KEY=wert-Zeilen (wie Hermes' .env).
@@ -614,7 +723,7 @@ func modellWaehlen(f *frager, frage string) (w modellWahl, abo bool) {
 			fmt.Println("  That server runs on this computer; the sandbox reaches it as " + neu)
 			w.URL, w.Lokal = neu, true
 		}
-		if k := f.geheim("API key (empty if none)"); k != "" {
+		if k := eigenerSchluessel(f, w.URL, cloudAnbieter(w.URL)); k != "" {
 			w.Key = schluesselDatei(w.Agent+"-key", k)
 		}
 	}
