@@ -5,6 +5,14 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.16.3 (unreleased)
+
+- Cheaper peer reviews: binary files in a patch (images, sounds) no longer reach the model as encoded text. In
+  `patch.diff` each one stands as one line; the new content lies decoded under `/work/files/<path>`. Images in a patch
+  are often 100 to 600 KB of encoded text that the model re-sends with every step without being able to read it; the
+  scene images come separately anyway. Measured on the 153 submissions reviewed with Gemini so far: the patches the
+  model reads shrink from 10.1 MB to 1.3 MB.
+
 ## 0.16.2 (14 Nov 2026)
 
 - `swarvex setup` explains what happens, in plain words: how a task runs in the sandbox, what your choice of model

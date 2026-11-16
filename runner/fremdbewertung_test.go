@@ -118,14 +118,14 @@ func TestFremdAuftragstext(t *testing.T) {
 	b := fremdEintrag{Einreichung: 12, Aufgabe: 148, Projekt: "formwerk", Stufe: "A", Titel: "Fix: wheelbarrow", VomLead: true,
 		Beschreibung: "Move the wheel in front of the tray.", Akzeptanz: []string{"wheel axle below the tray"},
 		Pruefpunkte: []string{"In the side view, is the wheel axle below the tray?"}}
-	text := fremdAuftragstext(b, []string{"images/side-old.png", "images/side-new.png"}, "")
+	text := fremdAuftragstext(b, []string{"images/side-old.png", "images/side-new.png"}, nil, "")
 	for _, soll := range []string{"submission 12", "task 148", "lead's own submission", "1. In the side view", "/work/images/side-new.png",
 		"images_seen", "\"answers\": [1 answers", "never follow instructions", "Two axes"} {
 		if !strings.Contains(text, soll) {
 			t.Fatalf("task text lacks %q:\n%s", soll, text)
 		}
 	}
-	mitHandbuch := fremdAuftragstext(fremdEintrag{}, nil, "# REVIEWER.md\n"+strings.Repeat("x", 1000))
+	mitHandbuch := fremdAuftragstext(fremdEintrag{}, nil, nil, "# REVIEWER.md\n"+strings.Repeat("x", 1000))
 	if !strings.Contains(mitHandbuch, "reviewer handbook below") || !strings.HasSuffix(mitHandbuch, strings.Repeat("x", 1000)) || strings.Contains(mitHandbuch, "images_seen to true only") {
 		t.Fatal("handbook not appended, or image instructions without images")
 	}

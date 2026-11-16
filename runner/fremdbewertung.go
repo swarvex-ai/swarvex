@@ -189,12 +189,12 @@ func fremdbewertungRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e
 		}
 	}
 	amLeben(basis, ordner)
-	bilder, err := fremdUnterlagen(z, m.token, *b, arbeit)
+	bilder, dateien, err := fremdUnterlagen(z, m.token, *b, arbeit)
 	if err != nil {
 		abbrechen(err.Error())
 	}
 	handbuch := pruefHandbuch(z)
-	auftrag := fremdAuftragstext(*b, bilder, handbuch)
+	auftrag := fremdAuftragstext(*b, bilder, dateien, handbuch)
 	os.WriteFile(filepath.Join(arbeit, "REVIEW.md"), []byte(auftrag), 0o644)
 	ctx, stopp := context.WithTimeout(basis, e.zeit)
 	defer stopp()
@@ -256,15 +256,20 @@ func fremdAbbruchArgumente(einreichung int64, u ursache, grund string) map[strin
 	return argumente
 }
 
-// fremdUnterlagen: Patch, Prüfbericht und Szenenbilder in den Arbeitsordner; liefert die Bilddateien (relativ).
-func fremdUnterlagen(z *zugangsdaten, token string, b fremdEintrag, arbeit string) ([]string, error) {
-	if err := os.WriteFile(filepath.Join(arbeit, "patch.diff"), []byte(b.Patch), 0o644); err != nil {
-		return nil, err
+// fremdUnterlagen: Patch (ohne Binärdaten, binaerpatch.go), Prüfbericht und Szenenbilder in den Arbeitsordner; liefert
+// die Szenenbilder und die aus dem Patch entpackten Binärdateien (beide relativ).
+func fremdUnterlagen(z *zugangsdaten, token string, b fremdEintrag, arbeit string) ([]string, []string, error) {
+	patch, binaer, weg := binaerPatchKuerzen(b.Patch, arbeit)
+	if weg > 0 {
+		fmt.Printf("Binary data left out of the patch the model reads: %d of %d KB.\n", weg/1024, len(b.Patch)/1024)
+	}
+	if err := os.WriteFile(filepath.Join(arbeit, "patch.diff"), []byte(patch), 0o644); err != nil {
+		return nil, nil, err
 	}
 	os.WriteFile(filepath.Join(arbeit, "check-report.txt"), []byte(b.Bericht), 0o644)
 	var dateien []string
 	if len(b.Bilder) == 0 {
-		return nil, nil
+		return nil, binaer, nil
 	}
 	os.MkdirAll(filepath.Join(arbeit, "images"), 0o755)
 	c := httpClient(z.CAPfad)
@@ -275,7 +280,7 @@ func fremdUnterlagen(z *zugangsdaten, token string, b fremdEintrag, arbeit strin
 			req.Header.Set("authorization", "Bearer "+token)
 			r, err := c.Do(req)
 			if err != nil {
-				return nil, fmt.Errorf("scene image %s/%s: %v", szene, art, err)
+				return nil, nil, fmt.Errorf("scene image %s/%s: %v", szene, art, err)
 			}
 			roh, _ := io.ReadAll(io.LimitReader(r.Body, 2<<20))
 			r.Body.Close()
@@ -283,19 +288,19 @@ func fremdUnterlagen(z *zugangsdaten, token string, b fremdEintrag, arbeit strin
 				continue // nicht jede Szene hat alle drei (eine neue Szene hat kein altes Bild)
 			}
 			if r.StatusCode != http.StatusOK {
-				return nil, fmt.Errorf("scene image %s/%s: HTTP %d: %s", szene, art, r.StatusCode, kuerzen(string(roh), 200))
+				return nil, nil, fmt.Errorf("scene image %s/%s: HTTP %d: %s", szene, art, r.StatusCode, kuerzen(string(roh), 200))
 			}
 			name := filepath.Join("images", fmt.Sprintf("%s-%s.png", szene, art))
 			if err := os.WriteFile(filepath.Join(arbeit, name), roh, 0o644); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			dateien = append(dateien, name)
 		}
 	}
 	if len(dateien) == 0 {
-		return nil, fmt.Errorf("the submission has scene images, but none could be loaded")
+		return nil, nil, fmt.Errorf("the submission has scene images, but none could be loaded")
 	}
-	return dateien, nil
+	return dateien, binaer, nil
 }
 
 // pruefHandbuch: lead/REVIEWER.md von der Plattform (zwischengespeichert); leer, wenn es nicht zu laden ist.
@@ -314,7 +319,7 @@ func pruefHandbuch(z *zugangsdaten) string {
 	return string(roh)
 }
 
-func fremdAuftragstext(b fremdEintrag, bilder []string, handbuch string) string {
+func fremdAuftragstext(b fremdEintrag, bilder, binaer []string, handbuch string) string {
 	var s strings.Builder
 	fmt.Fprintf(&s, "# Peer review of submission %d\n\n", b.Einreichung)
 	fmt.Fprintf(&s, "You review another contributor's work on swarvex: project %s, task %d (level %s): %s.\n", b.Projekt, b.Aufgabe, b.Stufe, b.Titel)
@@ -336,7 +341,17 @@ func fremdAuftragstext(b fremdEintrag, bilder []string, handbuch string) string 
 			fmt.Fprintf(&s, "%d. %s\n", i+1, p)
 		}
 	}
-	s.WriteString("\n## What you have in /work\n\n- patch.diff: the change\n- check-report.txt: the test pipeline's report (it passed)\n")
+	s.WriteString("\n## What you have in /work\n\n- patch.diff: the change (binary files stand there as one line each, without their encoded data)\n- check-report.txt: the test pipeline's report (it passed)\n")
+	if len(binaer) > 0 {
+		s.WriteString("- the new content of the binary files in the change, decoded from the patch (open one only if you need to check it):\n")
+		for i, d := range binaer {
+			if i == 20 {
+				fmt.Fprintf(&s, "  - and %d more under /work/files/\n", len(binaer)-20)
+				break
+			}
+			s.WriteString("  - /work/" + filepath.ToSlash(d) + "\n")
+		}
+	}
 	if b.Zusammenfassung != "" {
 		s.WriteString("- the contributor's summary (a claim, check it against the diff): " + kuerzen(strings.TrimSpace(b.Zusammenfassung), 1500) + "\n")
 	}
