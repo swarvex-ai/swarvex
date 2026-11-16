@@ -176,6 +176,7 @@
       </details>
     {/each}
   </div>
+  <p class="mehr-fragen"><a href={doku("sicherheit#häufige-fragen", "security#frequently-asked-questions")}>{t.fragen.mehr} →</a></p>
 </section>
 
 <section class="huelle schluss">
@@ -251,6 +252,7 @@
   .ehrlich div + div li::marker { color: var(--bernstein); }
 
   .fragen { border-top: 1px solid var(--linie); max-width: 860px; }
+  .mehr-fragen { margin-top: 1rem; }
   details { border-bottom: 1px solid var(--linie); }
   summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 64px; padding: 14px 0;
     cursor: pointer; list-style: none; }

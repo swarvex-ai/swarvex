@@ -107,7 +107,7 @@
             {#each Object.entries(t.arten) as [wert, text]}<option value={wert}>{text}</option>{/each}
           </select>
           {#if art === "security"}
-            <p class="hilfe">{t.luecke} <a href={pfad(s, s === "de" ? "/docs/sicherheit" : "/docs/security")}>{t.lueckeLink}</a></p>
+            <p class="hilfe">{t.luecke} <a href={pfad(s, s === "de" ? "/docs/sicherheit#schwachstelle-melden" : "/docs/security#report-a-vulnerability")}>{t.lueckeLink}</a></p>
           {/if}
         </div>
 
