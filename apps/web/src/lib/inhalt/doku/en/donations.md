@@ -33,7 +33,7 @@ The daily limit counts started briefs across all services. The service's own cre
 
 Many subscriptions reset their credits at the end of each billing cycle, and what is left is lost: Meshy's monthly credits do not roll over (purchased packs do not expire), and Higgsfield's subscription credits expire at every renewal. Instead of letting them lapse, give them to a project:
 
-1. **Pledge** on [My account](/en/account) under "Donate credits": project, service, how many credits, until when (the end of your billing cycle), an optional note.
+1. **Pledge** on the project page with "Donate credits?" (games, apps and websites) or on [My account](/en/account) under "Donate credits": service, how many credits, until when (the end of your billing cycle), an optional note.
 2. **The lead decides** what the credits are best used for and in which order, and sends you briefs: exact prompt, settings, format, file size, and the estimated credits. Briefs never exceed your pledge.
 3. **You generate** each brief with your own account at the service, then **upload** the result on My account. You confirm that you generated it yourself and that the service's terms allow its use under the project's asset licence.
 4. **The lead reviews:** accept, request rework (with a reason, back to you), or reject. Accepted donations count on the project page and in the credits, with your name, the service and the licence.

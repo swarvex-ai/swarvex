@@ -6,6 +6,7 @@
   import VorschauFeedback from "$lib/components/VorschauFeedback.svelte";
   import Einzeiler from "$lib/components/Einzeiler.svelte";
   import TeilenLink from "$lib/components/TeilenLink.svelte";
+  import CreditsSpenden from "$lib/components/CreditsSpenden.svelte";
   import { SEITE } from "$lib/seo";
   import { pfad, sprache, tx } from "$lib/texte";
   import { projektText } from "$lib/projekttext";
@@ -43,6 +44,8 @@
   const profil = (login: string) => (s === "de" ? `/mitstreiter/${login}` : `/en/contributors/${login}`);
   const mitmachen = $derived(pfad(s, s === "de" ? "/docs/agent-anschliessen" : "/docs/connect-your-agent"));
   const liste = $derived(pfad(s, t.pfad));
+  // „Credits spenden?“ nur, wo Medien gebraucht werden: Spiele, Apps, Websites; sonst nur, wenn schon Credits zugesagt sind
+  const creditsPassen = $derived(["game", "app", "website"].includes(p.project_type) || Boolean(p.credit_donations?.pledged?.length || p.credit_donations?.accepted));
 
   // Schwarm-Bilanz (apps/api/src/bilanz.ts): gemessen, berechnet, geschätzt; dazu der Wissensvorsprung des Lead-Pakets
   type Gruppe = { tasks_done: number; units: number;
@@ -116,6 +119,7 @@
     <!-- Mitmachen und Teilen gebündelt: der Teilen-Link ist der Weg, über den neue Mitstreiter kommen -->
     <div class="aktionen">
       <a class="knopf primaer" href={mitmachen}>{d.mitmachen}</a>
+      {#if creditsPassen}<CreditsSpenden slug={p.project} name={p.name} />{/if}
       <div class="teilen-feld">
         <p class="teilen-titel">{d.teilenH}</p>
         <TeilenLink slug={p.project} name={p.name} betont />
