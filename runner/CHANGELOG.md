@@ -5,6 +5,15 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.16.4 (unreleased)
+
+- The sandbox containers for the agent, the setup, builds, tests and peer reviews no longer copy their output into
+  your system journal. The runner reads that output itself, as before: the agent's goes to `agent.log` in the task
+  folder, the setup's to its log file, the last lines of a cross-check's tests into its report. Before, podman wrote
+  every line a second time into the journal (its default log driver), so `swarvex logs` was mostly test output of
+  other people's projects: on one runner, 105 of its 4,894 lines in a day came from the runner itself. Containers the
+  runner reads with `podman logs` (proxies, media tools) keep logging as before.
+
 ## 0.16.3 (16 Nov 2026)
 
 - Cheaper peer reviews: binary files in a patch (images, sounds) no longer reach the model as encoded text. In

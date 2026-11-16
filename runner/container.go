@@ -91,8 +91,11 @@ func cacheOrdner(projekt string) string {
 }
 
 // containerArgs: gemeinsame, abgeschottete Einstellungen für Einrichten, Befehle und Agent.
+// --log-driver none: Die Ausgabe liest der Runner über die Pipe (begrenztAusfuehren); ohne den Schalter kopierte
+// podman sie zusätzlich ins Journal des Mitstreiters (Standardtreiber journald), also auch Testausgaben fremder
+// Projekte. Container, die der Runner mit podman logs ausliest (Proxys, Medienwerkzeuge), nutzen diese Funktion nicht.
 func containerArgs(name, baum, cache string, u umgebung.Umgebung, sekunden int) []string {
-	args := []string{"run", "--rm", "--name", name, "--timeout", fmt.Sprint(sekunden),
+	args := []string{"run", "--rm", "--name", name, "--timeout", fmt.Sprint(sekunden), "--log-driver", "none",
 		"--cap-drop=ALL", "--security-opt", "no-new-privileges", "--read-only",
 		"--tmpfs", "/tmp:rw,exec,size=2g,mode=1777", "--tmpfs", "/home/agent:rw,exec,size=1g,mode=1777",
 		"--userns=keep-id:uid=1000,gid=1000", "--user", "1000:1000", "--memory", "4g", "--cpus", "3", "--pids-limit", "1024",
