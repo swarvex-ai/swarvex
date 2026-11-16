@@ -4,7 +4,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import GithubSlugger from "github-slugger";
-import { Marked, type Tokens } from "marked";
+import { Marked, type Token, type Tokens } from "marked";
 import { createHighlighter, type Highlighter } from "shiki";
 import type { Sprache } from "$lib/texte";
 
@@ -74,6 +74,44 @@ const highlighter = () => (hl ??= createHighlighter({
   langs: ["bash", "sh", "yaml", "json", "typescript", "go", "text", "markdown", "toml", "python", "gdscript"],
 }));
 
+// FAQ-Abschnitte („## Häufige Fragen“): Jeder Absatz, der fett beginnt, ist eine Frage. Er wird mit allem bis zur
+// nächsten Frage (Rest des Absatzes, Listen, Code) zu einem aufklappbaren Eintrag. Die Markdown-Quelle bleibt lesbar.
+const FAQ_TITEL = /^(Häufige Fragen|Frequently asked questions)$/;
+type FaqToken = { type: "faq"; raw: string; id: string; frage: Token[]; antwort: Token[] };
+
+function faqFalten(tokens: Token[], slug: (s: string) => string): Token[] {
+  const aus: Token[] = [];
+  let imFaq = false;
+  let eintrag: FaqToken | null = null;
+  for (const tok of tokens) {
+    if (tok.type === "heading") {
+      eintrag = null;
+      imFaq = tok.depth === 2 && FAQ_TITEL.test(tok.text.trim());
+      aus.push(tok);
+      continue;
+    }
+    const absatz = imFaq && tok.type === "paragraph" ? (tok as Tokens.Paragraph) : null;
+    const frage = absatz?.tokens[0]?.type === "strong" ? (absatz.tokens[0] as Tokens.Strong) : null;
+    if (absatz && frage) {
+      // Rest des Absatzes: führenden Umbruch und Leerraum hinter der fetten Frage entfernen
+      const rest = absatz.tokens.slice(1);
+      if (rest[0]?.type === "text") {
+        const t = rest[0] as Tokens.Text;
+        rest[0] = { ...t, raw: t.raw.trimStart(), text: t.text.trimStart() };
+        if (!(rest[0] as Tokens.Text).text) rest.shift();
+      }
+      eintrag = { type: "faq", raw: tok.raw, id: slug(frage.text.replace(/[*`_]/g, "")), frage: frage.tokens, antwort: [] };
+      if (rest.length) eintrag.antwort.push({ type: "paragraph", raw: "", text: "", tokens: rest } as Tokens.Paragraph);
+      aus.push(eintrag as unknown as Token);
+    } else if (eintrag && tok.type !== "space") {
+      eintrag.antwort.push(tok);
+    } else {
+      aus.push(tok);
+    }
+  }
+  return aus;
+}
+
 /** Rendert eine Seite zu HTML und liefert die Überschriften fürs Inhaltsverzeichnis. */
 export async function rendern(seite: Seite) {
   const h = await highlighter();
@@ -85,6 +123,18 @@ export async function rendern(seite: Seite) {
   const md = new Marked({
     async: true,
     gfm: true,
+    hooks: { processAllTokens: (tokens) => faqFalten(tokens, (s) => slugger.slug(s)) },
+    extensions: [{
+      name: "faq",
+      childTokens: ["frage", "antwort"],
+      renderer(token) {
+        const f = token as unknown as FaqToken;
+        // Pfeil wie in den Fragen der Startseite; <details> öffnet sich auch bei der Suche im Browser (Strg+F)
+        return `<details class="faq" id="${f.id}"><summary><span>${this.parser.parseInline(f.frage)}</span>`
+          + `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+          + `</summary><div class="faq-antwort">${this.parser.parse(f.antwort)}</div></details>\n`;
+      },
+    }],
     renderer: {
       heading({ tokens, depth, text }: Tokens.Heading) {
         const id = slugger.slug(text.replace(/<[^>]+>/g, ""));

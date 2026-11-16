@@ -60,6 +60,38 @@
   const bilanz = $derived(p.swarm_balance as { time_flow: Record<string, number | null> | null; now: Jetzt; total: Gruppe | null; milestones: (Gruppe & { title: string; completed: boolean })[]; comparison: { calendar_days: number; description: string; description_en: string; units?: number; evidence?: string; units_per_day?: number; throughput_factor?: number } | null } | undefined);
   const paket = $derived((p.project_type ? data.pakete?.[`${p.project_type}${p.procedure === "clean_room" ? "-cleanroom" : p.procedure === "continuation" ? "-continuation" : ""}`] : undefined) as { kb: number; rollenkarten: number; bausteine: number; werkzeugkasten: boolean } | undefined);
   const methode = $derived(pfad(s, s === "de" ? "/docs/warum-swarvex#wie-wir-den-vorteil-messen" : "/docs/why-swarvex#how-we-measure-the-advantage"));
+
+  // Lange Listen gekürzt: Die API liefert die neuesten 50 Aufgaben und 20 Protokolleinträge, gezeigt werden zuerst weniger
+  const AUFGABEN_ZUERST = 12, PROTOKOLL_ZUERST = 8;
+  let alleAufgaben = $state(false);
+  let ganzesProtokoll = $state(false);
+  const sichtbareAufgaben = $derived(alleAufgaben ? aufgaben : aufgaben.slice(0, AUFGABEN_ZUERST));
+  const ereignisse = $derived((ganzesProtokoll ? p.events : p.events.slice(0, PROTOKOLL_ZUERST)) as { seq: number; time: string; type: string; who: string }[]);
+  // Beim Zuklappen zurück zum Anfang der Liste, sonst steht man mitten im Protokoll
+  const zuklappen = (id: string, aus: () => void) => { aus(); document.getElementById(id)?.scrollIntoView(); };
+
+  // Sprungleiste unter dem Kopf: Abschnitte der Seite, der gerade gelesene ist markiert
+  const sprungziele = $derived([
+    { id: "ueberblick", name: d.ueberblick },
+    laufend ? { id: "laufend", name: l.h2 } : { id: "meilensteine", name: d.meilensteine },
+    { id: "bilanz", name: laufend ? b.bremstH3 : b.h2 },
+    { id: "aufgaben", name: d.aufgaben },
+    { id: "beitragende", name: d.beitragende, zahl: p.contributors.length },
+    { id: "protokoll", name: d.protokoll },
+    { id: "vision", name: d.vision },
+  ] as { id: string; name: string; zahl?: number }[]);
+  let aktiv = $state("ueberblick");
+  $effect(() => {
+    const ids = sprungziele.map((z) => z.id);
+    const pruefen = () => {
+      let a = ids[0];
+      for (const id of ids) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top < 160) a = id; }
+      aktiv = a;
+    };
+    pruefen();
+    addEventListener("scroll", pruefen, { passive: true });
+    return () => removeEventListener("scroll", pruefen);
+  });
 </script>
 
 <Seo
@@ -81,24 +113,42 @@
       <p class="vision">{text.vision_short}</p>
       <p class="meta leise">{d.veroeffentlicht} {datum(p.vision_published)}<span>{d.ziel}: {text.goal}</span></p>
     </div>
+    <!-- Mitmachen und Teilen gebündelt: der Teilen-Link ist der Weg, über den neue Mitstreiter kommen -->
     <div class="aktionen">
       <a class="knopf primaer" href={mitmachen}>{d.mitmachen}</a>
-      {#if p.preview?.url || p.preview?.docs_url}
-        <!-- Projektcode auf eigener Adresse (infra/stack/vorschau-domain.caddy): neues Fenster, ohne Verweis auf diese Seite -->
-        <div class="vorschau-knoepfe">
-          {#if p.preview.url}<a class="knopf" href={p.preview.url} target="_blank" rel="noopener noreferrer">{d.vorschau(p.project_type ?? null, Boolean(laufend?.catalogue))} ↗</a>{/if}
-          {#if p.preview.docs_url}<a class="knopf" href={p.preview.docs_url} target="_blank" rel="noopener noreferrer">{d.doku} ↗</a>{/if}
-        </div>
-        <span class="leise klein">{d.vorschauStand(String(p.preview.playable_commit).slice(0, 7), datum(p.preview.playable_since))}{#if p.preview.status === "failed"}<br />{d.vorschauFehler}{/if}</span>
-        {#if p.preview.url}<VorschauFeedback slug={p.project} commit={String(p.preview.playable_commit)} anzahl={p.preview.feedback?.total ?? 0} />{/if}
-      {:else if p.preview}
-        <span class="leise klein">{p.preview.status === "failed" ? d.vorschauNochNicht : d.vorschauWird}</span>
-      {/if}
-      <TeilenLink slug={p.project} name={p.name} klein />
-      {#if p.lead_positions?.length}<a class="knopf gesucht" href={pfad(s, `/join/${p.project}`)}>{tx().leadKraft.bereichsLead} · {tx().leadKraft.gesucht(p.lead_positions.length)}</a>{/if}
+      <div class="teilen-feld">
+        <p class="teilen-titel">{d.teilenH}</p>
+        <TeilenLink slug={p.project} name={p.name} betont />
+        <p class="leise teilen-text">{d.teilenText}</p>
+      </div>
+      {#if p.lead_positions?.length}<a class="knopf gesucht" href={pfad(s, `/join/${p.project}`)}><span>{tx().leadKraft.bereichsLead}</span> <span class="leise">{tx().leadKraft.gesucht(p.lead_positions.length)}</span></a>{/if}
       <a class="melden leise" href={`${pfad(s, tx().melden.pfad)}?project=${encodeURIComponent(p.project)}`}>{d.melden}</a>
     </div>
   </header>
+
+  {#if p.preview?.url || p.preview?.docs_url}
+    <!-- Projektcode auf eigener Adresse (infra/stack/vorschau-domain.caddy): neues Fenster, ohne Verweis auf diese Seite -->
+    <div class="vorschau-leiste">
+      <span class="vorschau-titel">{d.vorschauH}</span>
+      <div class="vorschau-knoepfe">
+        {#if p.preview.url}<a class="knopf" href={p.preview.url} target="_blank" rel="noopener noreferrer">{d.vorschau(p.project_type ?? null, Boolean(laufend?.catalogue))} ↗</a>{/if}
+        {#if p.preview.docs_url}<a class="knopf" href={p.preview.docs_url} target="_blank" rel="noopener noreferrer">{d.doku} ↗</a>{/if}
+      </div>
+      <span class="leise stand">{d.vorschauStand(String(p.preview.playable_commit).slice(0, 7), datum(p.preview.playable_since))}{#if p.preview.status === "failed"}<br />{d.vorschauFehler}{/if}</span>
+      {#if p.preview.url}<div class="feedback-platz"><VorschauFeedback slug={p.project} commit={String(p.preview.playable_commit)} anzahl={p.preview.feedback?.total ?? 0} /></div>{/if}
+    </div>
+  {:else if p.preview}
+    <p class="leise vorschau-wird">{p.preview.status === "failed" ? d.vorschauNochNicht : d.vorschauWird}</p>
+  {/if}
+
+  <nav class="abschnitte" aria-label={d.abschnitte}>
+    <ul>
+      {#each sprungziele as z (z.id)}
+        <li><a href="#{z.id}" aria-current={aktiv === z.id ? "location" : undefined}
+          onclick={() => { if (z.id === "vision") (document.getElementById("vision") as HTMLDetailsElement | null)?.setAttribute("open", ""); }}>{z.name}{#if z.zahl !== undefined} <span class="zahl leise">{z.zahl}</span>{/if}</a></li>
+      {/each}
+    </ul>
+  </nav>
 
   {#if p.requests?.incoming?.length || p.requests?.outgoing?.length}
     {@const lk = tx().leadKraft}
@@ -115,7 +165,7 @@
     </section>
   {/if}
 
-  <section aria-labelledby="t-kennzahlen">
+  <section id="ueberblick" aria-labelledby="t-kennzahlen">
     <h2 id="t-kennzahlen" class="sr">{d.kennzahlen}</h2>
     <dl class="kennzahlen">
       <div class="gross"><dt>{laufend ? l.bestand : t.fortschritt}</dt><dd>
@@ -144,7 +194,7 @@
 
   <div class="zwei">
     {#if laufend}
-    <section aria-labelledby="t-laufend">
+    <section id="laufend" aria-labelledby="t-laufend">
       <h2 id="t-laufend">{l.h2}</h2>
       <dl class="laufend">
         {#if laufend.catalogue}<div><dt>{l.katalog}</dt><dd>{l.assets(laufend.catalogue.assets)} {l.arten(laufend.catalogue.kinds)} · {l.dieseWoche(laufend.this_week)}</dd></div>{/if}
@@ -154,7 +204,7 @@
       <p class="leise klein">{l.text}</p>
     </section>
     {:else}
-    <section aria-labelledby="t-meilensteine">
+    <section id="meilensteine" aria-labelledby="t-meilensteine">
       <h2 id="t-meilensteine">{d.meilensteine}</h2>
       {#if p.milestones.length}
         <ul class="meilensteine">
@@ -220,7 +270,7 @@
     </section>
   </div>
 
-  <section aria-labelledby="t-bilanz" class="bilanz">
+  <section id="bilanz" aria-labelledby="t-bilanz" class="bilanz">
     {#if laufend}
     <h2 id="t-bilanz">{b.bremstH3}</h2>
     {:else}
@@ -303,7 +353,7 @@
     {#if paket}<p class="wissen klein">{b.wissen(paket.kb, paket.bausteine, paket.rollenkarten, paket.werkzeugkasten)}</p>{/if}
   </section>
 
-  <section aria-labelledby="t-aufgaben">
+  <section id="aufgaben" aria-labelledby="t-aufgaben">
     <div class="abschnittkopf">
       <h2 id="t-aufgaben">{d.aufgaben}</h2>
       <div role="tablist" aria-label={d.aufgaben}>
@@ -320,7 +370,7 @@
         <table>
           <thead><tr><th>{d.spalten.nr}</th><th>{d.spalten.aufgabe}</th><th>{d.spalten.stufe}</th><th>{d.spalten.zustand}</th><th>{d.spalten.wer}</th></tr></thead>
           <tbody>
-            {#each aufgaben as a (a.id)}
+            {#each sichtbareAufgaben as a (a.id)}
               <tr>
                 <td class="zahl leise">{a.id}</td>
                 <td>{a.title}{#if a.milestone || a.role}<span class="unter leise">{[a.milestone, a.role].filter(Boolean).join(" · ")}</span>{/if}{#if a.waiting_for?.length}<span class="unter wartet">{t.detail.bilanz.wartetAuf(a.waiting_for)}</span>{/if}{#if a.without_peer_review}<span class="unter leise">{t.detail.bilanz.vomLead}</span>{/if}</td>
@@ -332,10 +382,14 @@
           </tbody>
         </table>
       </div>
+      {#if aufgaben.length > AUFGABEN_ZUERST}
+        <button type="button" class="mehr" onclick={() => (alleAufgaben ? zuklappen("aufgaben", () => (alleAufgaben = false)) : (alleAufgaben = true))}>
+          {alleAufgaben ? d.wenigerZeigen : d.weitere(aufgaben.length - AUFGABEN_ZUERST)}</button>
+      {/if}
     {:else}<p class="leise">{d.keineAufgaben}</p>{/if}
   </section>
 
-  <section aria-labelledby="t-beitragende">
+  <section id="beitragende" aria-labelledby="t-beitragende">
     <h2 id="t-beitragende">{d.beitragende}</h2>
     {#if p.contributors.length}
       <ul class="beitragende">
@@ -347,16 +401,20 @@
     {:else}<p class="leise">{d.keineBeitragende} <a href={mitmachen}>{d.mitmachen}</a></p>{/if}
   </section>
 
-  <section aria-labelledby="t-protokoll">
+  <section id="protokoll" aria-labelledby="t-protokoll">
     <h2 id="t-protokoll">{d.protokoll} <span class="leise klein-titel">{d.neueste}</span></h2>
     <ol class="protokoll">
-      {#each p.events as e (e.seq)}
+      {#each ereignisse as e (e.seq)}
         <li><span class="zahl leise">#{e.seq}</span><span class="zeit leise">{zeit(e.time)}</span><span>{t.art[e.type] ?? e.type}</span><span class="leise wer">{t.akteure[e.who] ?? e.who}</span></li>
       {/each}
     </ol>
+    {#if p.events.length > PROTOKOLL_ZUERST}
+      <button type="button" class="mehr" onclick={() => (ganzesProtokoll ? zuklappen("protokoll", () => (ganzesProtokoll = false)) : (ganzesProtokoll = true))}>
+        {ganzesProtokoll ? d.wenigerZeigen : d.weitere(p.events.length - PROTOKOLL_ZUERST)}</button>
+    {/if}
   </section>
 
-  <details class="vision-original">
+  <details class="vision-original" id="vision">
     <summary>{d.vision}</summary>
     {#if text.original}
       <p class="sprachhinweis leise">
@@ -374,12 +432,42 @@
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .pfad { padding-top: 32px; font-size: .9rem; }
   .pfad a { color: var(--stahl); }
-  .kopf { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; margin: 12px 0 28px; }
+  .kopf { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 24px 40px; align-items: start; margin: 12px 0 24px; }
   .steckbrief dd.still { color: var(--bernstein); }
-  .vorschau-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
   .kopf h1 { font-size: clamp(2.1rem, 4.5vw, 3.2rem); margin-bottom: 10px; }
-  .aktionen { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
-  .melden { font-size: .88rem; }
+  /* Aktionskarte: Mitmachen, Teilen, Lead-Stellen */
+  .aktionen { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--linie); border-radius: var(--radius); background: var(--metall); }
+  .aktionen > .knopf { justify-content: center; text-align: center; }
+  .aktionen > .gesucht { flex-wrap: wrap; gap: 0 .5em; padding-block: 6px; }
+  .gesucht .leise { font-size: .85rem; }
+  .teilen-feld { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--linie); }
+  .teilen-titel { margin: 0; font-weight: 600; font-size: .95rem; }
+  .teilen-text { margin: 0; font-size: .84rem; line-height: 1.45; }
+  .melden { font-size: .84rem; justify-self: end; }
+
+  /* Vorschau als eigene Leiste unter dem Kopf */
+  .vorschau-leiste { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 12px 16px; border: 1px solid var(--linie);
+    border-radius: var(--radius); background: var(--graphit-2); }
+  .vorschau-titel { font-weight: 600; font-size: .9rem; }
+  .vorschau-knoepfe { display: flex; flex-wrap: wrap; gap: 8px; }
+  .vorschau-leiste .stand { flex: 1 1 220px; font-size: .85rem; }
+  .feedback-platz { margin-left: auto; display: flex; justify-content: flex-end; min-width: 0; }
+  .vorschau-wird { font-size: .9rem; margin: 0; }
+
+  /* Sprungleiste: klebt unter der Kopfzeile der Website (64 px) */
+  .abschnitte { position: sticky; top: 64px; z-index: 20; margin-top: 20px; border-bottom: 1px solid var(--linie);
+    background: color-mix(in srgb, var(--graphit) 90%, transparent); backdrop-filter: blur(10px); }
+  .abschnitte ul { display: flex; gap: 2px; list-style: none; margin: 0; padding: 0; overflow-x: auto; scrollbar-width: none; }
+  .abschnitte a { display: inline-flex; align-items: center; gap: 6px; min-height: 46px; padding: 0 12px; white-space: nowrap; color: var(--stahl);
+    text-decoration: none; font-size: .9rem; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .abschnitte a:hover { color: var(--text); }
+  .abschnitte a[aria-current] { color: var(--text); border-bottom-color: var(--akzent); }
+  .abschnitte .zahl { font-size: .8rem; }
+  /* 80 px scroll-padding der Seite (app.css) + 50 px für die Sprungleiste */
+  section[id], #vision { scroll-margin-top: 50px; }
+  .mehr { margin-top: 10px; min-height: 40px; padding: 0 14px; border: 1px solid var(--linie); border-radius: var(--radius-klein); background: var(--graphit-2);
+    color: var(--stahl); font: 500 .9rem var(--schrift); cursor: pointer; }
+  .mehr:hover { color: var(--text); border-color: var(--linie-hell); }
   .bedarf ul { list-style: none; padding: 0; margin: 0 0 24px; display: grid; gap: 4px; }
   .bedarf .klein-h { font-size: 1rem; margin: 0 0 8px; }
   .anker { display: block; font-size: .85rem; margin-top: 4px; }
@@ -458,9 +546,8 @@
 
   @media (max-width: 900px) {
     .kopf, .zwei { grid-template-columns: 1fr; }
-    .aktionen { align-items: flex-start; }
-    .vorschau-knoepfe { justify-content: flex-start; }
-    .aktionen :global(.feedback summary) { text-align: left; }
+    .feedback-platz { margin-left: 0; justify-content: flex-start; }
+    .feedback-platz :global(.feedback summary) { text-align: left; }
     .kennzahlen { grid-template-columns: 1fr 1fr; }
     .gross { grid-column: 1 / -1; }
     .steckbrief { margin-top: 24px; }

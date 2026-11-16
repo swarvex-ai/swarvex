@@ -87,9 +87,9 @@
         }
         if (i) { ideeName = i[sprache()].name; ideeStart = i.start?.repo ?? ""; }
       } catch { /* ohne Katalog startet der Assistent leer */ }
-    } else if (d.idee) {
-      d = { ...d, idee: "" };
     }
+    // Ohne ?idea= (etwa nach der Anmeldung, die nach /starten zurückführt) bleibt eine übernommene Idee aus dem
+    // Sitzungsspeicher stehen, zusammen mit den Feldern, die sie vorbelegt hat. „Ohne Idee“ im Hinweis oben löst sie.
   });
   $effect(() => {
     const stand = JSON.stringify({ d, schritt, ergebnis });

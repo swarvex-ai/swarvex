@@ -18,7 +18,14 @@
       try { await navigator.clipboard.writeText(code); k.textContent = t.kopiert; setTimeout(() => (k.textContent = t.kopieren), 1500); } catch {}
     };
     document.addEventListener("click", klick);
-    return () => document.removeEventListener("click", klick);
+    // Link auf eine einzelne Frage (#ist-das-ein-botnetz): den Eintrag aufklappen
+    const frageOeffnen = () => {
+      const ziel = location.hash ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+      if (ziel instanceof HTMLDetailsElement) { ziel.open = true; ziel.scrollIntoView(); }
+    };
+    frageOeffnen();
+    addEventListener("hashchange", frageOeffnen);
+    return () => { document.removeEventListener("click", klick); removeEventListener("hashchange", frageOeffnen); };
   });
 
   // Inhaltsverzeichnis: markiert den Abschnitt, der gerade gelesen wird
@@ -96,6 +103,20 @@
   .blaettern a:hover { border-color: var(--akzent); }
   .blaettern .weiter { text-align: right; }
   .blaettern span { font-size: .8rem; }
+
+  /* Häufige Fragen als Ziehharmonika (doku.ts, faqFalten) */
+  .prosa :global(h2 + details.faq), .prosa :global(p + details.faq) { border-top: 1px solid var(--linie); margin-top: 1em; }
+  .prosa :global(details.faq) { border-bottom: 1px solid var(--linie); scroll-margin-top: 90px; }
+  .prosa :global(details.faq summary) { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 56px; padding: 12px 0;
+    cursor: pointer; list-style: none; font-weight: 560; color: var(--text); }
+  .prosa :global(details.faq summary::-webkit-details-marker) { display: none; }
+  .prosa :global(details.faq summary svg) { flex: none; color: var(--leise); transition: transform .25s cubic-bezier(.2, .8, .2, 1), color var(--dauer); }
+  .prosa :global(details.faq summary:hover svg) { color: var(--akzent); }
+  .prosa :global(details.faq[open] summary svg) { transform: rotate(180deg); color: var(--akzent); }
+  .prosa :global(.faq-antwort) { padding-bottom: 14px; }
+  .prosa :global(.faq-antwort > :first-child) { margin-top: 0; }
+  .prosa :global(details.faq[open] .faq-antwort) { animation: faq-auf .3s cubic-bezier(.2, .8, .2, 1); }
+  @keyframes faq-auf { from { opacity: 0; transform: translateY(-4px); } }
 
   /* Prosa aus Markdown */
   .prosa :global(h2) { margin-top: 2.2em; font-size: 1.55rem; }
