@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.16.3 (unreleased)
+## 0.16.3 (16 Nov 2026)
 
 - Cheaper peer reviews: binary files in a patch (images, sounds) no longer reach the model as encoded text. In
   `patch.diff` each one stands as one line; the new content lies decoded under `/work/files/<path>`. Images in a patch
