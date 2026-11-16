@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.16.4 (unreleased)
+## 0.16.4 (16 Nov 2026)
 
 - The sandbox containers for the agent, the setup, builds, tests and peer reviews no longer copy their output into
   your system journal. The runner reads that output itself, as before: the agent's goes to `agent.log` in the task
