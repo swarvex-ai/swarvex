@@ -129,6 +129,14 @@ func TestFremdAuftragstext(t *testing.T) {
 	if !strings.Contains(mitHandbuch, "reviewer handbook below") || !strings.HasSuffix(mitHandbuch, strings.Repeat("x", 1000)) || strings.Contains(mitHandbuch, "images_seen to true only") {
 		t.Fatal("handbook not appended, or image instructions without images")
 	}
+	// ohne Szenenbilder: ausdrücklich keine, kein Feld images_seen, und die Vorlage bleibt gültiges JSON-Gerüst
+	if !strings.Contains(mitHandbuch, "no scene images") || strings.Contains(mitHandbuch, "images_seen") ||
+		!strings.Contains(mitHandbuch, "(request_changes)\"}\n```") {
+		t.Fatalf("without images:\n%s", mitHandbuch[:strings.Index(mitHandbuch, "---")])
+	}
+	if strings.Contains(text, "no scene images") || !strings.Contains(text, "\"images_seen\": true or false}\n```") {
+		t.Fatalf("with images:\n%s", text)
+	}
 }
 
 func TestOpencodeModellBilder(t *testing.T) {

@@ -16,6 +16,9 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
   an API key it finds in Hermes' `.env` or in the environment (Enter takes it), asks again instead of saving no key,
   and checks the key with the provider right away. Before, an empty key there only showed up later, as HTTP 401 on
   every request.
+- Peer reviews of submissions without scene images say so: there is nothing to look at, and missing images are no
+  reason to request changes. The answer template asks for `images_seen` only when there are images. A reviewing model
+  had read the field as a requirement and cited missing images in three of its first six requests for changes.
 
 ## 0.16.2 (14 Nov 2026)
 

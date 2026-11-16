@@ -361,6 +361,10 @@ func fremdAuftragstext(b fremdEintrag, bilder, binaer []string, handbuch string)
 			s.WriteString("  - /work/" + d + "\n")
 		}
 		s.WriteString("\nThis change shows up in what players or users see. Open and look at every image before you decide: does the new image show what the task asks, and is anything wrong in it (parts inside each other, wrong proportions, missing parts, artefacts)? Only approve when you looked at them; set images_seen to true only then.\n")
+	} else {
+		// 16.11.2026: Ein Modell las aus „images_seen“ in der Vorlage, Bilder seien Pflicht, und bemängelte in drei von sechs
+		// Ablehnungen fehlende Szenenbilder, die es zu diesen Einreichungen gar nicht gibt.
+		s.WriteString("- no scene images: this change has none, so there is nothing to look at. Missing images are no reason to request changes; judge it by the patch, the check report and the criteria.\n")
 	}
 	s.WriteString("\n## How to review\n\n")
 	if strings.TrimSpace(handbuch) != "" {
@@ -368,11 +372,16 @@ func fremdAuftragstext(b fremdEintrag, bilder, binaer []string, handbuch string)
 	} else {
 		s.WriteString("Two axes, kept apart: first the task (every acceptance criterion met, with evidence; nothing outside the task), then the project's standards (names, structure, real tests). Security always: no network, process or file access the task did not ask for, nothing obfuscated, no new dependency, no change to build, CI, licences or agent instructions. Approve only when everything holds. In doubt, do not approve.\n")
 	}
-	s.WriteString("\n## Your answer\n\nWrite /work/verdict.json and nothing else:\n\n```json\n{\"verdict\": \"approve\" or \"request_changes\",\n \"reason\": \"what you checked and how (approve), or a numbered list of findings with what, where and how success will be visible (request_changes)\",\n")
+	// images_seen nur mit Bildern: ohne sie las ein Modell aus dem Feld, Bilder seien Pflicht (fehlt es, gilt false)
+	felder := []string{"{\"verdict\": \"approve\" or \"request_changes\"",
+		" \"reason\": \"what you checked and how (approve), or a numbered list of findings with what, where and how success will be visible (request_changes)\""}
 	if len(b.Pruefpunkte) > 0 {
-		fmt.Fprintf(&s, " \"answers\": [%d answers, one per review point, in order],\n", len(b.Pruefpunkte))
+		felder = append(felder, fmt.Sprintf(" \"answers\": [%d answers, one per review point, in order]", len(b.Pruefpunkte)))
 	}
-	s.WriteString(" \"images_seen\": true or false}\n```\n")
+	if len(bilder) > 0 {
+		felder = append(felder, " \"images_seen\": true or false")
+	}
+	s.WriteString("\n## Your answer\n\nWrite /work/verdict.json and nothing else:\n\n```json\n" + strings.Join(felder, ",\n") + "}\n```\n")
 	if strings.TrimSpace(handbuch) != "" {
 		s.WriteString("\n---\n\n" + handbuch)
 	}
