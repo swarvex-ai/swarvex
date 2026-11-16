@@ -535,7 +535,9 @@ func godot(w, ordner string) Umgebung {
 	}
 	datei := fmt.Sprintf("Godot_v%s-stable_linux.x86_64", voll)
 	basis := "FROM docker.io/library/debian:trixie-slim\n" +
-		"RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip git fontconfig libfontconfig1 && rm -rf /var/lib/apt/lists/*\n" +
+		// python3 (16.11.2026): Spiele erzeugen Assets oft mit Python-Werkzeugen (Rend&Run: Töne mit tools/audio/*.py);
+		// ohne python3 konnte kein Agent die Annahmekriterien solcher Aufgaben nachweisen.
+		"RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip git fontconfig libfontconfig1 python3 && rm -rf /var/lib/apt/lists/*\n" +
 		fmt.Sprintf("RUN curl -fsSL -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/%s-stable/%s.zip && unzip -q /tmp/godot.zip -d /opt && rm /tmp/godot.zip && ln -s /opt/%s /usr/local/bin/godot", voll, datei, datei)
 	u := Umgebung{
 		Vorlage: "godot-" + version, Quelle: "detected", Basis: basis, Ordner: ordner,
@@ -545,7 +547,7 @@ func godot(w, ordner string) Umgebung {
 			`aus=$(timeout 300 godot --headless --path . -s "res://$t" 2>&1); code=$?; echo "$aus"; ` +
 			`if [ $code -ne 0 ] || echo "$aus" | grep -qE ' FAIL |SCRIPT ERROR|Parse Error'; then ok=1; fi; done; ` +
 			`[ $n -gt 0 ] || { echo "No tests (tests/*_test.gd) found."; exit 3; }; exit $ok`,
-		Hinweis: fmt.Sprintf("Godot %s project, `godot` is installed; tests are tests/*_test.gd and run with `godot --headless -s res://tests/…`.", version),
+		Hinweis: fmt.Sprintf("Godot %s project, `godot` and `python3` (standard library only) are installed; tests are tests/*_test.gd and run with `godot --headless -s res://tests/…`.", version),
 		Godot:   voll,
 	}
 	if roh, err := os.ReadFile(filepath.Join(w, ordner, "export_presets.cfg")); err == nil {

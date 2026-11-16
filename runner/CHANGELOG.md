@@ -19,6 +19,9 @@ Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier bu
 - Peer reviews of submissions without scene images say so: there is nothing to look at, and missing images are no
   reason to request changes. The answer template asks for `images_seen` only when there are images. A reviewing model
   had read the field as a requirement and cited missing images in three of its first six requests for changes.
+- Godot projects get `python3` in their environment (standard library, no pip). Games often generate assets with
+  Python tools; without it, an agent could not show that such a task's acceptance criteria hold. The environment
+  image is built once more.
 
 ## 0.16.2 (14 Nov 2026)
 
