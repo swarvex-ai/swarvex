@@ -20,6 +20,7 @@
   const datumText = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(s === "de" ? "de-DE" : "en", { day: "numeric", month: "long", year: "numeric" });
   type Geprueft = { balance: number; expiring: number | null; renews: string | null };
   let offen = $state(false);
+  let info = $state(false);
   let schritt = $state<"dienst" | "schluessel" | "menge" | "anmelden" | "fertig">("dienst");
   let dienst = $state("");
   let schluessel = $state("");
@@ -87,6 +88,7 @@
     ...(geprueft?.renews ? [{ name: t.wennVerfallen, wert: tagDavor(geprueft.renews) }] : [{ name: t.monatsende, wert: monatsende() }]),
     { name: t.inTagen(7), wert: inTagen(7) }, { name: t.inTagen(30), wert: inTagen(30) }]);
   const spendenDoku = $derived(pfad(s, s === "de" ? "/docs/spenden#medien-werkzeuge-über-den-runner" : "/docs/donations#media-tools-through-the-runner"));
+  const schluesselDoku = $derived(pfad(s, s === "de" ? "/docs/spenden#übrige-credits-mit-api-schlüssel-spenden" : "/docs/donations#donating-leftover-credits-with-an-api-key"));
   const konto = $derived(pfad(s, s === "de" ? "/konto#t-spenden" : "/en/account#t-spenden"));
 </script>
 
@@ -94,11 +96,17 @@
 <svelte:window onkeydown={(e) => { if (e.key === "Escape" && offen && panel?.contains(document.activeElement)) { offen = false; ausloeser?.focus(); } }} />
 
 <div class="spenden" class:offen>
-  <button type="button" class="knopf ausloeser" bind:this={ausloeser} aria-expanded={offen} aria-controls="credits-spenden" onclick={umschalten}>
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><ellipse cx="12" cy="7" rx="7" ry="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
-    <span>{t.knopf}</span>
-    <svg class="pfeil" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  </button>
+  <div class="zeile">
+    <button type="button" class="knopf ausloeser" bind:this={ausloeser} aria-expanded={offen} aria-controls="credits-spenden" onclick={umschalten}>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><ellipse cx="12" cy="7" rx="7" ry="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+      <span>{t.knopf}</span>
+      <svg class="pfeil" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <!-- Kleiner Info-Knopf: wie es geht und wie der Schlüssel geschützt ist, ohne das Spendenmenü zu öffnen -->
+    <button type="button" class="knopf info-knopf" aria-expanded={info} aria-controls="credits-info" aria-label={t.infoKnopf} title={t.infoKnopf} onclick={() => (info = !info)}>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.2" fill="currentColor"/></svg>
+    </button>
+  </div>
 
   {#if offen}
     <div class="panel" id="credits-spenden" bind:this={panel} role="region" aria-label={t.knopf}>
@@ -155,11 +163,34 @@
       {/if}
     </div>
   {/if}
+
+  {#if info}
+    <div class="info" id="credits-info" role="region" aria-label={t.infoH}>
+      <p class="frage">{t.infoH}</p>
+      <ol>{#each t.infoSchritte as x (x)}<li>{x}</li>{/each}</ol>
+      <p class="frage zwischen">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        {t.infoSicherH}
+      </p>
+      <ul>{#each t.infoSicher as x (x)}<li>{x}</li>{/each}</ul>
+      <p class="leise klein">{t.infoTipp}</p>
+      <p class="klein"><a href={schluesselDoku}>{t.infoDoku} →</a></p>
+    </div>
+  {/if}
 </div>
 
 <style>
   .spenden { display: grid; }
-  .ausloeser { justify-content: center; gap: 8px; }
+  .zeile { display: flex; gap: 6px; }
+  .ausloeser { justify-content: center; gap: 8px; flex: 1; min-width: 0; }
+  .info-knopf { flex: none; width: 44px; padding: 0; justify-content: center; color: var(--stahl); }
+  .info-knopf:hover, .info-knopf[aria-expanded="true"] { color: var(--text); border-color: var(--bernstein); }
+  .offen .info-knopf { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-color: color-mix(in srgb, var(--bernstein) 60%, var(--linie)); }
+  .info { display: grid; gap: 8px; margin-top: 8px; padding: 14px; border: 1px solid var(--linie); border-radius: var(--radius-klein); background: var(--graphit-2);
+    animation: auf var(--dauer) ease-out; }
+  @media (prefers-reduced-motion: reduce) { .info { animation: none; } }
+  .info ol, .info ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .84rem; line-height: 1.45; }
+  .info .zwischen { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
   .ausloeser .pfeil { transition: transform var(--dauer); }
   .offen .ausloeser { border-color: color-mix(in srgb, var(--bernstein) 60%, var(--linie)); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
   .offen .ausloeser .pfeil { transform: rotate(180deg); }
