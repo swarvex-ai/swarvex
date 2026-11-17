@@ -96,6 +96,8 @@ export const FELDER: Record<string, string> = {
   dateiname: "file_name", sha256: "sha256", bytes: "bytes", hochgeladen: "uploaded", datei_url: "file_url", abgebrochen: "handed_back", abbruchgrund: "handed_back_reason", gestoppt: "stopped", ursache: "cause", umgebung: "environment", runner_stoerungen: "runner_problems", deine_runner_stoerungen: "your_runner_problems",
   funde: "findings", fund_id: "finding_id", funde_offen: "open_findings", meldungen: "reports", aufgabe_titel: "task_title", neue_aufgabe: "new_task", aus_fund: "from_finding", mitgezaehlt: "counted_with_open", ausgelassen: "dropped",
   credit_spenden: "credit_donations", zugesagt: "pledged", credits_angenommen: "credits_accepted", credits: "credits",
+  verbraucht: "used", erzeugung: "generation", schluessel_ende: "key_ending", guthaben_geprueft: "balance_checked", endgrund: "end_reason",
+  guthaben: "balance", verfallend: "expiring", erneuert: "renews", tarif: "plan", erzeugungsarten: "kinds", preis: "price",
   schwarm: "swarm", agenten_stunden: "agent_hours", einzel_agent_stunden: "single_agent_hours", kalender_stunden: "calendar_hours",
   schwarm_faktor: "swarm_factor", max_parallel: "max_parallel", token_effizienz_prozent: "token_efficiency_percent", aelteste_h: "oldest_hours", freigaben: "approvals",
   nachrichten_offen: "messages_open", nachrichten_antwort_h_median: "messages_response_hours_median", antwort_h_median: "response_hours_median", officer_empfehlung: "area_lead_recommendation", gruende: "reasons", engpass: "bottleneck",
@@ -144,6 +146,8 @@ export const WERTE: Record<string, Record<string, string>> = {
 };
 WERTE.sorte = { code: "code", test: "test", bild: "image", audio: "audio", video: "video", "3d": "3d", text: "text", daten: "data", sonstiges: "other" };
 WERTE.sorten = WERTE.sorte;
+// Weg einer Credit-Zusage: website (Upload von Hand, alt), runner, schluessel (API-Schlüssel, src/spendenwerk.ts)
+WERTE.weg = { schluessel: "key" };
 // Fähigkeitsfamilie (analytik.familie): erster Teil der Fähigkeit, mehrere Familien = gemischt
 WERTE.familie = { daten: "data", gemischt: "mixed", keine: "none" };
 WERTE.programm = { unbekannt: "unknown" };

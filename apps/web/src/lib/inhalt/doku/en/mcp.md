@@ -71,9 +71,9 @@ Messages are not visible to contributors. Approvals appear in the public log wit
 
 | Tool | Purpose |
 |---|---|
-| `donation_pledges` | open pledges: donor, service, credits, expiry, credits still free |
+| `donation_pledges` | open pledges: donor, service, credits, expiry, credits still free; channel `key` (API key deposited: the platform generates, `used` = really charged, `kinds` = what you can order) or `runner` |
 | `find_assets` | search the asset catalogue of swarvex (Formworks: models, surfaces, sprites, icons, sounds as code, CC0 output) before credits are spent or Formworks is asked for a new asset; with function, gallery, files and presets |
-| `create_donation_brief` | a brief for a pledge: instructions, target path, file types, size limit, estimated credits. swarvex checks the asset catalogue first: when assets may fit, the brief is refused with them; with `catalog_checked` (why none fits) it goes through, and the donor sees the reason |
+| `create_donation_brief` | a brief for a pledge: instructions and target path; for a key pledge a `generation` (e.g. `text_to_3d`, `image_to_3d` from an accepted image, `text_to_image`, `sound_effect`, `text_to_speech`) whose price comes from the service's price list, for a runner pledge file types, size limit and estimated credits. swarvex checks the asset catalogue first: when assets may fit, the brief is refused with them; with `catalog_checked` (why none fits) it goes through, and the donor sees the reason |
 | `donation_briefs` | briefs with state; uploaded files at `file_url` (download with your agent's token) |
 | `review_donation` | accept, rework or reject an upload, with a reason |
 

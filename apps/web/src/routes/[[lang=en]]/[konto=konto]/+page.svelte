@@ -36,9 +36,10 @@
   type Woche = { project: string; name: string; week: Record<string, number>; previous_week: { accepted: number; units: number };
                  now: { available: number; blocked: number; active: number; awaiting_review: number }; hints: Hinweis[] };
   type Auftrag = { brief_id: number; title: string; instructions: string; target_path: string; file_types: string[]; max_mb: number; credits: number;
-                   state: string; file_name: string | null; uploaded: string | null; reason: string | null; catalog_matches: string[] | null; catalog_checked: string | null };
+                   state: string; file_name: string | null; uploaded: string | null; reason: string | null; catalog_matches: string[] | null; catalog_checked: string | null;
+                   used: number | null; generation: string | null; handed_back_reason: string | null };
   type Zusage = { pledge_id: number; project: string | null; project_name: string | null; service: string; credits: number | null; expires: string | null; note: string; state: string;
-    channel: "website" | "runner"; daily_limit: number | null; briefs: Auftrag[] };
+    channel: "website" | "runner" | "key"; daily_limit: number | null; used: number; key_ending: string | null; end_reason: string | null; briefs: Auftrag[] };
   type Freigabe = { message_id: number; project: string; project_name: string; subject: string; text: string; tasks: number[]; created: string; from: string };
 
   const s = $derived(sprache());
@@ -221,11 +222,26 @@
     }
   }
 
-  // Credit-Spenden (spenden.ts): Zusage, Aufträge des Leads, Upload
-  const DIENSTE = ["meshy", "higgsfield", "elevenlabs", "suno", "runway", "midjourney", "leonardo", "kling", "other"];
+  // Credit-Spenden (spenden.ts): Zusage mit API-Schlüssel (geprüft, die Plattform erzeugt); alte Zusagen ohne Schlüssel
+  // zeigen ihre Aufträge mit Upload. Der Schlüssel bleibt nur im Speicher dieser Seite.
+  const DIENSTE = ["meshy", "elevenlabs"];
   let projektListe = $state<{ project: string; name: string }[]>([]);
-  let zusage = $state({ project: "", service: "meshy", credits: 100, expires: "", note: "" });
+  let zusage = $state({ project: "", service: "meshy", credits: 100, expires: "", note: "", key: "" });
+  let geprueft = $state<{ balance: number; expiring: number | null; renews: string | null } | null>(null);
+  let zusageRechte = $state(false);
   let rechte = $state<Record<number, boolean>>({});
+  const tagDavor = (d: string) => { const [j, m, t2] = d.split("-").map(Number); const x = new Date(j, m - 1, t2 - 1); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
+  async function schluesselPruefen() {
+    arbeitet = true; hinweis = ""; geprueft = null;
+    try {
+      const r = await fetch("/api/account/pledges/check-key", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ service: zusage.service, key: zusage.key }) });
+      const j = await r.json();
+      if (!r.ok) { hinweis = j.error ?? t.aktionFehler; return; }
+      geprueft = { balance: j.balance, expiring: j.expiring ?? null, renews: j.renews ?? null };
+      zusage.credits = Math.max(1, Math.min(j.expiring ?? j.balance, j.balance));
+      if (j.renews) zusage.expires = tagDavor(j.renews);
+    } catch { hinweis = t.aktionFehler; } finally { arbeitet = false; }
+  }
   async function projekteLaden() {
     try { const r = await fetch("/api/projects"); if (r.ok) projektListe = (await r.json()).projects.map((p: { project: string; name: string }) => ({ project: p.project, name: p.name })); } catch { /* Liste bleibt leer */ }
   }
@@ -233,10 +249,10 @@
   async function zusagen() {
     arbeitet = true; hinweis = "";
     try {
-      const r = await fetch("/api/account/pledges", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(zusage) });
+      const r = await fetch("/api/account/pledges", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...zusage, rights_confirmed: zusageRechte }) });
       const j = await r.json();
       hinweis = r.ok ? t.spende.zugesagt : (j.error ?? t.aktionFehler);
-      if (r.ok) { zusage = { ...zusage, note: "" }; await laden(); }
+      if (r.ok) { zusage = { ...zusage, note: "", key: "" }; geprueft = null; zusageRechte = false; await laden(); }
     } catch { hinweis = t.aktionFehler; } finally { arbeitet = false; }
   }
   async function zusageBeenden(z: Zusage) {
@@ -577,11 +593,19 @@
             {#each projektListe as p}<option value={p.project}>{p.name}</option>{/each}
           </select></label>
         <label>{t.spende.dienst}
-          <select bind:value={zusage.service}>{#each DIENSTE as d}<option value={d}>{t.spende.dienste[d] ?? d}</option>{/each}</select></label>
-        <label>{t.spende.credits}<input type="number" min="1" max="1000000" bind:value={zusage.credits} required /></label>
-        <label>{t.spende.verfaellt}<input type="date" bind:value={zusage.expires} required /></label>
-        <label class="breit">{t.spende.notiz}<input type="text" maxlength="500" bind:value={zusage.note} placeholder={t.spende.notizHilfe} /></label>
-        <button class="knopf primaer" disabled={arbeitet}>{t.spende.zusagen}</button>
+          <select bind:value={zusage.service} onchange={() => { geprueft = null; zusage.key = ""; }}>{#each DIENSTE as d}<option value={d}>{t.spende.dienste[d] ?? d}</option>{/each}</select></label>
+        <label class="breit">{t.spende.schluessel}<input type="password" autocomplete="off" spellcheck="false" minlength="16" maxlength="200" bind:value={zusage.key} oninput={() => (geprueft = null)} required /></label>
+        <p class="breit leise klein">{tx().projekte.detail.spenden.hilfe[zusage.service]} <a href={tx().projekte.detail.spenden.hilfeLink[zusage.service]} target="_blank" rel="noopener noreferrer">{tx().projekte.detail.spenden.hilfeLinkText}</a></p>
+        {#if !geprueft}
+          <button type="button" class="knopf" disabled={arbeitet || zusage.key.trim().length < 16} onclick={schluesselPruefen}>{t.spende.pruefen}</button>
+        {:else}
+          <p class="breit klein">{tx().projekte.detail.spenden.guthaben(geprueft.balance, geprueft.expiring, geprueft.renews ? datum(tagDavor(geprueft.renews)) : null)}</p>
+          <label>{t.spende.credits}<input type="number" min="1" max={geprueft.balance} bind:value={zusage.credits} required /></label>
+          <label>{t.spende.verfaellt}<input type="date" bind:value={zusage.expires} required /></label>
+          <label class="breit">{t.spende.notiz}<input type="text" maxlength="500" bind:value={zusage.note} placeholder={t.spende.notizHilfe} /></label>
+          <label class="breit klein"><input type="checkbox" bind:checked={zusageRechte} required /> {t.spende.rechteSchluessel}</label>
+          <button class="knopf primaer" disabled={arbeitet || !zusageRechte}>{t.spende.zusagen}</button>
+        {/if}
       </form>
       {#if konto.pledges?.length}
         <ul class="zusagen">
@@ -593,20 +617,24 @@
                   <span class="leise">{#if z.project}{t.spende.fuer} <a href={pfad(s, `${projektPfad}/${z.project}`)}>{z.project_name}</a>{:else}{t.spende.alleProjekte}{/if} · {t.spende.hoechstens} {z.daily_limit} {t.spende.amTag}</span>
                 {:else}
                   <strong>{z.credits} {t.spende.dienste[z.service] ?? z.service}-Credits</strong>
-                  <span class="leise">{t.spende.fuer} <a href={pfad(s, `${projektPfad}/${z.project}`)}>{z.project_name}</a> · {t.spende.bis} {datum(z.expires ?? "")}</span>
+                  <span class="leise">{t.spende.fuer} <a href={pfad(s, `${projektPfad}/${z.project}`)}>{z.project_name}</a> · {t.spende.bis} {datum(z.expires ?? "")}{#if z.channel === "key"} · {t.spende.verbraucht(z.used)}{#if z.key_ending && z.state === "open"} · {t.spende.schluesselEnde(z.key_ending)}{/if}{/if}</span>
                 {/if}
                 {#if z.state === "open"}<button class="knopf" disabled={arbeitet} onclick={() => zusageBeenden(z)}>{t.spende.beenden}</button>{:else}<span class="leise">{t.spende.beendet}</span>{/if}
               </div>
+              {#if z.end_reason && z.state !== "open"}<p class="leise klein">{t.spende.endgrund} {z.end_reason}</p>{/if}
               {#if z.briefs.length === 0}
                 <p class="leise klein">{t.spende.keineAuftraege}</p>
               {:else}
                 {#each z.briefs as a (a.brief_id)}
                   <div class="auftrag">
-                    <p><strong>{a.title}</strong> <span class="marke">{t.spende.zustand[a.state] ?? a.state}</span> <span class="leise klein">≈ {a.credits} Credits · {a.file_types.map((x) => "." + x).join(" ")} · max. {a.max_mb} MB</span></p>
+                    <p><strong>{a.title}</strong> <span class="marke">{(z.channel === "key" ? t.spende.zustandSchluessel : t.spende.zustand)[a.state] ?? a.state}</span> <span class="leise klein">{#if a.used !== null}{a.used}{:else}≈ {a.credits}{/if} Credits · {a.file_types.map((x) => "." + x).join(" ")}{#if z.channel !== "key"} · max. {a.max_mb} MB{/if}</span></p>
                     <p class="inhalt">{a.instructions}</p>
                     {#if a.reason}<p class="klein"><span class="leise">{t.spende.begruendung}</span> {a.reason}</p>{/if}
                     {#if a.catalog_matches?.length}<p class="klein"><span class="leise">{t.spende.katalog(a.catalog_matches)}</span> {a.catalog_checked}</p>{/if}
-                    {#if a.state === "open" || a.state === "rework"}
+                    {#if a.handed_back_reason && a.state === "open"}<p class="klein"><span class="leise">{t.spende.abbruch}</span> {a.handed_back_reason}</p>{/if}
+                    {#if z.channel === "key"}
+                      {#if a.file_name}<p class="leise klein">{t.spende.datei} {a.file_name} · {zeit(a.uploaded)}</p>{/if}
+                    {:else if a.state === "open" || a.state === "rework"}
                       <label class="klein"><input type="checkbox" bind:checked={rechte[a.brief_id]} /> {t.spende.rechte}</label>
                       <label class="knopf hochladen">{t.spende.hochladen}
                         <input type="file" accept={a.file_types.map((x) => "." + x).join(",")} disabled={arbeitet} onchange={(e) => hochladen(a, e)} /></label>

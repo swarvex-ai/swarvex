@@ -30,6 +30,7 @@ rsync -az --exclude node_modules --exclude .git swarvex/ root@<server>:/opt/swar
    - Snapshot (Plattform): **nur lesen**
    - Prüfstraße: **nur lesen**
    - Merge-Bot: **schreiben**. Er ist der einzige Schlüssel mit Schreibrecht.
+4. **Credit-Spenden mit API-Schlüssel** brauchen nichts von dir: Der erste Deploy legt ein Schlüsselpaar in `/opt/swarvex-data/spenden-schluessel` an (`infra/spenden-schluessel.sh`). Die API bekommt nur `public.pem` und verschlüsselt damit die API-Schlüssel der Spender; nur der Container `spendenwerk` bekommt `private.pem` und erzeugt die Aufträge. `private.pem` bleibt absichtlich aus den Sicherungen: Geht es verloren, entsteht beim nächsten Deploy ein neues Paar, und Zusagen mit Schlüssel enden (Spender sagen neu zu).
 
 ## 4. Plattform einrichten
 

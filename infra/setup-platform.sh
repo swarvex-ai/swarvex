@@ -75,6 +75,8 @@ mkdir -p "$DATA" "$DATA/github-app" /var/lib/swarvex-pipeline
 [ -f "$DATA/merge_key" ]  || ssh-keygen -q -t ed25519 -N "" -C "swarvex merge bot (write)" -f "$DATA/merge_key"
 for k in deploy_key check_key merge_key; do [ -f "$DATA/$k.pub" ] || ssh-keygen -y -f "$DATA/$k" > "$DATA/$k.pub"; done
 chown 1000:1000 "$DATA/deploy_key"; chmod 600 "$DATA/deploy_key" "$DATA/check_key" "$DATA/merge_key"
+# Schlüsselpaar für API-Schlüssel von Spendern (apps/api/src/spendenschluessel.ts)
+sh "$(dirname "$0")/spenden-schluessel.sh"
 
 mkdir -p "$DATA/downloads" "$DATA/sites"
 # Shared network for other sites on the same server (Caddy routes them, see infra/stack/Caddyfile)

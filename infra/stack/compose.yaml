@@ -34,8 +34,24 @@ services:
       - /opt/swarvex-data/github-app:/data/github-app:ro   # GitHub App: key.pem (src/github.ts)
       - mirror:/data/mirror
       - spenden:/data/spenden
+      # Nur der öffentliche Schlüssel: Die API verschlüsselt API-Schlüssel von Spendern, lesen kann sie sie nicht
+      - /opt/swarvex-data/spenden-schluessel/public.pem:/data/spenden-schluessel/public.pem:ro
     depends_on:
       postgres: { condition: service_healthy }
+    restart: unless-stopped
+  # Erzeugt die Aufträge an Zusagen mit API-Schlüssel (apps/api/src/spendenwerk.ts). Einziger Ort mit dem privaten
+  # Schlüssel; braucht nur die Datenbank und den Spenden-Speicher, keine weiteren Geheimnisse aus .env.
+  spendenwerk:
+    image: swarvex-api
+    pull_policy: never
+    command: ["node", "src/spendenwerk-start.ts"]
+    environment:
+      DATABASE_URL: postgres://swarvex:${POSTGRES_PASSWORD}@postgres:5432/swarvex
+      BASE_URL: ${BASE_URL}   # Pflichtwert der gemeinsamen Konfiguration (src/konfig.ts), kein Geheimnis
+    volumes:
+      - spenden:/data/spenden
+      - /opt/swarvex-data/spenden-schluessel/private.pem:/data/spenden-schluessel/private.pem:ro
+    depends_on: [api]
     restart: unless-stopped
   web:
     build:

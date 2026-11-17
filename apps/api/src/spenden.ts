@@ -1,5 +1,10 @@
-// Credit-Spenden, Weg „Auftrag + Upload“: Zusagen von Spendern, Aufträge des Leads, Upload im Browser.
-// Kein Schlüssel verlässt das Konto des Spenders; die Plattform speichert nur die hochgeladene Datei.
+// Credit-Spenden. Drei Wege:
+//   schluessel  Der Spender hinterlegt einen API-Schlüssel (Meshy, ElevenLabs); die Plattform prüft ihn und das Guthaben,
+//               speichert ihn verschlüsselt, und das Spendenwerk (src/spendenwerk.ts) erzeugt die Aufträge des Leads
+//               automatisch, mit der Zusage als harter Grenze (Entscheidung neVs 2026-11-17: von Hand macht das keiner).
+//   runner      Der Runner eines Mitstreiters erzeugt mit dessen Medien-Werkzeugen; der Schlüssel bleibt auf seinem Rechner.
+//   website     Alt: Zusage ohne Schlüssel, der Spender erzeugt selbst und lädt hoch. Neue Zusagen gibt es so nicht mehr;
+//               bestehende laufen weiter.
 import { createHash, randomBytes } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, open, rename, rm, stat } from "node:fs/promises";
@@ -10,6 +15,8 @@ import { protokollieren } from "./ereignisse.ts";
 import { vorGenerierung } from "./katalog.ts";
 import { Abgelehnt, officersVon, projektPerSlug, rollenVon } from "./aufgaben.ts";
 import { inhaltPasst, RUNNER_TYPEN } from "./medien.ts";
+import { artenVon, dateitypenVon, DienstFehler, erzeugungPruefen, guthabenLesen, preis, SCHLUESSEL_DIENSTE, tarifErlaubt, type SchluesselDienst } from "./spendendienste.ts";
+import { schluesselEnde, verschluesseln } from "./spendenschluessel.ts";
 
 /** Upload-Speicher (Docker-Volume spenden); beim Aufruf gelesen, damit Tests ihn umlenken können. */
 export const speicher = () => process.env.SPENDEN_DIR ?? "/data/spenden";
@@ -35,21 +42,74 @@ async function darfSteuern(db: Db, menschId: number, projektId: number) {
   throw new Abgelehnt("only the project's lead, visionary or area leads manage credit donations");
 }
 
-export async function zusageAnlegen(db: Db, menschId: number, z: { projekt: string; dienst: string; credits: number; verfaellt: string; notiz?: string }) {
-  if (!DIENSTE.includes(z.dienst as never)) throw new Abgelehnt(`service: ${DIENSTE.join(", ")}`);
+/** Schlüssel-Prüfungen je Mensch und Stunde: Die Plattform soll kein Prüfgerät für fremde oder gestohlene Schlüssel sein. */
+export const PRUEFUNGEN_JE_STUNDE = 10;
+const pruefungen = new Map<number, number[]>();
+function pruefungZaehlen(menschId: number) {
+  const jetzt = Date.now();
+  const liste = (pruefungen.get(menschId) ?? []).filter((t) => t > jetzt - 3_600_000);
+  if (liste.length >= PRUEFUNGEN_JE_STUNDE) throw new Abgelehnt(`at most ${PRUEFUNGEN_JE_STUNDE} key checks per hour; try again later`);
+  liste.push(jetzt);
+  pruefungen.set(menschId, liste);
+}
+/** Für Tests: Zähler leeren. */
+export const pruefungenVergessen = () => pruefungen.clear();
+
+function schluesselDienst(dienst: string): SchluesselDienst {
+  if (!SCHLUESSEL_DIENSTE.includes(dienst as never)) throw new Abgelehnt(`service: ${SCHLUESSEL_DIENSTE.join(", ")} (others give through the swarvex runner)`);
+  return dienst as SchluesselDienst;
+}
+function schluesselForm(s: string) {
+  const k = s.trim();
+  if (!/^[\x21-\x7e]{16,200}$/.test(k)) throw new Abgelehnt("key: paste the API key exactly as the service shows it");
+  return k;
+}
+
+/** Prüft einen API-Schlüssel beim Dienst und nennt das Guthaben (Konto, vor dem Zusagen). Speichert nichts. */
+export async function schluesselPruefen(menschId: number, dienst: string, schluessel: string) {
+  const d = schluesselDienst(dienst);
+  const k = schluesselForm(schluessel);
+  pruefungZaehlen(menschId);
+  try {
+    const g = await guthabenLesen(d, k);
+    const tarif = tarifErlaubt(d, g);
+    if (tarif) throw new Abgelehnt(tarif);
+    return { dienst: d, guthaben: g.guthaben, verfallend: g.verfallend, erneuert: g.erneuert, schluessel_ende: schluesselEnde(k), erzeugungsarten: artenVon(d) };
+  } catch (e) {
+    if (e instanceof DienstFehler) throw new Abgelehnt(e.message);
+    throw e;
+  }
+}
+
+/**
+ * Zusage mit API-Schlüssel: Schlüssel und Guthaben werden geprüft, gespeichert wird der Schlüssel nur verschlüsselt.
+ * Die Credits sind eine harte Grenze: Das Spendenwerk erzeugt nie mehr, auch wenn das Konto mehr hat.
+ */
+export async function zusageAnlegen(db: Db, menschId: number, z: { projekt: string; dienst: string; credits: number; verfaellt: string; notiz?: string; schluessel?: string }) {
+  if (!z.schluessel) throw new Abgelehnt("credits are pledged with an API key of the service now (meshy, elevenlabs): the platform generates the lead's briefs itself");
+  const d = schluesselDienst(z.dienst);
+  const k = schluesselForm(z.schluessel);
   if (!Number.isInteger(z.credits) || z.credits < 1 || z.credits > 1_000_000) throw new Abgelehnt("credits: a whole number from 1 to 1,000,000");
   const bis = new Date(`${z.verfaellt}T23:59:59Z`);
   const heute = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
   if (Number.isNaN(bis.getTime()) || bis < heute) throw new Abgelehnt("expiry date must be today or later");
   if (bis.getTime() - heute.getTime() > 400 * 86_400_000) throw new Abgelehnt("expiry date at most 400 days ahead");
+  const p0 = await projektPerSlug(db, z.projekt);
+  pruefungZaehlen(menschId);
+  let g;
+  try { g = await guthabenLesen(d, k); } catch (e) { if (e instanceof DienstFehler) throw new Abgelehnt(e.message); throw e; }
+  const tarif = tarifErlaubt(d, g);
+  if (tarif) throw new Abgelehnt(tarif);
+  if (g.guthaben < z.credits) throw new Abgelehnt(`${d}: your account has ${g.guthaben} credits left, fewer than the ${z.credits} you want to pledge`);
+  const chiffre = verschluesseln(k);
   return transaktion(db, async (tx) => {
-    const p = await projektPerSlug(tx, z.projekt);
     const n = Number((await tx.query("select count(*) from zusagen where mensch_id = $1 and zustand = 'offen'", [menschId])).rows[0].count);
     if (n >= ZUSAGEN_JE_MENSCH) throw new Abgelehnt(`at most ${ZUSAGEN_JE_MENSCH} open pledges per person`);
-    const r = (await tx.query("insert into zusagen(mensch_id, projekt_id, dienst, credits, verfaellt, notiz) values ($1,$2,$3,$4,$5,$6) returning id",
-      [menschId, p.id, z.dienst, z.credits, z.verfaellt, (z.notiz ?? "").slice(0, 500)])).rows[0];
-    await protokollieren(tx, { projekt_id: Number(p.id), akteur: `mensch:${menschId}`, art: "zusage_eingegangen", bezug: `zusage:${r.id}`, daten: { dienst: z.dienst, credits: z.credits, verfaellt: z.verfaellt } });
-    return { zusage_id: Number(r.id) };
+    const r = (await tx.query(
+      "insert into zusagen(mensch_id, projekt_id, dienst, credits, verfaellt, notiz, weg, schluessel, schluessel_ende, guthaben_geprueft) values ($1,$2,$3,$4,$5,$6,'schluessel',$7,$8,$9) returning id",
+      [menschId, p0.id, d, z.credits, z.verfaellt, (z.notiz ?? "").slice(0, 500), chiffre, schluesselEnde(k), g.guthaben])).rows[0];
+    await protokollieren(tx, { projekt_id: Number(p0.id), akteur: `mensch:${menschId}`, art: "zusage_eingegangen", bezug: `zusage:${r.id}`, daten: { dienst: d, credits: z.credits, verfaellt: z.verfaellt, weg: "schluessel" } });
+    return { zusage_id: Number(r.id), guthaben: g.guthaben };
   });
 }
 
@@ -58,7 +118,8 @@ export async function zusageBeenden(db: Db, menschId: number, zusageId: number) 
     const z = (await tx.query("select * from zusagen where id = $1 and mensch_id = $2 for update", [zusageId, menschId])).rows[0];
     if (!z) throw new Abgelehnt("unknown pledge");
     if (z.zustand !== "offen") throw new Abgelehnt("the pledge has already ended");
-    await tx.query("update zusagen set zustand = 'beendet' where id = $1", [zusageId]);
+    // Der Schlüssel wird mit dem Ende gelöscht; ein Auftrag, den das Spendenwerk gerade erzeugt, zählt noch seinen Verbrauch
+    await tx.query("update zusagen set zustand = 'beendet', schluessel = null, endgrund = coalesce(endgrund, 'ended by the donor') where id = $1", [zusageId]);
     await tx.query("update spendenauftraege set zustand = 'zurueckgezogen', entschieden = now() where zusage_id = $1 and zustand in ('offen', 'nacharbeit')", [zusageId]);
     await protokollieren(tx, { projekt_id: Number(z.projekt_id), akteur: `mensch:${menschId}`, art: "zusage_beendet", bezug: `zusage:${zusageId}`, daten: { dienst: z.dienst } });
   });
@@ -67,11 +128,12 @@ export async function zusageBeenden(db: Db, menschId: number, zusageId: number) 
 /** Für „Mein Konto“: eigene Zusagen mit ihren Aufträgen. */
 export async function meineZusagen(db: Db, menschId: number) {
   const z = (await db.query(
-    `select z.id as zusage_id, p.slug as projekt, p.name as projekt_name, z.dienst, z.credits, z.verfaellt, z.notiz, z.zustand, z.erstellt, z.weg, z.tageslimit
+    `select z.id as zusage_id, p.slug as projekt, p.name as projekt_name, z.dienst, z.credits, z.verfaellt, z.notiz, z.zustand, z.erstellt, z.weg, z.tageslimit,
+            z.verbraucht, z.schluessel_ende, z.endgrund
      from zusagen z left join projekte p on p.id = z.projekt_id where z.mensch_id = $1 order by z.zustand, z.erstellt desc limit 50`, [menschId])).rows;
   const a = (await db.query(
     `select a.id as auftrag_id, a.zusage_id, a.titel, a.anleitung, a.zielpfad, a.dateitypen, a.max_mb, a.credits, a.zustand, a.dateiname, a.hochgeladen, a.begruendung,
-            a.katalog_treffer, a.katalog_begruendung, a.erstellt
+            a.katalog_treffer, a.katalog_begruendung, a.erstellt, a.verbraucht, a.erzeugung->>'kind' as erzeugung, a.abbruchgrund
      from spendenauftraege a join zusagen z on z.id = a.zusage_id where z.mensch_id = $1 order by a.erstellt`, [menschId])).rows;
   return z.map((x) => ({ ...x, zusage_id: Number(x.zusage_id), verfaellt: datumText(x.verfaellt),
     auftraege: a.filter((y) => Number(y.zusage_id) === Number(x.zusage_id)).map((y) => ({ ...y, auftrag_id: Number(y.auftrag_id), zusage_id: Number(y.zusage_id) })) }));
@@ -84,16 +146,21 @@ export async function zusagenFuerLead(db: Db, menschId: number, projektSlug: str
   const r = await db.query(
     `select z.id as zusage_id, m.login as spender, z.dienst, z.credits, z.verfaellt, z.notiz, z.erstellt, z.weg, z.agent_id, z.tageslimit,
             (z.projekt_id is null) as alle_projekte,
-            coalesce((select sum(a.credits) from spendenauftraege a where a.zusage_id = z.id and a.zustand = any($2)), 0)::int as verplant
+            coalesce((select sum(a.credits) from spendenauftraege a where a.zusage_id = z.id and a.zustand = any($2)), 0)::int as verplant,
+            coalesce((select sum(a.credits) from spendenauftraege a where a.zusage_id = z.id and a.zustand = 'offen'), 0)::int as reserviert, z.verbraucht
      from zusagen z join menschen m on m.id = z.mensch_id
      where (z.projekt_id = $1 or (z.weg = 'runner' and z.projekt_id is null)) and z.zustand = 'offen'
        and (z.verfaellt is null or z.verfaellt >= current_date)
      order by z.weg = 'runner' desc, z.verfaellt nulls first`, [p.id, offen]);
   const heute = new Map<number, number>();
   for (const x of r.rows) if (x.weg === "runner" && !heute.has(Number(x.agent_id))) heute.set(Number(x.agent_id), await heuteBegonnen(db, Number(x.agent_id)));
-  return r.rows.map(({ agent_id, verplant, ...x }) => x.weg === "runner"
+  return r.rows.map(({ agent_id, verplant, reserviert, verbraucht, ...x }) => x.weg === "runner"
     ? { ...x, zusage_id: Number(x.zusage_id), verfaellt: null, credits: null, heute_frei: Math.max(0, x.tageslimit - (heute.get(Number(agent_id)) ?? 0)) }
-    : { ...x, zusage_id: Number(x.zusage_id), verfaellt: datumText(x.verfaellt), tageslimit: undefined, alle_projekte: undefined, verplant, frei: x.credits - verplant });
+    : x.weg === "schluessel"
+      // Mit Schlüssel: verbraucht ist, was der Dienst wirklich abgebucht hat; offene Aufträge sind mit ihrem Preis reserviert
+      ? { ...x, zusage_id: Number(x.zusage_id), verfaellt: datumText(x.verfaellt), tageslimit: undefined, alle_projekte: undefined, verbraucht, verplant: reserviert,
+          frei: Math.max(0, x.credits - verbraucht - reserviert), erzeugungsarten: artenVon(x.dienst) }
+      : { ...x, zusage_id: Number(x.zusage_id), verfaellt: datumText(x.verfaellt), tageslimit: undefined, alle_projekte: undefined, verplant, frei: x.credits - verplant });
 }
 
 const datumText = (d: unknown) => d === null || d === undefined ? null : d instanceof Date ? d.toISOString().slice(0, 10) : String(d);
@@ -104,11 +171,20 @@ async function heuteBegonnen(db: Db | Tx, agentId: number): Promise<number> {
     "select count(*) from ereignisse where akteur = $1 and art = 'spendenauftrag_begonnen' and zeit >= date_trunc('day', now())", [`agent:${agentId}`])).rows[0].count);
 }
 
-export async function auftragAnlegen(db: Db, menschId: number, a: { zusage_id: number; titel: string; anleitung: string; zielpfad: string; dateitypen: string[]; max_mb?: number; credits: number; projekt?: string; katalog_begruendung?: string }) {
-  const typen = a.dateitypen.map((t) => t.toLowerCase().replace(/^\./, ""));
+export async function auftragAnlegen(db: Db, menschId: number, a: { zusage_id: number; titel: string; anleitung: string; zielpfad: string; dateitypen?: string[]; max_mb?: number; credits?: number; projekt?: string; katalog_begruendung?: string; erzeugung?: unknown }) {
+  // Zusage mit Schlüssel: Die Erzeugung bestimmt Preis und Dateityp, nicht der Lead
+  const weg = (await db.query("select weg, dienst from zusagen where id = $1", [a.zusage_id])).rows[0];
+  let erzeugung = null;
+  if (weg?.weg === "schluessel") {
+    if (a.erzeugung === undefined) throw new Abgelehnt(`generation: required for a key pledge (${artenVon(weg.dienst).join(", ")}); the platform runs it with the donor's key`);
+    try { erzeugung = erzeugungPruefen(weg.dienst, a.erzeugung); } catch (e) { throw new Abgelehnt((e as Error).message); }
+    a = { ...a, credits: preis(erzeugung), dateitypen: dateitypenVon(erzeugung) };
+  } else if (a.erzeugung !== undefined) throw new Abgelehnt("generation: only for pledges with an API key (channel key)");
+  const typen = (a.dateitypen ?? []).map((t) => t.toLowerCase().replace(/^\./, ""));
   if (!typen.length || typen.some((t) => !DATEITYPEN.includes(t as never))) throw new Abgelehnt(`file types: ${DATEITYPEN.join(", ")}`);
   if (a.zielpfad.includes("..") || a.zielpfad.startsWith("/")) throw new Abgelehnt("target path: relative path inside the repository");
-  if (!Number.isInteger(a.credits) || a.credits < 1) throw new Abgelehnt("credits: estimated cost, a whole number of at least 1");
+  const credits = Number(a.credits);
+  if (!Number.isInteger(credits) || credits < 1) throw new Abgelehnt("credits: estimated cost, a whole number of at least 1");
   // Erst in Formwerks Katalog nachsehen: Credits nur für Assets, die es dort nicht schon gibt (src/katalog.ts)
   const katalog = await vorGenerierung(db, `${a.titel}\n${a.anleitung}`, a.katalog_begruendung, "brief");
   return transaktion(db, async (tx) => {
@@ -128,13 +204,25 @@ export async function auftragAnlegen(db: Db, menschId: number, a: { zusage_id: n
       throw new Abgelehnt(`file types via the runner: ${RUNNER_TYPEN.join(", ")} (their content is checked; texts and archives come through the website)`);
     if (z.weg === "website") {
       const verplant = Number((await tx.query("select coalesce(sum(credits), 0) as s from spendenauftraege where zusage_id = $1 and zustand = any($2)", [z.id, offen])).rows[0].s);
-      if (verplant + a.credits > z.credits) throw new Abgelehnt(`the pledge has ${z.credits - verplant} credits left`);
+      if (verplant + credits > z.credits) throw new Abgelehnt(`the pledge has ${z.credits - verplant} credits left`);
+    }
+    if (z.weg === "schluessel") {
+      // Harte Grenze schon beim Anlegen: verbraucht + offene Aufträge (mit ihrem Preis) + dieser ≤ zugesagt
+      const reserviert = Number((await tx.query("select coalesce(sum(credits), 0) as s from spendenauftraege where zusage_id = $1 and zustand = 'offen'", [z.id])).rows[0].s);
+      const frei = z.credits - z.verbraucht - reserviert;
+      if (credits > frei) throw new Abgelehnt(`the pledge has ${Math.max(0, frei)} credits left; this brief costs ${credits}`);
+      if (erzeugung?.kind === "image_to_3d") {
+        const b = (await tx.query("select projekt_id, zustand, dateiname from spendenauftraege where id = $1", [erzeugung.image_from_brief])).rows[0];
+        if (!b || Number(b.projekt_id) !== projektId || !["hochgeladen", "angenommen"].includes(b.zustand) || !/\.(png|jpe?g|webp)$/i.test(b.dateiname ?? ""))
+          throw new Abgelehnt("image_from_brief: name a brief of this project whose image result (png, jpg, webp) is there and not rejected");
+      }
     }
     const r = (await tx.query(
-      `insert into spendenauftraege(zusage_id, projekt_id, von_mensch, titel, anleitung, zielpfad, dateitypen, max_mb, credits, katalog_treffer, katalog_begruendung) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning id`,
-      [z.id, projektId, menschId, a.titel, a.anleitung, a.zielpfad, typen, Math.min(Math.max(a.max_mb ?? 200, 1), 500), a.credits, katalog.treffer, katalog.begruendung])).rows[0];
-    await protokollieren(tx, { projekt_id: projektId, akteur: `mensch:${menschId}`, art: "spendenauftrag_angelegt", bezug: `spendenauftrag:${r.id}`, daten: { zusage: Number(z.id), titel: a.titel, credits: a.credits, katalog_treffer: katalog.treffer } });
-    return { auftrag_id: Number(r.id) };
+      `insert into spendenauftraege(zusage_id, projekt_id, von_mensch, titel, anleitung, zielpfad, dateitypen, max_mb, credits, katalog_treffer, katalog_begruendung, erzeugung) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`,
+      [z.id, projektId, menschId, a.titel, a.anleitung, a.zielpfad, typen, Math.min(Math.max(a.max_mb ?? 200, 1), 500), credits, katalog.treffer, katalog.begruendung, erzeugung])).rows[0];
+    await protokollieren(tx, { projekt_id: projektId, akteur: `mensch:${menschId}`, art: "spendenauftrag_angelegt", bezug: `spendenauftrag:${r.id}`,
+      daten: { zusage: Number(z.id), titel: a.titel, credits, katalog_treffer: katalog.treffer, ...(erzeugung ? { erzeugung: erzeugung.kind } : {}) } });
+    return { auftrag_id: Number(r.id), credits };
   });
 }
 
@@ -143,7 +231,8 @@ export async function auftraegeFuerLead(db: Db, menschId: number, projektSlug: s
   await darfSteuern(db, menschId, Number(p.id));
   const r = await db.query(
     `select a.id as auftrag_id, a.zusage_id, m.login as spender, z.dienst, a.titel, a.zielpfad, a.dateitypen, a.credits, a.zustand,
-            a.dateiname, a.sha256, a.bytes, a.hochgeladen, a.begruendung, a.abgebrochen, a.abbruchgrund, a.katalog_treffer, a.katalog_begruendung, a.erstellt
+            a.dateiname, a.sha256, a.bytes, a.hochgeladen, a.begruendung, a.abgebrochen, a.abbruchgrund, a.katalog_treffer, a.katalog_begruendung, a.erstellt,
+            z.weg, a.erzeugung, a.verbraucht
      from spendenauftraege a join zusagen z on z.id = a.zusage_id join menschen m on m.id = z.mensch_id
      where a.projekt_id = $1 and ($2::boolean is false or a.zustand in ('offen', 'hochgeladen', 'nacharbeit')) order by (a.zustand = 'hochgeladen') desc, a.erstellt`, [p.id, nurOffen]);
   return r.rows.map((x) => ({ ...x, auftrag_id: Number(x.auftrag_id), zusage_id: Number(x.zusage_id), bytes: x.bytes === null ? null : Number(x.bytes),
@@ -156,6 +245,7 @@ export async function hochladen(db: Db, menschId: number, auftragId: number, req
     `select a.*, z.mensch_id as spender, z.weg, z.agent_id as zusage_agent, p.slug
      from spendenauftraege a join zusagen z on z.id = a.zusage_id join projekte p on p.id = a.projekt_id where a.id = $1`, [auftragId])).rows[0];
   if (!a || Number(a.spender) !== menschId) throw new Abgelehnt("unknown brief");
+  if (a.weg === "schluessel") throw new Abgelehnt("the platform generates this brief itself with your key");
   if (!["offen", "nacharbeit"].includes(a.zustand)) throw new Abgelehnt("this brief takes no upload right now");
   // Der Runner lädt nur zu Aufträgen seiner eigenen Zusage hoch, die er begonnen hat (das Tageslimit zählt beim Beginnen)
   if (runnerAgent !== undefined && (a.weg !== "runner" || Number(a.zusage_agent) !== runnerAgent || !a.begonnen)) throw new Abgelehnt("start the brief first (start_media_brief)");
@@ -223,8 +313,10 @@ export async function hochladen(db: Db, menschId: number, auftragId: number, req
 export async function spendeBewerten(db: Db, menschId: number, agentId: number, auftragId: number, urteil: "annehmen" | "nacharbeit" | "ablehnen", begruendung: string) {
   if (!begruendung.trim()) throw new Abgelehnt("a reason is required");
   return transaktion(db, async (tx) => {
-    const a = (await tx.query("select a.*, z.mensch_id as spender from spendenauftraege a join zusagen z on z.id = a.zusage_id where a.id = $1 for update", [auftragId])).rows[0];
+    const a = (await tx.query("select a.*, z.mensch_id as spender, z.weg from spendenauftraege a join zusagen z on z.id = a.zusage_id where a.id = $1 for update of a", [auftragId])).rows[0];
     if (!a) throw new Abgelehnt("unknown brief");
+    // Nacharbeit braucht jemanden, der die Begründung liest: das Spendenwerk führt nur genau beschriebene Erzeugungen aus
+    if (a.weg === "schluessel" && urteil === "nacharbeit") throw new Abgelehnt("rework does not apply to key pledges: reject it and create a new brief with a changed generation");
     await darfSteuern(tx as unknown as Db, menschId, Number(a.projekt_id));
     if (Number(a.spender) === menschId) throw new Abgelehnt("nobody reviews their own donation");
     if (a.zustand !== "hochgeladen") throw new Abgelehnt("only uploaded results can be reviewed");
@@ -257,10 +349,13 @@ export async function aufraeumen(db: Db) {
   return r.rows.length;
 }
 
-/** Öffentliche Zahlen je Projekt (Projektseite, metrics): zugesagte Credits je Dienst und angenommene Spenden. */
+/** Öffentliche Zahlen je Projekt (Projektseite, metrics): noch freie, geprüfte Credits je Dienst und angenommene Spenden. */
 export async function creditSpenden(db: Db, projektId: number) {
   const zugesagt = (await db.query(
-    "select dienst, sum(credits)::int as credits, count(distinct mensch_id)::int as spender from zusagen where projekt_id = $1 and weg = 'website' and zustand = 'offen' and verfaellt >= current_date group by dienst order by 2 desc", [projektId])).rows;
+    // Öffentlich nur Zusagen mit geprüftem Schlüssel und Guthaben, mit dem, was davon noch nicht verbraucht ist:
+    // Eine Zusage ohne Schlüssel beweist nichts und könnte die Zahl beliebig aufblähen
+    `select dienst, sum(credits - verbraucht)::int as credits, count(distinct mensch_id)::int as spender from zusagen
+     where projekt_id = $1 and weg = 'schluessel' and zustand = 'offen' and verfaellt >= current_date and credits > verbraucht group by dienst order by 2 desc`, [projektId])).rows;
   const angenommen = (await db.query("select count(*)::int as n, coalesce(sum(credits), 0)::int as credits from spendenauftraege where projekt_id = $1 and zustand = 'angenommen'", [projektId])).rows[0];
   return { zugesagt, angenommen: angenommen.n, credits_angenommen: angenommen.credits };
 }

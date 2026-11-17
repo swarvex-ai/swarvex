@@ -1,61 +1,77 @@
 <script lang="ts">
-  // „Credits spenden?“ auf der Projektseite: fragt Schritt für Schritt nach Dienst, Menge und Verfallsdatum und legt die
-  // Zusage an (POST /api/account/pledges, Weg „Website“, spenden.ts). Ohne Anmeldung bleibt der Entwurf in der Sitzung
-  // und ist nach der Anmeldung wieder da. Der Weg über den Runner wird nur erklärt: Ihn legt `swarvex setup` an.
+  // „Credits spenden?“ auf der Projektseite: Dienst, API-Schlüssel (geprüft mit Guthaben), Menge und Datum, dann die
+  // Zusage (POST /api/account/pledges, Weg „schluessel“, spenden.ts). Die Plattform erzeugt die Aufträge des Leads selbst
+  // (spendenwerk.ts); von Hand erzeugen und hochladen macht keiner (neVs 17.11.2026). Der Schlüssel bleibt nur im
+  // Speicher dieser Seite, nie im Entwurf: Nach der Anmeldung wird er neu eingefügt.
   import { onMount, tick } from "svelte";
   import { invalidate } from "$app/navigation";
   import { pfad, sprache, tx } from "$lib/texte";
-
   let { slug, name }: { slug: string; name: string } = $props();
   const s = $derived(sprache());
   const t = $derived(tx().projekte.detail.spenden);
   const dienstName = (d: string) => tx().konto.spende.dienste[d] ?? d;
-  // Reihenfolge nach Häufigkeit verfallender Credits; „other“ verlangt den Namen in der Notiz
-  const DIENSTE = ["meshy", "elevenlabs", "suno", "midjourney", "leonardo", "higgsfield", "runway", "kling", "other"];
-
+  const DIENSTE = ["meshy", "elevenlabs"];
   const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
   const heute = () => new Date();
   const monatsende = () => { const h = heute(); return iso(new Date(h.getFullYear(), h.getMonth() + 1, 0)); };
   const inTagen = (n: number) => { const h = heute(); return iso(new Date(h.getFullYear(), h.getMonth(), h.getDate() + n)); };
-
+  // Der Dienst erneuert am Tag X: gespendet werden kann bis zum Tag davor
+  const tagDavor = (d: string) => { const [j, m, t2] = d.split("-").map(Number); return iso(new Date(j, m - 1, t2 - 1)); };
+  const datumText = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(s === "de" ? "de-DE" : "en", { day: "numeric", month: "long", year: "numeric" });
+  type Geprueft = { balance: number; expiring: number | null; renews: string | null };
   let offen = $state(false);
-  let schritt = $state<"dienst" | "menge" | "anmelden" | "fertig">("dienst");
+  let schritt = $state<"dienst" | "schluessel" | "menge" | "anmelden" | "fertig">("dienst");
   let dienst = $state("");
+  let schluessel = $state("");
+  let geprueft = $state<Geprueft | null>(null);
   let credits = $state<number | null>(null);
   let verfaellt = $state("");
   let notiz = $state("");
+  let rechte = $state(false);
   let fehler = $state("");
   let arbeitet = $state(false);
   let panel = $state<HTMLDivElement>();
   let ausloeser = $state<HTMLButtonElement>();
   const ENTWURF = $derived(`credits-entwurf:${slug}`);
-
   async function fokus() { await tick(); panel?.querySelector<HTMLElement>("[data-fokus]")?.focus(); }
   function umschalten() { offen = !offen; if (offen) { if (schritt === "fertig") neu(); fokus(); } }
-  function neu() { schritt = "dienst"; dienst = ""; credits = null; notiz = ""; fehler = ""; verfaellt = monatsende(); }
-  function waehlen(d: string) { dienst = d; verfaellt ||= monatsende(); schritt = "menge"; fehler = ""; fokus(); }
-
+  function neu() { schritt = "dienst"; dienst = ""; schluessel = ""; geprueft = null; credits = null; notiz = ""; rechte = false; fehler = ""; verfaellt = monatsende(); }
+  function waehlen(d: string) { dienst = d; schluessel = ""; geprueft = null; schritt = "schluessel"; fehler = ""; fokus(); }
+  function anmelden() {
+    try { sessionStorage.setItem(ENTWURF, JSON.stringify({ dienst })); } catch { /* ohne Speicher: nach der Anmeldung neu wählen */ }
+    schluessel = ""; schritt = "anmelden"; fokus();
+  }
+  async function pruefen(e: SubmitEvent) {
+    e.preventDefault();
+    fehler = ""; arbeitet = true;
+    try {
+      const r = await fetch("/api/account/pledges/check-key", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ service: dienst, key: schluessel }) });
+      if (r.status === 401) { anmelden(); return; }
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { fehler = j.error ?? t.fehler; return; }
+      geprueft = { balance: j.balance, expiring: j.expiring ?? null, renews: j.renews ?? null };
+      credits = Math.max(1, Math.min(j.expiring ?? j.balance, j.balance));
+      verfaellt = j.renews ? tagDavor(j.renews) : monatsende();
+      if (verfaellt < iso(heute())) verfaellt = iso(heute());
+      schritt = "menge"; fokus();
+    } catch { fehler = t.fehler; } finally { arbeitet = false; }
+  }
   async function zusagen(e: SubmitEvent) {
     e.preventDefault();
-    fehler = "";
-    if (dienst === "other" && !notiz.trim()) { fehler = t.welcherDienst; return; }
-    arbeitet = true;
+    fehler = ""; arbeitet = true;
     try {
       const r = await fetch("/api/account/pledges", { method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ project: slug, service: dienst, credits: Number(credits), expires: verfaellt, note: notiz.trim() }) });
-      if (r.status === 401) {
-        try { sessionStorage.setItem(ENTWURF, JSON.stringify({ dienst, credits, verfaellt, notiz })); } catch { /* ohne Speicher: nach der Anmeldung neu ausfüllen */ }
-        schritt = "anmelden"; fokus(); return;
-      }
+        body: JSON.stringify({ project: slug, service: dienst, credits: Number(credits), expires: verfaellt, note: notiz.trim(), key: schluessel, rights_confirmed: rechte }) });
+      if (r.status === 401) { anmelden(); return; }
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { fehler = j.error ?? t.fehler; return; }
       try { sessionStorage.removeItem(ENTWURF); } catch { /* egal */ }
+      schluessel = "";
       schritt = "fertig"; fokus();
       invalidate("app:projekt");
     } catch { fehler = t.fehler; } finally { arbeitet = false; }
   }
-
-  // Zurück von der Anmeldung: Entwurf wiederherstellen und das Menü offen zeigen, abschicken bleibt beim Menschen
+  // Zurück von der Anmeldung: Dienst wiederherstellen und das Menü offen zeigen; den Schlüssel fügt der Mensch neu ein
   onMount(() => {
     verfaellt = monatsende();
     let roh: string | null = null;
@@ -63,11 +79,13 @@
     if (!roh) return;
     try {
       const e = JSON.parse(roh);
-      if (DIENSTE.includes(e.dienst)) { dienst = e.dienst; credits = e.credits ?? null; verfaellt = e.verfaellt && e.verfaellt >= iso(heute()) ? e.verfaellt : monatsende(); notiz = e.notiz ?? ""; schritt = "menge"; offen = true; }
+      if (DIENSTE.includes(e.dienst)) { dienst = e.dienst; schritt = "schluessel"; offen = true; }
     } catch { /* kaputter Entwurf */ }
   });
 
-  const schnell = $derived([{ name: t.monatsende, wert: monatsende() }, { name: t.inTagen(7), wert: inTagen(7) }, { name: t.inTagen(30), wert: inTagen(30) }]);
+  const schnell = $derived([
+    ...(geprueft?.renews ? [{ name: t.wennVerfallen, wert: tagDavor(geprueft.renews) }] : [{ name: t.monatsende, wert: monatsende() }]),
+    { name: t.inTagen(7), wert: inTagen(7) }, { name: t.inTagen(30), wert: inTagen(30) }]);
   const spendenDoku = $derived(pfad(s, s === "de" ? "/docs/spenden#medien-werkzeuge-über-den-runner" : "/docs/donations#media-tools-through-the-runner"));
   const konto = $derived(pfad(s, s === "de" ? "/konto#t-spenden" : "/en/account#t-spenden"));
 </script>
@@ -94,13 +112,22 @@
             </button>
           {/each}
         </div>
-      {:else if schritt === "menge"}
+        <p class="leise klein">{t.andere} <a href={spendenDoku}>{t.runnerLink}</a></p>
+      {:else if schritt === "schluessel"}
+        <form onsubmit={pruefen}>
+          <p class="frage" tabindex="-1" data-fokus>{t.frageSchluessel(dienstName(dienst))}</p>
+          <p class="leise klein">{t.hilfe[dienst]} <a href={t.hilfeLink[dienst]} target="_blank" rel="noopener noreferrer">{t.hilfeLinkText}</a></p>
+          <label>{t.schluessel}<input type="password" autocomplete="off" spellcheck="false" minlength="16" maxlength="200" bind:value={schluessel} required /></label>
+          <p class="leise klein">{t.sicher}</p>
+          {#if fehler}<p class="fehler" role="alert">{fehler}</p>{/if}
+          <button class="knopf primaer" disabled={arbeitet}>{arbeitet ? t.prueft : t.pruefen}</button>
+          <button type="button" class="zurueck leise" onclick={() => { schritt = "dienst"; schluessel = ""; fehler = ""; fokus(); }}>← {t.andererDienst}</button>
+        </form>
+      {:else if schritt === "menge" && geprueft}
         <form onsubmit={zusagen}>
-          <p class="frage" tabindex="-1" data-fokus>{t.frageMenge(dienstName(dienst))}</p>
-          {#if dienst === "other"}
-            <label>{t.welcherDienstLabel}<input type="text" maxlength="500" bind:value={notiz} placeholder={t.welcherDienstHilfe} required /></label>
-          {/if}
-          <label>{t.wieViele}<input type="number" inputmode="numeric" min="1" max="1000000" step="1" bind:value={credits} placeholder={t.wieVieleHilfe} required /></label>
+          <p class="frage" tabindex="-1" data-fokus>{t.frageMenge}</p>
+          <p class="klein">{t.guthaben(geprueft.balance, geprueft.expiring, geprueft.renews ? datumText(tagDavor(geprueft.renews)) : null)}</p>
+          <label>{t.wieViele}<input type="number" inputmode="numeric" min="1" max={geprueft.balance} step="1" bind:value={credits} required /></label>
           <fieldset>
             <legend>{t.bisWann}</legend>
             <div class="chips">
@@ -110,22 +137,20 @@
             </div>
             <input type="date" aria-label={t.datum} min={iso(heute())} bind:value={verfaellt} required />
           </fieldset>
-          {#if dienst !== "other"}
-            <label>{t.notiz}<input type="text" maxlength="500" bind:value={notiz} placeholder={t.notizHilfe} /></label>
-          {/if}
+          <label>{t.notiz}<input type="text" maxlength="500" bind:value={notiz} placeholder={t.notizHilfe} /></label>
+          <label class="haken"><input type="checkbox" bind:checked={rechte} required /> <span>{t.rechte}</span></label>
           {#if fehler}<p class="fehler" role="alert">{fehler}</p>{/if}
-          <button class="knopf primaer" disabled={arbeitet}>{arbeitet ? t.sendet : t.zusagen}</button>
+          <button class="knopf primaer" disabled={arbeitet || !rechte}>{arbeitet ? t.sendet : t.zusagen}</button>
           <p class="leise klein">{t.soGehtsWeiter}</p>
-          {#if dienst !== "other"}<p class="leise klein">{t.runner(dienstName(dienst))} <a href={spendenDoku}>{t.runnerLink}</a></p>{/if}
-          <button type="button" class="zurueck leise" onclick={() => { schritt = "dienst"; fehler = ""; fokus(); }}>← {t.andererDienst}</button>
+          <button type="button" class="zurueck leise" onclick={() => { schritt = "schluessel"; fehler = ""; fokus(); }}>← {t.zurueck}</button>
         </form>
       {:else if schritt === "anmelden"}
         <p class="frage" tabindex="-1" data-fokus>{t.anmeldenH}</p>
         <p class="leise klein">{t.anmeldenText}</p>
         <a class="knopf primaer" href={`/api/account/login?lang=${s}&next=projekt-${slug}`} data-sveltekit-reload>{t.anmelden}</a>
-        <button type="button" class="zurueck leise" onclick={() => { schritt = "menge"; fokus(); }}>← {t.zurueck}</button>
+        <button type="button" class="zurueck leise" onclick={() => { schritt = "schluessel"; fokus(); }}>← {t.zurueck}</button>
       {:else}
-        <p class="frage danke" tabindex="-1" data-fokus role="status">{t.danke(Number(credits), dienstName(dienst === "other" ? notiz.trim() || "other" : dienst), name)}</p>
+        <p class="frage danke" tabindex="-1" data-fokus role="status">{t.danke(Number(credits), dienstName(dienst), name)}</p>
         <p class="leise klein">{t.dankeText} <a href={konto}>{t.zumKonto}</a></p>
       {/if}
     </div>
@@ -164,5 +189,7 @@
   .zurueck { justify-self: start; padding: 4px 0; border: 0; background: none; font: inherit; font-size: .82rem; cursor: pointer; }
   .zurueck:hover { color: var(--text); }
   .danke { color: var(--text); }
+  .haken { display: flex; gap: 8px; align-items: flex-start; color: var(--text); font-size: .8rem; line-height: 1.45; }
+  .haken input { width: auto; margin-top: 3px; flex: none; }
   .panel .knopf { justify-content: center; }
 </style>

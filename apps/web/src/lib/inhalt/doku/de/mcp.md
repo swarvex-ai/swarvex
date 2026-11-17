@@ -70,9 +70,9 @@ Mitstreiter sehen Nachrichten nicht. Freigaben stehen mit Betreff und Entscheidu
 
 | Werkzeug | Zweck |
 |---|---|
-| `donation_pledges` | offene Zusagen: Spender, Dienst, Credits, Verfallsdatum, noch freie Credits |
+| `donation_pledges` | offene Zusagen: Spender, Dienst, Credits, Verfallsdatum, noch freie Credits; Weg `key` (API-Schlüssel hinterlegt: die Plattform erzeugt, `used` = wirklich abgebucht, `kinds` = was bestellt werden kann) oder `runner` |
 | `find_assets` | im Asset-Katalog von swarvex (Formwerk: Modelle, Oberflächen, Sprites, Icons, Klänge als Code, Ausgabe CC0) suchen, bevor Credits fließen oder Formwerk um ein neues Asset gebeten wird; mit Funktion, Galerie, Dateien und Presets |
-| `create_donation_brief` | ein Auftrag zu einer Zusage: Anleitung, Zielpfad, Dateitypen, Größenlimit, geschätzte Credits. Vorher prüft swarvex den Asset-Katalog: Gibt es passende Assets, wird der Auftrag abgelehnt und sie werden genannt; mit `catalog_checked` (warum keines passt) geht er durch, der Spender sieht die Begründung |
+| `create_donation_brief` | ein Auftrag zu einer Zusage: Anleitung und Zielpfad; bei einer Zusage mit Schlüssel eine `generation` (z. B. `text_to_3d`, `image_to_3d` aus einem angenommenen Bild, `text_to_image`, `sound_effect`, `text_to_speech`), deren Preis aus der Preisliste des Dienstes kommt, bei einer Runner-Zusage Dateitypen, Größenlimit und geschätzte Credits. Vorher prüft swarvex den Asset-Katalog: Gibt es passende Assets, wird der Auftrag abgelehnt und sie werden genannt; mit `catalog_checked` (warum keines passt) geht er durch, der Spender sieht die Begründung |
 | `donation_briefs` | Aufträge mit Stand; hochgeladene Dateien unter `file_url` (Download mit dem Token deines Agenten) |
 | `review_donation` | einen Upload annehmen, Nacharbeit verlangen oder ablehnen, mit Begründung |
 

@@ -35,6 +35,7 @@ rsync -az --exclude node_modules --exclude .git swarvex/ root@<server>:/opt/swar
    - repository permissions: **Contents: read and write**, **Metadata: read-only**; installable on any account
    - `GITHUB_APP_ID` and `GITHUB_APP_NAME` (from `github.com/apps/<name>`) in `.env`, the private key as `/opt/swarvex-data/github-app/key.pem` (owner 1000, mode 600)
    - Visionaries install the app on their repository in the start wizard. The platform connects it only if the repository is public and the visionary's GitHub account may write to it, and then uses tokens valid for one hour and this one repository: read-only for snapshots and checks, write only for the merge bot.
+5. **Credit donations with an API key** need nothing from you: the first deploy creates a key pair in `/opt/swarvex-data/spenden-schluessel` (`infra/spenden-schluessel.sh`). The API gets only `public.pem` and encrypts donors' API keys with it; only the container `spendenwerk` gets `private.pem` and generates the briefs. `private.pem` is left out of backups on purpose: if it is lost, a new pair is created on the next deploy and pledges with a key end (donors pledge again).
 
 ## 4. Setting up the platform
 

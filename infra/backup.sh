@@ -32,7 +32,9 @@ mv "$DUMPS/swarvex.dump.tmp" "$DUMPS/swarvex.dump"
 
 echo "== restic → $RESTIC_REPOSITORY"
 restic cat config >/dev/null 2>&1 || restic init
-restic backup --quiet --tag swarvex "$DUMPS" "$DATA" "$STACK/.env" --exclude "$DATA/downloads"
+# Ohne den privaten Spenden-Schlüssel: Die Sicherung enthält die verschlüsselten API-Schlüssel von Spendern (im Dump),
+# aber nie das, womit man sie liest. Nach einer Wiederherstellung enden Zusagen mit Schlüssel; Spender sagen neu zu.
+restic backup --quiet --tag swarvex "$DUMPS" "$DATA" "$STACK/.env" --exclude "$DATA/downloads" --exclude "$DATA/spenden-schluessel/private.pem"
 if [ "${BACKUP_APPEND_ONLY:-0}" = 1 ]; then
   echo "append-only target: old snapshots stay, pruning happens on the target"
 else

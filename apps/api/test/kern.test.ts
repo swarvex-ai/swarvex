@@ -363,8 +363,8 @@ describe("Inhalt von Medien-Dateien", () => {
   });
 });
 
-describe("Credit-Spenden (Auftrag + Upload)", () => {
-  it("Zusage, Auftrag des Leads, Upload mit Prüfsumme, Bewertung; Budget der Zusage hält", async () => {
+describe("Credit-Spenden (Auftrag + Upload, alte Zusagen ohne Schlüssel)", () => {
+  it("Neue Zusagen nur mit Schlüssel; alte: Auftrag des Leads, Upload mit Prüfsumme, Bewertung; Budget der Zusage hält", async () => {
     const sp = await import("../src/spenden.ts");
     const { Readable } = await import("node:stream");
     const { mkdtempSync, readFileSync } = await import("node:fs");
@@ -372,9 +372,12 @@ describe("Credit-Spenden (Auftrag + Upload)", () => {
     const { join } = await import("node:path");
     process.env.SPENDEN_DIR = mkdtempSync(join(tmpdir(), "swx-spenden-"));
     const morgen = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-    await expect(sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "meshy", credits: 100, verfaellt: "2020-01-01" })).rejects.toThrow(/expiry/);
-    await expect(sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "bitcoin", credits: 100, verfaellt: morgen })).rejects.toThrow(/service/);
-    const { zusage_id } = await sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "meshy", credits: 100, verfaellt: morgen, notiz: "Abo endet morgen" });
+    // Von Hand erzeugen und hochladen macht keiner (neVs 17.11.2026): neue Zusagen nur noch mit API-Schlüssel
+    await expect(sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "meshy", credits: 100, verfaellt: morgen })).rejects.toThrow(/API key/);
+    await expect(sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "suno", credits: 100, verfaellt: morgen, schluessel: "x".repeat(20) })).rejects.toThrow(/service: meshy, elevenlabs/);
+    // Bestehende Zusagen ohne Schlüssel laufen weiter
+    const zusage_id = Number((await db.query("insert into zusagen(mensch_id, projekt_id, dienst, credits, verfaellt, notiz) values ($1, (select id from projekte where slug = 'test'), 'meshy', 100, $2, 'Abo endet morgen') returning id",
+      [mit.menschId, morgen])).rows[0].id);
     // Nur Lead, Visionär oder Officers sehen Zusagen und legen Aufträge an
     await expect(sp.zusagenFuerLead(db, fremd.menschId, "test")).rejects.toThrow(/only the project's lead/);
     expect((await sp.zusagenFuerLead(db, lead.menschId, "test"))[0]).toMatchObject({ dienst: "meshy", credits: 100, frei: 100 });
@@ -398,11 +401,159 @@ describe("Credit-Spenden (Auftrag + Upload)", () => {
     await sp.spendeBewerten(db, lead.menschId, lead.agentId, auftrag_id, "annehmen", "passt zum Styleguide");
     const zahlen = await sp.creditSpenden(db, (await k.projektPerSlug(db, "test")).id);
     expect(zahlen).toMatchObject({ angenommen: 1, credits_angenommen: 60 });
-    expect(zahlen.zugesagt[0]).toMatchObject({ dienst: "meshy", credits: 100 });
+    // Öffentlich zählen nur Zusagen mit geprüftem Schlüssel: diese hier beweist nichts
+    expect(zahlen.zugesagt).toEqual([]);
     const arten = (await db.query("select art from ereignisse where bezug in ($1, $2) order by seq", [`zusage:${zusage_id}`, `spendenauftrag:${auftrag_id}`])).rows.map((r) => r.art);
-    expect(arten).toEqual(["zusage_eingegangen", "spendenauftrag_angelegt", "spende_hochgeladen", "spende_bewertet"]);
+    expect(arten).toEqual(["spendenauftrag_angelegt", "spende_hochgeladen", "spende_bewertet"]);
     await sp.zusageBeenden(db, mit.menschId, zusage_id);
     expect((await sp.zusagenFuerLead(db, lead.menschId, "test")).length).toBe(0);
+  });
+});
+
+describe("Zusage mit API-Schlüssel (Spendenwerk)", () => {
+  it("Schlüssel geprüft und verschlüsselt, Plattform erzeugt, harte Grenze, Ende löscht den Schlüssel", async () => {
+    const sp = await import("../src/spenden.ts");
+    const werk = await import("../src/spendenwerk.ts");
+    const { schluesselVergessen } = await import("../src/spendenschluessel.ts");
+    const { generateKeyPairSync } = await import("node:crypto");
+    const { mkdtempSync, writeFileSync, readFileSync, existsSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const ordner = mkdtempSync(join(tmpdir(), "swx-schluessel-"));
+    const paar = generateKeyPairSync("rsa", { modulusLength: 2048, publicKeyEncoding: { type: "spki", format: "pem" }, privateKeyEncoding: { type: "pkcs8", format: "pem" } });
+    writeFileSync(join(ordner, "public.pem"), paar.publicKey);
+    writeFileSync(join(ordner, "private.pem"), paar.privateKey);
+    process.env.SPENDEN_PUBLIC_KEY = join(ordner, "public.pem");
+    process.env.SPENDEN_PRIVATE_KEY = join(ordner, "private.pem");
+    process.env.SPENDEN_DIR = mkdtempSync(join(tmpdir(), "swx-werk-"));
+    process.env.SPENDEN_POLL_MS = "1";
+    schluesselVergessen();
+    sp.pruefungenVergessen();
+
+    // Nachgebaute Dienste: Meshy (Bearer) und ElevenLabs (xi-api-key)
+    const MESHY = "msy_test_key_1234567890abcdef", ELEVEN = "sk_eleven_test_key_123456", FREI = "sk_eleven_free_key_123456";
+    const dienst = { teuer: false, zeichen: 1000, koerper: [] as any[], schluesselBeiDownload: false };
+    const glb = Buffer.concat([Buffer.from("glTF"), Buffer.alloc(60, 1)]);
+    const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(40, 2)]);
+    const server = createServer(async (req, res) => {
+      let roh = ""; for await (const t of req) roh += t;
+      const body = roh ? JSON.parse(roh) : null;
+      const send = (status: number, j: unknown) => { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(j)); };
+      const url = req.url ?? "";
+      if (url.startsWith("/files/")) {
+        if (req.headers.authorization || req.headers["xi-api-key"]) dienst.schluesselBeiDownload = true;
+        res.writeHead(200); return res.end(url.endsWith(".png") ? png : glb);
+      }
+      if (url.startsWith("/openapi/")) {
+        if (req.headers.authorization !== `Bearer ${MESHY}`) return send(401, { message: "Invalid API key" });
+        if (url === "/openapi/v1/balance") return send(200, { balance: 500, monthly_credits: 400, permanent_credits: 100, monthly_resets_at: Date.parse("2026-12-01T00:00:00Z") });
+        if (req.method === "POST") { dienst.koerper.push({ url, body }); return send(200, { result: url.includes("text-to-image") ? "img1" : url.includes("image-to-3d") ? "i3d" : body.mode === "refine" ? "ref1" : "prev1" }); }
+        const basis = `http://127.0.0.1:${(server.address() as any).port}/files`;
+        if (url.endsWith("/img1")) return send(200, { status: "SUCCEEDED", consumed_credits: 6, image_urls: [`${basis}/bild.png`] });
+        if (url.endsWith("/prev1")) return send(200, { status: "SUCCEEDED", consumed_credits: 20, model_urls: { glb: `${basis}/vorschau.glb` } });
+        if (url.endsWith("/ref1")) return send(200, { status: "SUCCEEDED", consumed_credits: dienst.teuer ? 25 : 10, model_urls: { glb: `${basis}/modell.glb` } });
+        if (url.endsWith("/i3d")) return send(200, { status: "SUCCEEDED", consumed_credits: 30, model_urls: { glb: `${basis}/modell.glb` } });
+        return send(404, {});
+      }
+      const k = req.headers["xi-api-key"];
+      if (k !== ELEVEN && k !== FREI) return send(401, { detail: { message: "invalid_api_key" } });
+      if (url === "/v1/user/subscription") return send(200, { tier: k === FREI ? "free" : "creator", character_count: dienst.zeichen, character_limit: 100000, next_character_count_reset_unix: 1796083200 });
+      if (url.startsWith("/v1/sound-generation")) { dienst.zeichen += 22; res.writeHead(200, { "content-type": "audio/mpeg" }); return res.end(Buffer.concat([Buffer.from("ID3"), Buffer.alloc(30, 3)])); }
+      return send(404, {});
+    });
+    await new Promise<void>((ok) => server.listen(0, "127.0.0.1", () => ok()));
+    const basis = `http://127.0.0.1:${(server.address() as any).port}`;
+    process.env.MESHY_API_BASIS = basis;
+    process.env.ELEVENLABS_API_BASIS = basis;
+    const morgen = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    try {
+      // Prüfen: falscher Schlüssel, richtiger mit Guthaben; die Zusage darf das Guthaben nicht übersteigen
+      await expect(sp.schluesselPruefen(mit.menschId, "meshy", "msy_falsch_1234567890abc")).rejects.toThrow(/does not accept the key/);
+      expect(await sp.schluesselPruefen(mit.menschId, "meshy", MESHY)).toMatchObject({ guthaben: 500, verfallend: 400, erneuert: "2026-12-01", schluessel_ende: "cdef" });
+      await expect(sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "meshy", credits: 600, verfaellt: morgen, schluessel: MESHY })).rejects.toThrow(/500 credits left/);
+      const { zusage_id } = await sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "meshy", credits: 100, verfaellt: morgen, schluessel: MESHY });
+      const zeile = (await db.query("select schluessel, schluessel_ende, guthaben_geprueft from zusagen where id = $1", [zusage_id])).rows[0];
+      expect(zeile.schluessel.includes(Buffer.from(MESHY))).toBe(false);
+      expect(zeile).toMatchObject({ schluessel_ende: "cdef", guthaben_geprueft: 500 });
+      expect((await sp.creditSpenden(db, (await k.projektPerSlug(db, "test")).id)).zugesagt).toEqual([{ dienst: "meshy", credits: 100, spender: 1 }]);
+      const fuerLead = (await sp.zusagenFuerLead(db, lead.menschId, "test")).find((z: any) => z.zusage_id === zusage_id);
+      expect(fuerLead).toMatchObject({ weg: "schluessel", credits: 100, verbraucht: 0, frei: 100, erzeugungsarten: ["text_to_3d", "image_to_3d", "text_to_image"] });
+      expect(JSON.stringify(fuerLead)).not.toContain("cdef");
+
+      // Aufträge: Erzeugung Pflicht, Preis aus der Preisliste, harte Grenze schon beim Anlegen
+      const brief = { zusage_id, titel: "Rostige Drohne", anleitung: "Drohne aus Schrott für die Myriad-Fraktion", zielpfad: "assets/models/drohne.glb" };
+      await expect(sp.auftragAnlegen(db, lead.menschId, brief)).rejects.toThrow(/generation: required/);
+      await expect(sp.auftragAnlegen(db, lead.menschId, { ...brief, erzeugung: { kind: "sound_effect", text: "zisch", duration_seconds: 2 } })).rejects.toThrow(/meshy pledges take/);
+      const a1 = await sp.auftragAnlegen(db, lead.menschId, { ...brief, erzeugung: { kind: "text_to_3d", prompt: "rusty scrap drone, low poly", target_polycount: 8000 } });
+      expect(a1.credits).toBe(30);
+      const a2 = await sp.auftragAnlegen(db, lead.menschId, { ...brief, titel: "Konzept Kran", zielpfad: "docs/concepts/kran.png", erzeugung: { kind: "text_to_image", prompt: "scrap crane concept, side view" } });
+      expect(a2.credits).toBe(6);
+      await expect(sp.auftragAnlegen(db, lead.menschId, { ...brief, titel: "Kran", erzeugung: { kind: "image_to_3d", image_from_brief: a2.auftrag_id } })).rejects.toThrow(/image_from_brief/);
+      // Erzeugen: Datei liegt da, Verbrauch laut Dienst, der Schlüssel geht nie an Download-Adressen
+      expect(await werk.einenAuftrag(db)).toBe("fertig");
+      expect(await werk.einenAuftrag(db)).toBe("fertig");
+      expect(await werk.einenAuftrag(db)).toBe("nichts");
+      expect(dienst.schluesselBeiDownload).toBe(false);
+      expect(dienst.koerper[0].body).toMatchObject({ mode: "preview", prompt: "rusty scrap drone, low poly", ai_model: "latest", should_remesh: true, target_polycount: 8000, target_formats: ["glb"] });
+      expect(dienst.koerper[1].body).toMatchObject({ mode: "refine", preview_task_id: "prev1", enable_pbr: true, texture_resolution: "2k" });
+      const auftraege = await sp.auftraegeFuerLead(db, lead.menschId, "test");
+      const e1 = auftraege.find((a: any) => a.auftrag_id === a1.auftrag_id);
+      expect(e1).toMatchObject({ zustand: "hochgeladen", verbraucht: 30, weg: "schluessel", datei_url: `/donations/${a1.auftrag_id}/file` });
+      expect(readFileSync((await db.query("select datei from spendenauftraege where id = $1", [a1.auftrag_id])).rows[0].datei).equals(glb)).toBe(true);
+      expect((await db.query("select verbraucht from zusagen where id = $1", [zusage_id])).rows[0].verbraucht).toBe(36);
+      // Nacharbeit gibt es hier nicht; Bild annehmen und daraus ein Modell
+      await expect(sp.spendeBewerten(db, lead.menschId, lead.agentId, a1.auftrag_id, "nacharbeit", "mehr Rost")).rejects.toThrow(/rework does not apply/);
+      await expect(sp.hochladen(db, mit.menschId, a1.auftrag_id, null as never, "x.glb")).rejects.toThrow(/generates this brief itself/);
+      await sp.spendeBewerten(db, lead.menschId, lead.agentId, a2.auftrag_id, "annehmen", "gutes Konzept");
+      const a3 = await sp.auftragAnlegen(db, lead.menschId, { ...brief, titel: "Kran", erzeugung: { kind: "image_to_3d", image_from_brief: a2.auftrag_id } });
+      expect(a3.credits).toBe(30);
+      // 100 zugesagt − 36 verbraucht − 30 reserviert (a3) − 30 (a4) = 4 frei
+      const a4 = await sp.auftragAnlegen(db, lead.menschId, { ...brief, titel: "Drohne 2", erzeugung: { kind: "text_to_3d", prompt: "second drone" } });
+      await expect(sp.auftragAnlegen(db, lead.menschId, { ...brief, titel: "Noch eine Drohne", erzeugung: { kind: "text_to_3d", prompt: "another drone" } })).rejects.toThrow(/has 4 credits left; this brief costs 30/);
+      expect(await werk.einenAuftrag(db)).toBe("fertig");
+      expect(dienst.koerper.at(-1).body.image_url.startsWith("data:image/png;base64,")).toBe(true);
+      expect((await db.query("select verbraucht from zusagen where id = $1", [zusage_id])).rows[0].verbraucht).toBe(66);
+
+      // Grenze auch beim Erzeugen: Ein offener Auftrag, für den nichts mehr frei ist, läuft nicht
+      await db.query("update zusagen set verbraucht = 80 where id = $1", [zusage_id]);
+      expect(await werk.einenAuftrag(db)).toBe("abgebrochen");
+      expect((await db.query("select zustand, abbruchgrund from spendenauftraege where id = $1", [a4.auftrag_id])).rows[0]).toMatchObject({ zustand: "offen", abbruchgrund: expect.stringMatching(/20 credits left/) });
+      // Bucht der Dienst mehr als den Preis, endet die Zusage sofort; das bezahlte Ergebnis kommt trotzdem an
+      await db.query("update zusagen set verbraucht = 66 where id = $1", [zusage_id]);
+      await db.query("update spendenauftraege set abgebrochen = null, abbruchgrund = null where id = $1", [a4.auftrag_id]);
+      dienst.teuer = true;
+      expect(await werk.einenAuftrag(db)).toBe("fertig");
+      const ende = (await db.query("select zustand, schluessel, verbraucht, endgrund from zusagen where id = $1", [zusage_id])).rows[0];
+      expect(ende).toMatchObject({ zustand: "beendet", schluessel: null, verbraucht: 111, endgrund: expect.stringMatching(/stopped to be safe: meshy charged 45 credits for a brief priced at 30/) });
+      expect((await db.query("select zustand from spendenauftraege where id = $1", [a4.auftrag_id])).rows[0].zustand).toBe("hochgeladen");
+      expect((await sp.creditSpenden(db, (await k.projektPerSlug(db, "test")).id)).zugesagt).toEqual([]);
+
+      // ElevenLabs: kostenloser Tarif nicht (keine kommerzielle Nutzung); Verbrauch aus character_count vorher/nachher
+      await expect(sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "elevenlabs", credits: 500, verfaellt: morgen, schluessel: FREI })).rejects.toThrow(/free plan/);
+      const audio = (await sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "elevenlabs", credits: 500, verfaellt: morgen, schluessel: ELEVEN })).zusage_id;
+      const s1 = await sp.auftragAnlegen(db, lead.menschId, { zusage_id: audio, titel: "Schrottpresse", anleitung: "Geräusch einer Schrottpresse", zielpfad: "assets/audio/presse.mp3",
+        erzeugung: { kind: "sound_effect", text: "hydraulic scrap press crushing metal", duration_seconds: 2 } });
+      expect(s1.credits).toBe(80);
+      expect(await werk.einenAuftrag(db)).toBe("fertig");
+      expect((await db.query("select verbraucht, dateiname from spendenauftraege where id = $1", [s1.auftrag_id])).rows[0]).toEqual({ verbraucht: 22, dateiname: `brief-${s1.auftrag_id}.mp3` });
+      // Abgelaufen: Zusage endet, Schlüssel weg
+      await db.query("update zusagen set verfaellt = current_date - 1 where id = $1", [audio]);
+      expect(await werk.abgelaufeneBeenden(db)).toBe(1);
+      expect((await db.query("select zustand, schluessel from zusagen where id = $1", [audio])).rows[0]).toEqual({ zustand: "beendet", schluessel: null });
+      // Kein Schlüssel im öffentlichen Protokoll
+      const protokoll = (await db.query("select daten::text as d from ereignisse where bezug in ($1, $2)", [`zusage:${zusage_id}`, `zusage:${audio}`])).rows.map((r) => r.d).join(" ");
+      expect(protokoll).not.toContain("msy_test");
+      expect(protokoll).not.toContain("sk_eleven");
+      // Der Spender beendet: Schlüssel gelöscht
+      const z3 = (await sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "meshy", credits: 10, verfaellt: morgen, schluessel: MESHY })).zusage_id;
+      await sp.zusageBeenden(db, mit.menschId, z3);
+      expect((await db.query("select schluessel, endgrund from zusagen where id = $1", [z3])).rows[0]).toEqual({ schluessel: null, endgrund: "ended by the donor" });
+      expect(existsSync(process.env.SPENDEN_DIR!)).toBe(true);
+    } finally {
+      server.close();
+      for (const v of ["MESHY_API_BASIS", "ELEVENLABS_API_BASIS", "SPENDEN_POLL_MS", "SPENDEN_PUBLIC_KEY", "SPENDEN_PRIVATE_KEY"]) delete process.env[v];
+      schluesselVergessen();
+    }
   });
 });
 
@@ -3052,9 +3203,10 @@ describe("Asset-Katalog vor der Generierung (Formwerk zuerst)", () => {
     konfig.vorschauDomain = "vorschau.example";
     q.holen = async (url: string) => { geholt++; expect(url).toBe("https://formwerk.vorschau.example/catalog.json"); return KATALOG; };
     (await kat()).katalogVergessen();
-    const sp = await import("../src/spenden.ts");
     const morgen = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-    zusage = (await sp.zusageAnlegen(db, mit.menschId, { projekt: "test", dienst: "meshy", credits: 500, verfaellt: morgen })).zusage_id;
+    // Zusage ohne Schlüssel (alter Weg): Hier geht es nur um die Katalogprüfung beim Anlegen eines Auftrags
+    zusage = Number((await db.query("insert into zusagen(mensch_id, projekt_id, dienst, credits, verfaellt) values ($1, (select id from projekte where slug = 'test'), 'meshy', 500, $2) returning id",
+      [mit.menschId, morgen])).rows[0].id);
     // Ein Projekt, das bei Formwerk anfragt
     const nutzer = Number((await db.query(
       `insert into projekte(slug,name,vision_md,vision_kurz,engine,lizenz_code,lizenz_assets,repo_url,repo_git,lead_modell,ziel)

@@ -34,6 +34,7 @@ import { bedarfBeantworten, bedarfMelden, bedarfVon, bedarfZurueckziehen, darfFu
 import { bilderErlaubt, bilderLesen } from "./bilder.ts";
 import { handbuchHolen } from "./handbuch.ts";
 import { assetsFinden, KATALOG_ARTEN } from "./katalog.ts";
+import { ERZEUGUNG } from "./spendendienste.ts";
 import { auftraegeFuerLead, auftragAnlegen, DATEITYPEN, DIENSTE, MEDIEN_JE_TAG_MAX, runnerAuftragAbbrechen, runnerAuftragBeginnen, runnerAuftraege, runnerZusagenSetzen, spendeBewerten, zusagenFuerLead } from "./spenden.ts";
 
 // Ohne Rückgabewert: „ok“ (JSON.stringify(undefined) wäre kein Text, und der MCP-Client verwürfe die ganze Antwort)
@@ -485,20 +486,22 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       an: anRein(to), art: ({ question: "frage", approval: "freigabe", info: "info" } as const)[kind], betreff: subject, inhalt: text, aufgaben: tasks })));
 
     s.registerTool("donation_pledges", {
-      description: "(Lead, visionary, area lead) Open credit pledges for a project: who has how many credits of which service (Meshy, Higgsfield …) until when, and how many are still free. Credits expire at the end of the donor's billing cycle, so plan by expiry date.",
+      description: "(Lead, visionary, area lead) Open credit pledges for a project: who has how many credits of which service until when, and how many are still free. Channel key: the donor deposited an API key (Meshy, ElevenLabs), the platform generates your briefs itself and never spends more than pledged (used = really charged, planned = open briefs at their price, kinds = what you can order). Channel runner: a contributor's runner generates with its media tools. Credits expire at the end of the donor's billing cycle, so plan by expiry date.",
       inputSchema: { project: z.string() },
     }, sicher(async ({ project }) => zusagenFuerLead(db, wer.menschId, project)));
 
     s.registerTool("create_donation_brief", {
-      description: "(Lead, visionary, area lead) Creates a brief for a pledge. Pledges via the website: the donor generates the asset with their own account and uploads it; estimated credits count against the pledge. Pledges via the runner (channel runner): the contributor's runner generates it automatically with their media tools, within a daily limit of briefs; a pledge with all_projects is open to every project, so name yours in project. Be exact either way: prompt, settings, format, size, style references, what to avoid. Look in the asset catalogue first (find_assets): when assets may fit, the call is refused with them; use one, or call again with catalog_checked (why none fits).",
+      description: "(Lead, visionary, area lead) Creates a brief for a pledge. Channel key (API key deposited): give generation; the platform runs it with the donor's key within minutes, the price comes from the service's price list (Meshy: text_to_3d 30 textured / 20 mesh only, image_to_3d 30 / 20, meshy-6-lite cheaper, text_to_image 3–9; ElevenLabs: sound_effect up to 40 per second, text_to_speech up to 1 per character) and is reserved against the pledge; credits and file_types are set for you. For a model from a concept: first text_to_image, accept the image, then image_to_3d with image_from_brief. The result shows up in donation_briefs as uploaded; review it like any donation (rework does not apply: reject and brief again). Channel runner: the contributor's runner generates it with their media tools, within a daily limit of briefs; a pledge with all_projects is open to every project, so name yours in project; give instructions, file_types and credits. Be exact: prompt, settings, style, what to avoid. Look in the asset catalogue first (find_assets): when assets may fit, the call is refused with them; use one, or call again with catalog_checked (why none fits).",
       inputSchema: {
         pledge_id: z.number().int(), project: z.string().optional().describe("Your project; required for a pledge open to all projects"),
         title: z.string().min(3).max(140), instructions: z.string().min(10).max(8000),
         target_path: z.string().describe("Where the asset will live in the repository, e.g. asset_library/models/drone.glb"),
-        file_types: z.array(z.enum(DATEITYPEN)).min(1), max_mb: z.number().int().min(1).max(500).optional(), credits: z.number().int().min(1),
+        file_types: z.array(z.enum(DATEITYPEN)).min(1).optional().describe("Required except for key pledges"), max_mb: z.number().int().min(1).max(500).optional(),
+        credits: z.number().int().min(1).optional().describe("Estimated cost; required except for key pledges (there the price list decides)"),
+        generation: ERZEUGUNG.optional().describe("Key pledges only: exactly what the platform generates with the donor's key"),
         catalog_checked: z.string().min(10).max(500).optional().describe("Only after the catalogue check named assets: why none of them fits (shown to the donor)"),
       },
-    }, sicher(async (a) => auftragAnlegen(db, wer.menschId, { zusage_id: a.pledge_id, projekt: a.project, titel: a.title, anleitung: a.instructions, zielpfad: a.target_path, dateitypen: a.file_types, max_mb: a.max_mb, credits: a.credits, katalog_begruendung: a.catalog_checked })));
+    }, sicher(async (a) => auftragAnlegen(db, wer.menschId, { zusage_id: a.pledge_id, projekt: a.project, titel: a.title, anleitung: a.instructions, zielpfad: a.target_path, dateitypen: a.file_types, max_mb: a.max_mb, credits: a.credits, katalog_begruendung: a.catalog_checked, erzeugung: a.generation })));
 
     s.registerTool("donation_briefs", {
       description: "(Lead, visionary, area lead) Donation briefs of a project with their state. A runner that could not deliver hands the brief back (handed_back, handed_back_reason) and retries after 24 hours: rewrite or withdraw a brief that keeps failing. Uploaded files are downloaded from file_url with your agent's bearer token (attachment, untrusted content: check before committing; add donor, service and licence to CREDITS.md).",

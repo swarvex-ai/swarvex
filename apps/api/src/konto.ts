@@ -15,7 +15,7 @@ import { nachAussen } from "./aussen.ts";
 import { CALLBACK, englisch, esc, KONTO_PRAEFIX, pruefen, seite, signieren } from "./auth/interaktion.ts";
 import type { KontoAnbieter } from "./auth/konten.ts";
 import { nachrichtBeantworten, offeneFreigaben } from "./nachrichten.ts";
-import { hochladen, meineZusagen, zusageAnlegen, zusageBeenden } from "./spenden.ts";
+import { hochladen, meineZusagen, schluesselPruefen, zusageAnlegen, zusageBeenden } from "./spenden.ts";
 import { projektAnlegen, repoVerbinden, type NeuesProjekt } from "./projekte.ts";
 import { appBereit, installierenUrl } from "./github.ts";
 import { meineBeitraege, vorschauSenden } from "./beitraege.ts";
@@ -390,10 +390,12 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
       }
     }
 
-    // Credit-Spenden (spenden.ts): Zusage anlegen oder beenden, Ergebnis eines Auftrags hochladen
+    // Credit-Spenden (spenden.ts): API-Schlüssel prüfen, Zusage anlegen oder beenden, Ergebnis eines alten Auftrags hochladen.
+    // Der Schlüssel steht nur im Request-Body und wird nirgends protokolliert.
     const zusageEnde = /^\/api\/account\/pledges\/(\d+)\/end$/.exec(pfad);
     const upload = /^\/api\/account\/donation-briefs\/(\d+)\/upload$/.exec(pfad);
-    if (req.method === "POST" && (pfad === "/api/account/pledges" || zusageEnde || upload)) {
+    const schluesselCheck = pfad === "/api/account/pledges/check-key";
+    if (req.method === "POST" && (pfad === "/api/account/pledges" || zusageEnde || upload || schluesselCheck)) {
       if (!eigeneHerkunft(req)) return json(res, 403, { error: "foreign_origin" });
       if (!menschId) return json(res, 401, { error: "not_signed_in" });
       try {
@@ -404,10 +406,12 @@ export function kontoBehandeln(db: Db, geheimnis: string, konten: KontoAnbieter[
           return json(res, 200, nachAussen(await hochladen(db, menschId, Number(upload[1]), req, name)));
         }
         if (zusageEnde) { await zusageBeenden(db, menschId, Number(zusageEnde[1])); return json(res, 200, { ok: true }); }
-        let e: { project?: string; service?: string; credits?: number; expires?: string; note?: string } = {};
+        let e: { project?: string; service?: string; credits?: number; expires?: string; note?: string; key?: string; rights_confirmed?: boolean } = {};
         try { e = JSON.parse(await textLesen(req, 8_000) || "{}"); } catch { return json(res, 400, { error: "invalid_json" }); }
-        const dienst = e.service === "other" ? "andere" : String(e.service ?? "");
-        return json(res, 200, nachAussen(await zusageAnlegen(db, menschId, { projekt: String(e.project ?? ""), dienst, credits: Number(e.credits), verfaellt: String(e.expires ?? ""), notiz: e.note })));
+        const dienst = String(e.service ?? "");
+        if (schluesselCheck) return json(res, 200, nachAussen(await schluesselPruefen(menschId, dienst, String(e.key ?? ""))));
+        if (e.rights_confirmed !== true) return json(res, 400, { error: "confirm that your plan allows commercial use, so the results can go under the project's asset licence" });
+        return json(res, 200, nachAussen(await zusageAnlegen(db, menschId, { projekt: String(e.project ?? ""), dienst, credits: Number(e.credits), verfaellt: String(e.expires ?? ""), notiz: e.note, schluessel: String(e.key ?? "") })));
       } catch (e) {
         if (e instanceof Abgelehnt) return json(res, 409, { error: e.message });
         throw e;
