@@ -5,6 +5,8 @@
 # SWARVEX_PREVIEW_FROM. A task that runs on another server writes nothing here; a platform that fetches its previews
 # from the pipeline server reports that as the task preview_fetch.
 set -eu
+# Prometheus wants a decimal point: under a German locale awk would print 0,120 and the textfile is rejected
+export LC_ALL=C
 TASK="${1:?usage: pipeline-metrics.sh check|merge|preview}"
 D=/var/lib/swarvex-metrics
 mkdir -p "$D"
