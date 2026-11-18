@@ -116,10 +116,15 @@ def holen(url, kopf=None, methode="GET"):
 
 def neueste_version(hub, aktuell, hauptversion=None):
     """Höchste veröffentlichte x.y.z (mit oder ohne v, wie das aktuelle Tag), auf Wunsch nur einer Hauptversion."""
-    _, roh = holen(f"https://hub.docker.com/v2/repositories/{hub}/tags?page_size=100&ordering=last_updated")
+    # Mit Hauptversion nach Namen filtern: Die 100 zuletzt aktualisierten Tags von node enthalten oft nur die neueste
+    # Hauptversion (18 Nov: nur 24), node:22 sah dann keine Version und meldete fälschlich „rebuild“
+    filter_ = f"&name={hauptversion}." if hauptversion else ""
+    _, roh = holen(f"https://hub.docker.com/v2/repositories/{hub}/tags?page_size=100&ordering=last_updated{filter_}")
     tags = [t["name"] for t in json.loads(roh)["results"] if SEMVER.match(t["name"])]
     if hauptversion:
         tags = [t for t in tags if SEMVER.match(t)[1] == hauptversion]
+        if not tags:
+            raise LookupError(f"no {hub} tags for major version {hauptversion}")  # lieber „unknown“ als ein falsches „rebuild“
     mit_v = aktuell.startswith("v")
     tags = [t for t in tags if t.startswith("v") == mit_v] or tags
     return max(tags, key=lambda t: tuple(int(x) for x in SEMVER.match(t).groups())) if tags else ""
