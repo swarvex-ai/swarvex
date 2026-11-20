@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -387,5 +390,37 @@ func TestGitStandNurAusDemKlon(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatalf("%s: gitStand hangs", name)
 		}
+	}
+}
+
+func TestLeadLebenszeichen(t *testing.T) {
+	var mu sync.Mutex
+	var aufrufe []map[string]any
+	start := time.Now().Add(-90 * time.Second)
+	stopp := leadLebenszeichen(context.Background(), "formwerk", start, 20*time.Millisecond, func(name string, arg map[string]any) error {
+		if name != "report_lead_cycle_running" {
+			t.Errorf("tool %q", name)
+		}
+		mu.Lock()
+		aufrufe = append(aufrufe, arg)
+		mu.Unlock()
+		return errors.New("older platform: unknown tool") // folgenlos
+	})
+	time.Sleep(75 * time.Millisecond)
+	stopp()
+	mu.Lock()
+	n := len(aufrufe)
+	mu.Unlock()
+	if n < 2 {
+		t.Fatalf("expected several signs of life, got %d", n)
+	}
+	if aufrufe[0]["project"] != "formwerk" || aufrufe[0]["seconds"].(int) < 90 {
+		t.Fatalf("unexpected arguments %v", aufrufe[0])
+	}
+	time.Sleep(50 * time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(aufrufe) != n {
+		t.Fatal("signs of life continued after the cycle ended")
 	}
 }

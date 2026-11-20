@@ -94,8 +94,10 @@ func leadVerbrauchDatei(p string) string { return leadUnter(p, "usage.jsonl") }
 const (
 	leadRuheStandard     = 6 * time.Hour
 	leadRundeMaxStandard = 60 * time.Minute
-	leadWiederholung     = 60 * time.Minute
-	leadAbstand          = 2 * time.Minute
+	// Lebenszeichen während einer Runde: deutlich unter den 15 Minuten, nach denen die Plattform „nicht erreichbar“ zeigt
+	leadLebenszeichenAbstand = 5 * time.Minute
+	leadWiederholung         = 60 * time.Minute
+	leadAbstand              = 2 * time.Minute
 )
 
 func projektBefehl(args []string) {
@@ -1227,7 +1229,15 @@ func rundeAusfuehren(ctx context.Context, l *leadKonfig, a *leadAnmeldung, anlas
 	}
 	start := time.Now()
 	fmt.Printf("Cycle: %s\n", anlass)
+	stopp := leadLebenszeichen(ctx, l.Projekt, start, leadLebenszeichenAbstand, func(name string, arg map[string]any) error {
+		m, _, e := leadMcp(a)
+		if e != nil {
+			return e
+		}
+		return m.werkzeug(name, arg, nil)
+	})
 	tokens, ergebnis, err := leadRunde(ctx, l, a, anlass, budget)
+	stopp()
 	if err != nil && ergebnis == "" {
 		ergebnis = "error: " + err.Error()
 	}
@@ -1243,6 +1253,29 @@ func rundeAusfuehren(ctx context.Context, l *leadKonfig, a *leadAnmeldung, anlas
 		}
 	}
 	return ergebnis, err
+}
+
+// leadLebenszeichen meldet der Plattform während einer Runde alle `abstand`, dass sie noch läuft
+// (report_lead_cycle_running). Der Lead arbeitet oft lange lokal (bauen, testen) und ruft die Plattform dann nicht auf;
+// ohne Meldung zeigt Mein Konto ihn nach 15 Minuten als „nicht erreichbar“. Fehler (Netz, ältere Plattform ohne das
+// Werkzeug) bleiben folgenlos: Das Lebenszeichen ist nur eine Anzeige. Die Rückgabe beendet es und wartet darauf.
+func leadLebenszeichen(ctx context.Context, projekt string, start time.Time, abstand time.Duration, rufen func(string, map[string]any) error) func() {
+	ctx, abbrechen := context.WithCancel(ctx)
+	fertig := make(chan struct{})
+	go func() {
+		defer close(fertig)
+		t := time.NewTicker(abstand)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				_ = rufen("report_lead_cycle_running", map[string]any{"project": projekt, "seconds": int(time.Since(start).Seconds())})
+			}
+		}
+	}()
+	return func() { abbrechen(); <-fertig }
 }
 
 func abschneiden(s string, n int) string {

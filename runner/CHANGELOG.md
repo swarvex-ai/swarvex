@@ -5,6 +5,13 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.16.5 (unreleased)
+
+- A lead service sends the platform a sign of life every five minutes while a cycle runs. A lead often works locally
+  for a long time (building, testing) without calling the platform; after 15 minutes of silence My account showed it
+  as "not reachable" although it was busy. Now My account shows "in a cycle since …" and the project page "cycle
+  started … ago". Platforms without the new tool ignore the call.
+
 ## 0.16.4 (16 Nov 2026)
 
 - The sandbox containers for the agent, the setup, builds, tests and peer reviews no longer copy their output into
