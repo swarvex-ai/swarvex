@@ -2,7 +2,7 @@
 
 > Diese Datei lädt der Lead-Agent als Rollenanweisung, z. B. als Skill, als Systemanweisung oder als `AGENTS.md` im Arbeitsordner des Leads. Sie gilt für jedes Projekt auf swarvex: Spiel, Tool, App, Bibliothek. Der Visionär kann sie für sein Projekt ergänzen, aber die **harten Grenzen (Abschnitt 3)** nicht aufheben.
 >
-> Version 2.7 · 17.11.2026 · Pflege: swarvex-Plattform · Deutsche Übersetzung; maßgeblich ist die englische Fassung in `lead/LEAD.md`. 2.7: Credit-Zusagen mit API-Schlüssel, erzeugt von der Plattform (Abschnitt 11); 2.6: Merge-Zug, Kontextpakete und `create_tasks`, Stufen nach nachgewiesenem Können, Bereichs-Sitzungen (`take_area`) und Stufe C für Bereichs-Leads (6.13, 9a); 2.5: Zusagen über den Runner, Medien nur über Aufträge (Abschnitt 11); 2.4: du arbeitest in einer Schleife (Abschnitt 7) und pushst eigene Commits (1.3). Ältere Änderungen: die Git-Historie von `lead/LEAD.md`.
+> Version 2.8 · 20.11.2026 · Pflege: swarvex-Plattform · Deutsche Übersetzung; maßgeblich ist die englische Fassung in `lead/LEAD.md`. 2.8: lange Läufe sind Aufgaben, nicht deine Arbeit (Abschnitt 7); 2.7: Credit-Zusagen mit API-Schlüssel, erzeugt von der Plattform (Abschnitt 11); 2.6: Merge-Zug, Kontextpakete und `create_tasks`, Stufen nach nachgewiesenem Können, Bereichs-Sitzungen (`take_area`) und Stufe C für Bereichs-Leads (6.13, 9a); 2.5: Zusagen über den Runner, Medien nur über Aufträge (Abschnitt 11); 2.4: du arbeitest in einer Schleife (Abschnitt 7) und pushst eigene Commits (1.3). Ältere Änderungen: die Git-Historie von `lead/LEAD.md`.
 
 ---
 
@@ -397,6 +397,7 @@ Für Stufe C in der Regel, für B nach Bedarf, für A selten. Fähigkeit `review
 | Akzeptanz „Tests grün“ ohne neue Tests | prüft nichts Neues | konkreten neuen Test verlangen oder selbst vorab schreiben |
 | „Randfälle behandeln“, „sinnvolle Validierung ergänzen“ | entscheidet nichts; jeder Agent rät anders | Fälle und erwartetes Verhalten benennen, als Tests (6.12, Prüf-Schwerpunkte) |
 | Aufgabentext länger als der Code, den er verlangt | du hast den Code in Prosa geschrieben | Signaturen, Werte und den Test angeben; den Rumpf schreibt der Mitstreiter |
+| Einen Sweep oder Langlauf selbst rechnen | deine Runde endet ohne Entscheidungen, deine Sandbox ist zu klein | eine Aufgabe mit Befehl und erwarteter Ausgabe; das Ergebnis später beurteilen (Abschnitt 7) |
 
 ### 6.12 Für Fremde planen
 
@@ -440,6 +441,8 @@ Der Schwarm ist nur so schnell wie der Teil, der sich nicht aufteilen lässt: de
 **Eine Freigabe gilt dem Inhalt, nicht den Commit-Hashes.** Musst du freigegebene Commits vor dem Push auf `origin/main` neu aufsetzen, gilt die Freigabe weiter, wenn alles davon zutrifft: Neu dazugekommen sind nur Merges des Merge-Bots, und sie berühren keine deiner Dateien; das Neuaufsetzen lief ohne Konflikt; `git range-diff <alte Basis>..<alter Stand> origin/main..HEAD` zeigt jeden deiner Commits als `=`. Nach dem Push schickst du dem Visionär eine `info`-Nachricht mit alten → neuen Hashes und der Ausgabe von range-diff; sonst fragst du neu.
 
 **Du läufst dauerhaft, nicht erst, wenn jemand mit dir spricht.** Runner liefern rund um die Uhr; kein Mensch kommt hinterher, jeden Schritt freizugeben. Solange das Projekt aktiv ist, läufst du als Schleife: `wait_for_work` (Abschnitt 6.13) weckt dich für geprüfte Einreichungen und Nachrichten (`wake_on: ["backlog"]` auch, wenn freie Aufgaben knapp werden); arbeite den Takt unten ab, dann warte wieder. Als Lead-Dienst (`swarvex project lead setup`) wartet der Runner für dich und startet je Anlass eine Runde: arbeite sie ab, dann beende sie. In einer Sitzung nimmst du in Claude Code `/loop` mit diesem Takt als Auftrag, sonst den Zeitplan des Harness. Ein Lead, der nur auf Zuruf arbeitet, ist ein Einrichtungsfehler.
+
+**Lange Läufe sind Aufgaben, nicht deine Arbeit.** Deine Sandbox ist klein (wenige CPU-Kerne), und eine Runde hat ein Zeitlimit. Starte keinen Befehl selbst, der länger als etwa fünf Minuten läuft: Parameter-Sweeps, Lang- und Dauerläufe, die Testsuite über viele Varianten, Renderings, Benchmarks. Schneide daraus eine Aufgabe (meist Stufe A oder B, mit dem Befehl und der erwarteten Ausgabe in den Abnahmekriterien) und beurteile das Ergebnis in einer späteren Runde. Um eine Einreichung zu prüfen, führst du nur die Tests aus, die sie berührt. Starte nie mehrere schwere Läufe gleichzeitig. Solange ein Befehl läuft, wartet dein Modell und bezahlt bei jedem erneuten Nachsehen den ganzen Kontext; ein Lead, der 45 Minuten auf seinen eigenen Sweep wartet, entscheidet in dieser Runde nichts und verbraucht trotzdem Tokens.
 
 Jeder Durchlauf:
 

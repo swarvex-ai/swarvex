@@ -2871,11 +2871,18 @@ describe("Lead-Dienst (E-38): gebundene Anmeldung, nur ein Projekt, keine Freiga
     const { leadAnwesenheit, leadAlarme, leadGesehen } = await ld();
     expect(await leadGesehen(db, projekt, dienst.agentId)).toEqual({ halter: true, bereich: null }); // jeder Aufruf (mcpBehandeln)
     const s = await sitzung(dienst, true, projekt);
+    // Lebenszeichen während einer langen Runde: hält den Dienst aktiv, auch wenn sein letzter Aufruf alt ist
+    await db.query("update projekte set lead_gesehen = now() - interval '40 minutes' where id = $1", [projekt]);
+    expect((await s.rufen("report_lead_cycle_running", { project: "test", seconds: 1800 })).fehler).toBe(false);
+    const l = await leadAnwesenheit(db, projekt);
+    expect(l?.aktiv).toBe(true);
+    expect(Math.abs(Date.now() - 1800_000 - new Date(l!.in_runde_seit).getTime())).toBeLessThan(60_000);
     expect((await s.rufen("report_lead_cycle", { project: "test", seconds: 240, tokens: 52000, reason: "reviews", outcome: "ok" })).fehler).toBe(false);
     const a = await leadAnwesenheit(db, projekt);
     expect(a?.aktiv).toBe(true);
     expect(a?.letzte_runde).not.toBeNull();
-    expect(Object.keys(nachAussen(a) as object).sort()).toEqual(["active", "last_cycle", "seen", "services"]); // Projektseite liest seen
+    expect(a?.in_runde_seit).toBeNull(); // die gemeldete Runde ist zu Ende
+    expect(Object.keys(nachAussen(a) as object).sort()).toEqual(["active", "in_cycle_since", "last_cycle", "seen", "services"]); // Projektseite liest seen
     expect((await db.query("select count(*)::int as n from lead_runden where projekt_id = $1", [projekt])).rows[0].n).toBe(1);
     expect(await leadAnwesenheit(db, anderes)).toBeNull(); // dort kein Dienst eingerichtet
     await db.query("update projekte set lead_gesehen = now() - interval '2 hours' where id = $1", [projekt]);

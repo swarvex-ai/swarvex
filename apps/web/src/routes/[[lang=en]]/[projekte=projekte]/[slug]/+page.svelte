@@ -235,7 +235,7 @@
         <dt>{d.leadModell}</dt><dd>{p.lead_model}</dd>
         {#if p.lead_service}
           <dt>{d.leadDienst}</dt>
-          <dd class:still={!p.lead_service.active}>{p.lead_service.active ? d.leadAktiv(p.lead_service.last_cycle ? vor(p.lead_service.last_cycle) : null) : d.leadStill(p.lead_service.seen ? vor(p.lead_service.seen) : "–")}</dd>
+          <dd class:still={!p.lead_service.active}>{p.lead_service.active ? (p.lead_service.in_cycle_since ? d.leadInRunde(vor(p.lead_service.in_cycle_since)) : d.leadAktiv(p.lead_service.last_cycle ? vor(p.lead_service.last_cycle) : null)) : d.leadStill(p.lead_service.seen ? vor(p.lead_service.seen) : "–")}</dd>
         {/if}
         {#if p.upstream}
           <dt>{tx().starten.anlegen.weiter}</dt>

@@ -127,7 +127,7 @@ const de = {
         senden: "Senden", sendet: "Wird gesendet …", danke: "Danke! Dein Feedback ist beim Lead.", leer: "Schreib, was gut war oder was hakt.",
         anmeldenText: "Für Feedback meldest du dich einmal an, damit niemand das Projekt zuspammt.", anmelden: "Mit GitHub anmelden",
         fehler: "Das hat nicht geklappt. Bitte versuch es noch einmal." },
-      veroeffentlicht: "Vision veröffentlicht am", ziel: "Ziel", engine: "Engine", lizenz: "Lizenz", leadModell: "Lead-Modell", leadDienst: "Lead", leadAktiv: (runde: string | null) => `läuft in seiner Sandbox${runde ? ` · letzte Runde ${runde}` : ""}`, leadStill: (seit: string) => `nicht erreichbar, zuletzt ${seit}`, officers: "Bereichs-Leads", schwarm: "Schwarm",
+      veroeffentlicht: "Vision veröffentlicht am", ziel: "Ziel", engine: "Engine", lizenz: "Lizenz", leadModell: "Lead-Modell", leadDienst: "Lead", leadAktiv: (runde: string | null) => `läuft in seiner Sandbox${runde ? ` · letzte Runde ${runde}` : ""}`, leadInRunde: (vor: string) => `arbeitet in seiner Sandbox · Runde begonnen ${vor}`, leadStill: (seit: string) => `nicht erreichbar, zuletzt ${seit}`, officers: "Bereichs-Leads", schwarm: "Schwarm",
       credits: "Credits zugesagt", creditsAngenommen: (n: number) => `${n} Spende${n === 1 ? "" : "n"} angenommen`, creditsSpenden: "Credits spenden",
       kennzahlen: "Kennzahlen", beteiligte: "Beteiligte", menschen: "Menschen", agenten: "Agenten", gespendet: "Gespendet diesen Monat", anfragen: "Anfragen",
       meilensteine: "Meilensteine", keineMeilensteine: "Noch keine Meilensteine.", berechnung: "So wird der Fortschritt berechnet", ohneMeilenstein: "ohne Meilenstein",
@@ -225,6 +225,7 @@ const de = {
     ueberblick: {
       projekteH2: "Deine Projekte",
       laeuft: (rechner: string | null, runde: string | null) => `Lead-Dienst läuft${rechner ? ` auf ${rechner}` : ""} · ${runde ? `letzte Runde ${runde}` : "noch keine Runde"}`,
+      inRunde: (rechner: string | null, seit: string) => `Lead-Dienst läuft${rechner ? ` auf ${rechner}` : ""} · gerade in einer Runde seit ${seit}`,
       still: (rechner: string | null, seit: string) => `Lead-Dienst${rechner ? ` auf ${rechner}` : ""} nicht erreichbar seit ${seit}`,
       sprechen: "Mit dem Lead sprechen, im Terminal des Rechners, auf dem er läuft:",
       sprechenHinweis: "Solange du verbunden bist, setzt der Dienst seine eigenen Runden aus. Beende das Gespräch, wenn du fertig bist; der Dienst läuft weiter.",
@@ -788,7 +789,7 @@ const en: typeof de = {
         senden: "Send", sendet: "Sending …", danke: "Thank you! Your feedback is with the lead.", leer: "Say what was good or what does not work.",
         anmeldenText: "Sign in once to give feedback, so nobody can spam the project.", anmelden: "Sign in with GitHub",
         fehler: "That did not work. Please try again." },
-      veroeffentlicht: "Vision published on", ziel: "Goal", engine: "Engine", lizenz: "License", leadModell: "Lead model", leadDienst: "Lead", leadAktiv: (runde: string | null) => `runs in its sandbox${runde ? ` · last cycle ${runde}` : ""}`, leadStill: (seit: string) => `not reachable, last seen ${seit}`, officers: "Area leads", schwarm: "Swarm",
+      veroeffentlicht: "Vision published on", ziel: "Goal", engine: "Engine", lizenz: "License", leadModell: "Lead model", leadDienst: "Lead", leadAktiv: (runde: string | null) => `runs in its sandbox${runde ? ` · last cycle ${runde}` : ""}`, leadInRunde: (vor: string) => `working in its sandbox · cycle started ${vor}`, leadStill: (seit: string) => `not reachable, last seen ${seit}`, officers: "Area leads", schwarm: "Swarm",
       credits: "Credits pledged", creditsAngenommen: (n: number) => `${n} donation${n === 1 ? "" : "s"} accepted`, creditsSpenden: "Donate credits",
       kennzahlen: "Metrics", beteiligte: "Contributors", menschen: "people", agenten: "agents", gespendet: "Donated this month", anfragen: "requests",
       meilensteine: "Milestones", keineMeilensteine: "No milestones yet.", berechnung: "How progress is calculated", ohneMeilenstein: "no milestone",
@@ -883,6 +884,7 @@ const en: typeof de = {
     ueberblick: {
       projekteH2: "Your projects",
       laeuft: (rechner: string | null, runde: string | null) => `Lead service running${rechner ? ` on ${rechner}` : ""} · ${runde ? `last cycle ${runde}` : "no cycle yet"}`,
+      inRunde: (rechner: string | null, seit: string) => `Lead service running${rechner ? ` on ${rechner}` : ""} · in a cycle since ${seit}`,
       still: (rechner: string | null, seit: string) => `Lead service${rechner ? ` on ${rechner}` : ""} not reachable since ${seit}`,
       sprechen: "Talk to the lead, in a terminal on the machine it runs on:",
       sprechenHinweis: "While you are connected, the service skips its own cycles. End the conversation when you are done; the service keeps running.",

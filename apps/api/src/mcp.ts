@@ -28,7 +28,7 @@ import { bereichsLeadsFuer } from "./bereichsleads.ts";
 import { gegenpruefungMelden, naechsteGegenpruefung } from "./gegenpruefung.ts";
 import type { Zugang } from "./auth/zugang.ts";
 import { anRein, nachrichtBeantworten, nachrichtSenden, offeneFuerMich, posteingang } from "./nachrichten.ts";
-import { bereitschaft, gebundenPruefen, leadDienstBinden, leadGesehen, LEAD_DIENST_WERKZEUGE, rundeMelden } from "./leaddienst.ts";
+import { bereitschaft, gebundenPruefen, leadDienstBinden, leadGesehen, LEAD_DIENST_WERKZEUGE, rundeLaeuft, rundeMelden } from "./leaddienst.ts";
 import { gesuchOeffnen, gesuchSchliessen } from "./leadkraft.ts";
 import { bedarfBeantworten, bedarfMelden, bedarfVon, bedarfZurueckziehen, darfFuehren } from "./bedarf.ts";
 import { bilderErlaubt, bilderLesen } from "./bilder.ts";
@@ -105,6 +105,10 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       inputSchema: { project: z.string(), seconds: z.number().int().min(0).max(86400), tokens: z.number().int().min(0).default(0),
         reason: z.string().min(1).max(200), outcome: z.string().min(1).max(200) },
     }, sicher(async ({ seconds, tokens, reason, outcome }) => rundeMelden(db, wer, gebunden, { sekunden: seconds, tokens, anlass: reason, ergebnis: outcome })));
+    s.registerTool("report_lead_cycle_running", {
+      description: "(swarvex runner, lead service) Sign of life while a cycle runs: the lead may work locally for a long time without calling the platform. The runner calls this every few minutes, not the lead agent.",
+      inputSchema: { project: z.string(), seconds: z.number().int().min(0).max(86400).describe("seconds since the cycle started") },
+    }, sicher(async ({ seconds }) => rundeLaeuft(db, wer, gebunden, seconds)));
   }
   // Auch eine schon gebundene Anmeldung bekommt es: `swarvex project lead setup` läuft erneut (andere Optionen, nach einem
   // Abbruch) und bindet dann dasselbe Projekt noch einmal, ohne Änderung; ein anderes lehnt leadDienstBinden ab.

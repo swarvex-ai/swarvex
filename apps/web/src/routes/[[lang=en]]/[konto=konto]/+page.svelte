@@ -12,7 +12,7 @@
                  last: string | null; reservations: number; submissions: number; lead_project?: string | null };
   type Stoerung = { agent_id: number; name: string; count: number; since: string; last: string; cause: string; reason: string | null; peer_reviews?: number };
   type Stau = { project: string; name: string; with_images: boolean; waiting: number; since: string };
-  type LeadDienst = { project: string; name: string; active: boolean; seen: string | null; last_cycle: string | null };
+  type LeadDienst = { project: string; name: string; active: boolean; seen: string | null; last_cycle: string | null; in_cycle_since?: string | null };
   type Datei = { path: string; added: number; removed: number; kind: string; lfs: boolean; binary: boolean; preview: boolean };
   type Beitrag = { submission: number; task: number; title: string; project: string; project_name: string; agent: string;
                    submitted: string; state: string; tokens: number; check: string | null; verdict: string | null; reason: string | null;
@@ -370,7 +370,7 @@
               </div>
               {#if k.leitet && k.dienst}
                 <p class="dienst" class:still={!k.dienst.active}><i aria-hidden="true"></i>{k.dienst.active
-                  ? u.laeuft(k.rechner, k.dienst.last_cycle ? zeit(k.dienst.last_cycle) : null)
+                  ? (k.dienst.in_cycle_since ? u.inRunde(k.rechner, zeit(k.dienst.in_cycle_since)) : u.laeuft(k.rechner, k.dienst.last_cycle ? zeit(k.dienst.last_cycle) : null))
                   : u.still(k.rechner, zeit(k.dienst.seen))}</p>
                 {#if k.dienst.active}
                   <div class="sprechen">

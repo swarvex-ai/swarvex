@@ -22,7 +22,7 @@ export const LEAD_DIENST_WERKZEUGE = new Set([
   "create_task", "create_tasks", "close_task", "complete_own_task", "rework_patterns", "wait_for_work", "pending_submissions", "set_review_points",
   "report_regression", "review_submission", "send_message", "inbox", "answer_message",
   "donation_pledges", "create_donation_brief", "donation_briefs", "review_donation", "preview_feedback", "mark_feedback", "set_translation",
-  "take_area", "leave_area", "release_level_c", "report_lead_cycle", "open_lead_position", "close_lead_position",
+  "take_area", "leave_area", "release_level_c", "report_lead_cycle", "report_lead_cycle_running", "open_lead_position", "close_lead_position",
   "request_work", "work_requests", "answer_work_request", "withdraw_work_request", "submission_images",
   "estimate_milestone", "find_assets", "findings", "task_from_finding", "dismiss_finding", "handbook",
   "bind_lead_service", // erneutes `swarvex project lead setup`: bestätigt die Bindung (nur dasselbe Projekt)
@@ -152,8 +152,16 @@ export async function rundeMelden(db: Db, wer: Wer, projektId: number, r: { seku
   await db.query(
     "insert into lead_runden(projekt_id, agent_id, beginn, sekunden, tokens, anlass, ergebnis) values ($1,$2, now() - make_interval(secs => $3), $3, $4, $5, $6)",
     [projektId, wer.agentId, r.sekunden, r.tokens, r.anlass.slice(0, 200), r.ergebnis.slice(0, 200)]);
-  await db.query("update projekte set lead_runde = now(), lead_gesehen = now() where id = $1 and lead_halter = $2", [projektId, wer.agentId]);
+  await db.query("update projekte set lead_runde = now(), lead_gesehen = now(), lead_runde_seit = null where id = $1 and lead_halter = $2", [projektId, wer.agentId]);
   return "recorded";
+}
+
+/** Lebenszeichen einer laufenden Runde: Der Runner meldet alle paar Minuten, seit wann sie läuft. Der Lead arbeitet dann
+ *  lokal (bauen, testen) und ruft die Plattform womöglich lange nicht auf; ohne das stünde er als „nicht erreichbar“. */
+export async function rundeLaeuft(db: Db, wer: Wer, projektId: number, sekunden: number) {
+  const r = await db.query("update projekte set lead_runde_seit = now() - make_interval(secs => $3), lead_gesehen = now() where id = $1 and lead_halter = $2",
+    [projektId, wer.agentId, sekunden]);
+  return r.rowCount ? "noted" : "noted (this service does not hold the main loop)";
 }
 
 /** Git-Zugang für das Repository des gebundenen Projekts: ein Token der GitHub App (eine Stunde, nur dieses Repo, keine
@@ -205,13 +213,15 @@ export async function leadGitZugang(db: Db, menschId: number, projektId: number)
 /** Anwesenheit für die Projektseite; null, solange kein Lead-Dienst eingerichtet ist. */
 export async function leadAnwesenheit(db: Db, projektId: number) {
   const r = (await db.query(
-    `select p.lead_gesehen, p.lead_runde,
+    `select p.lead_gesehen, p.lead_runde, p.lead_runde_seit,
             exists (select 1 from agenten a where a.lead_projekt_id = p.id and a.abgemeldet is null) as dienst,
             (select count(*)::int from agenten a where a.lead_projekt_id = p.id and a.abgemeldet is null) as dienste
      from projekte p where p.id = $1`, [projektId])).rows[0];
   if (!r?.dienst) return null;
   const minuten = r.lead_gesehen ? (Date.now() - new Date(r.lead_gesehen).getTime()) / 60_000 : Infinity;
-  return { aktiv: minuten <= AKTIV_MINUTEN, gesehen: r.lead_gesehen, letzte_runde: r.lead_runde, dienste: r.dienste };
+  const aktiv = minuten <= AKTIV_MINUTEN;
+  // Läuft gerade eine Runde (Lebenszeichen des Runners), zeigt die Seite das statt nur der letzten Runde
+  return { aktiv, gesehen: r.lead_gesehen, letzte_runde: r.lead_runde, in_runde_seit: aktiv ? r.lead_runde_seit : null, dienste: r.dienste };
 }
 
 /** Lead-Dienste, die seit STILLE_MINUTEN schweigen: eine Nachricht an den Visionär je Ausfall. */
