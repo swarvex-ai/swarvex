@@ -253,6 +253,7 @@ func verbrauchText(verbraucht, budget int64) string {
 
 // uhrzeit: heute nur die Uhrzeit, sonst mit Tag.
 func uhrzeit(t, jetzt time.Time) string {
+	t, jetzt = t.Local(), jetzt.Local()
 	if t.Year() == jetzt.Year() && t.YearDay() == jetzt.YearDay() {
 		return t.Format("15:04")
 	}

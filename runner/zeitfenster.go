@@ -182,7 +182,8 @@ func (z zeitfenster) abschnitt(t time.Time) (von, bis time.Time) {
 	return time.Time{}, time.Time{}
 }
 
-// zeitpunkt schreibt einen Zeitpunkt kurz, z. B. „Sat 31 Oct 03:00“.
+// zeitpunkt schreibt einen Zeitpunkt kurz in der Ortszeit des Rechners, z. B. „Sat 31 Oct 03:00“. Resets und gemerkte
+// Wartezeiten kommen in UTC an; ohne Local() stand „until 19:12“ in swarvex status, gemeint war 20:12 (22. Nov. 2026).
 func zeitpunkt(t time.Time) string {
-	return t.Format("Mon 02 Jan 15:04")
+	return t.Local().Format("Mon 02 Jan 15:04")
 }

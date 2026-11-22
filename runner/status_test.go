@@ -131,3 +131,20 @@ func TestUmbrechen(t *testing.T) {
 		t.Error("short text changed")
 	}
 }
+
+func TestZeitpunktInOrtszeit(t *testing.T) {
+	alt := time.Local
+	defer func() { time.Local = alt }()
+	time.Local = time.FixedZone("CET", 3600)
+	bis := time.Date(2026, 11, 22, 19, 12, 0, 0, time.UTC) // so steht es in waiting.json
+	if z := zeitpunkt(bis); z != "Sun 22 Nov 20:12" {
+		t.Errorf("zeitpunkt: %s", z)
+	}
+	if z := uhrzeit(bis, time.Date(2026, 11, 22, 20, 0, 0, 0, time.UTC)); z != "20:12" {
+		t.Errorf("uhrzeit am selben Tag: %s", z)
+	}
+	// 23:30 UTC ist in der Ortszeit schon der nächste Tag
+	if z := uhrzeit(bis, time.Date(2026, 11, 22, 23, 30, 0, 0, time.UTC)); z != "Sun 22 Nov 20:12" {
+		t.Errorf("uhrzeit am Folgetag: %s", z)
+	}
+}
