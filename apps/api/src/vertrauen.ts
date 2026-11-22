@@ -1,33 +1,50 @@
 // Vertrauensstufen (E-35, Issue #28, docs/concept.md §6): verdient, automatisch, nachvollziehbar.
 //   0 Neu       Start
-//   1 Prüfer    3 gemergte Beiträge, keine Ablehnung in 30 Tagen, keine Regression in 90 Tagen → Peer-Reviews
-//   2 Erfahren  10 gemergte Beiträge (3 davon ab Aufgabenstufe B), 5 Peer-Reviews, keine Ablehnung in 60 Tagen,
-//               keine Regression in 90 Tagen → kann Bereichs-Lead werden
+//   1 Prüfer    3 gemergte Beiträge, nicht zu viele Ablehnungen in 30 Tagen, keine Regression in 90 Tagen → Peer-Reviews
+//   2 Erfahren  10 gemergte Beiträge (3 davon ab Aufgabenstufe B), 5 Peer-Reviews, nicht zu viele Ablehnungen in 60
+//               Tagen, keine Regression in 90 Tagen → kann Bereichs-Lead werden
 //   3 Bereichs-Lead, solange die Person in einem Projekt einen Bereich führt und Stufe 2 verdient hat (docs/concept.md).
 //     Ein Amt allein hebt nichts: Wer über ein Lead-Gesuch ohne Stufe 2 ernannt wird (E-39), führt seinen Bereich in
 //     diesem Projekt, bekommt aber keine plattformweite Stufe (Sicherheitsaudit 12.11.2026: Zweitkonten im eigenen
 //     Entwurfsprojekt zu Bereichs-Leads ernennen hätte sonst Fremdprüfungen in fremden Projekten freigeschaltet).
-// Abstieg sofort: je gemeldeter Regression eine Stufe; zwei Ablehnungen innerhalb von 30 Tagen eine Stufe.
+// Abstieg sofort: je gemeldeter Regression eine Stufe; zu viele Ablehnungen innerhalb von 30 Tagen eine Stufe.
+// Zu viele heißt: mindestens 2 und mehr als 10 % der letzten 20 Urteile über die eigenen Einreichungen im Zeitfenster.
+// Bis 22.11.2026 reichten 2 Ablehnungen, und Aufstieg verlangte 30 Tage ganz ohne: Bei 183 angenommenen und 3
+// abgelehnten Einreichungen (1,6 %) stand der Visionär auf 0, der zweite aktive Mensch ebenso, und niemand Aktives
+// durfte mehr fremdprüfen (21 Einreichungen warteten bis zu einer Woche).
 // Jede Änderung steht mit Grund im öffentlichen Protokoll. Betreiber können die Stufe setzen (cli set-trust).
 import { transaktion, type Db, type Tx } from "./db.ts";
 import { protokollieren } from "./ereignisse.ts";
 
 export const VERTRAUEN_REGELN = {
-  1: { gemerged: 3, ohneAblehnungTage: 30 },
-  2: { gemerged: 10, abStufeB: 3, fremdpruefungen: 5, ohneAblehnungTage: 60 },
+  1: { gemerged: 3, ablehnungTage: 30 },
+  2: { gemerged: 10, abStufeB: 3, fremdpruefungen: 5, ablehnungTage: 60 },
   ohneRegressionTage: 90,
-  abstieg: { ablehnungen: 2, tage: 30 },
+  /** zu viele Ablehnungen: mindestens so viele und mehr als dieser Anteil der letzten Urteile (annehmen/ablehnen) */
+  ablehnung: { mindestens: 2, anteil: 0.1, letzte: 20 },
+  abstieg: { tage: 30 },
 } as const;
 
 export const STUFEN_NAMEN = ["new", "reviewer", "experienced", "area lead"] as const;
 
 export type VertrauenZahlen = {
   gemerged: number; abStufeB: number; fremdpruefungen: number;
-  ablehnungen: Date[]; regressionen: Date[]; bereichsLead: boolean;
+  /** Urteile über die eigenen Einreichungen (annehmen/ablehnen), neueste zuerst */
+  urteile: { zeit: Date; abgelehnt: boolean }[]; regressionen: Date[]; bereichsLead: boolean;
 };
 
 const TAG = 86_400_000;
 const seitTagen = (d: Date, jetzt: number) => (jetzt - d.getTime()) / TAG;
+
+/** Ablehnungen unter den letzten Urteilen im Zeitfenster; zaehlt (wenn gegeben) wählt, welche Ablehnungen zählen. */
+export function ablehnungsQuote(urteile: VertrauenZahlen["urteile"], tage: number, jetzt: number, zaehlt: (d: Date) => boolean = () => true) {
+  const r = VERTRAUEN_REGELN.ablehnung;
+  const fenster = urteile.filter((u) => seitTagen(u.zeit, jetzt) < tage).slice(0, r.letzte);
+  const ablehnungen = fenster.filter((u) => u.abgelehnt && zaehlt(u.zeit)).length;
+  return { ablehnungen, urteile: fenster.length, zuViele: ablehnungen >= r.mindestens && ablehnungen > r.anteil * fenster.length };
+}
+const zuVieleText = (q: { ablehnungen: number; urteile: number }, tage: number) =>
+  `too many rejections: ${q.ablehnungen} of your last ${q.urteile} reviewed submissions within ${tage} days (at most 1, or ${VERTRAUEN_REGELN.ablehnung.anteil * 100} %)`;
 
 /** Was für eine Stufe noch fehlt (leer = erfüllt). Englisch, weil es Agenten und die Website so zeigen. */
 export function fehltFuer(stufe: 1 | 2, z: VertrauenZahlen, jetzt = Date.now()): string[] {
@@ -39,8 +56,8 @@ export function fehltFuer(stufe: 1 | 2, z: VertrauenZahlen, jetzt = Date.now()):
     if (z.abStufeB < r2.abStufeB) fehlt.push(`${r2.abStufeB - z.abStufeB} more merged at task level B or higher`);
     if (z.fremdpruefungen < r2.fremdpruefungen) fehlt.push(`${r2.fremdpruefungen - z.fremdpruefungen} more peer review${r2.fremdpruefungen - z.fremdpruefungen === 1 ? "" : "s"}`);
   }
-  const letzteAblehnung = z.ablehnungen.find((d) => seitTagen(d, jetzt) < r.ohneAblehnungTage);
-  if (letzteAblehnung) fehlt.push(`no rejection for ${Math.ceil(r.ohneAblehnungTage - seitTagen(letzteAblehnung, jetzt))} more days`);
+  const q = ablehnungsQuote(z.urteile, r.ablehnungTage, jetzt);
+  if (q.zuViele) fehlt.push(zuVieleText(q, r.ablehnungTage));
   const letzteRegression = z.regressionen.find((d) => seitTagen(d, jetzt) < VERTRAUEN_REGELN.ohneRegressionTage);
   if (letzteRegression) fehlt.push(`no regression for ${Math.ceil(VERTRAUEN_REGELN.ohneRegressionTage - seitTagen(letzteRegression, jetzt))} more days`);
   return fehlt;
@@ -60,10 +77,10 @@ export function stufeBerechnen(bisher: number, seit: Date | null, z: VertrauenZa
     basis = Math.max(0, basis - neueRegressionen);
     gruende.push(`${neueRegressionen} regression${neueRegressionen === 1 ? "" : "s"} reported`);
   }
-  const neueAblehnungen = z.ablehnungen.filter((d) => nachSeit(d) && seitTagen(d, jetzt) < VERTRAUEN_REGELN.abstieg.tage).length;
-  if (neueAblehnungen >= VERTRAUEN_REGELN.abstieg.ablehnungen && basis > 0) {
+  const q = ablehnungsQuote(z.urteile, VERTRAUEN_REGELN.abstieg.tage, jetzt, nachSeit);
+  if (q.zuViele && basis > 0) {
     basis -= 1;
-    gruende.push(`${neueAblehnungen} rejections within ${VERTRAUEN_REGELN.abstieg.tage} days`);
+    gruende.push(zuVieleText(q, VERTRAUEN_REGELN.abstieg.tage));
   }
   while (basis < 2 && fehltFuer((basis + 1) as 1 | 2, z, jetzt).length === 0) {
     basis += 1;
@@ -80,11 +97,13 @@ export async function vertrauenZahlen(q: Db | Tx, menschId: number): Promise<Ver
      select (select count(*) from gem)::int as gemerged,
             (select count(*) from gem where stufe in ('B', 'C', 'D'))::int as ab_b,
             (select count(*) from fremdpruefungen where mensch_id = $1)::int as fremd,
-            coalesce((select array_agg(b.erstellt order by b.erstellt desc) from bewertungen b join meine m on m.id = b.einreichung_id where b.urteil = 'ablehnen'), '{}') as ablehnungen,
+            coalesce((select jsonb_agg(jsonb_build_object('zeit', u.erstellt, 'abgelehnt', u.urteil = 'ablehnen') order by u.erstellt desc)
+              from (select b.erstellt, b.urteil from bewertungen b join meine m on m.id = b.einreichung_id
+                    where b.urteil in ('annehmen', 'ablehnen') order by b.erstellt desc limit ${VERTRAUEN_REGELN.ablehnung.letzte}) u), '[]') as urteile,
             coalesce((select array_agg(g.erstellt order by g.erstellt desc) from regressionen g join meine m on m.id = g.einreichung_id), '{}') as regressionen,
             exists (select 1 from officers o join projekte p on p.id = o.projekt_id where o.mensch_id = $1 and o.beendet is null and not p.gesperrt) as bereichs_lead`,
     [menschId])).rows[0];
-  return { gemerged: r.gemerged, abStufeB: r.ab_b, fremdpruefungen: r.fremd, ablehnungen: r.ablehnungen, regressionen: r.regressionen, bereichsLead: r.bereichs_lead };
+  return { gemerged: r.gemerged, abStufeB: r.ab_b, fremdpruefungen: r.fremd, urteile: r.urteile.map((u: { zeit: string; abgelehnt: boolean }) => ({ zeit: new Date(u.zeit), abgelehnt: u.abgelehnt })), regressionen: r.regressionen, bereichsLead: r.bereichs_lead };
 }
 
 /** Stufe neu berechnen und, wenn sie sich ändert, speichern und protokollieren. anlass steht im Protokoll. */

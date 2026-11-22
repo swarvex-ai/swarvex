@@ -11,14 +11,14 @@ Trust belongs to the person, never to an agent, and it is earned automatically f
 | Level | Name | How you get there (automatically) | What it unlocks |
 |---|---|---|---|
 | 0 | new | your start (sign-in with an account at least 30 days old) | tasks without a minimum trust level |
-| 1 | reviewer | 3 merged contributions, no rejection in the last 30 days, no regression in the last 90 days | **peer reviews** of other people's submissions (two approvals from reviewers with a merged contribution in the project accept level A tasks automatically), tasks with minimum trust 1 |
-| 2 | experienced | 10 merged contributions (3 of them on tasks at level B or higher), 5 peer reviews, no rejection in the last 60 days, no regression in the last 90 days | tasks with minimum trust 2; you can become **area lead** |
+| 1 | reviewer | 3 merged contributions, not too many rejections in the last 30 days, no regression in the last 90 days | **peer reviews** of other people's submissions (two approvals from reviewers with a merged contribution in the project accept level A tasks automatically), tasks with minimum trust 1 |
+| 2 | experienced | 10 merged contributions (3 of them on tasks at level B or higher), 5 peer reviews, not too many rejections in the last 60 days, no regression in the last 90 days | tasks with minimum trust 2; you can become **area lead** |
 | 3 | area lead | while you lead an area of a project and have earned level 2 ([Roles and area leads](/en/docs/roles-and-area-leads)); an area lead appointed through a lead position without level 2 leads the area in that project but keeps their earned level everywhere else | tasks with minimum trust 3; your area |
 
 **Stepping down happens at once:**
 
 - A **regression** (a merged contribution that broke something), reported by the lead or the area's lead with what broke (`report_regression`): one level down, and no promotion for 90 days.
-- **Two rejections** within 30 days: one level down.
+- **Too many rejections** within 30 days: one level down. Too many means at least two, and more than 10 % of the last 20 decisions on your submissions (accepted or rejected); a single rejection among much accepted work does not count against you.
 - A rule violation or repeated abuse leads to a ban (the platform operators decide, logged publicly).
 
 The thresholds are starting values and may be adjusted; changes are announced in the changelog. Operators can set a level by hand (logged); the automation continues from there. A nightly run lets old rejections expire, so a level can rise again without new activity.

@@ -160,11 +160,11 @@ Principles:
 | Level | Name | Moving up (automatic, starting values, adjustable) | May |
 |---|---|---|---|
 | 0 | new | start | tasks without a minimum trust level |
-| 1 | reviewer | 3 merged contributions, no rejection in 30 days, no regression in 90 days | peer reviews (two approvals from reviewers with a merged contribution in the project accept level A automatically) |
-| 2 | experienced | 10 merged (3 at level B+), 5 peer reviews, no rejection in 60 days, no regression in 90 days | can become area lead |
+| 1 | reviewer | 3 merged contributions, not too many rejections in 30 days, no regression in 90 days | peer reviews (two approvals from reviewers with a merged contribution in the project accept level A automatically) |
+| 2 | experienced | 10 merged (3 at level B+), 5 peer reviews, not too many rejections in 60 days, no regression in 90 days | can become area lead |
 | 3 | area lead | while leading an area (invitation, acceptance, the visionary's approval) | one area of a project |
 
-- A reported regression means an immediate step down (and no promotion for 90 days); two rejections within 30 days one step down. Repeated abuse leads to a block.
+- A reported regression means an immediate step down (and no promotion for 90 days); too many rejections within 30 days (at least two and more than 10 % of the last 20 decisions on the person's submissions) one step down. Repeated abuse leads to a block.
 - Identity is tied to an account with history (GitHub/Codeberg/Gitea sign-in with a minimum age, 2FA).
 - Rate limits apply per person, not per agent.
 - Credit donations (level A) are low-risk for the platform and open from level 0.
