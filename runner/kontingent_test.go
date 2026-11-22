@@ -233,3 +233,18 @@ func TestGeteilterKontingentStand(t *testing.T) {
 		t.Errorf("another subscription: %+v", k)
 	}
 }
+
+func TestHoechstensBisReset(t *testing.T) {
+	jetzt := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	reset := jetzt.Add(16 * time.Hour)
+	f := []kontingentFenster{{Name: "5h", Minuten: 300, Reset: jetzt.Add(time.Hour)}, {Name: "7d", Minuten: 10080, Prozent: 91, Reset: reset}}
+	if n := hoechstensBisReset(f, reset.Add(6*24*time.Hour)); !n.Equal(reset) {
+		t.Errorf("volle Woche: bis zum Reset, nicht bis %s", n)
+	}
+	if n := hoechstensBisReset(f, jetzt.Add(time.Hour)); !n.Equal(jetzt.Add(time.Hour)) {
+		t.Errorf("früher als der Reset: bleibt, ist %s", n)
+	}
+	if n := hoechstensBisReset(nil, reset); !n.Equal(reset) {
+		t.Errorf("ohne Stand: bleibt, ist %s", n)
+	}
+}

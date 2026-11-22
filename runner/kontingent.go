@@ -314,6 +314,19 @@ func (r restRegeln) naechsteChance(restStart, jetzt time.Time) time.Time {
 	return n
 }
 
+// hoechstensBisReset: der Dauerbetrieb wartet höchstens bis zum Reset des langen Fensters und prüft dann neu. Sonst
+// schliefe er bei voller Woche bis zum Restbeginn der nächsten, mit dem alten Grund in swarvex status („90 % used“
+// noch fünf Tage nach dem Reset, 22. Nov. 2026), und im gleichmäßigen Modus fiele die ganze nächste Woche aus.
+func hoechstensBisReset(f []kontingentFenster, ab time.Time) time.Time {
+	if len(f) == 0 {
+		return ab
+	}
+	if reset := f[len(f)-1].Reset; reset.Before(ab) {
+		return reset
+	}
+	return ab
+}
+
 // pruefen: darf jetzt Arbeit beginnen bzw. weiterlaufen? Sonst der Grund und ab wann es wieder gehen kann.
 // Ohne bekannten Stand ist die Antwort ja: Die erste Anfrage zeigt ihn, und der Proxy stoppt danach, falls nötig.
 func (r restRegeln) pruefen(f []kontingentFenster, jetzt time.Time) (bool, string, time.Time) {

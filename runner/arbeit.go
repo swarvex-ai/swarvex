@@ -1129,8 +1129,9 @@ func dauerbetrieb(fenster zeitfenster, pause time.Duration, args []string, autoA
 			n := time.Now().Add(30 * time.Minute)
 			grund := "subscription: your rules allow nothing more right now"
 			if k, ok := kontingentAktuell(aboAktiv); ok && restModus != nil {
-				if erlaubt, g, ab := restModus.fuer(k, time.Now()).pruefen(k.fortgeschrieben(time.Now()), time.Now()); ab.After(time.Now()) {
-					n = ab
+				f := k.fortgeschrieben(time.Now())
+				if erlaubt, g, ab := restModus.fuer(k, time.Now()).pruefen(f, time.Now()); ab.After(time.Now()) {
+					n = hoechstensBisReset(f, ab)
 					if !erlaubt && g != "" {
 						grund = "subscription: " + g
 					}

@@ -5,7 +5,13 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.16.5 (unreleased)
+## 0.16.6 (unreleased)
+
+- With a full weekly window the service waits only until the window resets, then checks again. Before, it slept until
+  the leftover time of the following week: `swarvex status` kept showing the old "90 % used" for days after the reset,
+  and in even mode (`pace`) the whole following week went unused.
+
+## 0.16.5 (22 Nov 2026)
 
 - A lead service sends the platform a sign of life every five minutes while a cycle runs. A lead often works locally
   for a long time (building, testing) without calling the platform; after 15 minutes of silence My account showed it
