@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.16.7 (unreleased)
+## 0.16.7 (22 Nov 2026)
 
 - `swarvex status` and the service's messages show times in the computer's local time. Waiting times and window
   resets arrive in UTC and were shown unconverted: "until 19:12" meant 20:12 in Berlin.
