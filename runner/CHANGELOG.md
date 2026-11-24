@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.16.8 (unreleased)
+## 0.16.8 (24 Nov 2026)
 
 - Allowed paths with a wildcard before `/**` (such as `asset_library/comic/intro/panel_01*/**`) now match the way
   the platform matches them. Before, the runner read everything in front of `/**` literally and silently left such
