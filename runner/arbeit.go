@@ -711,12 +711,32 @@ func patchUmfang(patch string, maxZeilen, maxDateien int) string {
 }
 
 // passt unterstützt die Glob-Formen der Plattform: exakt, *, und ** am Ende.
+// passt vergleicht Segment für Segment wie die Plattform (matchesGlob): "**" steht für beliebig viele Ordner,
+// "*", "?" und "[…]" gelten innerhalb eines Segments. Bis 0.16.7 galt alles vor "/**" wörtlich, so fiel bei
+// "asset_library/comic/intro/panel_01*/**" die PROVENANCE.md still aus dem Patch (27 Einreichungen, 24.11.2026).
 func passt(muster, pfad string) bool {
-	if strings.HasSuffix(muster, "/**") {
-		return strings.HasPrefix(pfad, strings.TrimSuffix(muster, "**"))
+	return segmentePassen(strings.Split(muster, "/"), strings.Split(pfad, "/"))
+}
+
+func segmentePassen(m, p []string) bool {
+	for len(m) > 0 {
+		if m[0] == "**" {
+			for i := 0; i <= len(p); i++ {
+				if segmentePassen(m[1:], p[i:]) {
+					return true
+				}
+			}
+			return false
+		}
+		if len(p) == 0 {
+			return false
+		}
+		if ok, _ := path.Match(m[0], p[0]); !ok {
+			return false
+		}
+		m, p = m[1:], p[1:]
 	}
-	ok, _ := path.Match(muster, pfad)
-	return ok
+	return len(p) == 0
 }
 
 // beispiele: die ersten Pfade einer Liste für Meldungen.

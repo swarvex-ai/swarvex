@@ -94,3 +94,73 @@ func TestPatchOhneGitEinstellungenDesNutzers(t *testing.T) {
 		t.Errorf("patch lost the change:\n%s", patch)
 	}
 }
+
+// Muster wie bei der Plattform (matchesGlob): Platzhalter vor "/**" gelten, "**" steht für beliebig viele Ordner.
+func TestPasst(t *testing.T) {
+	m := "asset_library/comic/intro/panel_01*/**"
+	for _, f := range []struct {
+		muster, pfad string
+		ok           bool
+	}{
+		{m, "asset_library/comic/intro/panel_01_v2/PROVENANCE.md", true},
+		{m, "asset_library/comic/intro/panel_01_v2/src/render.py", true},
+		{m, "asset_library/comic/intro/panel_02_v1/PROVENANCE.md", false},
+		{m, "asset_library/comic/intro/PROVENANCE.md", false},
+		{"tools/**", "tools/run_tests.sh", true},
+		{"tools/**", "tools/a/b/c.sh", true},
+		{"tools/**", "toolsx/a.sh", false},
+		{"game/**/*.gd", "game/enemy.gd", true},
+		{"game/**/*.gd", "game/a/b/enemy.gd", true},
+		{"game/**/*.gd", "game/a/enemy.tscn", false},
+		{"game/assets/comic/intro_panel_01_art.png", "game/assets/comic/intro_panel_01_art.png", true},
+		{"docs/*.md", "docs/a/b.md", false},
+		{"**", "irgendwo/datei.txt", true},
+	} {
+		if got := passt(f.muster, f.pfad); got != f.ok {
+			t.Errorf("passt(%q, %q) = %v, erwartet %v", f.muster, f.pfad, got, f.ok)
+		}
+	}
+}
+
+// Fall Rend&Run 24.11.2026: Bild und Herkunftsordner mit Platzhalter landen beide im Patch.
+func TestPatchMitPlatzhalterOrdner(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git fehlt")
+	}
+	ordner := t.TempDir()
+	baum, gitDir := filepath.Join(ordner, "tree"), filepath.Join(ordner, "git")
+	schreiben := func(p, inhalt string) {
+		t.Helper()
+		voll := filepath.Join(baum, p)
+		if err := os.MkdirAll(filepath.Dir(voll), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(voll, []byte(inhalt), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	schreiben("README.md", "x\n")
+	if err := gitBasis(gitDir, baum, nil); err != nil {
+		t.Fatal(err)
+	}
+	u, err := umgebung.Ermitteln(baum)
+	if err != nil {
+		t.Fatal(err)
+	}
+	schreiben("game/assets/comic/intro_panel_01_art.png", "png\n")
+	schreiben("asset_library/comic/intro/panel_01_v2/PROVENANCE.md", "# Provenance\n")
+	schreiben("asset_library/comic/intro/panel_01_v2/render_panel_01.py", "print(1)\n")
+	erlaubt := []string{"game/assets/comic/intro_panel_01_art.png", "asset_library/comic/intro/panel_01*/**"}
+	patch, verworfen, err := patchBilden(gitDir, baum, erlaubt, u)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{"intro_panel_01_art.png", "panel_01_v2/PROVENANCE.md", "panel_01_v2/render_panel_01.py"} {
+		if !strings.Contains(patch, p) {
+			t.Errorf("%s fehlt im Patch", p)
+		}
+	}
+	if len(verworfen) != 0 || len(patchVorpruefen(patch, erlaubt, u)) != 0 {
+		t.Errorf("verworfen %v, Vorprüfung %v", verworfen, patchVorpruefen(patch, erlaubt, u))
+	}
+}
