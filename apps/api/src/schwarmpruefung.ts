@@ -22,7 +22,7 @@ import { modellFamilie, modellSchluessel, prueferStatus, siehtBilder } from "./m
 import { einreichungsVorschauUrl } from "./konfig.ts";
 import { einreichungsVorschau } from "./katalog.ts";
 import { vertrauenAktualisieren } from "./vertrauen.ts";
-import { aendertSzenenbilder } from "./gegenpruefung.ts";
+import { aendertSzenenbilder, bilderImPatch } from "./gegenpruefung.ts";
 
 /** Zustimmungen verschiedener Menschen, nach denen eine Aufgabe der Stufe A ohne Lead angenommen wird. Es zählen nur
  *  Prüfer mit einem gemergten Beitrag in diesem Projekt: Stufe 1 lässt sich mit Zweitkonten in einem eigenen Projekt
@@ -71,16 +71,21 @@ export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: stri
   const erlaubt = [];
   // Nennt der Prüfer sein Modell, fallen Einreichungen derselben Modellfamilie weg: die darf er nicht bewerten
   const familie = modell?.trim() ? modellFamilie(modell) : null;
+  // Liefert der Patch selbst Bilder (Comic-Panel, Textur), gibt es außer dem Bild kaum etwas zu prüfen: Ein Modell ohne
+  // Bildverständnis bekommt sie nicht angeboten. Es durfte nur Änderungen verlangen, und das schickte gute Arbeit in die
+  // Nacharbeit (Intro-Panel, Variante 1, 25.11.2026).
+  const ohneBilder = modell?.trim() ? !siehtBilder(modell) : false;
   for (const z of r) {
     if (familie && z.autor_modell && modellFamilie(z.autor_modell) === familie) continue;
+    if (ohneBilder && bilderImPatch(z.patch).length) continue;
     if (!(await darfPruefen(db, wer, z, z.autor))) erlaubt.push(z);
   }
   // eigene Beiträge eines Leads zuerst (nur der Schwarm kann sie annehmen), dann die, denen dieses Modell zustimmen darf
   // (stabil sortiert, sonst in der Reihenfolge des Eingangs)
   // Sichtbar ist eine Änderung, wenn es Szenenbilder gibt oder der Patch Referenzbilder ändert (die Bilder kommen dann
   // gleich vom Prüfserver); zustimmen erst, wenn sie da sind, und nur mit einem Modell, das Bilder liest
-  const zustimmbar = (z: { bilder: string[]; patch: string }) => (!z.bilder.length && !aendertSzenenbilder(z.patch))
-    || (z.bilder.length > 0 && (modell?.trim() ? siehtBilder(modell) : true));
+  const zustimmbar = (z: { bilder: string[]; patch: string }) => (!z.bilder.length && !aendertSzenenbilder(z.patch) && !bilderImPatch(z.patch).length)
+    || ((z.bilder.length > 0 || (!aendertSzenenbilder(z.patch) && bilderImPatch(z.patch).length > 0)) && (modell?.trim() ? siehtBilder(modell) : true));
   erlaubt.sort((x, y) => Number(y.vom_lead) - Number(x.vom_lead) || Number(zustimmbar(y)) - Number(zustimmbar(x)));
   return Promise.all(erlaubt.slice(0, 20).map(async ({ projekt_id, autor, raum, vorschau_status, pruefpunkte, bilder, ...z }) => ({
     ...(vorschau_status === "ok" && einreichungsVorschauUrl(1) ? { vorschau_url: await einreichungsVorschau(db, z.projekt, Number(z.einreichung_id)) } : {}),
@@ -88,10 +93,12 @@ export async function offeneFremdpruefungen(db: Db, wer: Wer, projektSlug?: stri
     automatisch_ab: automatischAb(z.stufe, z.vom_lead),
     ...(pruefpunkte?.length ? { pruefpunkte } : {}),
     ...(bilder.length ? { bilder, bild_adresse: `/submissions/${z.einreichung_id}/images/<scene>/<old|new|diff>.png` } : {}),
+    ...(bilderImPatch(z.patch).length ? { bilder_im_patch: bilderImPatch(z.patch) } : {}),
     zustimmen_moeglich: zustimmbar({ bilder, patch: z.patch }),
     ...(!modell?.trim() ? { hinweis: "name your model (model): only a model of another family than the submission's may review it" }
       : !bilder.length && aendertSzenenbilder(z.patch) ? { hinweis: "this submission changes what you see; its scene images are not there yet (a few minutes): you may request changes, not approve yet" }
-      : !zustimmbar({ bilder, patch: z.patch }) ? { hinweis: "this submission changes what you see (images) and your model does not read images: you may request changes, not approve" } : {}),
+      : !zustimmbar({ bilder, patch: z.patch }) ? { hinweis: "this submission changes what you see (images) and your model does not read images: you may request changes, not approve" }
+      : !bilder.length && bilderImPatch(z.patch).length ? { hinweis: "the change adds images (images_in_patch): look at each one before you approve, then approve with images_seen: true" } : {}),
   })));
 }
 
@@ -116,11 +123,15 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
     if (e.modell && modellFamilie(modell) === modellFamilie(e.modell))
       throw new Abgelehnt(`the submission was written by ${e.modell}; a peer review needs a model of another family (yours: ${modellFamilie(modell)})`);
     const bilder = Number((await tx.query("select count(*) from einreichung_bilder where einreichung_id = $1", [einreichungId])).rows[0].count);
+    const patchBilder = bilderImPatch(e.patch).length;
     // Ändert der Patch Referenzbilder, ist die Änderung sichtbar, auch bevor die Bilder da sind (die Schubkarre, 9.11.)
     if ((bilder || aendertSzenenbilder(e.patch)) && urteil === "zustimmen") {
       if (!siehtBilder(modell)) throw new Abgelehnt("this submission changes what you see (scene images); only a model that reads images may approve it: request changes or leave it to another reviewer");
       if (!bilder) throw new Abgelehnt("this submission changes what you see, but its scene images are not there yet; approve in a few minutes, after looking at them");
       if (!zusatz.bilderGesehen) throw new Abgelehnt("look at the scene images first (old, new, diff), then approve with images_seen: true");
+    } else if (patchBilder && urteil === "zustimmen") {
+      if (!siehtBilder(modell)) throw new Abgelehnt("this submission adds images; only a model that reads images may approve it: leave it to another reviewer");
+      if (!zusatz.bilderGesehen) throw new Abgelehnt("look at the images in the change first, then approve with images_seen: true");
     }
     const punkte: string[] = e.pruefpunkte ?? [];
     if (punkte.length && (antworten.length !== punkte.length || antworten.some((x) => x.length < 10)))
@@ -128,7 +139,7 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
     try {
       await tx.query("insert into fremdpruefungen(einreichung_id, agent_id, mensch_id, urteil, begruendung, modell, antworten, bilder_gesehen) values ($1,$2,$3,$4,$5,$6,$7,$8)",
         [einreichungId, wer.agentId, wer.menschId, urteil, begruendung.trim().slice(0, 4000), modell.trim().slice(0, 120), punkte.length ? antworten.map((x) => x.slice(0, 1000)) : null,
-         Boolean(bilder && zusatz.bilderGesehen)]);
+         Boolean((bilder || patchBilder) && zusatz.bilderGesehen)]);
     } catch (err) {
       if ((err as { code?: string }).code === "23505") throw new Abgelehnt("you already reviewed this submission");
       throw err;
@@ -136,7 +147,7 @@ export async function fremdPruefen(db: Db, wer: Wer, einreichungId: number, urte
     await vertrauenAktualisieren(tx, wer.menschId, "peer review");
     await protokollieren(tx, { projekt_id: Number(a.projekt_id), akteur: `agent:${wer.agentId}`, art: "fremdpruefung", bezug: `aufgabe:${a.id}`,
       daten: { einreichung: einreichungId, urteil, modell: modell.trim().slice(0, 120), anderes_modell: e.modell ? modellSchluessel(modell) !== modellSchluessel(e.modell) : null,
-        ...(bilder ? { bilder_gesehen: Boolean(zusatz.bilderGesehen) } : {}), ...(punkte.length ? { pruefpunkte: punkte.length } : {}) } });
+        ...(bilder || patchBilder ? { bilder_gesehen: Boolean(zusatz.bilderGesehen) } : {}), ...(punkte.length ? { pruefpunkte: punkte.length } : {}) } });
     const alle = (await tx.query(
       `select f.urteil, f.begruendung, f.agent_id, m.login,
          exists (select 1 from einreichungen e2 join agenten g2 on g2.id = e2.agent_id join aufgaben a2 on a2.id = e2.aufgabe_id

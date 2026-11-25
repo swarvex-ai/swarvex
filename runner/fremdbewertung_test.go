@@ -177,3 +177,31 @@ func TestAnbieterText403(t *testing.T) {
 		t.Fatal(s)
 	}
 }
+
+// Bilder im Patch (Comic-Panel, 25.11.2026): das Modell bekommt sie zu sehen und stimmt nur nach dem Ansehen zu.
+func TestFremdPruefungMitBildernImPatch(t *testing.T) {
+	bilder := bildDateien([]string{"files/game/assets/comic/intro_panel_01_art.png", "files/asset_library/x/Render.PY", "files/a/b.JPG", "files/a/model.glb"})
+	if strings.Join(bilder, ",") != "files/game/assets/comic/intro_panel_01_art.png,files/a/b.JPG" {
+		t.Fatalf("bildDateien: %v", bilder)
+	}
+	b := fremdEintrag{Einreichung: 934, Aufgabe: 343, Titel: "Intro comic panel 1 art", PatchBilder: bilder}
+	text := fremdAuftragstext(b, nil, bilder, "")
+	for _, soll := range []string{"images this change adds or replaces", "/work/files/game/assets/comic/intro_panel_01_art.png", "images_seen to true only then", "\"images_seen\": true or false"} {
+		if !strings.Contains(text, soll) {
+			t.Fatalf("task text lacks %q:\n%s", soll, text)
+		}
+	}
+	if strings.Contains(text, "no scene images") {
+		t.Fatal("says there is nothing to look at")
+	}
+	ordner := t.TempDir()
+	pfad := filepath.Join(ordner, "v.json")
+	os.WriteFile(pfad, []byte(`{"verdict":"approve","reason":"Palette und Linien per Dekodierung geprüft"}`), 0o644)
+	if _, err := fremdUrteilLesen(pfad, b); err == nil || !strings.Contains(err.Error(), "without looking") {
+		t.Fatalf("approve without images_seen: %v", err)
+	}
+	os.WriteFile(pfad, []byte(`{"verdict":"approve","reason":"Bild angesehen: Rend sofort erkennbar, keine Schrift","images_seen":true}`), 0o644)
+	if u, err := fremdUrteilLesen(pfad, b); err != nil || !u.BilderGesehen {
+		t.Fatalf("approve with images_seen: %v %v", u, err)
+	}
+}

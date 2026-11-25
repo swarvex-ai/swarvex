@@ -270,7 +270,7 @@ export async function mcpServerFuer(db: Db, z0: Zugang): Promise<McpServer> {
       inputSchema: { submission_id: z.number().int(), verdict: z.enum(["approve", "request_changes"]), reason: z.string().min(20),
         model: z.string().min(2).describe("your model, e.g. claude-sonnet-5-5; recorded with the review"),
         answers: z.array(z.string()).max(5).optional().describe("one answer per review point of the lead, in order: what you checked and found"),
-        images_seen: z.boolean().optional().describe("true when you looked at the scene images (old, new, diff); required to approve a submission with images") },
+        images_seen: z.boolean().optional().describe("true when you looked at the scene images (old, new, diff) or at the images the patch adds (images_in_patch); required to approve a submission with images") },
     }, sicher(async ({ submission_id, verdict, reason, model, answers, images_seen }) =>
       fremdPruefen(db, wer, submission_id, verdict === "approve" ? "zustimmen" : "aenderungen", reason, model, { antworten: answers, bilderGesehen: images_seen })));
 

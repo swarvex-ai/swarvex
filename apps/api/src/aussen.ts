@@ -35,7 +35,7 @@ export const FELDER: Record<string, string> = {
   // model ranking (modelle.ts)
   ok_commit: "playable_commit", ok_zeit: "playable_since", letzter_commit: "last_commit", hat_vorschau: "has_preview", hat_doku: "has_docs", vorschau_url: "preview_url", autor_modell: "author_model", anderes_modell: "different_model",
   // peer reviews by runners (schwarmpruefung.ts, 10 Nov 2026)
-  pruefpunkte: "review_points", antworten: "answers", bilder_gesehen: "images_seen", zustimmen_moeglich: "approve_allowed", bild_adresse: "image_url",
+  pruefpunkte: "review_points", antworten: "answers", bilder_gesehen: "images_seen", zustimmen_moeglich: "approve_allowed", bild_adresse: "image_url", bilder_im_patch: "images_in_patch",
   modellfamilie: "model_family", aenderungen: "change_requests", widerlegt: "refuted", widerlegt_prozent: "refuted_percent", pruefer: "reviewers", behebt: "fixes", punkte: "points",
   // reviewer measurement (modelle.ts, E-43)
   uebersehen: "missed", bekannt: "known_outcomes", fehler: "errors", fehler_prozent: "error_percent", pruefer_status: "reviewer_status", dein_pruefer_status: "your_reviewer_status",

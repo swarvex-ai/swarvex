@@ -883,6 +883,23 @@ describe("Bewertung durch den Schwarm", () => {
     expect((await offeneFremdpruefungen(db, pb, "test", "claude-sonnet-5-5")).find((x) => x.einreichung_id === eid4)).toMatchObject({ zustimmen_moeglich: true });
     await k.bewerten(db, lead, eid4, "nacharbeit", "Aufräumen nach dem Test der Bildregel");
     await k.schliessen(db, lead, a4.id, "Test");
+    // Bilder im Patch selbst (Comic-Panel, 25.11.2026): nur für Bildmodelle, zustimmen erst nach dem Ansehen
+    const { bilderImPatch } = await import("../src/gegenpruefung.ts");
+    expect(bilderImPatch("diff --git a/a/p.png b/a/p.png\nnew file mode 100644\n" +
+      "diff --git a/a/alt.jpg b/a/alt.jpg\ndeleted file mode 100644\n" +
+      "diff --git a/a/x.py b/a/x.py\n--- a/a/x.py\n")).toEqual(["a/p.png"]);
+    const { a: a5, eid: eid5 } = await geprueft("Comic-Panel", "A");
+    await db.query("update einreichungen set patch = patch || $2 where id = $1",
+      [eid5, "diff --git a/game/assets/comic/panel.png b/game/assets/comic/panel.png\nnew file mode 100644\n"]);
+    expect((await offeneFremdpruefungen(db, pb, "test", "deepseek-v4.1-flash")).map((x) => x.einreichung_id)).not.toContain(eid5);
+    expect((await offeneFremdpruefungen(db, pb, "test", "claude-sonnet-5-5")).find((x) => x.einreichung_id === eid5))
+      .toMatchObject({ zustimmen_moeglich: true, bilder_im_patch: ["game/assets/comic/panel.png"], hinweis: expect.stringContaining("images_seen") });
+    await expect(fremdPruefen(db, pb, eid5, "zustimmen", "Akzeptanz erfüllt, Palette geprüft", "deepseek-v4.1-flash", { bilderGesehen: true })).rejects.toThrow(/reads images/);
+    await expect(fremdPruefen(db, pb, eid5, "zustimmen", "Akzeptanz erfüllt, Palette geprüft", "claude-sonnet-5-5")).rejects.toThrow(/images_seen/);
+    expect(await fremdPruefen(db, pb, eid5, "zustimmen", "Bild angesehen: Figur erkennbar, keine Schrift", "claude-sonnet-5-5", { bilderGesehen: true })).toMatchObject({ zustimmungen: 1 });
+    expect((await db.query("select bilder_gesehen from fremdpruefungen where einreichung_id = $1", [eid5])).rows[0].bilder_gesehen).toBe(true);
+    await k.bewerten(db, lead, eid5, "nacharbeit", "Aufräumen nach dem Test der Bildregel");
+    await k.schliessen(db, lead, a5.id, "Test");
     // eine Reparaturaufgabe widerlegt beide Zustimmungen
     await expect(k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Fix: offen"), behebt: eid3 * 1000 })).rejects.toThrow(/fixes/);
     const fix = await k.aufgabeAnlegen(db, lead, "test", { ...neueAufgabe("Fix: Rad sitzt in der Wanne"), behebt: a.id });

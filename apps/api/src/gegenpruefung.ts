@@ -48,6 +48,16 @@ const szenenbilder = new RegExp(SZENENBILDER);
 /** Ändert der Patch ein Referenzbild? Dann zeigt die Einreichung etwas, das man sehen muss. */
 export const aendertSzenenbilder = (patch: string) => szenenbilder.test(patch ?? "");
 
+/** Bilddateien, die der Patch hinzufügt oder ersetzt (etwa ein Comic-Panel): Auch die muss ein Prüfer ansehen. */
+export function bilderImPatch(patch: string): string[] {
+  const bilder: string[] = [];
+  for (const teil of (patch ?? "").split(/^(?=diff --git )/m)) {
+    const ziel = /^diff --git a\/\S+ b\/(\S+)/.exec(teil)?.[1];
+    if (ziel && /\.(png|jpe?g|webp|gif)$/i.test(ziel) && !/\ndeleted file mode /.test(teil)) bilder.push(ziel);
+  }
+  return bilder;
+}
+
 /** SQL-Bedingung (Einreichung e): Darf ein Runner sie gegenprüfen, was Szenenbilder angeht? Ohne Referenzbilder immer,
  *  mit nur, wenn der Prüfserver alle Bilder aus dem Patch geliefert hat (die Prüfer brauchen sie). */
 // is not distinct from: Ohne Meldung ist bilder_aus_patch NULL, und „= 'vollstaendig'“ wäre dann NULL statt false

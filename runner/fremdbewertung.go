@@ -50,6 +50,25 @@ type fremdEintrag struct {
 	Bilder            []string `json:"images"`
 	ZustimmenMoeglich bool     `json:"approve_allowed"`
 	VorschauURL       string   `json:"preview_url"`
+	// PatchBilder: Bilddateien, die der Patch selbst liefert (etwa ein Comic-Panel), entpackt unter files/. Bis 0.16.8
+	// sah sie kein Modell: Bildanhänge gab es nur zu Szenenbildern, und Prüfer mit Bildmodell verlangten bei Variante
+	// 1 des Intro-Panels dreimal Änderungen, weil sie das Bild nicht ansehen konnten (25.11.2026).
+	PatchBilder []string `json:"-"`
+}
+
+// mitBildern: Gibt es etwas anzusehen (Szenenbilder oder Bilder im Patch)?
+func (b fremdEintrag) mitBildern() bool { return len(b.Bilder) > 0 || len(b.PatchBilder) > 0 }
+
+// bildDateien: die Bilder unter den aus dem Patch entpackten Dateien.
+func bildDateien(dateien []string) []string {
+	var bilder []string
+	for _, d := range dateien {
+		switch strings.ToLower(filepath.Ext(d)) {
+		case ".png", ".jpg", ".jpeg", ".webp", ".gif":
+			bilder = append(bilder, d)
+		}
+	}
+	return bilder
 }
 
 // fremdUrteil: was der Agent nach /work/verdict.json schreibt.
@@ -193,13 +212,14 @@ func fremdbewertungRunde(basis context.Context, m *mcpClient, z *zugangsdaten, e
 	if err != nil {
 		abbrechen(err.Error())
 	}
+	b.PatchBilder = bildDateien(dateien)
 	handbuch := pruefHandbuch(z)
 	auftrag := fremdAuftragstext(*b, bilder, dateien, handbuch)
 	os.WriteFile(filepath.Join(arbeit, "REVIEW.md"), []byte(auftrag), 0o644)
 	ctx, stopp := context.WithTimeout(basis, e.zeit)
 	defer stopp()
 	melden = &ursache{} // ohne Ursache: Das Modell lief, die Prüfung scheiterte in der Sache
-	verbrauch, err = fremdSandbox(ctx, b.Einreichung, e, ordner, arbeit, auftrag, len(bilder) > 0)
+	verbrauch, err = fremdSandbox(ctx, b.Einreichung, e, ordner, arbeit, auftrag, len(bilder) > 0 || len(b.PatchBilder) > 0)
 	verbrauchMerken(verbrauchsDatei(), -1_000_000_000-b.Einreichung, budgetTokensAus(verbrauch), time.Now())
 	if basis.Err() != nil {
 		absturz, melden = uGestoppt.Schluessel, &uGestoppt
@@ -361,6 +381,12 @@ func fremdAuftragstext(b fremdEintrag, bilder, binaer []string, handbuch string)
 			s.WriteString("  - /work/" + d + "\n")
 		}
 		s.WriteString("\nThis change shows up in what players or users see. Open and look at every image before you decide: does the new image show what the task asks, and is anything wrong in it (parts inside each other, wrong proportions, missing parts, artefacts)? Only approve when you looked at them; set images_seen to true only then.\n")
+	} else if len(b.PatchBilder) > 0 {
+		s.WriteString("- images this change adds or replaces (the files themselves, decoded from the patch):\n")
+		for _, d := range b.PatchBilder {
+			s.WriteString("  - /work/" + filepath.ToSlash(d) + "\n")
+		}
+		s.WriteString("\nThis change is something people look at. Open and look at every one of these images before you decide: does it show what the task asks, and is anything wrong in it (wrong proportions, missing parts, artefacts, text or logos that should not be there)? Only approve when you looked at them; set images_seen to true only then.\n")
 	} else {
 		// 16.11.2026: Ein Modell las aus „images_seen“ in der Vorlage, Bilder seien Pflicht, und bemängelte in drei von sechs
 		// Ablehnungen fehlende Szenenbilder, die es zu diesen Einreichungen gar nicht gibt.
@@ -378,7 +404,7 @@ func fremdAuftragstext(b fremdEintrag, bilder, binaer []string, handbuch string)
 	if len(b.Pruefpunkte) > 0 {
 		felder = append(felder, fmt.Sprintf(" \"answers\": [%d answers, one per review point, in order]", len(b.Pruefpunkte)))
 	}
-	if len(bilder) > 0 {
+	if len(bilder) > 0 || len(b.PatchBilder) > 0 {
 		felder = append(felder, " \"images_seen\": true or false")
 	}
 	s.WriteString("\n## Your answer\n\nWrite /work/verdict.json and nothing else:\n\n```json\n" + strings.Join(felder, ",\n") + "}\n```\n")
@@ -420,10 +446,10 @@ func fremdUrteilLesen(pfad string, b fremdEintrag) (fremdUrteil, error) {
 			}
 		}
 	}
-	if u.Urteil == "approve" && len(b.Bilder) > 0 && !u.BilderGesehen {
-		return u, fmt.Errorf("the agent approved a visible change without looking at the scene images")
+	if u.Urteil == "approve" && b.mitBildern() && !u.BilderGesehen {
+		return u, fmt.Errorf("the agent approved a visible change without looking at its images")
 	}
-	if len(b.Bilder) == 0 {
+	if !b.mitBildern() {
 		u.BilderGesehen = false
 	}
 	return u, nil

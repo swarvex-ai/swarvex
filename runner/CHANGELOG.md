@@ -5,6 +5,13 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
+## 0.16.9 (unreleased)
+
+- Peer reviews of submissions that add images (a comic panel, a texture) show those images to the model, as with scene
+  images, and approve only after it looked at them (`images_seen`). Before, the model got them only as files it could
+  not see: reviewers with an image model sent good art back three times because they could not look at it, and one
+  approved without looking.
+
 ## 0.16.8 (24 Nov 2026)
 
 - Allowed paths with a wildcard before `/**` (such as `asset_library/comic/intro/panel_01*/**`) now match the way
