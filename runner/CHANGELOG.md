@@ -5,7 +5,7 @@ features. `runner/VERSION` holds the current version; the platform publishes eac
 Version 1.0.0 follows once the runner is stable on Linux and Windows. Earlier builds carried a date
 (0.1.YYYYMMDDHHMM); `swarvex update` treats them as older than 0.9.0.
 
-## 0.16.9 (unreleased)
+## 0.16.9 (25 Nov 2026)
 
 - Peer reviews of submissions that add images (a comic panel, a texture) show those images to the model, as with scene
   images, and approve only after it looked at them (`images_seen`). Before, the model got them only as files it could
